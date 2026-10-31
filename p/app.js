@@ -113,7 +113,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '' };
+      auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student' };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -128,7 +128,8 @@
     const tab = lsGet(LS.tab, 'quant');
     const first = (auth.name || '').trim().split(/\s+/)[0] || '';
     const hi = auth.gender === 'طالبة' ? 'أهلاً' : 'أهلاً';
-    app.innerHTML = topbar(`<span class="sp"></span><span class="chip" title="${esc(auth.email)}">${esc(auth.name || auth.email)}</span><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
+    const adminLinks = auth.role === 'admin' ? `<a class="chip" style="text-decoration:none;background:var(--gold);color:#1a1a1a;font-weight:700" href="https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI" target="_blank" rel="noopener" title="الطلاب · الدخول · النتائج">👑 مشرف · الشيت</a>` : '';
+    app.innerHTML = topbar(`<span class="sp"></span>${adminLinks}<span class="chip" title="${esc(auth.email)}">${esc(auth.name || auth.email)}</span><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
     `<main class="wrap">
       <div class="hero"><div><h1>${hi} ${esc(first)} 👋</h1><p>تدرّب قسماً قسماً: كل سؤال مع شرحه بعد الإجابة مباشرة، وتقدّمك محفوظ.</p></div>
       <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
@@ -258,7 +259,7 @@
     window.scrollTo(0, 0);
     try {
       const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
-      $('#saved').textContent = r.ok ? 'تم حفظ نتيجتك ✓' : '';
+      $('#saved').textContent = r.ok ? (r.admin ? 'وضع المشرف: النتيجة لا تُسجّل' : 'تم حفظ نتيجتك ✓') : '';
       if (!r.ok && r.error === 'session') { toast('انتهت الجلسة، سجّل دخولك من جديد'); }
     } catch (e) { $('#saved').textContent = ''; }
   }
