@@ -54,6 +54,13 @@
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
   async function loadSet(id) {
     if (cache[id]) return cache[id];
+    if (id === 'qall' || id === 'vall') {
+      const k = id[0]; const parts = []; for (let i = 1; i <= 14; i++) parts.push(await loadSet(k + i));
+      let obj;
+      if (k === 'q') obj = { kind: 'quant', id: 'qall', title: 'الاختبار الشامل — الكمي', sub: 'All 14 sections', items: [].concat(...parts.map(p => p.items.map(it => Object.assign({}, it, { src: p.id })))) };
+      else obj = { kind: 'verbal', id: 'vall', title: 'الاختبار الشامل — اللفظي', sub: 'All 14 models', groups: [].concat(...parts.map(p => p.groups.map(g => Object.assign({}, g, { title: (g.kind === 'part' ? p.title + ' · ' : '') + g.title, src: p.id })))) };
+      cache[id] = obj; return obj;
+    }
     const r = await fetch('/p/data/' + id + '.bin', { cache: 'force-cache' });
     if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
@@ -68,7 +75,7 @@
   function progSet(id, p) { lsSet(LS.prog + id, p); }
   function flatItems(set) {
     if (set.kind === 'quant') return set.items.map((it, i) => ({ it, gi: 0, idx: i }));
-    const out = []; set.groups.forEach((g, gi) => g.items.forEach(it => out.push({ it, gi, idx: out.length })));
+    const out = []; set.groups.forEach((g, gi) => g.items.forEach(it => out.push({ it: g.src ? Object.assign({}, it, { src: g.src }) : it, gi, idx: out.length })));
     return out;
   }
   function logout(msg, tellServer) {
@@ -97,6 +104,8 @@
     const h = location.hash.replace('#', '');
     if (/^[qv]\d+$/.test(h)) return renderPlayer(h);
     if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
+    if (h === 'board' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'practice');
+    if (h === 'qall' || h === 'vall') return renderPlayer(h);
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -133,7 +142,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || null };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || null, display: r.display || r.name, avatar: r.avatar || '' };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -148,19 +157,27 @@
     const tab = lsGet(LS.tab, 'quant');
     const first = (auth.name || '').trim().split(/\s+/)[0] || '';
     const hi = auth.gender === 'طالبة' ? 'أهلاً' : 'أهلاً';
-    const adminLinks = auth.role === 'admin' ? `<a class="chip" style="text-decoration:none;background:var(--gold);color:#1a1a1a;font-weight:700" href="https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI" target="_blank" rel="noopener" title="الطلاب · الدخول · النتائج">👑 مشرف · الشيت</a>` : '';
-    app.innerHTML = topbar(`<span class="sp"></span>${adminLinks}<span class="chip" title="${esc(auth.email)}">${esc(auth.name || auth.email)}</span><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
+    const adminLinks = auth.role === 'admin' ? `<a class="chip" style="text-decoration:none;background:var(--gold);color:#1a1a1a;font-weight:700" href="https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI" target="_blank" rel="noopener" title="الطلاب · الدخول · النتائج">👑 الشيت</a>` : '';
+    app.innerHTML = topbar(`<span class="sp"></span><a class="ib" href="#board" title="لوحة الصدارة">🏆</a>${adminLinks}<button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
     `<main class="wrap">
       <div class="hero"><div><h1>${hi} ${esc(first)} 👋</h1><p>تدرّب قسماً قسماً: كل سؤال مع شرحه بعد الإجابة مباشرة، وتقدّمك محفوظ.</p></div>
       <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
       <div class="grid" id="grid"></div>
+      <h2 class="h2">🏁 الاختبار الشامل</h2>
+      <div class="wb" id="mega"></div>
       <h2 class="h2">📘 مذكراتك الخاصة</h2>
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>
       <h2 class="h2">🧪 الاختبارات المحاكية</h2>
       <a class="mock" href="/test/"><span><b>اختبارات محاكية لقياس</b><br><span class="mut">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · نفس شكل الاختبار المحوسب</span></span><span class="btn">ادخل ←</span></a>
     </main>`;
     $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout('', true); };
+    $('#me').onclick = () => renderProfile();
     bindCtl();
+    const mega = (id, title, n, desc) => { const pr = progGet(id); const ans = Object.keys(pr.a).length; const pct = Math.round(ans * 100 / n);
+      return `<button class="set wide ${pct === 100 ? 'done' : ''}" data-id="${id}"><span class="t">${title}</span><span class="s">${desc}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓' : 'أجبت ' + ans + ' من ' + n) : n + ' سؤال'}</span>${pr.best != null ? `<span class="badge">أفضل نتيجة ${pr.best}%</span>` : '<span style="color:#B7BFD0">لم تبدأ</span>'}</span></button>`; };
+    const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
+    $('#mega').innerHTML = mega('qall', '📐 كل أسئلة الكمي', nq, 'الأقسام الـ14 كاملة في اختبار واحد متواصل — ' + nq + ' سؤال') + mega('vall', '📖 كل أسئلة اللفظي', nv, 'النماذج الـ14 كاملة من الأول إلى الأخير — ' + nv + ' سؤال');
+    $('#mega').querySelectorAll('.set').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
     document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { lsSet(LS.tab, b.dataset.t); renderHome(); });
     const grid = $('#grid');
     grid.innerHTML = manifest[tab].map((s, i) => {
@@ -350,10 +367,77 @@
     document.querySelectorAll('.wl button').forEach(b => b.onclick = () => { document.onkeydown = onKey; showQ(+b.dataset.i); });
     window.scrollTo(0, 0);
     try {
+      if (set.id === 'qall' || set.id === 'vall') {   // نتائج كل قسم/نموذج على حدة (للوحة الصدارة) + ملخص
+        const per = {}; items.forEach((x, i) => { const k = x.it.src || set.id; const o = per[k] || (per[k] = { n: 0, c: 0 }); o.n++; if (prog.a[i] && prog.a[i].c) o.c++; });
+        const share = n ? secs / n : 0;
+        for (const k of Object.keys(per)) { try { await api({ op: 'result', session: auth.session, set: k, kind: set.kind, n: per[k].n, correct: per[k].c, secs: Math.round(share * per[k].n), wrong: '' }); } catch (e) {} }
+      }
       const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
       $('#saved').textContent = r.ok ? (r.admin ? 'وضع المشرف: النتيجة لا تُسجّل' : 'تم حفظ نتيجتك ✓') : '';
       if (!r.ok && r.error === 'session') { toast('انتهت الجلسة، سجّل دخولك من جديد'); }
     } catch (e) { $('#saved').textContent = ''; }
+  }
+
+  // ---------- avatar / profile ----------
+  const PRESETS = ['adventurer', 'adventurer-neutral', 'avataaars', 'bottts-neutral', 'fun-emoji', 'thumbs', 'lorelei', 'notionists'];
+  function avatarHtml(url, name, size) {
+    const init = esc((name || '?').trim().charAt(0)); const sz = size || 40;
+    return url ? `<img class="av" src="${esc(url)}" width="${sz}" height="${sz}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'av ini',textContent:'${init}',style:'width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px'}))">`
+      : `<span class="av ini" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px">${init}</span>`;
+  }
+  function presetUrl(style, seed) { return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&radius=50`; }
+  async function renderProfile() {
+    let prof = { name: auth.display || auth.name, avatar: auth.avatar || '', yt: '' };
+    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="m ar"><div class="center"><div class="spin" style="margin:20px auto"></div></div></div>`; document.body.appendChild(box);
+    try { const r = await api({ op: 'profile', session: auth.session }); if (r.ok) prof = { name: r.name, avatar: r.avatar, yt: r.yt, handle: r.handle }; } catch (e) {}
+    const seed = auth.email; let chosen = prof.avatar || '';
+    const draw = () => {
+      box.innerHTML = `<div class="m"><h3>ملفي الشخصي</h3>
+        <div class="pf-top">${avatarHtml(chosen, prof.name, 72)}<div><label class="lbl">الاسم المعروض في لوحة الصدارة</label><input id="pf-name" maxlength="30" value="${esc(prof.name || '')}"></div></div>
+        <label class="lbl">الصورة</label>
+        <div class="pf-av">
+          ${prof.yt ? `<button class="pf-opt ${chosen === prof.yt ? 'on' : ''}" data-u="${esc(prof.yt)}" title="صورة قناتك في يوتيوب">${avatarHtml(prof.yt, 'Y', 48)}<small>يوتيوب</small></button>` : ''}
+          ${PRESETS.map(st => { const u = presetUrl(st, seed); return `<button class="pf-opt ${chosen === u ? 'on' : ''}" data-u="${esc(u)}">${avatarHtml(u, '?', 48)}</button>`; }).join('')}
+          <label class="pf-opt up" title="رفع صورة من جهازك">📷<small>رفع صورة</small><input type="file" id="pf-file" accept="image/*" hidden></label>
+          <button class="pf-opt ${chosen === '' ? 'on' : ''}" data-u="" title="بدون صورة"><span class="av ini" style="width:48px;height:48px">${esc((prof.name || '?').charAt(0))}</span><small>بدون</small></button>
+        </div>
+        <p class="mut" style="font-size:12.5px">${prof.yt ? '' : (prof.handle ? 'ما قدرنا نجيب صورة قناتك (' + esc(prof.handle) + ') — اختر صورة من هنا.' : '')} الاسم والصورة يظهران للطلاب الآخرين في لوحة الصدارة فقط.</p>
+        <div class="acts"><button class="btn ghost" id="pf-x">إلغاء</button><span class="sp"></span><button class="btn" id="pf-save">حفظ</button></div></div>`;
+      box.querySelectorAll('.pf-opt[data-u]').forEach(b => b.onclick = () => { chosen = b.dataset.u; photo = null; draw(); });
+      $('#pf-x').onclick = () => box.remove();
+      $('#pf-file').onchange = async e => { const f = e.target.files[0]; if (!f) return; photo = await shrinkImage(f, 160); chosen = photo; draw(); };
+      $('#pf-save').onclick = async () => {
+        const name = $('#pf-name').value.trim(); if (name.length < 2) return toast('اكتب اسماً أطول');
+        $('#pf-save').disabled = true;
+        const body = { op: 'profile_set', session: auth.session, name }; if (photo) body.photo = photo; else body.avatar = chosen;
+        try { const r = await api(body); if (!r.ok) { toast(r.msg || 'تعذّر الحفظ'); $('#pf-save').disabled = false; return; }
+          auth.display = r.name; auth.avatar = r.avatar; lsSet(LS.auth, auth); box.remove(); toast('تم الحفظ ✓'); renderHome(); } catch (e) { toast('تعذّر الاتصال'); $('#pf-save').disabled = false; }
+      };
+    };
+    let photo = null; draw();
+  }
+  function shrinkImage(file, size) {
+    return new Promise(res => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'); const s = Math.min(img.width, img.height); x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size); res(c.toDataURL('image/jpeg', .82)); }; img.src = URL.createObjectURL(file); });
+  }
+
+  // ---------- leaderboard ----------
+  async function renderBoard(kind) {
+    document.title = 'لوحة الصدارة | Q-Guide';
+    app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<main class="wrap"><div class="tabs" style="margin-bottom:14px"><button data-k="practice" class="${kind === 'practice' ? 'on' : ''}">📚 اختبارات الأقسام</button><button data-k="exam" class="${kind === 'exam' ? 'on' : ''}">🧪 الاختبارات المحاكية</button></div>
+      <p class="mut" style="margin:0 0 14px;font-size:14px">${kind === 'exam' ? 'الترتيب بمجموع درجات الاختبارات المحاكية (من 96 لكل اختبار)، وعند التساوي الأسرع وقتاً.' : 'الترتيب بمجموع أفضل نتيجة لك في كل قسم ونموذج (الصحيحة من كل الأسئلة)، وعند التساوي الأسرع وقتاً.'}</p>
+      <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+    bindCtl(); document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { location.hash = b.dataset.k === 'exam' ? 'board-exam' : 'board'; });
+    let r; try { r = await api({ op: 'leaderboard', session: auth.session, kind }); } catch (e) { r = null; }
+    const el = $('#lb'); if (!el) return;
+    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = '<div class="center">تعذّر تحميل اللوحة</div>'; return; }
+    const fmt = s => { const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h}س ${m % 60}د` : `${m}د`; };
+    if (!r.top.length) { el.innerHTML = `<div class="sum">لا توجد نتائج بعد — كن أول من يظهر هنا! ${kind === 'exam' ? '<a href="/test/">ابدأ اختباراً محاكياً</a>' : '<a href="#">ابدأ قسماً</a>'}</div>`; return; }
+    const top3 = r.top.slice(0, 3), rest = r.top.slice(3);
+    el.innerHTML = `<div class="podium">${[1, 0, 2].map(i => top3[i] ? `<div class="pd p${top3[i].rank} ${top3[i].me ? 'me' : ''}">${avatarHtml(top3[i].a, top3[i].n, 64)}<div class="pr">${['🥇', '🥈', '🥉'][top3[i].rank - 1]}</div><b>${esc(top3[i].n)}</b><span>${top3[i].score} ✓ · ${fmt(top3[i].secs)}</span></div>` : '<div></div>').join('')}</div>
+      <div class="lbl-list">${rest.map(x => `<div class="lbr ${x.me ? 'me' : ''}"><span class="rk">${x.rank}</span>${avatarHtml(x.a, x.n, 36)}<span class="nm">${esc(x.n)}</span><span class="sc"><b>${x.score}</b> ✓</span><span class="tm">${fmt(x.secs)}</span><span class="dn mut">${x.done} ${kind === 'exam' ? 'اختبار' : 'قسم'}</span></div>`).join('')}</div>
+      ${r.me ? `<div class="sum" style="margin-top:14px">ترتيبك: <b>#${r.me.rank}</b> من ${r.total} · ${r.me.score} إجابة صحيحة · ${fmt(r.me.secs)} · ${r.me.done} ${kind === 'exam' ? 'اختبار' : 'قسم'}</div>` : `<div class="sum" style="margin-top:14px">ما عندك نتائج بعد في هذه اللوحة.</div>`}
+      <p class="mut" style="font-size:12.5px;margin-top:10px">تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية. اللوحة تتحدث كل دقيقتين.</p>`;
   }
 
   applyFs(); applyTheme();

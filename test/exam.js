@@ -58,7 +58,7 @@
     try {
       const r = await api({ op: 'login', idToken: resp.credential, ua: navigator.userAgent.slice(0, 120) });
       if (!r.ok) return renderLogin(esc(r.msg || 'تعذّر تسجيل الدخول.') + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
-      auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || {} };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || {}, display: r.display || r.name, avatar: r.avatar || '' };
       lsSet(LS.auth, auth); route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم، حاول مرة أخرى.'); }
   }
@@ -66,7 +66,7 @@
   // ---------- header ----------
   function header(dateText) {
     return `<header class="hdr"><div class="lg"><img src="/assets/logo.png" alt="">Q-Guide</div><div class="date">${esc(dateText || today())}</div>
-      <div class="user"><span>${esc(auth.name || '')}</span><img src="/assets/logo.png" alt=""></div></header>`;
+      <div class="user"><span>${esc(auth.display || auth.name || '')}</span><img src="${auth.avatar ? esc(auth.avatar) : '/assets/logo.png'}" alt="" referrerpolicy="no-referrer" onerror="this.src='/assets/logo.png'"></div></header>`;
   }
 
   // ---------- lobby ----------
@@ -91,7 +91,7 @@
     }).join('');
     app.innerHTML = header() + `<div class="page ar">
       <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>لكل اختبار محاولة واحدة</b>.</p>
-      <p style="margin:10px 0 0"><a class="btn ghost sm" href="/p/">← منصة التدريب</a></p></div>
+      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost sm" href="/p/">← منصة التدريب</a><a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a></p></div>
       <div class="tests">${cards}</div></div>`;
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => startFlow(b.dataset.go));
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
