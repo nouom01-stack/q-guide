@@ -18,3 +18,5 @@ p,li{color:#2B3644}
 .en{direction:ltr;text-align:left}
 footer{border-top:1px solid var(--line);padding:18px 0;color:var(--mut);font-size:14px}
 footer a{margin-inline-end:14px}
+
+.btn.ghost{background:#fff;color:var(--teal-d);border:1.5px solid var(--line)}
