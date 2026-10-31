@@ -156,11 +156,11 @@
         <div class="box sec">Current section: ${sec}/4<br>Total questions: 24</div>
         <div class="box cnt"><div class="rem"><b id="c_rem">24</b>Remaining<br>in section</div><div class="ans"><b id="c_ans">0</b>Answered</div><div class="vis"><b id="c_vis">0</b>Visited</div><div class="nv"><b id="c_nv">24</b>Not<br>visited</div></div>
         <div class="box"><div class="grid" id="grid"></div></div>
-        <div class="sbtns"><button class="btn" id="b_sinstr">Section Instructions</button><button class="btn" id="b_tinstr">Test Instructions</button><button class="btn red" id="b_end">${sec < 4 ? 'End Section' : 'End Test'}</button><button class="btn" id="b_eq">Equations</button></div>
+        <div class="sbtns"><button class="btn" id="b_sinstr">Section Instructions</button><button class="btn" id="b_tinstr">Test Instructions</button><button class="btn red" id="b_end">${sec < 4 ? 'End Section' : 'End Test'}</button><button class="btn" id="b_eq">Equations</button><button class="btn pen" id="b_pen" style="grid-column:1/-1">✎ Pen / Scratch</button></div>
       </aside>
       <section class="main">
         <div class="mtop"><div class="fsz"><button id="fsm">-A</button><button id="fs0">A</button><button id="fsp">+A</button></div><div class="qno">Question No. <b id="qn">1</b></div></div>
-        <div class="qbody" id="qb"></div>
+        <div class="qhost" id="qhost"><div class="qbody" id="qb"></div></div>
         <div class="mbot"><label><input type="checkbox" id="mark"> Mark question for review</label><button class="btn" id="prev">Previous →</button><button class="btn" id="next">Save &amp; Next</button></div>
       </section></div><div id="modal"></div>`;
     $('#fsm').onclick = () => setFs(lsGet(LS.fs, 1) - .1); $('#fsp').onclick = () => setFs(lsGet(LS.fs, 1) + .1); $('#fs0').onclick = () => setFs(1);
@@ -174,6 +174,9 @@
       <div><b>Geometry</b>Area of square = s²<br>Area of rectangle = l × w<br>Area of triangle = ½ × b × h<br>Area of circle = πr² · Circumference = 2πr<br>Area of trapezoid = ½(a + b)h<br>Pythagoras: a² + b² = c²<br>Sum of angles in a polygon = (n − 2) × 180°<br>Volume of cube = s³ · Cuboid = l × w × h<br>Cylinder = πr²h · Sphere = 4/3 πr³</div>
       <div><b>Arithmetic</b>Percent change = (new − old)/old × 100<br>Average = sum ÷ count<br>Speed = distance ÷ time<br>Simple interest = P × r × t<br>a² − b² = (a − b)(a + b)<br>(a ± b)² = a² ± 2ab + b²<br>Sum 1…n = n(n + 1)/2<br>n! = n × (n − 1) × … × 1<br>Probability = favorable ÷ total</div></div>`, [['Close', '', closeModal]]);
     document.onkeydown = e => { if (!E || e.ctrlKey || e.metaKey) return; const k = e.key.toLowerCase(); const i = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : '1234'.indexOf(k); if (i >= 0) pick(i); else if (k === 'enter') $('#next').click(); };
+    E.pen = QGPen.attach($('#qhost'), { autosave: false, onToggle: on => { const b = $('#b_pen'); if (b) { b.classList.toggle('red', on); b.textContent = on ? '✕ Close Pen' : '✎ Pen / Scratch'; } } });
+    E.penStore = {};
+    $('#b_pen').onclick = () => E.pen.toggle();
     show(E.a.findIndex(x => x == null) >= 0 ? 0 : 0);
     tick(); E.timer = setInterval(tick, 500);
   }
@@ -181,6 +184,7 @@
   function saveCur() { if (!E) return; const sel = $('.opt.sel'); E.a[E.cur] = sel ? +sel.dataset.k : null; persist(); }
   function pick(k) { document.querySelectorAll('.opt').forEach(o => o.classList.toggle('sel', +o.dataset.k === k)); E.a[E.cur] = k; persist(); renderGrid(); }
   function show(i) {
+    if (E.pen && E.cur != null && E.penStore) E.penStore[E.cur] = E.pen.getStrokes();
     E.cur = i; E.v[i] = 1; persist();
     const it = E.S.items[i]; $('#qn').textContent = i + 1; $('#mark').checked = !!E.m[i];
     let h = `<div class="qinstr">${INSTR[it.type] || ''}</div>`;
@@ -189,6 +193,7 @@
     else h += `<p class="qtext">${it.type === 'ana' ? '<b>' + esc(it.q) + '</b>' : esc(it.q)}</p>`;
     h += `<div class="opts">` + it.opts.map((o, k) => `<button class="opt ${E.a[i] === k ? 'sel' : ''}" data-k="${k}"><span class="L">${LETTERS[k]}</span><span>${esc(it.type === 'quant' ? o.replace(/^[A-D]\)\s*/, '') : o)}</span></button>`).join('') + '</div>';
     $('#qb').innerHTML = h; $('#qb').scrollTop = 0;
+    if (E.pen) { E.pen.setKey(null, E.penStore[i] || []); setTimeout(() => E.pen.resize(), 50); }
     document.querySelectorAll('.opt').forEach(o => o.onclick = () => pick(+o.dataset.k));
     $('#prev').disabled = i === 0; $('#next').textContent = i < 23 ? 'Save & Next' : 'Save';
     renderGrid();

@@ -78,7 +78,10 @@ h1{margin:0 0 6px;font-size:24px}h2{margin:0 0 10px;font-size:19px}
 .fsz{display:flex;gap:6px}
 .fsz button{width:30px;height:30px;border-radius:4px;background:var(--vis);color:#fff;font-weight:700;font-size:13px}
 .qno{font-size:15px;color:#333}
+.qhost{position:relative;flex:1;display:flex;flex-direction:column}
 .qbody{padding:18px 22px;flex:1}
+.qhost .qgpen-bar{position:absolute;top:6px;left:50%;transform:translateX(-50%);margin:0}
+.btn.pen{background:#E9A23B;color:#1a1a1a}
 .qinstr{font-size:13px;color:var(--mut);margin-bottom:10px;text-align:right;direction:ltr}
 .qtext{font-size:calc(18px * var(--fs));line-height:1.65;text-align:right;margin:0 0 16px;color:#111}
 .qtext b{font-weight:700}

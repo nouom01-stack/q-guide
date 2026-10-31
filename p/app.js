@@ -96,6 +96,7 @@
     heartbeat();
     const h = location.hash.replace('#', '');
     if (/^[qv]\d+$/.test(h)) return renderPlayer(h);
+    if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -132,7 +133,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || null };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || null };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -174,14 +175,70 @@
   }
   async function renderWorkbooks() {
     const el = $('#wb'); if (!el) return;
-    if (!auth.files) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; lsSet(LS.auth, auth); } } catch (e) {} }
+    if (!auth.files || !auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || auth.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
     const f = auth.files || {}; if (!$('#wb')) return;
-    const card = (id, title, icon, desc) => id ? `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
-        <div class="ac"><a class="btn sm" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">فتح المذكرة</a><button class="btn sm ghost" data-prev="${esc(id)}">عرض هنا</button></div></div>`
+    const card = (id, title, icon, desc, k) => id ? `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
+        <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">PDF في Drive</a></div></div>`
       : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? 'المشرف ليس له مذكرة شخصية' : 'تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً'}</span></div></div>`;
-    el.innerHTML = card(f.quant, 'مذكرة الكمي', '📐', 'نسختك الخاصة باسمك ورقمك · 14 قسماً') + card(f.verbal, 'مذكرة اللفظي', '📖', 'نسختك الخاصة باسمك ورقمك · 14 نموذجاً') +
-      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها.</p><div id="wbv"></div>`;
-    el.querySelectorAll('[data-prev]').forEach(b => b.onclick = () => { const v = $('#wbv'); v.innerHTML = `<div class="frame"><iframe src="https://drive.google.com/file/d/${b.dataset.prev}/preview" allow="autoplay" loading="lazy"></iframe></div>`; v.scrollIntoView({ behavior: 'smooth' }); });
+    el.innerHTML = card(f.quant, 'مذكرة الكمي', '📐', 'نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً', 'q') + card(f.verbal, 'مذكرة اللفظي', '📖', 'نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً', 'v') +
+      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.</p>`;
+  }
+
+  // ---------- interactive workbook viewer (pages + pen) ----------
+  let WB = null;
+  async function renderWorkbook(kind) {
+    const title = kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي';
+    document.title = title + ' | Q-Guide';
+    if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
+    if (auth.role !== 'admin' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق'); location.hash = ''; return; }
+    let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json')).json(); } catch (e) { toast('تعذّر تحميل المذكرة'); location.hash = ''; return; }
+    const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, lsGet(lastKey, 1)));
+    WB = { kind, meta, page, cache: {}, pen: null };
+    app.innerHTML = topbar(`<span class="ttl">${title}</span><span class="sp"></span>
+      <button class="ib" id="pgprev" title="الصفحة السابقة">‹</button><span class="chip cnt" dir="ltr"><input id="pgin" type="number" min="1" max="${meta.pages}" value="${page}" style="width:54px;border:0;background:transparent;color:#fff;font-weight:700;text-align:center;font-size:15px"> / ${meta.pages}</span><button class="ib" id="pgnext" title="الصفحة التالية">›</button>`,
+      `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<main class="wbmain"><div class="wbwrap" id="wbwrap"><div class="wbpage" id="wbpage"><div class="center" style="padding:60px 0"><div class="spin" style="margin:0 auto"></div></div></div></div>
+      <div class="wbnav"><button class="btn ghost sm" id="pgprev2">‹ السابقة</button><span class="mut" id="pglabel"></span><button class="btn ghost sm" id="pgnext2">التالية ›</button></div></main>
+      <button class="qgpen-fab" id="penfab" title="القلم">✎</button>`;
+    bindCtl();
+    const go = n => { n = Math.min(meta.pages, Math.max(1, n)); if (!WB) return; WB.page = n; lsSet(lastKey, n); $('#pgin').value = n; showPage(n); };
+    $('#pgprev').onclick = $('#pgprev2').onclick = () => go(WB.page - 1);
+    $('#pgnext').onclick = $('#pgnext2').onclick = () => go(WB.page + 1);
+    $('#pgin').onchange = () => go(+$('#pgin').value);
+    document.onkeydown = e => { if (!WB || e.target.tagName === 'INPUT') return; if (e.key === 'ArrowLeft') go(WB.page + 1); else if (e.key === 'ArrowRight') go(WB.page - 1); };
+    $('#penfab').onclick = () => { const on = WB.pen.toggle(); $('#penfab').classList.toggle('on', on); $('#penfab').textContent = on ? '✕' : '✎'; };
+    WB.pen = QGPen.attach($('#wbwrap'), { storageKey: null, onToggle: on => { $('#penfab').classList.toggle('on', on); $('#penfab').textContent = on ? '✕' : '✎'; } });
+    showPage(page);
+  }
+  async function pageBitmap(kind, n) {
+    const key = kind + n; if (WB.cache[key]) return WB.cache[key];
+    const r = await fetch(`/p/wb/${kind}/${String(n).padStart(3, '0')}.bin`, { cache: 'force-cache' }); if (!r.ok) throw new Error('page ' + r.status);
+    const buf = new Uint8Array(await r.arrayBuffer()); const k = await getKey();
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
+    const bmp = await createImageBitmap(new Blob([plain], { type: 'image/jpeg' }));
+    const keys = Object.keys(WB.cache); if (keys.length > 12) delete WB.cache[keys[0]];
+    WB.cache[key] = bmp; return bmp;
+  }
+  function stamp(ctx, meta, n) {
+    const sc = meta.scale, S = meta.slots, local = (auth.phone || '').replace(/^966/, '0');
+    const who = (auth.name || '') + (local ? ' · ' + local : ''); if (!who.trim()) return;
+    const txt = (x, baseline, size, align, text) => { ctx.save(); ctx.font = `${Math.round(size * sc * 1.15)}px Tajawal, "Segoe UI", Tahoma, sans-serif`; ctx.fillStyle = '#5B6675'; ctx.textAlign = align; ctx.direction = 'rtl'; ctx.fillText(text, x * sc, baseline * sc); ctx.restore(); };
+    txt(S.header.x, S.header.baseline, S.header.size, 'right', who);
+    const owners = (S.owner.pages || []).map(p => Array.isArray(p) ? p : [p, S.owner.baseline]);
+    const o = owners.find(p => p[0] === n - 1); if (o) txt(S.owner.x, o[1], S.owner.size, 'right', who);
+    if (S.cover && S.cover.page === n - 1) txt(S.cover.x, S.cover.baseline, S.cover.size, 'center', who);
+  }
+  async function showPage(n) {
+    const { kind, meta } = WB; const el = $('#wbpage'); if (!el) return;
+    $('#pglabel').textContent = 'صفحة ' + n + ' من ' + meta.pages;
+    try {
+      const bmp = await pageBitmap(kind, n); if (!WB || WB.page !== n) return;
+      let cv = el.querySelector('canvas'); if (!cv) { el.innerHTML = ''; cv = document.createElement('canvas'); el.appendChild(cv); }
+      cv.width = meta.w; cv.height = meta.h; const ctx = cv.getContext('2d'); ctx.drawImage(bmp, 0, 0); stamp(ctx, meta, n);
+      WB.pen.setKey('qg_wb_' + kind + '_' + n); WB.pen.resize();
+      window.scrollTo({ top: 0 });
+      pageBitmap(kind, Math.min(meta.pages, n + 1)).catch(() => {});
+    } catch (e) { if (String(e.message).indexOf('page') < 0) logout(); el.innerHTML = '<div class="center">تعذّر تحميل الصفحة</div>'; }
   }
 
   // ---------- player ----------
