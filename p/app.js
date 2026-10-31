@@ -52,13 +52,29 @@
     const out = []; set.groups.forEach((g, gi) => g.items.forEach(it => out.push({ it, gi, idx: out.length })));
     return out;
   }
-  function logout() { lsDel(LS.auth); auth = null; cryptoKey = null; try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {} route(); }
+  function logout(msg, tellServer) {
+    if (tellServer && auth && auth.session) { try { api({ op: 'logout', session: auth.session }); } catch (e) {} }
+    lsDel(LS.auth); auth = null; cryptoKey = null; P = null; document.onkeydown = null;
+    try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {}
+    if (msg) { location.hash = ''; renderLogin(msg); } else route();
+  }
+  // 🔒 جلسة واحدة لكل طالب: نتأكد من الخادم عند الفتح وكل 3 دقائق
+  let hbBusy = false;
+  async function heartbeat() {
+    if (!auth || hbBusy) return; hbBusy = true;
+    try {
+      const r = await api({ op: 'me', session: auth.session });
+      if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || 'انتهت الجلسة، سجّل دخولك من جديد.'));
+    } catch (e) {} finally { hbBusy = false; }
+  }
+  setInterval(heartbeat, 3 * 60 * 1000);
 
   // ---------- routing ----------
   function route() {
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
     if (!auth) return renderLogin();
+    heartbeat();
     const h = location.hash.replace('#', '');
     if (/^[qv]\d+$/.test(h)) return renderPlayer(h);
     renderHome();
@@ -74,7 +90,7 @@
       <p class="sub">أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>
       ${err ? `<div class="err">${err}</div>` : ''}
-      <p class="note">سجّل دخولك بحساب Google <b>نفس الإيميل اللي اشتركت فيه بالدورة</b>.<br>المنصة للطلاب المشتركين فقط.</p>
+      <p class="note">سجّل دخولك بحساب Google <b>نفس الإيميل اللي اشتركت فيه بالدورة</b>.<br>المنصة للطلاب المشتركين فقط، والحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
       <p class="note" style="margin-top:8px"><a href="/privacy/">سياسة الخصوصية</a> · <a href="/terms/">الشروط</a></p>
     </div></div>`;
     mountGoogle();
@@ -118,7 +134,7 @@
       <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
       <div class="grid" id="grid"></div>
     </main>`;
-    $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout(); };
+    $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout('', true); };
     document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { lsSet(LS.tab, b.dataset.t); renderHome(); });
     const grid = $('#grid');
     grid.innerHTML = manifest[tab].map((s, i) => {
