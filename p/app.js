@@ -370,7 +370,7 @@
       if (set.id === 'qall' || set.id === 'vall') {   // نتائج كل قسم/نموذج على حدة (للوحة الصدارة) + ملخص
         const per = {}; items.forEach((x, i) => { const k = x.it.src || set.id; const o = per[k] || (per[k] = { n: 0, c: 0 }); o.n++; if (prog.a[i] && prog.a[i].c) o.c++; });
         const share = n ? secs / n : 0;
-        for (const k of Object.keys(per)) { try { await api({ op: 'result', session: auth.session, set: k, kind: set.kind, n: per[k].n, correct: per[k].c, secs: Math.round(share * per[k].n), wrong: '' }); } catch (e) {} }
+        for (const k of Object.keys(per)) { try { await api({ op: 'result', session: auth.session, set: k, kind: set.kind + '-all', n: per[k].n, correct: per[k].c, secs: Math.round(share * per[k].n), wrong: '' }); } catch (e) {} }
       }
       const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
       $('#saved').textContent = r.ok ? (r.admin ? 'وضع المشرف: النتيجة لا تُسجّل' : 'تم حفظ نتيجتك ✓') : '';
@@ -425,7 +425,7 @@
     document.title = 'لوحة الصدارة | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<main class="wrap"><div class="tabs" style="margin-bottom:14px"><button data-k="practice" class="${kind === 'practice' ? 'on' : ''}">📚 اختبارات الأقسام</button><button data-k="exam" class="${kind === 'exam' ? 'on' : ''}">🧪 الاختبارات المحاكية</button></div>
-      <p class="mut" style="margin:0 0 14px;font-size:14px">${kind === 'exam' ? 'الترتيب بمجموع درجات الاختبارات المحاكية (من 96 لكل اختبار)، وعند التساوي الأسرع وقتاً.' : 'الترتيب بمجموع أفضل نتيجة لك في كل قسم ونموذج (الصحيحة من كل الأسئلة)، وعند التساوي الأسرع وقتاً.'}</p>
+      <p class="mut" style="margin:0 0 14px;font-size:14px">${kind === 'exam' ? 'الترتيب بمجموع درجات <b>أول محاولة</b> لكل اختبار محاكي (من 96)، وعند التساوي الأسرع وقتاً. المحاولات بعدها للتدريب ولا تدخل في الترتيب.' : 'الترتيب بمجموع نتيجة <b>أول محاولة</b> لك في كل قسم ونموذج، وعند التساوي الأسرع وقتاً. أعد أي قسم كما تشاء للتدريب — لا يتغير ترتيبك إلا بأقسام جديدة.'}</p>
       <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
     bindCtl(); document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { location.hash = b.dataset.k === 'exam' ? 'board-exam' : 'board'; });
     let r; try { r = await api({ op: 'leaderboard', session: auth.session, kind }); } catch (e) { r = null; }

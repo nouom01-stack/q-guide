@@ -82,26 +82,28 @@
     const cards = manifest.map(t => {
       const s = state[t.id] || { status: 'none' };
       let body, act;
-      if (s.status === 'done') { body = `<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}%</div>`; act = `<button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button>`; }
+      if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? `<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = `<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
       else if (s.status === 'in_progress') { body = `<div class="meta">متوقف عند القسم ${s.nextSection} من 4</div>`; act = `<button class="btn" data-go="${t.id}">متابعة الاختبار</button>`; }
-      else { body = `<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · محاولة واحدة</div>`; act = `<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
+      else { body = `<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · أول محاولة تُحسب في لوحة الصدارة</div>`; act = `<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
       const pill = s.status === 'done' ? '<span class="pill done">مكتمل</span>' : s.status === 'in_progress' ? '<span class="pill prog">جارٍ</span>' : '<span class="pill none">لم يبدأ</span>';
       const adm = auth.role === 'admin' && s.status !== 'none' ? `<button class="btn sm ghost" data-reset="${t.id}" style="margin-top:6px">إعادة تعيين (مشرف)</button>` : '';
       return `<div class="tcard"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span>${pill}</div><div class="mut" style="font-size:13px">${esc(t.en)}</div>${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
     }).join('');
     app.innerHTML = header() + `<div class="page ar">
-      <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>لكل اختبار محاولة واحدة</b>.</p>
+      <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.</p>
       <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost sm" href="/p/">← منصة التدريب</a><a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a></p></div>
       <div class="tests">${cards}</div></div>`;
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => startFlow(b.dataset.go));
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
-    document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!confirm('إعادة تعيين هذا الاختبار لك (مشرف)؟')) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); lsDel(LS.ex + b.dataset.reset); renderLobby(); });
+    document.querySelectorAll('[data-retake]').forEach(b => b.onclick = () => { if (!confirm('بدء محاولة جديدة؟ نتيجتك الأولى تبقى هي المحسوبة في لوحة الصدارة، وهذه المحاولة للتدريب.')) return; [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.retake + '_' + k)); startFlow(b.dataset.retake, true); });
+    document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!confirm('إعادة تعيين هذا الاختبار لك (مشرف)؟')) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.reset + '_' + k)); renderLobby(); });
   }
 
   // ---------- flow ----------
   let T = null; // current test data
-  async function startFlow(id) {
+  async function startFlow(id, retake) {
     const s = state[id] || { status: 'none' };
+    if (s.status === 'done' && !retake) return renderReview(id);
     app.innerHTML = header() + '<div class="page center"><div class="spin" style="margin:30px auto"></div>Loading test…</div>';
     try { T = await loadTest(id); } catch (e) { return renderLobby(); }
     if (s.status === 'in_progress' && s.deadline && s.deadline > Date.now()) return runSection(id, s.nextSection, s.deadline);
@@ -118,7 +120,7 @@
         <li>Within a section you may move freely between questions, change answers, and mark questions for review.</li>
         <li>Use <b>Save &amp; Next</b> to save your answer. Unanswered questions are counted as wrong. There is no penalty for guessing.</li>
         <li>Use the <b>End Section</b> button only when you have finished the section.</li>
-        <li>You have <b>one attempt</b>. Your detailed result and explanations appear after the last section.</li>
+        <li>You may retake the test as many times as you like, but <b>only your first attempt counts</b> on the leaderboard. Your detailed result and explanations appear after the last section.</li>
       </ul>
       <p class="ar mut" style="font-size:14px">الاختبار يحاكي قياس المحوسب بالكامل: المؤقت لكل قسم على حدة، والأسئلة مختلطة (لفظي ثم كمي)، ولا يمكن العودة لقسم انتهى.</p>
       <div style="display:flex;gap:10px;justify-content:flex-end"><a class="btn ghost" href="#" id="back">Back</a><button class="btn" id="start">Start Test</button></div></div></div>`;
