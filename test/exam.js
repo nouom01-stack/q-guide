@@ -47,10 +47,16 @@
     mountGoogle();
   }
   let gTries = 0;
+  // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...)
+  function gsiFromHash() {
+    const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.'); return true; } return false; }
+    const cred = decodeURIComponent(m[1]); history.replaceState(null, '', location.pathname);
+    renderLogin(); onCredential({ credential: cred }); return true;
+  }
   function mountGoogle() {
     const host = $('#gbtn'); if (!host) return;
     if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.textContent = 'تعذّر تحميل تسجيل الدخول، حدّث الصفحة.'; return; }
-    google.accounts.id.initialize({ client_id: window.QG.CLIENT_ID, callback: onCredential, ux_mode: 'popup', auto_select: false, itp_support: true });
+    google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi?to=/test/' } : { ux_mode: 'popup' }));
     host.innerHTML = ''; google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ar', width: 280 });
   }
   async function onCredential(resp) {
@@ -104,8 +110,8 @@
       <div class="tests">${cards}</div></div>`;
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => startFlow(b.dataset.go));
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
-    document.querySelectorAll('[data-retake]').forEach(b => b.onclick = () => { if (!confirm('بدء محاولة جديدة؟ نتيجتك الأولى تبقى هي المحسوبة في لوحة الصدارة، وهذه المحاولة للتدريب.')) return; [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.retake + '_' + k)); startFlow(b.dataset.retake, true); });
-    document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!confirm('إعادة تعيين هذا الاختبار لك (مشرف)؟')) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.reset + '_' + k)); renderLobby(); });
+    document.querySelectorAll('[data-retake]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('بدء محاولة جديدة؟ نتيجتك الأولى تبقى هي المحسوبة في لوحة الصدارة، وهذه المحاولة للتدريب.', { ok: 'ابدأ' })) return; [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.retake + '_' + k)); startFlow(b.dataset.retake, true); });
+    document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('إعادة تعيين هذا الاختبار لك (مشرف)؟', { danger: true })) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.reset + '_' + k)); renderLobby(); });
   }
 
   // ---------- flow ----------
@@ -146,10 +152,10 @@
       $('#start').disabled = true;
       try {
         const r = await api({ op: 'exam_start', session: auth.session, test: id, section: sec });
-        if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); alert(r.msg || r.error); return renderLobby(); }
+        if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); await QGDlg.alert(r.msg || r.error); return renderLobby(); }
         const skew = Date.now() - r.serverNow;   // local clock offset
         runSection(id, sec, r.deadline + skew);
-      } catch (e) { alert('تعذّر الاتصال بالخادم'); $('#start').disabled = false; }
+      } catch (e) { QGDlg.alert('تعذّر الاتصال بالخادم'); $('#start').disabled = false; }
     };
   }
 
@@ -233,7 +239,7 @@
       if (!(r && r.ok)) await new Promise(res => setTimeout(res, 1500));
     }
     ov.remove(); E = null;
-    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); alert('تعذّر تسليم القسم، تأكد من الإنترنت ثم أعد فتح الصفحة — إجاباتك محفوظة.'); return renderLobby(); }
+    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); QGDlg.alert('تعذّر تسليم القسم، تأكد من الإنترنت ثم أعد فتح الصفحة — إجاباتك محفوظة.'); return renderLobby(); }
     lsDel(LS.ex + id + '_' + sec);
     state[id] = r.state;
     if (r.state.status === 'done') return renderResult(id);
@@ -273,5 +279,5 @@
     app.innerHTML = header() + h + '</div>'; window.scrollTo(0, 0);
   }
 
-  applyFs(); route();
+  applyFs(); if (!gsiFromHash()) route();
 })();

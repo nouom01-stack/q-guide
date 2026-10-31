@@ -45,7 +45,7 @@
       else if (b.dataset.c) { st.color = st.tool === 'hl' ? COLORS.hl[[...bar.querySelectorAll('.sw')].indexOf(b) % COLORS.hl.length] : b.dataset.c; bar.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === b)); if (st.tool === 'eraser') { st.tool = 'pen'; bar.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x.dataset.t === 'pen')); } }
       else if (b.dataset.w) { st.width = b.dataset.w === 'thick' ? 5 : 2.4; }
       else if (b.dataset.a === 'undo') { st.strokes.pop(); redraw(); persist(); }
-      else if (b.dataset.a === 'clear') { if (!st.strokes.length || confirm('مسح كل الكتابة على هذه الصفحة؟')) { st.strokes = []; redraw(); persist(); } }
+      else if (b.dataset.a === 'clear') { const go = () => { st.strokes = []; redraw(); persist(); }; if (!st.strokes.length) go(); else if (window.QGDlg) QGDlg.confirm('مسح كل الكتابة على هذه الصفحة؟', { ok: 'مسح', danger: true }).then(ok => { if (ok) go(); }); else go(); }
       else if (b.dataset.a === 'off') api.toggle(false);
     });
     function persist() { if (!st.save || !st.key) return; try { if (st.strokes.length) localStorage.setItem(st.key, JSON.stringify(st.strokes)); else localStorage.removeItem(st.key); } catch (e) {} }

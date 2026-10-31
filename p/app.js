@@ -106,7 +106,8 @@
     const h = location.hash.replace('#', '');
     if (/^[qv]\d+$/.test(h)) return renderPlayer(h);
     if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
-    if (h === 'board' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'practice');
+    if (h === 'board' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : h === 'board-month' ? 'month' : 'practice');
+    if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
     if (h === 'qall' || h === 'vall') return renderPlayer(h);
     if (h === 'plan') return renderPlan();
     if (h === 'admin') { if (auth.role === 'admin') return renderAdmin(); location.hash = ''; return; }
@@ -114,6 +115,12 @@
   }
   window.addEventListener('hashchange', route);
 
+  // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...)
+  function gsiFromHash() {
+    const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.'); return true; } return false; }
+    const cred = decodeURIComponent(m[1]); history.replaceState(null, '', location.pathname);
+    renderLogin(); onCredential({ credential: cred }); return true;
+  }
   // ---------- login ----------
   function renderLogin(err) {
     document.title = 'تسجيل الدخول | Q-Guide';
@@ -134,7 +141,7 @@
     const host = $('#gbtn'); if (!host) return;
     if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.innerHTML = '<span style="color:var(--bad)">تعذّر تحميل تسجيل الدخول، حدّث الصفحة.</span>'; return; }
     try {
-      google.accounts.id.initialize({ client_id: window.QG.CLIENT_ID, callback: onCredential, ux_mode: 'popup', auto_select: false, itp_support: true });
+      google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi?to=/p/' } : { ux_mode: 'popup' }));
       host.innerHTML = '';
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
@@ -177,7 +184,7 @@
       <h2 class="h2">📅 خطة المذاكرة</h2>
       <a class="mock plan" href="#plan" id="plancard"><span><b>جدول مذاكرتك اليومي</b><br><span class="mut">اختر الخطة اللي تناسب وقتك (7 / 14 / 19 / 28 يوماً) وعلّم ✓ على كل يوم تنجزه</span></span><span class="btn">افتح ←</span></a>
     </main>`;
-    $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout('', true); };
+    $('#lo').onclick = async () => { if (await QGDlg.confirm('تسجيل الخروج؟', { ok: 'خروج' })) logout('', true); };
     $('#me').onclick = () => renderProfile();
     bindCtl();
     const mega = (id, title, n, desc) => { const pr = progGet(id); const ans = Object.keys(pr.a).length; const pct = Math.round(ans * 100 / n);
@@ -291,7 +298,7 @@
     $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); };
     bindCtl();
     $('#nav .bg').onclick = () => $('#nav').classList.remove('open');
-    $('#reset').onclick = () => { if (confirm('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟')) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
+    $('#reset').onclick = async () => { if (await QGDlg.confirm('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟', { ok: 'ابدأ من جديد', danger: true })) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
     showQ(cur);
     document.onkeydown = onKey;
   }
@@ -375,7 +382,7 @@
       <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
       <p style="color:var(--mut);margin:0">${esc(set.title)} · ${esc(set.sub)}</p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b>${Math.max(1, Math.round(secs / 60))}</b><span>دقيقة</span></div></div>
-      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#">الرئيسية</a></div>
+      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#">الرئيسية</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
@@ -471,11 +478,11 @@
     W.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => admUnban(b.dataset.unban));
   }
   async function admBan(email) {
-    const reason = prompt('حظر ' + email + ' نهائياً من الدورة والموقع.\nاكتب السبب (اختياري):'); if (reason === null) return;
+    const reason = await QGDlg.prompt('حظر ' + email + ' نهائياً من الدورة والموقع.\nاكتب السبب (اختياري):', '', { ok: 'حظر', danger: true }); if (reason === null) return;
     try { await admCall({ op: 'adm_ban', email, reason }); toast('⛔ تم الحظر'); ADM.list = null; renderAdmin(); } catch (e) { toast('خطأ: ' + e.message); }
   }
   async function admUnban(email) {
-    if (!confirm('فك الحظر عن ' + email + '؟\nملاحظة: في الشيت غيّر حالته إلى "مؤكد" مرة أخرى حتى يرجع يدخل.')) return;
+    if (!await QGDlg.confirm('فك الحظر عن ' + email + '؟\nملاحظة: في الشيت غيّر حالته إلى "مؤكد" مرة أخرى حتى يرجع يدخل.', { ok: 'فك الحظر' })) return;
     try { await admCall({ op: 'adm_unban', email }); toast('تم فك الحظر'); ADM.list = null; renderAdmin(); } catch (e) { toast('خطأ: ' + e.message); }
   }
   async function admStudent(email) {
@@ -497,13 +504,13 @@
       <div class="acts" style="justify-content:flex-end"><button class="btn sm ghost" id="a_close">إغلاق</button></div>`;
     const again = () => { m.remove(); ADM.list = null; renderAdmin(); };
     m.querySelector('#a_close').onclick = () => m.remove();
-    m.querySelector('#a_name').onclick = async () => { const nm = prompt('الاسم المعروض الجديد (اتركه فارغاً ليرجع لاسم الشيت):', pf.name || ''); if (nm === null) return; try { await admCall({ op: 'adm_profile', email, name: nm }); toast('تم'); again(); } catch (e) { toast(e.message); } };
-    m.querySelector('#a_av').onclick = async () => { if (!confirm('مسح صورة الطالب؟')) return; try { await admCall({ op: 'adm_profile', email, clearAvatar: 1 }); toast('تم'); again(); } catch (e) { toast(e.message); } };
+    m.querySelector('#a_name').onclick = async () => { const nm = await QGDlg.prompt('الاسم المعروض الجديد (اتركه فارغاً ليرجع لاسم الشيت):', pf.name || ''); if (nm === null) return; try { await admCall({ op: 'adm_profile', email, name: nm }); toast('تم'); again(); } catch (e) { toast(e.message); } };
+    m.querySelector('#a_av').onclick = async () => { if (!await QGDlg.confirm('مسح صورة الطالب؟', { danger: true })) return; try { await admCall({ op: 'adm_profile', email, clearAvatar: 1 }); toast('تم'); again(); } catch (e) { toast(e.message); } };
     m.querySelector('#a_kick').onclick = async () => { try { await admCall({ op: 'adm_kick', email }); toast('تم طرد الجلسة — يحتاج تسجيل دخول جديد'); } catch (e) { toast(e.message); } };
     const bb = m.querySelector('#a_ban'); if (bb) bb.onclick = () => { m.remove(); admBan(email); };
     const ub = m.querySelector('#a_unban'); if (ub) ub.onclick = () => { m.remove(); admUnban(email); };
-    const rr = m.querySelector('#a_rr'); if (rr) rr.onclick = async () => { if (!confirm('حذف كل نتائج الأقسام لهذا الطالب؟ (تؤثر على لوحة الصدارة)')) return; try { await admCall({ op: 'adm_reset_results', email }); toast('تم'); again(); } catch (e) { toast(e.message); } };
-    m.querySelectorAll('[data-rx]').forEach(b => b.onclick = async () => { if (!confirm('حذف كل محاولات ' + b.dataset.rx + ' لهذا الطالب ليبدأه من جديد؟')) return; try { await admCall({ op: 'adm_reset_exam', email, test: b.dataset.rx }); toast('تم'); again(); } catch (e) { toast(e.message); } });
+    const rr = m.querySelector('#a_rr'); if (rr) rr.onclick = async () => { if (!await QGDlg.confirm('حذف كل نتائج الأقسام لهذا الطالب؟ (تؤثر على لوحة الصدارة)', { danger: true })) return; try { await admCall({ op: 'adm_reset_results', email }); toast('تم'); again(); } catch (e) { toast(e.message); } };
+    m.querySelectorAll('[data-rx]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('حذف كل محاولات ' + b.dataset.rx + ' لهذا الطالب ليبدأه من جديد؟', { danger: true })) return; try { await admCall({ op: 'adm_reset_exam', email, test: b.dataset.rx }); toast('تم'); again(); } catch (e) { toast(e.message); } });
   }
 
   // ---------- 📅 خطة المذاكرة ----------
@@ -564,38 +571,54 @@
     const save = () => lsSet(PLAN_LS, Object.assign(st, { done }));
     W.querySelectorAll('input[data-i]').forEach(c => c.onchange = () => { done[c.dataset.day] = done[c.dataset.day] || {}; if (c.checked) done[c.dataset.day][c.dataset.i] = 1; else delete done[c.dataset.day][c.dataset.i]; save(); renderPlan(); });
     W.querySelectorAll('input[data-day]:not([data-i])').forEach(c => c.onchange = () => { const d = days.find(x => x.n == c.dataset.day); done[d.n] = {}; if (c.checked) d.tasks.forEach((t, i) => done[d.n][i] = 1); save(); renderPlan(); });
-    $('#chg').onclick = () => { if (confirm('تغيير الخطة؟ (علامات الإنجاز الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)')) { const all = lsGet('qg_plan_all', {}); all[plan.id] = done; lsSet('qg_plan_all', all); lsSet(PLAN_LS, { id: '', done: {} }); renderPlan(); } };
-    $('#rst').onclick = () => { if (confirm('مسح كل علامات الإنجاز والبدء من اليوم 1؟')) { lsSet(PLAN_LS, { id: plan.id, done: {}, started: Date.now() }); renderPlan(); } };
+    $('#chg').onclick = async () => { if (await QGDlg.confirm('تغيير الخطة؟ (علامات الإنجاز الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)', { ok: 'تغيير' })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = done; lsSet('qg_plan_all', all); lsSet(PLAN_LS, { id: '', done: {} }); renderPlan(); } };
+    $('#rst').onclick = async () => { if (await QGDlg.confirm('مسح كل علامات الإنجاز والبدء من اليوم 1؟', { ok: 'إعادة البدء', danger: true })) { lsSet(PLAN_LS, { id: plan.id, done: {}, started: Date.now() }); renderPlan(); } };
     if (cur) { const el = $('#day' + cur.n); if (el && days.length > 8) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
   }
 
   // ---------- 🏆 لوحة الصدارة ----------
   async function renderBoard(kind) {
     document.title = 'لوحة الصدارة | Q-Guide';
+    const isSet = kind.startsWith('set:'); const setId = isSet ? kind.slice(4) : (lsGet('qg_lb_set', 'q1'));
+    if (isSet) lsSet('qg_lb_set', setId);
+    const tabK = isSet ? 'set' : kind;
+    const setTitle = id => (id[0] === 'q' ? 'القسم ' : 'النموذج ') + id.slice(1) + (id[0] === 'q' ? ' (كمي)' : ' (لفظي)');
+    const opts = [...Array.from({ length: 14 }, (_, i) => 'q' + (i + 1)), ...Array.from({ length: 14 }, (_, i) => 'v' + (i + 1))];
     app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span><button class="ib" id="lbref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap"><div class="tabs" style="margin-bottom:14px"><button data-k="practice" class="${kind === 'practice' ? 'on' : ''}">📚 اختبارات الأقسام</button><button data-k="exam" class="${kind === 'exam' ? 'on' : ''}">🧪 الاختبارات المحاكية</button></div>
-      <p class="mut" style="margin:0 0 14px;font-size:14px">${kind === 'exam' ? 'الترتيب بمجموع درجات <b>أول محاولة</b> لكل اختبار محاكي (من 96)، وعند التساوي الأسرع وقتاً. المحاولات بعدها للتدريب ولا تدخل في الترتيب.' : 'الترتيب بمجموع نتيجة <b>أول محاولة</b> لك في كل قسم ونموذج، وعند التساوي الأسرع وقتاً. أعد أي قسم كما تشاء للتدريب — لا يتغير ترتيبك إلا بأقسام جديدة.'}</p>
+      `<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button></div>
+      ${isSet ? `<div class="setpick"><label>اختر القسم:</label><select id="lbset">${opts.map(o => `<option value="${o}" ${o === setId ? 'selected' : ''}>${setTitle(o)}</option>`).join('')}</select></div>` : ''}
+      <p class="mut lbnote">${kind === 'exam' ? 'الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.'
+        : isSet ? `ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`
+        : kind === 'month' ? 'أفضل 100 طالب <b>هذا الشهر</b>: مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الشهر، وعند التساوي الأسرع وقتاً.'
+        : 'الترتيب العام: مجموع الإجابات الصحيحة في <b>أول محاولة</b> لكل قسم ونموذج، وعند التساوي الأسرع وقتاً. إعادة القسم للتدريب لا تغيّر ترتيبك.'}</p>
       <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
-    bindCtl(); document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { location.hash = b.dataset.k === 'exam' ? 'board-exam' : 'board'; }); $('#lbref').onclick = () => renderBoard(kind);
+    bindCtl(); $('#lbref').onclick = () => renderBoard(kind);
+    document.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { const k = b.dataset.k; location.hash = k === 'practice' ? 'board' : k === 'set' ? 'board-set-' + lsGet('qg_lb_set', 'q1') : 'board-' + k; });
+    const sel = $('#lbset'); if (sel) sel.onchange = () => { location.hash = 'board-set-' + sel.value; };
     let r; try { r = await api({ op: 'leaderboard', session: auth.session, kind }); } catch (e) { r = null; }
     const el = $('#lb'); if (!el) return;
     if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = '<div class="center">تعذّر تحميل اللوحة</div>'; return; }
     const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h} س ${m % 60} د` : m ? `${m} د` : `${s} ث`; };
-    const acc = x => x.q ? Math.round(x.score * 100 / x.q) : 0;
+    const pct = x => x.q ? Math.round(x.correct * 100 / x.q) : 0;
     const unit = kind === 'exam' ? 'اختبار' : 'قسم';
-    const mine = r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${r.total} ${r.total === 1 ? 'طالب' : 'طالباً'}</b><span>${r.me.score} إجابة صحيحة · ${fmt(r.me.secs)} · ${r.me.done} ${unit}${r.me.done > 1 ? (kind === 'exam' ? 'ات' : '') : ''}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">اختبار جديد</a>' : '<a class="btn sm" href="#">تدرّب</a>'}</div>`
-      : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? 'أنهِ اختباراً محاكياً واحداً وتظهر هنا.' : 'حل قسماً أو نموذجاً واحداً وتظهر هنا.'}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">ابدأ اختباراً</a>' : '<a class="btn sm" href="#">ابدأ قسماً</a>'}</div>`;
+    // عرض الدرجة: المحاكي والقسم = نسبة مئوية؛ العام والشهر = إجابات صحيحة (+ النسبة)
+    const scoreHtml = x => kind === 'exam' ? `<b>${Math.round(x.score)}%</b>` : isSet ? `<b>${Math.round(x.score)}%</b> <small>${x.correct}/${x.q}</small>` : `<b>${x.score}</b> ✓`;
+    const subHtml = x => kind === 'exam' ? `${x.done} ${x.done === 1 ? 'اختبار' : 'اختبارات'} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : `${pct(x)}% دقة · ${fmt(x.secs)}`;
+    const mine = r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${r.total} ${r.total === 1 ? 'طالب' : 'طالباً'}</b><span>${kind === 'exam' ? Math.round(r.me.score) + '% متوسط · ' + r.me.done + ' ' + unit : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + ' إجابة صحيحة · ' + r.me.done + ' ' + unit} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">اختبار جديد</a>' : isSet ? `<a class="btn sm" href="#${setId}">افتح القسم</a>` : '<a class="btn sm" href="#">تدرّب</a>'}</div>`
+      : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? 'أنهِ اختباراً محاكياً واحداً وتظهر هنا.' : isSet ? 'حل هذا القسم مرة واحدة وتظهر هنا.' : kind === 'month' ? 'حل قسماً هذا الشهر وتظهر هنا.' : 'حل قسماً أو نموذجاً واحداً وتظهر هنا.'}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">ابدأ اختباراً</a>' : isSet ? `<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : '<a class="btn sm" href="#">ابدأ قسماً</a>'}</div>`;
     if (!r.top.length) { el.innerHTML = mine + `<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
     const medal = k => ['🥇', '🥈', '🥉'][k - 1] || '';
     const top3 = r.top.slice(0, 3), rest = r.top.slice(3);
-    const podium = top3.length >= 3 ? `<div class="podium">${[1, 0, 2].map(i => { const x = top3[i]; return `<div class="pd p${x.rank} ${x.me ? 'me' : ''}">${avatarHtml(x.a, x.n, x.rank === 1 ? 72 : 60)}<div class="pr">${medal(x.rank)}</div><b title="${esc(x.n)}">${esc(x.n)}</b><span class="pscore">${x.score} <small>✓</small></span><span>${acc(x)}% دقة · ${fmt(x.secs)}</span></div>`; }).join('')}</div>` : '';
+    const podium = top3.length >= 3 ? `<div class="podium">${[1, 0, 2].map(i => { const x = top3[i]; return `<div class="pd p${x.rank} ${x.me ? 'me' : ''}">${avatarHtml(x.a, x.n, x.rank === 1 ? 72 : 60)}<div class="pr">${medal(x.rank)}</div><b title="${esc(x.n)}">${esc(x.n)}</b><span class="pscore">${scoreHtml(x)}</span><span>${subHtml(x)}</span></div>`; }).join('')}</div>` : '';
     const list = top3.length >= 3 ? rest : r.top;
+    const cols = kind === 'exam' ? ['النسبة', 'الاختبارات', 'الوقت'] : isSet ? ['النسبة', 'الصحيحة', 'الوقت'] : ['الصحيحة', 'الدقة', 'الوقت'];
+    const cells = x => kind === 'exam' ? [`<b>${Math.round(x.score)}%</b>`, x.done, fmt(x.secs)] : isSet ? [`<b>${Math.round(x.score)}%</b>`, `${x.correct}/${x.q}`, fmt(x.secs)] : [`<b>${x.score}</b> ✓`, pct(x) + '%', fmt(x.secs)];
     el.innerHTML = mine + podium + `<div class="lbl-list">
-      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">الصحيحة</span><span class="ac">الدقة</span><span class="tm">الوقت</span><span class="dn">${kind === 'exam' ? 'الاختبارات' : 'الأقسام'}</span></div>
-      ${list.map(x => `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? '<span class="you">أنت</span>' : ''}<span class="sc"><b>${x.score}</b> ✓</span><span class="ac">${acc(x)}%</span><span class="tm">${fmt(x.secs)}</span><span class="dn">${x.done}</span></div>`).join('')}</div>
-      <p class="mut" style="font-size:12.5px;margin-top:10px">الترتيب: الأعلى إجابات صحيحة، وعند التساوي الأقل وقتاً. يُعرض أفضل 100 طالب، واللوحة تتحدث كل دقيقة. تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية.</p>`;
+      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">${cols[0]}</span><span class="ac">${cols[1]}</span><span class="tm">${cols[2]}</span>${!isSet && kind !== 'exam' ? `<span class="dn">الأقسام</span>` : ''}</div>
+      ${list.map(x => { const c = cells(x); return `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? '<span class="you">أنت</span>' : ''}<span class="sc">${c[0]}</span><span class="ac">${c[1]}</span><span class="tm">${c[2]}</span>${!isSet && kind !== 'exam' ? `<span class="dn">${x.done}</span>` : ''}</div>`; }).join('')}</div>
+      <p class="mut" style="font-size:12.5px;margin-top:10px">يُعرض أفضل 100 طالب، واللوحة تتحدث كل دقيقة. تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية.</p>`;
   }
 
   applyFs(); applyTheme();
-  route();
+  if (!gsiFromHash()) route();
 })();
