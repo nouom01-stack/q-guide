@@ -1,6 +1,8 @@
 /* Q-Guide practice app — vanilla JS, RTL. Data sets are AES-GCM encrypted; the key comes from the API after Google sign-in. */
 (function () {
   'use strict';
+  if (location.protocol === 'http:' && /q-guide\.online$/.test(location.hostname)) { location.replace('https://' + location.host + location.pathname + location.search + location.hash); return; }
+  if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) {} return; }
   const $ = (s, r) => (r || document).querySelector(s);
   const app = $('#app');
   const LS = { auth: 'qg_auth', prog: 'qg_prog_', fs: 'qg_fs', tab: 'qg_tab' };
@@ -93,7 +95,7 @@
       const r = await api({ op: 'login', idToken: resp.credential, ua: navigator.userAgent.slice(0, 120) });
       if (!r.ok) {
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
-        return renderLogin(esc(msg) + '<br><a href="https://t.me/QGuide1" target="_blank" rel="noopener">تواصل معنا على تليقرام</a>');
+        return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
       auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '' };
       lsSet(LS.auth, auth); location.hash = ''; route();
