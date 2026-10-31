@@ -106,6 +106,7 @@
     if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
     if (h === 'board' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'practice');
     if (h === 'qall' || h === 'vall') return renderPlayer(h);
+    if (h === 'plan') return renderPlan();
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -168,7 +169,9 @@
       <h2 class="h2">📘 مذكراتك الخاصة</h2>
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>
       <h2 class="h2">🧪 الاختبارات المحاكية</h2>
-      <a class="mock" href="/test/"><span><b>اختبارات محاكية لقياس</b><br><span class="mut">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · نفس شكل الاختبار المحوسب</span></span><span class="btn">ادخل ←</span></a>
+      <a class="mock" href="/test/"><span><b>17 اختباراً محاكياً لقياس</b><br><span class="mut">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · نفس شكل الاختبار المحوسب</span></span><span class="btn">ادخل ←</span></a>
+      <h2 class="h2">📅 خطة المذاكرة</h2>
+      <a class="mock plan" href="#plan" id="plancard"><span><b>جدول مذاكرتك اليومي</b><br><span class="mut">اختر الخطة اللي تناسب وقتك (7 / 14 / 19 / 28 يوماً) وعلّم ✓ على كل يوم تنجزه</span></span><span class="btn">افتح ←</span></a>
     </main>`;
     $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout('', true); };
     $('#me').onclick = () => renderProfile();
@@ -421,6 +424,70 @@
   }
 
   // ---------- leaderboard ----------
+  // ---------- 📅 خطة المذاكرة ----------
+  const PLAN_Q = ['1-50', '51-100', '101-150', '151-200', '201-250', '251-300', '301-350', '351-400', '401-450', '451-500', '501-550', '551-600', '601-642'];
+  const PLAN_QD = ['36:19', '34:43', '35:56', '34:46', '36:17', '35:14', '40:08', '36:51', '', '', '', '', ''];
+  const PLAN_VD = ['24:15', '23:59', '19:54', '25:05', '17:50', '23:07', '17:37', '16:33', '', '', '', '', '', ''];
+  const pq = i => ({ k: 'q', t: `كمي <bdi dir="ltr">${PLAN_Q[i - 1]}</bdi> — مشاهدة المقطع${PLAN_QD[i - 1] ? ' (' + PLAN_QD[i - 1] + ')' : ''}`, link: '#q' + i, lt: 'حل القسم ' + i });
+  const pv = i => ({ k: 'v', t: `لفظي Model ${i} — مشاهدة المقطع${PLAN_VD[i - 1] ? ' (' + PLAN_VD[i - 1] + ')' : ''}`, link: '#v' + i, lt: 'حل النموذج ' + i });
+  const pt = (t) => ({ k: 't', t });
+  const pr = (t) => ({ k: 'r', t });
+  const TEST1 = 'حل الاختبارات: اختبار الكمي + اختبار اللفظي من الوصف — ساعة';
+  const PLANS = [
+    { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 4 ساعات يومياً', fit: 'للي اختباره بعد أسبوع', content: '13 مقطع كمي · 14 مقطع لفظي',
+      build() { const d = []; for (let i = 1; i <= 6; i++) d.push({ n: i, time: '≈ 4 ساعات', tasks: [pq(2 * i - 1), pv(2 * i - 1), pq(2 * i), pv(2 * i), pt('حل الاختبارات: اختبارات الوصف للمقاطع الأربعة — ساعتين')] });
+        d.push({ n: 7, time: '≈ 4 ساعات', tasks: [pq(13), pv(13), pv(14), pr('مراجعة أخطاء اختبارات الكمي كلها'), pt('حل الاختبارات: اختبارات الوصف للمقاطع الثلاثة — ساعة ونص')] }); return d; } },
+    { id: 'intense', name: 'الخطة المكثفة', days: 14, daily: 'حوالي ساعتين يومياً', fit: 'للي اختباره قريب', content: '13 مقطع كمي · 14 مقطع لفظي',
+      build() { const d = []; for (let i = 1; i <= 13; i++) d.push({ n: i, time: PLAN_QD[i - 1] && i % 2 ? '≈ ساعة و55 د' : '≈ ساعتين', tasks: [pq(i), pv(i), pt(TEST1)] });
+        d.push({ n: 14, time: '≈ ساعتين', tasks: [pr('مراجعة أخطاء اختبارات الكمي كلها (بدل المقطع)'), pv(14), pt(TEST1)] }); return d; } },
+    { id: 'balanced', name: 'الخطة المتوازنة', days: 19, daily: 'حوالي ساعتين · 5 أيام بالأسبوع', fit: 'الأنسب لأغلب الطلاب', content: '13 مقطع كمي · 14 مقطع لفظي', star: true,
+      build() { const d = []; let k = 1;
+        const study = n => d.push({ n, time: '≈ ساعتين', tasks: [pq(k), pv(k), pt(TEST1)], w: Math.ceil(n / 7) }), rev = n => d.push({ n, time: '≈ ساعة', tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها في اختبارات هالأسبوع')], w: Math.ceil(n / 7) }), rest = n => d.push({ n, time: 'راحة', tasks: [{ k: 'rest', t: 'يوم راحة — استرجع نشاطك' }], w: Math.ceil(n / 7) });
+        for (let w = 0; w < 2; w++) { for (let i = 1; i <= 5; i++) { study(w * 7 + i); k++; } rev(w * 7 + 6); rest(w * 7 + 7); }
+        for (let i = 15; i <= 17; i++) { study(i); k++; }
+        d.push({ n: 18, time: '≈ ساعتين', tasks: [pr('مراجعة أخطاء اختبارات الكمي كلها (بدل المقطع)'), pv(14), pt(TEST1)], w: 3 }); rev(19); return d; } },
+    { id: 'relaxed', name: 'الخطة المريحة', days: 28, daily: 'يوم مذاكرة ساعتين + يوم مراجعة خفيف', fit: 'للي عنده دوام أو مدرسة', content: '13 مقطع كمي · 14 مقطع لفظي',
+      build() { const d = []; for (let k = 1; k <= 14; k++) { const n = 2 * k - 1; const w = Math.ceil(n / 7);
+          if (k <= 13) d.push({ n, time: '≈ ساعتين', tasks: [pq(k), pv(k), pt(TEST1)], w }); else d.push({ n, time: '≈ ساعتين', tasks: [pr('مراجعة أخطاء اختبارات الكمي كلها (بدل المقطع)'), pv(14), pt(TEST1)], w });
+          d.push({ n: n + 1, time: '≈ 30 دقيقة', tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها أمس + راجع ملاحظاتك')], w: Math.ceil((n + 1) / 7) }); } return d; } },
+  ];
+  const PLAN_LS = 'qg_plan';
+  function planState() { return lsGet(PLAN_LS, { id: '', done: {} }); }
+  function renderPlan() {
+    document.title = 'خطة المذاكرة | Q-Guide';
+    const st = planState(); const plan = PLANS.find(p => p.id === st.id) || null;
+    app.innerHTML = topbar(`<span class="ttl">📅 خطة المذاكرة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap" id="planwrap"></main>`;
+    bindCtl();
+    const W = $('#planwrap');
+    if (!plan) {   // اختيار الخطة
+      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل الخطط تغطي المقاطع الـ13 كمي والـ14 لفظي مع اختباراتها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
+        <div class="plans">${PLANS.map(p => `<button class="pcard ${p.star ? 'star' : ''}" data-p="${p.id}">${p.star ? '<span class="pstar">⭐ الأنسب لأغلب الطلاب</span>' : ''}<span class="pn">${p.name}</span><span class="pd">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🎯 ${p.fit}</span><span class="pm mut">${p.content}</span><span class="btn">ابدأ هذه الخطة</span></button>`).join('')}</div>
+        <div class="sum" style="margin-top:16px"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل اختباره مباشرة • بعد الاختبار اقرأ شرح كل سؤال أخطأت فيه وسجّل أخطاءك عشان ترجع لها • علّم ✓ عند إنهاء كل يوم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
+      W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { const all = lsGet('qg_plan_all', {}); lsSet(PLAN_LS, { id: b.dataset.p, done: all[b.dataset.p] || {}, started: Date.now() }); renderPlan(); });
+      return;
+    }
+    const days = plan.build(); const done = st.done || {};
+    const isDone = (d, i) => !!(done[d.n] && done[d.n][i]); const dayDone = d => d.tasks.every((t, i) => isDone(d, i));
+    const nDone = days.filter(dayDone).length; const cur = days.find(d => !dayDone(d)); const pct = Math.round(nDone * 100 / days.length);
+    const icon = { q: '🔵', v: '🟢', t: '🟠', r: '🟠', rest: '😴' };
+    let lastW = 0;
+    W.innerHTML = `<div class="hero"><div><h1>${plan.name} <small class="mut" style="font-size:15px;font-weight:500">${plan.days} يوماً · ${plan.daily}</small></h1>
+        <p>${cur ? `أنت في <b>اليوم ${cur.n}</b> — أنجزت ${nDone} من ${days.length} يوماً` : '🎉 أنهيت الخطة كاملة! جاهز للاختبار بإذن الله.'}</p></div>
+        <div class="pctl"><button class="chip" id="chg">تغيير الخطة</button><button class="chip" id="rst" title="يمسح علامات الإنجاز">إعادة البدء</button></div></div>
+      <div class="bar big"><i style="width:${pct}%"></i></div>
+      <div class="days">${days.map(d => { const wk = plan.days > 14 && d.w !== lastW ? `<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW; const dd = dayDone(d); const isCur = cur && cur.n === d.n;
+        return wk + `<section class="day ${dd ? 'done' : ''} ${isCur ? 'cur' : ''}" id="day${d.n}"><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${dd ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time}</span>${isCur ? '<span class="now">اليوم الحالي</span>' : ''}</header>
+          <ul>${d.tasks.map((t, i) => `<li class="${isDone(d, i) ? 'ok' : ''} k${t.k}"><label><input type="checkbox" data-day="${d.n}" data-i="${i}" ${isDone(d, i) ? 'checked' : ''}><span class="ic">${icon[t.k] || ''}</span><span class="tt">${t.t}</span></label>${t.link ? `<a class="go" href="${t.link}">${t.lt} ↗</a>` : ''}</li>`).join('')}</ul></section>`; }).join('')}</div>
+      <div class="sum" style="margin-top:16px">🔵 كمي · 🟢 لفظي · 🟠 اختبارات ومراجعة — <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل اختباره مباشرة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.<br><span class="mut">ملاحظة: القسم 14 من الكمي (<bdi dir="ltr">643-733</bdi>) إضافي خارج الجدول — حِلّه بعد ما تخلص الخطة أو في أيام المراجعة.</span></div>`;
+    const save = () => lsSet(PLAN_LS, Object.assign(st, { done }));
+    W.querySelectorAll('input[data-i]').forEach(c => c.onchange = () => { done[c.dataset.day] = done[c.dataset.day] || {}; if (c.checked) done[c.dataset.day][c.dataset.i] = 1; else delete done[c.dataset.day][c.dataset.i]; save(); renderPlan(); });
+    W.querySelectorAll('input[data-day]:not([data-i])').forEach(c => c.onchange = () => { const d = days.find(x => x.n == c.dataset.day); done[d.n] = {}; if (c.checked) d.tasks.forEach((t, i) => done[d.n][i] = 1); save(); renderPlan(); });
+    $('#chg').onclick = () => { if (confirm('تغيير الخطة؟ (علامات الإنجاز الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)')) { const all = lsGet('qg_plan_all', {}); all[plan.id] = done; lsSet('qg_plan_all', all); lsSet(PLAN_LS, { id: '', done: {} }); renderPlan(); } };
+    $('#rst').onclick = () => { if (confirm('مسح كل علامات الإنجاز والبدء من اليوم 1؟')) { lsSet(PLAN_LS, { id: plan.id, done: {}, started: Date.now() }); renderPlan(); } };
+    if (cur) { const el = $('#day' + cur.n); if (el && days.length > 8) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
+  }
+
+  // ---------- 🏆 لوحة الصدارة ----------
   async function renderBoard(kind) {
     document.title = 'لوحة الصدارة | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
