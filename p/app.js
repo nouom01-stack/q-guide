@@ -384,9 +384,11 @@
   // ---------- avatar / profile ----------
   const PRESETS = ['adventurer', 'adventurer-neutral', 'avataaars', 'bottts-neutral', 'fun-emoji', 'thumbs', 'lorelei', 'notionists'];
   function avatarHtml(url, name, size) {
-    const init = esc((name || '?').trim().charAt(0)); const sz = size || 40;
-    return url ? `<img class="av" src="${esc(url)}" width="${sz}" height="${sz}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'av ini',textContent:'${init}',style:'width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px'}))">`
-      : `<span class="av ini" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px">${init}</span>`;
+    const nm = String(name || '').replace(/[?؟]/g, '').trim(); const init = esc(nm.charAt(0) || '👤'); const sz = size || 40;
+    let hsh = 0; for (const ch of nm) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0; const hue = hsh % 360;
+    const st = `width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px;background:hsl(${hue} 55% 42%);color:#fff`;
+    return url ? `<img class="av" src="${esc(url)}" width="${sz}" height="${sz}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'av ini',textContent:'${init}',style:'${st}'}))">`
+      : `<span class="av ini" style="${st}">${init}</span>`;
   }
   function presetUrl(style, seed) { return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&radius=50`; }
   async function renderProfile() {
@@ -490,21 +492,28 @@
   // ---------- 🏆 لوحة الصدارة ----------
   async function renderBoard(kind) {
     document.title = 'لوحة الصدارة | Q-Guide';
-    app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+    app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span><button class="ib" id="lbref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<main class="wrap"><div class="tabs" style="margin-bottom:14px"><button data-k="practice" class="${kind === 'practice' ? 'on' : ''}">📚 اختبارات الأقسام</button><button data-k="exam" class="${kind === 'exam' ? 'on' : ''}">🧪 الاختبارات المحاكية</button></div>
       <p class="mut" style="margin:0 0 14px;font-size:14px">${kind === 'exam' ? 'الترتيب بمجموع درجات <b>أول محاولة</b> لكل اختبار محاكي (من 96)، وعند التساوي الأسرع وقتاً. المحاولات بعدها للتدريب ولا تدخل في الترتيب.' : 'الترتيب بمجموع نتيجة <b>أول محاولة</b> لك في كل قسم ونموذج، وعند التساوي الأسرع وقتاً. أعد أي قسم كما تشاء للتدريب — لا يتغير ترتيبك إلا بأقسام جديدة.'}</p>
       <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
-    bindCtl(); document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { location.hash = b.dataset.k === 'exam' ? 'board-exam' : 'board'; });
+    bindCtl(); document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { location.hash = b.dataset.k === 'exam' ? 'board-exam' : 'board'; }); $('#lbref').onclick = () => renderBoard(kind);
     let r; try { r = await api({ op: 'leaderboard', session: auth.session, kind }); } catch (e) { r = null; }
     const el = $('#lb'); if (!el) return;
     if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = '<div class="center">تعذّر تحميل اللوحة</div>'; return; }
-    const fmt = s => { const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h}س ${m % 60}د` : `${m}د`; };
-    if (!r.top.length) { el.innerHTML = `<div class="sum">لا توجد نتائج بعد — كن أول من يظهر هنا! ${kind === 'exam' ? '<a href="/test/">ابدأ اختباراً محاكياً</a>' : '<a href="#">ابدأ قسماً</a>'}</div>`; return; }
+    const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h} س ${m % 60} د` : m ? `${m} د` : `${s} ث`; };
+    const acc = x => x.q ? Math.round(x.score * 100 / x.q) : 0;
+    const unit = kind === 'exam' ? 'اختبار' : 'قسم';
+    const mine = r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${r.total} ${r.total === 1 ? 'طالب' : 'طالباً'}</b><span>${r.me.score} إجابة صحيحة · ${fmt(r.me.secs)} · ${r.me.done} ${unit}${r.me.done > 1 ? (kind === 'exam' ? 'ات' : '') : ''}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">اختبار جديد</a>' : '<a class="btn sm" href="#">تدرّب</a>'}</div>`
+      : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? 'أنهِ اختباراً محاكياً واحداً وتظهر هنا.' : 'حل قسماً أو نموذجاً واحداً وتظهر هنا.'}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">ابدأ اختباراً</a>' : '<a class="btn sm" href="#">ابدأ قسماً</a>'}</div>`;
+    if (!r.top.length) { el.innerHTML = mine + `<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
+    const medal = k => ['🥇', '🥈', '🥉'][k - 1] || '';
     const top3 = r.top.slice(0, 3), rest = r.top.slice(3);
-    el.innerHTML = `<div class="podium">${[1, 0, 2].map(i => top3[i] ? `<div class="pd p${top3[i].rank} ${top3[i].me ? 'me' : ''}">${avatarHtml(top3[i].a, top3[i].n, 64)}<div class="pr">${['🥇', '🥈', '🥉'][top3[i].rank - 1]}</div><b>${esc(top3[i].n)}</b><span>${top3[i].score} ✓ · ${fmt(top3[i].secs)}</span></div>` : '<div></div>').join('')}</div>
-      <div class="lbl-list">${rest.map(x => `<div class="lbr ${x.me ? 'me' : ''}"><span class="rk">${x.rank}</span>${avatarHtml(x.a, x.n, 36)}<span class="nm">${esc(x.n)}</span><span class="sc"><b>${x.score}</b> ✓</span><span class="tm">${fmt(x.secs)}</span><span class="dn mut">${x.done} ${kind === 'exam' ? 'اختبار' : 'قسم'}</span></div>`).join('')}</div>
-      ${r.me ? `<div class="sum" style="margin-top:14px">ترتيبك: <b>#${r.me.rank}</b> من ${r.total} · ${r.me.score} إجابة صحيحة · ${fmt(r.me.secs)} · ${r.me.done} ${kind === 'exam' ? 'اختبار' : 'قسم'}</div>` : `<div class="sum" style="margin-top:14px">ما عندك نتائج بعد في هذه اللوحة.</div>`}
-      <p class="mut" style="font-size:12.5px;margin-top:10px">تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية. اللوحة تتحدث كل دقيقتين.</p>`;
+    const podium = top3.length >= 3 ? `<div class="podium">${[1, 0, 2].map(i => { const x = top3[i]; return `<div class="pd p${x.rank} ${x.me ? 'me' : ''}">${avatarHtml(x.a, x.n, x.rank === 1 ? 72 : 60)}<div class="pr">${medal(x.rank)}</div><b title="${esc(x.n)}">${esc(x.n)}</b><span class="pscore">${x.score} <small>✓</small></span><span>${acc(x)}% دقة · ${fmt(x.secs)}</span></div>`; }).join('')}</div>` : '';
+    const list = top3.length >= 3 ? rest : r.top;
+    el.innerHTML = mine + podium + `<div class="lbl-list">
+      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">الصحيحة</span><span class="ac">الدقة</span><span class="tm">الوقت</span><span class="dn">${kind === 'exam' ? 'الاختبارات' : 'الأقسام'}</span></div>
+      ${list.map(x => `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? '<span class="you">أنت</span>' : ''}<span class="sc"><b>${x.score}</b> ✓</span><span class="ac">${acc(x)}%</span><span class="tm">${fmt(x.secs)}</span><span class="dn">${x.done}</span></div>`).join('')}</div>
+      <p class="mut" style="font-size:12.5px;margin-top:10px">الترتيب: الأعلى إجابات صحيحة، وعند التساوي الأقل وقتاً. يُعرض أفضل 100 طالب، واللوحة تتحدث كل دقيقة. تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية.</p>`;
   }
 
   applyFs(); applyTheme();
