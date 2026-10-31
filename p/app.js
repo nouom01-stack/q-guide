@@ -55,7 +55,8 @@
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (id === 'qall' || id === 'vall') {
-      const k = id[0]; const parts = []; for (let i = 1; i <= 14; i++) parts.push(await loadSet(k + i));
+      const k = id[0]; let got = 0; const el = () => document.getElementById('ldmsg');
+      const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const m = el(); if (m) m.textContent = 'تحميل الأسئلة… ' + got + ' / 14'; return p; })));
       let obj;
       if (k === 'q') obj = { kind: 'quant', id: 'qall', title: 'الاختبار الشامل — الكمي', sub: 'All 14 sections', items: [].concat(...parts.map(p => p.items.map(it => Object.assign({}, it, { src: p.id })))) };
       else obj = { kind: 'verbal', id: 'vall', title: 'الاختبار الشامل — اللفظي', sub: 'All 14 models', groups: [].concat(...parts.map(p => p.groups.map(g => Object.assign({}, g, { title: (g.kind === 'part' ? p.title + ' · ' : '') + g.title, src: p.id })))) };
@@ -192,6 +193,15 @@
     }).join('');
     grid.querySelectorAll('.set').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
     renderWorkbooks();
+    prefetchSets();
+  }
+  // ⚡ تحميل مسبق هادئ لملفات الأقسام في الخلفية (مرة واحدة لكل جلسة) حتى تفتح فوراً
+  let prefetching = false;
+  function prefetchSets() {
+    if (prefetching || !manifest) return; const c = navigator.connection || {}; if (c.saveData) return; prefetching = true;
+    const ids = [...manifest.quant, ...manifest.verbal].map(s => s.id);
+    const run = () => { const id = ids.shift(); if (!id) return; fetch('/p/data/' + id + '.bin', { priority: 'low' }).catch(() => {}).finally(() => setTimeout(run, 400)); };
+    setTimeout(run, 2500);
   }
   async function renderWorkbooks() {
     const el = $('#wb'); if (!el) return;
@@ -264,7 +274,7 @@
   // ---------- player ----------
   let P = null; // player state
   async function renderPlayer(id) {
-    app.innerHTML = topbar(`<span class="ttl">جارٍ التحميل…</span>`, `<a class="ib" href="#" title="رجوع">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div>تحميل الأسئلة…</div>';
+    app.innerHTML = topbar(`<span class="ttl">جارٍ التحميل…</span>`, `<a class="ib" href="#" title="رجوع">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>';
     let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + '<div class="center">تعذّر فتح الأسئلة (' + esc(e.message) + '). <a href="#">رجوع</a></div>'; return; }
     const items = flatItems(set); const prog = progGet(id);
     if (!prog.started) prog.started = Date.now();
