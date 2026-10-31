@@ -132,7 +132,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student' };
+      auth = { name: r.name, email: r.email, key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || null };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -153,6 +153,10 @@
       <div class="hero"><div><h1>${hi} ${esc(first)} 👋</h1><p>تدرّب قسماً قسماً: كل سؤال مع شرحه بعد الإجابة مباشرة، وتقدّمك محفوظ.</p></div>
       <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
       <div class="grid" id="grid"></div>
+      <h2 class="h2">📘 مذكراتك الخاصة</h2>
+      <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>
+      <h2 class="h2">🧪 الاختبارات المحاكية</h2>
+      <a class="mock" href="/test/"><span><b>اختبارات محاكية لقياس</b><br><span class="mut">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · نفس شكل الاختبار المحوسب</span></span><span class="btn">ادخل ←</span></a>
     </main>`;
     $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout('', true); };
     bindCtl();
@@ -166,6 +170,18 @@
         <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></button>`;
     }).join('');
     grid.querySelectorAll('.set').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
+    renderWorkbooks();
+  }
+  async function renderWorkbooks() {
+    const el = $('#wb'); if (!el) return;
+    if (!auth.files) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; lsSet(LS.auth, auth); } } catch (e) {} }
+    const f = auth.files || {}; if (!$('#wb')) return;
+    const card = (id, title, icon, desc) => id ? `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
+        <div class="ac"><a class="btn sm" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">فتح المذكرة</a><button class="btn sm ghost" data-prev="${esc(id)}">عرض هنا</button></div></div>`
+      : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? 'المشرف ليس له مذكرة شخصية' : 'تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً'}</span></div></div>`;
+    el.innerHTML = card(f.quant, 'مذكرة الكمي', '📐', 'نسختك الخاصة باسمك ورقمك · 14 قسماً') + card(f.verbal, 'مذكرة اللفظي', '📖', 'نسختك الخاصة باسمك ورقمك · 14 نموذجاً') +
+      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها.</p><div id="wbv"></div>`;
+    el.querySelectorAll('[data-prev]').forEach(b => b.onclick = () => { const v = $('#wbv'); v.innerHTML = `<div class="frame"><iframe src="https://drive.google.com/file/d/${b.dataset.prev}/preview" allow="autoplay" loading="lazy"></iframe></div>`; v.scrollIntoView({ behavior: 'smooth' }); });
   }
 
   // ---------- player ----------
