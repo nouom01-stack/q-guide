@@ -65,7 +65,8 @@
 
   // ---------- header ----------
   function header(dateText) {
-    return `<header class="hdr"><div class="lg"><img src="/assets/logo.png" alt="">Q-Guide</div><div class="date">${esc(dateText || today())}</div>
+    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، أحتاج دعم فني في الاختبارات المحاكية Q-Guide\n' + (auth.display || auth.name || '') + ' · ' + (auth.email || '') + '\nالمشكلة: ');
+    return `<header class="hdr"><div class="lg"><img src="/assets/logo.png" alt="">Q-Guide</div><div class="date">${esc(dateText || today())}</div><a class="wa" href="${wa}" target="_blank" rel="noopener" title="دعم فني عبر واتساب">💬 <span>دعم</span></a>
       <div class="user"><span>${esc(auth.display || auth.name || '')}</span><img src="${auth.avatar ? esc(auth.avatar) : '/assets/logo.png'}" alt="" referrerpolicy="no-referrer" onerror="this.src='/assets/logo.png'"></div></header>`;
   }
 
