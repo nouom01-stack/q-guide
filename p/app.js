@@ -5,18 +5,33 @@
   if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) {} return; }
   const $ = (s, r) => (r || document).querySelector(s);
   const app = $('#app');
-  const LS = { auth: 'qg_auth', prog: 'qg_prog_', fs: 'qg_fs', tab: 'qg_tab' };
+  const LS = { auth: 'qg_auth', prog: 'qg_prog_', fs: 'qg_fs', tab: 'qg_tab', theme: 'qg_theme' };
   const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
   const PART_AR = { 1: 'التناظر اللفظي', 2: 'إكمال الجمل', 3: 'الخطأ السياقي', 4: 'استيعاب المقروء' };
   let auth = null, manifest = null, cryptoKey = null;
   const cache = {};
 
   // ---------- utils ----------
-  const MATHRUN = /([0-9A-Za-z√π°²³⁴¹⁰⁻⁺\(\)\[\]\+\-−×÷=≈≤≥<>\/\.,%:'’ ]*[0-9A-Za-z√π][0-9A-Za-z√π°²³⁴¹⁰⁻⁺\(\)\[\]\+\-−×÷=≈≤≥<>\/\.,%:'’ ]*)/g;
+  // يلفّ المقاطع الرياضية/الإنجليزية داخل النص العربي بعنصر LTR حتى لا تنعكس (مثل 10 + 10 − 1 = 19)
+  const MATHRUN = /[0-9A-Za-z√π°²³⁴¹⁰⁻⁺\(\)\[\]\+\-−×÷=≈≤≥<>\/\.,%:'’ ]+/g;
+  function wrapMath(raw) {
+    return esc(raw).replace(MATHRUN, m => {
+      let lead = '', trail = '', core = m;
+      // أقواس غير متوازنة في الأطراف تبقى خارج المقطع
+      const bal = t => (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
+      while (core.length && bal(core) < 0 && core.endsWith(')')) { trail = ')' + trail; core = core.slice(0, -1); }
+      while (core.length && bal(core) > 0 && core.startsWith('(')) { lead += '('; core = core.slice(1); }
+      const t = core.trim();
+      const mathy = /[+−\-×÷=≈≤≥<>\/√π]/.test(t) || /[A-Za-z]/.test(t) || /\d\s*[,.]\s*\d/.test(t);
+      if (t.length < 2 || !mathy || !/[0-9A-Za-z√π]/.test(t)) return m;
+      return lead + '<bdi dir="ltr">' + core + '</bdi>' + trail;
+    });
+  }
   function fmtExp(t) {
     return String(t || '').split('\n').filter(l => !/^\s*(📝\s*)?الشرح:?\s*$/.test(l)).map(l => {
-      const line = esc(l).replace(MATHRUN, m => /[0-9A-Za-z√π]/.test(m) && m.trim().length > 1 ? '<bdi dir="ltr">' + m + '</bdi>' : m);
-      return line;
+      const en = l.match(/^(\s*)(\d+)\)\s*(.*)$/);          // ترقيم الخطوات: 1) ...
+      if (en) return en[1] + '<bdi dir="ltr">' + en[2] + ')</bdi> ' + wrapMath(en[3]);
+      return wrapMath(l);
     }).join('\n');
   }
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -25,6 +40,10 @@
   const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
   let toastT; function toast(m) { let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); } t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600); }
   function applyFs() { const f = lsGet(LS.fs, 1); document.documentElement.style.setProperty('--fs', f); }
+  function applyTheme() { const t = lsGet(LS.theme, 'light'); document.documentElement.dataset.theme = t; document.querySelectorAll('#dm').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙'); }
+  function toggleTheme() { lsSet(LS.theme, lsGet(LS.theme, 'light') === 'dark' ? 'light' : 'dark'); applyTheme(); }
+  function ctlHtml() { return `<span class="ctl"><button id="fsm" title="تصغير الخط">A-</button><button id="fsp" title="تكبير الخط">A+</button><button id="dm" title="الوضع الداكن/الفاتح">🌙</button></span>`; }
+  function bindCtl() { const a = $('#fsm'), b = $('#fsp'), c = $('#dm'); if (a) a.onclick = () => bumpFs(-.1); if (b) b.onclick = () => bumpFs(.1); if (c) c.onclick = toggleTheme; applyTheme(); }
   function bumpFs(d) { let f = lsGet(LS.fs, 1); f = Math.min(1.4, Math.max(.85, +(f + d).toFixed(2))); lsSet(LS.fs, f); applyFs(); }
   async function api(body) {
     if (!window.QG.API || window.QG.API.indexOf('__') === 0) throw new Error('API not configured');
@@ -120,7 +139,7 @@
 
   // ---------- home ----------
   function topbar(inner, left) {
-    return `<header class="top"><div class="w">${left || `<a class="brand" href="#"><img src="/assets/logo.png" alt="">Q-Guide</a>`}${inner || ''}</div></header>`;
+    return `<header class="top"><div class="w">${left || `<a class="brand" href="#"><img src="/assets/logo.png" alt="">Q-Guide</a>`}${ctlHtml()}${inner || ''}</div></header>`;
   }
   async function renderHome() {
     document.title = 'منصة التدريب | Q-Guide';
@@ -136,6 +155,7 @@
       <div class="grid" id="grid"></div>
     </main>`;
     $('#lo').onclick = () => { if (confirm('تسجيل الخروج؟')) logout('', true); };
+    bindCtl();
     document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { lsSet(LS.tab, b.dataset.t); renderHome(); });
     const grid = $('#grid');
     grid.innerHTML = manifest[tab].map((s, i) => {
@@ -155,16 +175,15 @@
     let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + '<div class="center">تعذّر فتح الأسئلة (' + esc(e.message) + '). <a href="#">رجوع</a></div>'; return; }
     const items = flatItems(set); const prog = progGet(id);
     if (!prog.started) prog.started = Date.now();
-    let cur = prog.last || 0; if (cur >= items.length) cur = 0;
-    // resume: first unanswered after last
-    if (prog.a[cur] && Object.keys(prog.a).length < items.length) { const nx = items.findIndex((x, i) => i >= cur && !prog.a[i]); cur = nx >= 0 ? nx : items.findIndex((x, i) => !prog.a[i]); if (cur < 0) cur = 0; }
-    P = { id, set, items, prog, cur, t0: Date.now(), passOpen: {} };
+    let cur = items.findIndex((x, i) => !prog.a[i]); if (cur < 0) cur = Math.min(prog.last || 0, items.length - 1);   // أول سؤال بدون إجابة
+    P = { id, set, items, prog, cur, t0: Date.now(), passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
       <button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<div class="pbar"><i id="pb"></i></div><main class="wrap" id="pm"></main>
       <div class="nav" id="nav"><div class="bg"></div><div class="sh"><div class="lg"><span><i style="background:var(--okbg);border:1px solid var(--ok)"></i>صحيحة</span><span><i style="background:var(--badbg);border:1px solid var(--bad)"></i>خاطئة</span><span><i style="background:#EEF1F8"></i>لم تُجب</span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة القسم من البداية</button></div><div class="ng" id="ng"></div></div></div>`;
     $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); };
+    bindCtl();
     $('#nav .bg').onclick = () => $('#nav').classList.remove('open');
     $('#reset').onclick = () => { if (confirm('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟')) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
     showQ(cur);
@@ -175,7 +194,7 @@
     const k = e.key.toLowerCase();
     const idx = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : ('1234'.indexOf(k) >= 0 ? '1234'.indexOf(k) : -1);
     if (idx >= 0) { const b = document.querySelectorAll('.opt')[idx]; if (b && !b.disabled) b.click(); }
-    else if (k === 'enter' || k === 'arrowleft') { const n = $('#next'); if (n) n.click(); }
+    else if (k === 'enter' || k === 'arrowleft') { const c = $('#confirm'); if (c && !c.disabled) return c.click(); const n = $('#next'); if (n && !n.disabled) n.click(); }
     else if (k === 'arrowright') { const p = $('#prev'); if (p) p.click(); }
   }
   function updateCounter() {
@@ -184,7 +203,7 @@
   }
   function showQ(i) {
     const { set, items, prog } = P; P.cur = i; prog.last = i; progSet(P.id, prog); updateCounter();
-    const { it, gi } = items[i]; const a = prog.a[i];
+    const { it, gi } = items[i]; const a = prog.a[i]; P.sel = null;
     let html = '';
     if (set.kind === 'verbal') {
       const g = set.groups[gi]; const prevG = i > 0 ? items[i - 1].gi : -1;
@@ -207,15 +226,14 @@
     }).join('') + '</div>';
     html += `<div id="fb">${a ? feedback(it, a) : ''}</div>
       <div class="acts"><button class="btn ghost sm" id="prev" ${i === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span>
-      <span class="fsz" title="حجم الخط"><button id="fsm">A-</button><button id="fsp">A+</button></span>
-      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : 'النتيجة 🏁'}</button>` : `<button class="btn ghost sm" id="next" title="تخطي">تخطي ←</button>`}</div>
-      <div class="kbd" style="margin-top:8px">اختصارات: A–D أو 1–4 للإجابة · Enter للتالي</div></div>`;
+      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : 'النتيجة 🏁'}</button>` : `<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
+      <div class="kbd" style="margin-top:8px">${a ? 'Enter للتالي' : 'اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد'}</div></div>`;
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' });
     const ph = $('#ph'); if (ph) ph.onclick = () => { const p = $('#pass'); p.classList.toggle('closed'); P.passOpen[gi] = !p.classList.contains('closed'); $('#pch').textContent = P.passOpen[gi] ? '▲' : '▼'; };
-    document.querySelectorAll('.opt').forEach(b => b.onclick = () => answer(i, +b.dataset.k));
+    document.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (P.prog.a[i]) return; P.sel = +b.dataset.k; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', +x.dataset.k === P.sel)); const c = $('#confirm'); if (c) c.disabled = false; });
     $('#prev').onclick = () => showQ(i - 1);
-    $('#next').onclick = () => { if (i + 1 < items.length) showQ(i + 1); else finish(); };
-    $('#fsm').onclick = () => bumpFs(-.1); $('#fsp').onclick = () => bumpFs(.1);
+    const nx = $('#next'); if (nx) nx.onclick = () => { if (i + 1 < items.length) showQ(i + 1); else finish(); };
+    const cf = $('#confirm'); if (cf) cf.onclick = () => { if (P.sel == null) return; answer(i, P.sel); };
   }
   function feedback(it, a) {
     const ok = a.s === it.ans; const corr = it.opts[it.ans];
@@ -228,18 +246,19 @@
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: Date.now() }; progSet(P.id, P.prog);
     document.querySelectorAll('.opt').forEach(b => { b.disabled = true; const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
     $('#fb').innerHTML = feedback(it, P.prog.a[i]);
-    const n = $('#next'); n.className = 'btn'; n.textContent = (i + 1 < P.items.length) ? 'التالي ←' : 'النتيجة 🏁'; n.title = '';
+    const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${(i + 1 < P.items.length) ? 'التالي ←' : 'النتيجة 🏁'}</button>`; $('#next').onclick = () => { if (i + 1 < P.items.length) showQ(i + 1); else finish(); }; }
+    const kb = $('.kbd'); if (kb) kb.textContent = 'Enter للتالي';
     updateCounter();
-    const done = Object.keys(P.prog.a).length === P.items.length;
-    if (done) setTimeout(() => { if ($('#next')) $('#next').textContent = 'النتيجة 🏁'; }, 0);
+    const fbEl = $('#fb'); if (fbEl) setTimeout(() => fbEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   }
   function renderNav() {
-    const ng = $('#ng'); ng.innerHTML = P.items.map((x, i) => { const a = P.prog.a[i]; return `<button class="${a ? (a.c ? 'ok' : 'bad') : ''} ${i === P.cur ? 'cur' : ''}" data-i="${i}">${i + 1}</button>`; }).join('');
+    let frontier = P.items.findIndex((x, i) => !P.prog.a[i]); if (frontier < 0) frontier = P.items.length;
+    const ng = $('#ng'); ng.innerHTML = P.items.map((x, i) => { const a = P.prog.a[i]; const locked = !a && i !== frontier; return `<button class="${a ? (a.c ? 'ok' : 'bad') : ''} ${i === P.cur ? 'cur' : ''}" data-i="${i}" ${locked ? 'disabled title="أجب على الأسئلة بالترتيب"' : ''}>${locked ? '🔒' : i + 1}</button>`; }).join('');
     ng.querySelectorAll('button').forEach(b => b.onclick = () => { $('#nav').classList.remove('open'); showQ(+b.dataset.i); });
   }
   async function finish() {
     const { items, prog, set } = P; const n = items.length; const answered = Object.keys(prog.a).length;
-    if (answered < n && !confirm('باقي ' + (n - answered) + ' سؤال بدون إجابة. تعرض النتيجة الآن؟')) return;
+    if (answered < n) { toast('باقي ' + (n - answered) + ' سؤال بدون إجابة'); const f = items.findIndex((x, i) => !prog.a[i]); return showQ(f); }
     const correct = Object.values(prog.a).filter(a => a.c).length; const pct = Math.round(correct * 100 / n);
     const secs = Math.round((Date.now() - (prog.started || Date.now())) / 1000);
     const wrong = items.map((x, i) => i).filter(i => prog.a[i] && !prog.a[i].c);
@@ -264,6 +283,6 @@
     } catch (e) { $('#saved').textContent = ''; }
   }
 
-  applyFs();
+  applyFs(); applyTheme();
   route();
 })();
