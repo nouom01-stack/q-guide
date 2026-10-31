@@ -5,7 +5,7 @@
   if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) {} return; }
   const $ = (s, r) => (r || document).querySelector(s);
   const app = $('#app');
-  const LS = { auth: 'qg_auth', fs: 'qg_exfs', ex: 'qg_ex_' };
+  const LS = { auth: 'qg_auth', fs: 'qg_exfs', ex: 'qg_ex_', exState: 'qg_ex_state' };
   const LETTERS = ['A', 'B', 'C', 'D'];
   const INSTR = { ana: 'Choose the pair of words that best expresses a relationship similar to that in the original pair.', sen: 'Choose the word(s) that best complete(s) the sentence.',
     err: 'Choose the word that is used incorrectly in the context of the sentence.', read: 'Read the passage and answer the question.', quant: 'Solve the problem and choose the best answer.' };
@@ -30,7 +30,7 @@
   }
   function applyFs() { document.documentElement.style.setProperty('--fs', lsGet(LS.fs, 1)); }
   function setFs(v) { lsSet(LS.fs, Math.min(1.5, Math.max(.85, +v.toFixed(2)))); applyFs(); }
-  function logout(msg) { lsDel(LS.auth); auth = null; cryptoKey = null; try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {} location.hash = ''; renderLogin(msg); }
+  function logout(msg) { lsDel(LS.auth); lsDel(LS.exState); auth = null; cryptoKey = null; try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {} location.hash = ''; renderLogin(msg); }
 
   // ---------- auth (shared localStorage with /p) ----------
   function route() {
@@ -72,13 +72,21 @@
   // ---------- lobby ----------
   async function renderLobby() {
     document.title = 'الاختبارات المحاكية | Q-Guide';
-    app.innerHTML = header() + '<div class="page ar"><div class="card center"><div class="spin" style="margin:0 auto 10px"></div>جارٍ تحميل اختباراتك…</div></div>';
+    // ⚡ نعرض آخر حالة محفوظة فوراً، ونحدّثها من الخادم في الخلفية
+    const cached = lsGet(LS.exState, null); const mine = ++lobbySeq;
+    if (cached && cached.e === auth.email && cached.tests) { state = cached.tests; try { if (!manifest) manifest = await (await fetch('/test/data/manifest.json', { cache: 'force-cache' })).json(); paintLobby(true); } catch (e) {} }
+    else app.innerHTML = header() + '<div class="page ar"><div class="card center"><div class="spin" style="margin:0 auto 10px"></div>جارٍ تحميل اختباراتك…</div></div>';
     try {
-      if (!manifest) manifest = await (await fetch('/test/data/manifest.json')).json();
-      const r = await api({ op: 'exam_state', session: auth.session });
+      const [mf, r] = await Promise.all([manifest ? Promise.resolve(manifest) : fetch('/test/data/manifest.json', { cache: 'force-cache' }).then(x => x.json()), api({ op: 'exam_state', session: auth.session })]);
+      manifest = mf;
       if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.error); }
-      state = r.tests;
-    } catch (e) { app.innerHTML = header() + `<div class="page ar"><div class="card">تعذّر الاتصال بالخادم (${esc(e.message)}). <a href="#" onclick="location.reload()">أعد المحاولة</a></div></div>`; return; }
+      state = r.tests; lsSet(LS.exState, { e: auth.email, tests: state, t: Date.now() });
+    } catch (e) { if (cached && cached.e === auth.email) return; app.innerHTML = header() + `<div class="page ar"><div class="card">تعذّر الاتصال بالخادم (${esc(e.message)}). <a href="#" onclick="location.reload()">أعد المحاولة</a></div></div>`; return; }
+    if (mine !== lobbySeq) return;   // المستخدم انتقل لصفحة أخرى أثناء التحميل
+    paintLobby(false);
+  }
+  let lobbySeq = 0;
+  function paintLobby(stale) {
     const cards = manifest.map(t => {
       const s = state[t.id] || { status: 'none' };
       let body, act;
@@ -91,7 +99,7 @@
     }).join('');
     app.innerHTML = header() + `<div class="page ar">
       <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.</p>
-      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost sm" href="/p/">← منصة التدريب</a><a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a></p></div>
+      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><a class="btn ghost sm" href="/p/">← منصة التدريب</a><a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a>${stale ? '<span class="mut" style="font-size:12.5px">⟳ جارٍ التحديث…</span>' : ''}</p></div>
       <div class="tests">${cards}</div></div>`;
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => startFlow(b.dataset.go));
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
