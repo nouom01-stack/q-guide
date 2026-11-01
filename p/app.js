@@ -275,12 +275,12 @@
       const corr = Object.values(p.a).filter(x => x.c).length;
       const best = p.best != null ? `<span class="badge">أفضل نتيجة ${p.best}%</span>` : (ans ? `<span class="badge g">${corr}/${ans} صحيحة</span>` : `<span style="color:#B7BFD0">لم تبدأ</span>`);
       const yt = ytFor(s.id);
-      return `<div class="setw"><button class="set ${pct === 100 ? 'done' : ''}" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
-        <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></button>${yt ? `<a class="ytl" href="${yt.url}" target="_blank" rel="noopener" title="افتح شرح ${yt.label} على يوتيوب"><span class="l">${YTSVG}<span>شرح ${tab === 'quant' ? 'القسم' : 'النموذج'}</span></span>${yt.dur ? `<span class="dur">${yt.dur}</span>` : ''}</a>` : ''}</div>`;
+      return `<div class="set ${pct === 100 ? 'done' : ''}" role="button" tabindex="0" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}${yt ? `<a class="ytp" href="${yt.url}" target="_blank" rel="noopener" title="شرح ${yt.label} على يوتيوب · ${yt.dur}">${YTSVG}<span>الشرح</span></a>` : ''}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
+        <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></div>`;
     }).join('');
     const R = YT[tab === 'quant' ? 'q' : 'v'];
     $('#ytr').innerHTML = `<div class="ytr"><a class="ytr-main" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener">${YTSVG}<span><b>ابدأ من هنا: ${R.rules.t}${R.rules.dur ? ` <small>(${R.rules.dur})</small>` : ''}</b><small>${R.rules.d}</small></span></a><a class="ytr-list" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">▶ كل مقاطع ${tab === 'quant' ? 'الكمي' : 'اللفظي'}</a></div>`;
-    grid.querySelectorAll('.set').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
+    grid.querySelectorAll('.set').forEach(b => { b.onclick = e => { if (e.target.closest('a')) return; location.hash = b.dataset.id; }; b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); location.hash = b.dataset.id; } }; });
     renderWorkbooks();
     prefetchSets();
   }
