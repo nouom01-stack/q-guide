@@ -168,6 +168,8 @@
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
     if (!auth) return renderLogin();
+    document.body.classList.remove('rec-on'); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
+    if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat();
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
@@ -180,6 +182,7 @@
     if (/^t-[a-z-]+$/.test(h)) return renderPlayer(h);
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
+    if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (h === 'admin' || h === 'admin-staff') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : renderStaff(); location.hash = ''; return; }
     renderHome();
   }
@@ -604,6 +607,95 @@
     vq.oninput = paint; paint();
     $('#prn').onclick = () => window.print();
   }
+
+  // ---------- 🎬 استوديو تيك توك (للمشرفين) ----------
+  const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', posted: null, pen: null, reveal: false, panel: true, ui: true };
+  const STL = ['a', 'b', 'c', 'd'];
+  function stFont() { if (document.getElementById('stfont')) return; const l = document.createElement('link'); l.id = 'stfont'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap'; document.head.appendChild(l); }
+  async function stData() { return loadSet('studio'); }
+  async function stPosted(force) { if (ST.posted && !force) return ST.posted; try { const r = await admCall({ op: 'adm_studio_list' }); ST.posted = {}; (r.posted || []).forEach(x => ST.posted[x.k] = x); } catch (e) { ST.posted = ST.posted || {}; } return ST.posted; }
+  async function stMark(k, on) { try { await admCall({ op: 'adm_studio_mark', k, on: on ? 1 : 0 }); if (on) ST.posted[k] = { k, by_email: auth.email, at: Date.now() }; else delete ST.posted[k]; return true; } catch (e) { toast(e.message); return false; } }
+  function stRandom(kind, data, except) { const list = data[kind === 'v' ? 'verbal' : 'quant'].filter(x => !ST.posted[kind + x.n] && x.n !== except); const pool = list.length ? list : data[kind === 'v' ? 'verbal' : 'quant']; return pool[Math.floor(Math.random() * pool.length)].n; }
+  async function renderStudio() {
+    document.title = 'استوديو تيك توك | Q-Guide'; stFont();
+    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.posted = null; renderStudio(); };
+    let data; try { [data] = await Promise.all([stData(), stPosted(), ADM.role ? null : admLoadStaff().catch(() => null)]); } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#studio') return;
+    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.posted = null; renderStudio(); };
+    paintStudio(data);
+  }
+  function paintStudio(data) {
+    const W = $('#adm'); if (!W) return; const k = ST.tab, list = data[k === 'v' ? 'verbal' : 'quant'];
+    const done = list.filter(x => ST.posted[k + x.n]).length, pct = Math.round(done * 100 / list.length);
+    const items = list.filter(x => ST.f === 'all' || (ST.f === 'done') === !!ST.posted[k + x.n]);
+    const nm = e => esc(String(e || '').split('@')[0]);
+    W.innerHTML = `<div class="sth">
+        <div class="seg"><button data-k="v" class="${k === 'v' ? 'on' : ''}">🔗 التناظر اللفظي <small>${data.verbal.length}</small></button><button data-k="q" class="${k === 'q' ? 'on' : ''}">📐 الكمي <small>${data.quant.length}</small></button></div>
+        <div class="stp"><div class="stp-t"><b>نُشر ${done}</b> من ${list.length} · باقي ${list.length - done}</div><div class="stp-b"><i style="width:${pct}%"></i></div></div>
+        <button class="btn gold" id="strnd">🎲 سؤال عشوائي لم يُنشر</button>
+      </div>
+      <div class="stf2"><div class="chips">${[['all', 'الكل'], ['todo', 'لم يُنشر'], ['done', 'منشور']].map(([f, t]) => `<button data-f="${f}" class="${ST.f === f ? 'on' : ''}">${t}</button>`).join('')}</div><span class="mut">اضغط أي سؤال لفتحه بوضع التصوير · علامة «تم النشر» مشتركة بين كل المشرفين عشان ما يتكرر السؤال.</span></div>
+      <div class="stg">${items.map(x => { const P = ST.posted[k + x.n]; return `<a class="stc ${P ? 'done' : ''}" href="#studio-${k}-${x.n}"><span class="qn">Q ${x.n}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}<span class="ft">${P ? `<span class="ok">✓ نُشر</span><small>${nm(P.by_email)} · ${fmtD(P.at)}</small>` : '<span class="rd">جاهز للتصوير</span>'}</span></a>`; }).join('') || '<div class="sempty" style="grid-column:1/-1">لا توجد أسئلة هنا</div>'}</div>`;
+    W.querySelectorAll('.seg button').forEach(b => b.onclick = () => { ST.tab = b.dataset.k; lsSet('qg_stab', ST.tab); paintStudio(data); });
+    W.querySelectorAll('.chips button').forEach(b => b.onclick = () => { ST.f = b.dataset.f; paintStudio(data); });
+    $('#strnd').onclick = () => { location.hash = `studio-${k}-${stRandom(k, data)}`; };
+  }
+  async function renderRec(kind, n) {
+    stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
+    let data; try { [data] = await Promise.all([stData(), stPosted()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
+    const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
+    ST.reveal = false; document.body.classList.add('rec-on');
+    const key = kind + n, P = ST.posted[key];
+    const opts = it.opts.map((o, i) => `<div class="tk-o" data-i="${i}"><span class="tk-l">${STL[i]}</span><span class="tk-t">${esc(o)}</span></div>`).join('');
+    const q = kind === 'v' ? `<div class="tk-kind">Analogy · التناظر اللفظي</div><div class="tk-qv">${esc(it.q)}</div>` : `<div class="tk-kind">Quant · القسم الكمي</div><div class="tk-qi"><img src="${it.img}" alt=""></div>`;
+    const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
+    const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
+    app.innerHTML = `<div class="rec ${ST.ui ? '' : 'noui'}">
+      <div class="stage"><div class="tk" id="tk">
+        <div class="tk-top"><span class="tk-brand"><img src="/assets/logo.png" alt=""><b>Q-Guide1</b>${YTSVG}</span></div>
+        <div class="tk-panel"><span class="tk-badge">Q ${n}</span>${q}<div class="tk-opts ${it.opts.some(o => o.length > 13) ? 'one' : ''}">${opts}</div>
+          <div class="tk-sol"><span>الحل</span></div></div>
+        <div class="tk-foot">اكتب إجابتك في التعليقات 👇</div>
+      </div></div>
+      <aside class="rp">
+        <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>Q ${n} · ${kind === 'v' ? 'التناظر اللفظي' : 'الكمي'}</b><span class="sp"></span><a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a><button class="ib2" id="rrnd" title="سؤال عشوائي لم يُنشر">🎲</button></div>
+        <div class="rp-sec"><div class="rp-lbl">✍️ القلم</div>
+          <div class="rp-tools"><button data-tool="pen" class="on" title="قلم">✎</button><button data-tool="hl" title="تظليل">▬</button><button data-tool="eraser" title="ممحاة">◌</button><span class="sep"></span>${['#D62828', '#1F5FBF', '#111111', '#1B9E63', '#E9A23B'].map((c, i) => `<button data-col="${c}" class="sw ${i === 0 ? 'on' : ''}" style="--c:${c}" title="لون"></button>`).join('')}<span class="sep"></span><button data-w="2.6" title="رفيع" class="on">─</button><button data-w="5" title="عريض">━</button><span class="sep"></span><button id="rundo" title="تراجع">↶</button><button id="rclr" title="مسح الكتابة">🗑</button></div>
+          <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label></div>
+        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="يخفي اللوحة ويخلي البطاقة بس للتصوير">🎥 وضع التصوير</button></div>
+        ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
+        <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
+          <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
+          ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
+        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح · H وضع التصوير</div>
+      </aside>
+      <button class="rec-fab" id="rshow" title="إظهار الأدوات">⋯</button>
+      <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
+    </div>`;
+    const tk = $('#tk'); ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null }); ST.pen.toggle(true); ST.pen.setColor('#D62828'); ST.pen.setWidth(2.6);
+    const rec = $('.rec');
+    const setUI = on => { ST.ui = on; rec.classList.toggle('noui', !on); };
+    const togglePanel = () => rec.classList.toggle('sheet');
+    const reveal = () => { ST.reveal = !ST.reveal; tk.classList.toggle('rev', ST.reveal); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', ST.reveal && +o.dataset.i === it.ans)); $('#rrev').textContent = ST.reveal ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة'; };
+    const clear = () => ST.pen.clear();
+    rec.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => { ST.pen.setTool(b.dataset.tool); rec.querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('on', x === b)); });
+    rec.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { ST.pen.setColor(b.dataset.col); rec.querySelectorAll('[data-col]').forEach(x => x.classList.toggle('on', x === b)); rec.querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === 'pen')); ST.pen.setTool('pen'); });
+    rec.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { ST.pen.setWidth(+b.dataset.w); rec.querySelectorAll('[data-w]').forEach(x => x.classList.toggle('on', x === b)); });
+    $('#rundo').onclick = $('#mundo').onclick = () => ST.pen.undo();
+    $('#rclr').onclick = $('#mclr').onclick = clear;
+    $('#rpen').onchange = e => { ST.pen.toggle(e.target.checked); $('#mpen').classList.toggle('on', e.target.checked); };
+    $('#mpen').classList.add('on'); $('#mpen').onclick = () => { const on = ST.pen.toggle(); $('#rpen').checked = on; $('#mpen').classList.toggle('on', on); };
+    $('#rrev').onclick = $('#mrev').onclick = reveal;
+    $('#rhide').onclick = $('#mhide').onclick = () => setUI(false);
+    $('#rshow').onclick = () => setUI(true);
+    $('#mmore').onclick = togglePanel;
+    $('#rrnd').onclick = () => { location.hash = `studio-${kind}-${stRandom(kind, data, n)}`; };
+    $('#rpost').onclick = async () => { const on = !ST.posted[key]; const b = $('#rpost'); b.disabled = true; if (await stMark(key, on)) { b.className = 'btn ' + (on ? 'okb' : 'ghost'); b.textContent = on ? '✓ تم النشر' : '☐ علّمه «تم النشر»'; toast(on ? 'تم التعليم كمنشور ✓' : 'أُلغي التعليم'); } b.disabled = false; };
+    window.__stKey = e => { if (e.target.closest('input,textarea')) return; const kk = e.key.toLowerCase();
+      if (kk === 'arrowleft') location.hash = `studio-${kind}-${next}`; else if (kk === 'arrowright') location.hash = `studio-${kind}-${prev}`;
+      else if (kk === 'r') reveal(); else if (kk === 'z') ST.pen.undo(); else if (kk === 'c') clear(); else if (kk === 'h') setUI(!ST.ui); else if (kk === 'escape') setUI(true); };
+    document.addEventListener('keydown', window.__stKey);
+  }
   // ---------- avatar / profile ----------
   const PRESETS = ['adventurer', 'adventurer-neutral', 'avataaars', 'bottts-neutral', 'fun-emoji', 'thumbs', 'lorelei', 'notionists'];
   function avatarHtml(url, name, size) {
@@ -656,7 +748,7 @@
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a><a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a><a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }

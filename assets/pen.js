@@ -21,7 +21,7 @@
       <span class="sep"></span>
       <button data-a="undo" title="تراجع / Undo">↶</button><button data-a="clear" title="مسح الكل / Clear">🗑</button>
       <button data-a="off" title="إغلاق القلم">✕</button>`;
-    host.insertBefore(bar, host.firstChild);
+    if (opts.bar !== false) host.insertBefore(bar, host.firstChild);
     function size() { const r = host.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); redraw(); }
     const ro = new ResizeObserver(size); ro.observe(host);
     function drawStroke(s) {
@@ -52,6 +52,10 @@
     const api = {
       toggle(on) { st.on = on == null ? !st.on : !!on; host.classList.toggle('qgpen-on', st.on); if (opts.onToggle) opts.onToggle(st.on); return st.on; },
       isOn() { return st.on; },
+      setTool(t) { st.tool = t; if (t === 'hl' && !/rgba/.test(st.color)) st.color = COLORS.hl[0]; if (t === 'pen' && /rgba/.test(st.color)) st.color = COLORS.pen[0]; },
+      setColor(c) { st.color = c; if (st.tool === 'eraser') st.tool = /rgba/.test(c) ? 'hl' : 'pen'; },
+      setWidth(w) { st.width = w; },
+      undo() { st.strokes.pop(); redraw(); persist(); },
       setKey(key, strokes) { persist(); st.key = key; st.strokes = strokes || (key ? (() => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; } })() : []); redraw(); },
       getStrokes() { return st.strokes.slice(); },
       clear() { st.strokes = []; redraw(); persist(); },

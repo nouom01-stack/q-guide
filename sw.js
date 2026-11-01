@@ -1,5 +1,5 @@
 /* Q-Guide service worker: يخزّن ملفات الأسئلة والمذكرات والصور محلياً بعد أول تحميل (أسرع وأقل ضغطاً على الشبكة) */
-const V = 'qg-v4';
+const V = 'qg-v5';
 const STATIC = /\/(p\/data|test\/data|p\/wb|assets)\/.+\.(bin|json|png|jpg|css|js)(\?.*)?$/;
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
