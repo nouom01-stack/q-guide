@@ -10,6 +10,16 @@
   const PART_AR = { 1: 'التناظر اللفظي', 2: 'إكمال الجمل', 3: 'الخطأ السياقي', 4: 'استيعاب المقروء' };
   let auth = null, manifest = null, cryptoKey = null;
   const cache = {};
+  // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات)
+  const YT = {
+    q: { name: 'القسم', rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: 'مقطع قواعد الكمي', d: 'كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام' }, list: 'PLNdATbln9B4k',
+      v: ['WBnwPsSTuaU:36:18', 'SLGGlm5YwJU:34:43', 'VoVaWRFbIjg:36:50', 'dwvgSfK6Tfw:34:10', 'eVZsYR0QPq8:35:39', 'd3hX21VfSWo:34:19', 'EMNaSCi0IMk:43:40', 'fQynzmnlZmI:34:15', 'i4ELxBTMUw0:40:51', 'mZdhgMMOWB0:40:01', 'bscPMN6lDPQ:36:29', '6AxdKpQZevk:34:16', 'iVR5LsbBBv4:29:38', '5SXV-pbaQ7U:47:45'] },
+    v: { name: 'النموذج', rules: { id: 'vo91Yxx_6vw', dur: '', t: 'مقطع قواعد التناظر اللفظي', d: 'شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج' }, list: 'PLVFHCj9Zxd0E',
+      v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'CACQHxNpOTE:21:40', 'mFYiB0Z9G5k:15:17'] } };
+  const ytUrl = id => 'https://youtu.be/' + id;
+  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'); return { id: raw.slice(0, i), dur: raw.slice(i + 1), url: ytUrl(raw.slice(0, i)), label: k.name + ' ' + m[2] }; }
+  const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
+  const LOSVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>';
 
   // ---------- utils ----------
   // يلفّ المقاطع الرياضية/الإنجليزية داخل النص العربي بعنصر LTR حتى لا تنعكس (مثل 10 + 10 − 1 = 19)
@@ -148,6 +158,7 @@
     try {
       const r = await api({ op: 'me', session: auth.session });
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || 'انتهت الجلسة، سجّل دخولك من جديد.'));
+      else if (r && r.ok && auth.role === 'admin' && r.staff && r.staff !== auth.staff) { auth.staff = r.staff; lsSet(LS.auth, auth); }
     } catch (e) {} finally { hbBusy = false; }
   }
   setInterval(heartbeat, 3 * 60 * 1000);
@@ -169,7 +180,7 @@
     if (/^t-[a-z-]+$/.test(h)) return renderPlayer(h);
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
-    if (h === 'admin') { if (auth.role === 'admin') return renderAdmin(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : renderStaff(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -213,7 +224,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || null, display: r.display || r.name, avatar: r.avatar || '' };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, display: r.display || r.name, avatar: r.avatar || '' };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -228,11 +239,12 @@
     const tab = lsGet(LS.tab, 'quant');
     const first = (auth.name || '').trim().split(/\s+/)[0] || '';
     const hi = auth.gender === 'طالبة' ? 'أهلاً' : 'أهلاً';
-    const adminLinks = auth.role === 'admin' ? `<a class="chip" style="text-decoration:none;background:var(--gold);color:#1a1a1a;font-weight:700" href="#admin" title="لوحة المشرف: الطلاب، الحظر، النتائج">👑 الإدارة</a>` : '';
-    app.innerHTML = topbar(`<span class="sp"></span><a class="ib" href="#board" title="لوحة الصدارة">🏆</a><a class="ib" href="#skills" title="نقاط القوة والضعف">🎯</a>${adminLinks}<button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
+    const adminLinks = auth.role === 'admin' ? `<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     `<main class="wrap">
       <div class="hero"><div><h1>${hi} ${esc(first)} 👋</h1><p>تدرّب قسماً قسماً: كل سؤال مع شرحه بعد الإجابة مباشرة، وتقدّمك محفوظ.</p></div>
       <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
+      <div id="ytr"></div>
       <div class="grid" id="grid"></div>
       <h2 class="h2">🏁 الاختبار الشامل</h2>
       <div class="wb" id="mega"></div>
@@ -262,9 +274,12 @@
       const p = progGet(s.id); const ans = Object.keys(p.a).length; const pct = s.n ? Math.round(ans * 100 / s.n) : 0;
       const corr = Object.values(p.a).filter(x => x.c).length;
       const best = p.best != null ? `<span class="badge">أفضل نتيجة ${p.best}%</span>` : (ans ? `<span class="badge g">${corr}/${ans} صحيحة</span>` : `<span style="color:#B7BFD0">لم تبدأ</span>`);
-      return `<button class="set ${pct === 100 ? 'done' : ''}" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
-        <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></button>`;
+      const yt = ytFor(s.id);
+      return `<div class="setw"><button class="set ${pct === 100 ? 'done' : ''}" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
+        <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></button>${yt ? `<a class="ytl" href="${yt.url}" target="_blank" rel="noopener" title="افتح شرح ${yt.label} على يوتيوب">${YTSVG}<span>شاهد شرح ${yt.label}</span>${yt.dur ? `<span class="dur">${yt.dur}</span>` : ''}</a>` : ''}</div>`;
     }).join('');
+    const R = YT[tab === 'quant' ? 'q' : 'v'];
+    $('#ytr').innerHTML = `<div class="ytr"><a class="ytr-main" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener">${YTSVG}<span><b>ابدأ من هنا: ${R.rules.t}${R.rules.dur ? ` <small>(${R.rules.dur})</small>` : ''}</b><small>${R.rules.d}</small></span></a><a class="ytr-list" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">▶ كل مقاطع ${tab === 'quant' ? 'الكمي' : 'اللفظي'}</a></div>`;
     grid.querySelectorAll('.set').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
     renderWorkbooks();
     prefetchSets();
@@ -358,7 +373,7 @@
     P = { id, set, items, prog, cur, t0: Date.now(), passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      <button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<div class="pbar"><i id="pb"></i></div><main class="wrap" id="pm"></main>
       <div class="nav" id="nav"><div class="bg"></div><div class="sh"><div class="lg"><span><i style="background:var(--okbg);border:1px solid var(--ok)"></i>صحيحة</span><span><i style="background:var(--badbg);border:1px solid var(--bad)"></i>خاطئة</span><span><i style="background:#EEF1F8"></i>لم تُجب</span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة القسم من البداية</button></div><div class="ng" id="ng"></div></div></div>`;
     $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); };
@@ -420,7 +435,12 @@
     return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? '✅ إجابة صحيحة، أحسنت!' : '❌ إجابة خاطئة'}</div>
       ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
       ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}
+      ${ytLink(it)}
       ${P && P.set.kind === 'verbal' ? trHtml(it) : ''}</div>`;
+  }
+  function ytLink(it) {
+    const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';
+    return `<a class="ytx" href="${yt.url}" target="_blank" rel="noopener">${YTSVG}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو على يوتيوب</span><span class="go">←</span></a>`;
   }
   // 🇸🇦 ترجمة السؤال والخيارات + كلمات السؤال
   function trHtml(it) {
@@ -459,7 +479,7 @@
       <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
       <p style="color:var(--mut);margin:0">${esc(set.title)} · ${esc(set.sub)}</p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b>${Math.max(1, Math.round(secs / 60))}</b><span>دقيقة</span></div></div>
-      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#skills">🎯 نقاط قوتي وضعفي</a><a class="btn ghost" href="#">الرئيسية</a></div>
+      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${ytFor(set.id) ? `<a class="btn ytbtn" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} على يوتيوب</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#skills">🎯 نقاط قوتي وضعفي</a><a class="btn ghost" href="#">الرئيسية</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
@@ -497,7 +517,7 @@
   // يلفّ الكلمات التي لها ترجمة بعنصر قابل للضغط
   function wordsHtml(text) {
     if (!VOC) return esc(text);
-    return (text || '').split(/([A-Za-z][A-Za-z'’]*)/).map((w, i) => { if (!(i % 2)) return esc(w); if (STOP.has(w.toLowerCase())) return esc(w); const ar = vocLook(w.replace(/’/g, "'")); return ar ? `<span class="w" data-ar="${esc(ar)}">${esc(w)}</span>` : esc(w); }).join('');
+    return (text || '').split(/([A-Za-z][A-Za-z'’]*)/).map((w, i) => { if (!(i % 2)) return esc(w); if (STOP.has(w.toLowerCase())) return esc(w); const ar = vocLook(w.replace(/’/g, "'")); return ar ? `<span class="vw" data-ar="${esc(ar)}">${esc(w)}</span>` : esc(w); }).join('');
   }
   function vocabChips(text, max) {
     if (!VOC) return ''; const seen = new Set(); const out = [];
@@ -508,8 +528,8 @@
   function bindWords() {
     if (bindWords.done) return; bindWords.done = true;
     document.addEventListener('click', e => {
-      const w = e.target.closest('.w'); if (!vtip) { vtip = document.createElement('div'); vtip.className = 'vtip'; document.body.appendChild(vtip); }
-      document.querySelectorAll('.w.hl').forEach(x => x.classList.remove('hl'));
+      const w = e.target.closest('.vw'); if (!vtip) { vtip = document.createElement('div'); vtip.className = 'vtip'; document.body.appendChild(vtip); }
+      document.querySelectorAll('.vw.hl').forEach(x => x.classList.remove('hl'));
       if (!w) { vtip.classList.remove('on'); return; }
       vtip.innerHTML = `<b class="ltr">${esc(w.textContent)}</b><span>${esc(w.dataset.ar)}</span>`; vtip.classList.add('on'); w.classList.add('hl');
       const r = w.getBoundingClientRect(); const tw = Math.min(260, window.innerWidth - 16); vtip.style.width = tw + 'px';
@@ -631,13 +651,21 @@
   // ---------- 👑 لوحة المشرف ----------
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI';
   const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
-  let ADM = { list: null, q: '', f: 'all' };
+  let ADM = { list: null, q: '', f: 'all', role: '', staff: null };
+  const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
+  function admTop(tab) {
+    return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a><a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+  }
+  async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
   async function renderAdmin() {
-    document.title = 'لوحة المشرف | Q-Guide';
-    app.innerHTML = topbar(`<span class="ttl">👑 لوحة المشرف</span><span class="sp"></span><a class="chip" style="text-decoration:none" href="${SHEET_URL}" target="_blank" rel="noopener">📊 الشيت</a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap" id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>`;
-    bindCtl(); $('#admref').onclick = () => { ADM.list = null; renderAdmin(); };
-    try { if (!ADM.list) ADM.list = (await admCall({ op: 'adm_students' })).students; } catch (e) { $('#adm').innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    document.title = 'لوحة الإدارة | Q-Guide';
+    app.innerHTML = admTop('students');
+    bindCtl(); $('#admref').onclick = () => { ADM.list = null; ADM.staff = null; renderAdmin(); };
+    try { const [st] = await Promise.all([ADM.list ? null : admCall({ op: 'adm_students' }), admLoadStaff()]); if (st) ADM.list = st.students; } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin') return;
+    app.innerHTML = admTop('students'); bindCtl(); $('#admref').onclick = () => { ADM.list = null; ADM.staff = null; renderAdmin(); };
     paintAdmin();
   }
   function paintAdmin() {
@@ -650,7 +678,7 @@
     W.innerHTML = `<div class="astats"><div><b>${stats.n}</b><span>طالب مشترك</span></div><div><b>${stats.today}</b><span>دخل آخر 24 ساعة</span></div><div><b>${stats.never}</b><span>لم يدخل الموقع</span></div><div class="bad"><b>${stats.banned}</b><span>محظور</span></div></div>
       <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل'], ['banned', 'محظور']].map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
       <div class="atable"><div class="arow head"><span class="c-st">الطالب</span><span class="c-ph">الجوال</span><span class="c-n">الأقسام</span><span class="c-n">المحاكي</span><span class="c-dt">آخر دخول</span><span class="c-act">إجراءات</span></div>
-      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small></span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span><span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span></div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
+      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small></span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span><span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span></div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
       <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. لإضافة طالب أو تعديل بياناته استخدم الشيت.</p>`;
     $('#aq').oninput = e => { ADM.q = e.target.value; const pos = e.target.selectionStart; paintAdmin(); const i = $('#aq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { ADM.f = b.dataset.f; paintAdmin(); });
@@ -694,6 +722,42 @@
     const ub = m.querySelector('#a_unban'); if (ub) ub.onclick = () => { m.remove(); admUnban(email); };
     const rr = m.querySelector('#a_rr'); if (rr) rr.onclick = async () => { if (!await QGDlg.confirm('حذف كل نتائج الأقسام لهذا الطالب؟ (تؤثر على لوحة الصدارة)', { danger: true })) return; try { await admCall({ op: 'adm_reset_results', email }); toast('تم'); again(); } catch (e) { toast(e.message); } };
     m.querySelectorAll('[data-rx]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('حذف كل محاولات ' + b.dataset.rx + ' لهذا الطالب ليبدأه من جديد؟', { danger: true })) return; try { await admCall({ op: 'adm_reset_exam', email, test: b.dataset.rx }); toast('تم'); again(); } catch (e) { toast(e.message); } });
+    if (ADM.role === 'viewer') m.querySelectorAll('#a_name,#a_av,#a_kick,#a_ban,#a_unban,#a_rr,[data-rx]').forEach(x => x.remove());
+  }
+  // ---------- 🛡 المشرفون ----------
+  async function renderStaff() {
+    document.title = 'المشرفون | Q-Guide';
+    app.innerHTML = admTop('staff'); bindCtl(); $('#admref').onclick = () => { ADM.staff = null; renderStaff(); };
+    try { await admLoadStaff(); } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-staff') return;
+    app.innerHTML = admTop('staff'); bindCtl(); $('#admref').onclick = () => { ADM.staff = null; renderStaff(); };
+    paintStaff();
+  }
+  function paintStaff() {
+    const W = $('#adm'); if (!W) return; const S = ADM.staff; const owner = ADM.role === 'owner';
+    const row = (x) => `<div class="srow ${x.role}"><span class="c-st">${avatarHtml(x.avatar, x.display || x.name || x.email, 40)}<span class="who"><b>${esc(x.name || x.display || x.email.split('@')[0])}${x.email === S.me ? ' <span class="bdg on">أنت</span>' : ''}</b><small class="ltr">${esc(x.email)}</small>${x.note ? `<small class="note">📝 ${esc(x.note)}</small>` : ''}</span></span>
+      <span class="rl"><span class="rbdg ${x.role}">${ROLE_T[x.role]}</span></span>
+      <span class="meta"><small>آخر دخول: <b>${x.lastLogin ? fmtD(x.lastLogin) : 'لم يدخل بعد'}</b></small>${x.added_by ? `<small>أضافه ${esc(x.added_by.split('@')[0])} · ${fmtD(x.added_at)}</small>` : ''}</span>
+      <span class="c-act">${owner && x.role !== 'owner' ? `<select data-role="${esc(x.email)}" title="تغيير الصلاحية"><option value="admin" ${x.role === 'admin' ? 'selected' : ''}>🛡 مشرف كامل</option><option value="viewer" ${x.role === 'viewer' ? 'selected' : ''}>👁 متابعة فقط</option></select><button class="btn sm danger" data-rm="${esc(x.email)}">حذف</button>` : x.role === 'owner' ? '<small class="mut">لا يُحذف</small>' : ''}</span></div>`;
+    W.innerHTML = `<div class="stf">
+      <div class="sintro"><div><b>👑 مالك</b><span>كل الصلاحيات + إضافة المشرفين وحذفهم. (إيميلات الشيت الأساسية)</span></div><div><b>🛡 مشرف كامل</b><span>يشوف كل الطلاب ونتائجهم ومهاراتهم، ويحظر ويطرد ويصفّر النتائج ويعدّل الأسماء والصور.</span></div><div><b>👁 متابعة فقط</b><span>يشوف الطلاب ونتائجهم ومهاراتهم بدون أي تعديل — مناسب للمرشد الأكاديمي.</span></div></div>
+      ${owner ? `<form class="sadd" id="sadd" autocomplete="off"><h3>➕ إضافة مشرف جديد</h3>
+        <div class="sgrid"><label><span>إيميل Google للمشرف *</span><input id="s_em" type="email" class="ltr" placeholder="name@gmail.com" required></label><label><span>الاسم</span><input id="s_nm" placeholder="مثال: سلمان الفرج"></label><label class="wide"><span>ملاحظة (اختياري)</span><input id="s_nt" placeholder="مثال: مرشد الطلاب · مرشدة الطالبات · مدرّس الكمي"></label></div>
+        <div class="sroles"><label class="ropt"><input type="radio" name="s_rl" value="admin" checked><span><b>🛡 مشرف كامل</b><small>يقدر يحظر ويطرد ويصفّر</small></span></label><label class="ropt"><input type="radio" name="s_rl" value="viewer"><span><b>👁 متابعة فقط</b><small>عرض بدون تعديل</small></span></label></div>
+        <div class="acts"><button class="btn gold" type="submit" id="s_go">إضافة المشرف</button><span class="mut" style="font-size:13px">يدخل الموقع بنفس إيميل Google ويظهر له زر 👑 الإدارة خلال دقيقة. المشرفون ما يظهرون في لوحة الصدارة.</span></div></form>`
+        : `<div class="sum" style="padding:12px 16px">🔒 إضافة المشرفين وحذفهم متاحة للمالك فقط.</div>`}
+      <h3 class="sh">👑 المالكون <small>${S.owners.length}</small></h3><div class="slist">${S.owners.map(row).join('')}</div>
+      <h3 class="sh">🛡 المشرفون <small>${S.staff.length}</small></h3><div class="slist">${S.staff.length ? S.staff.map(row).join('') : `<div class="sempty">ما فيه مشرفين مضافين بعد${owner ? ' — أضف أول مشرف من النموذج فوق.' : '.'}</div>`}</div></div>`;
+    const f = $('#sadd'); if (f) f.onsubmit = async e => {
+      e.preventDefault(); const em = $('#s_em').value.trim().toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('اكتب إيميل صحيح'); return; }
+      const role = (f.querySelector('input[name=s_rl]:checked') || {}).value || 'admin';
+      if (!await QGDlg.confirm(`إضافة ${em} بصلاحية «${ROLE_T[role]}»؟`, { ok: 'إضافة' })) return;
+      const b = $('#s_go'); b.disabled = true; b.textContent = 'جارٍ الإضافة…';
+      try { await admCall({ op: 'adm_staff_add', email: em, name: $('#s_nm').value.trim(), note: $('#s_nt').value.trim(), role }); toast('تمت إضافة المشرف ✓'); await admLoadStaff(true); renderStaff(); }
+      catch (err) { toast(err.message); b.disabled = false; b.textContent = 'إضافة المشرف'; }
+    };
+    W.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { const em = b.dataset.rm; if (!await QGDlg.confirm('حذف صلاحية الإشراف من ' + em + '؟ تنتهي جلسته في لوحة الإدارة فوراً.', { ok: 'حذف', danger: true })) return; try { await admCall({ op: 'adm_staff_remove', email: em }); toast('تم الحذف'); await admLoadStaff(true); renderStaff(); } catch (e) { toast(e.message); } });
+    W.querySelectorAll('[data-role]').forEach(sel => sel.onchange = async () => { const em = sel.dataset.role; const x = S.staff.find(y => y.email === em) || {}; try { await admCall({ op: 'adm_staff_add', email: em, name: x.name || '', note: x.note || '', role: sel.value }); toast('تم تغيير الصلاحية ✓'); await admLoadStaff(true); paintStaff(); } catch (e) { toast(e.message); } });
   }
 
   // ---------- 📅 خطة المذاكرة ----------

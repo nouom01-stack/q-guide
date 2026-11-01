@@ -64,7 +64,7 @@
     try {
       const r = await api({ op: 'login', idToken: resp.credential, ua: navigator.userAgent.slice(0, 120) });
       if (!r.ok) return renderLogin(esc(r.msg || 'تعذّر تسجيل الدخول.') + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
-      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', files: r.files || {}, display: r.display || r.name, avatar: r.avatar || '' };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || {}, display: r.display || r.name, avatar: r.avatar || '' };
       lsSet(LS.auth, auth); route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم، حاول مرة أخرى.'); }
   }
