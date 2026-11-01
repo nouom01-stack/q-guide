@@ -130,3 +130,5 @@ h1{margin:0 0 6px;font-size:calc(24px * var(--fs))}h2{margin:0 0 10px;font-size:
 
 .hdr .wa{display:inline-flex;align-items:center;gap:5px;background:#1FA855;color:#fff;text-decoration:none;font-weight:700;font-size:calc(13px * var(--fs));padding:5px 10px;border-radius:6px;margin-inline-end:8px}
 @media (max-width:860px){.hdr .wa span{display:none}}
+/* v4: ترجمة السؤال في المراجعة */
+.rv .ex.tr{margin-top:6px;background:#EEF4FF}.rv .ex.tr .tro{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px;margin-top:6px}.rv .ex.tr .tro span{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.7)}.rv .ex.tr .tro span.k{background:#DDF5E8;font-weight:700}

@@ -59,10 +59,11 @@
       const k = id[0]; let got = 0; const el = () => document.getElementById('ldmsg');
       const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const m = el(); if (m) m.textContent = 'تحميل الأسئلة… ' + got + ' / 14'; return p; })));
       let obj;
-      if (k === 'q') obj = { kind: 'quant', id: 'qall', title: 'الاختبار الشامل — الكمي', sub: 'All 14 sections', items: [].concat(...parts.map(p => p.items.map(it => Object.assign({}, it, { src: p.id })))) };
-      else obj = { kind: 'verbal', id: 'vall', title: 'الاختبار الشامل — اللفظي', sub: 'All 14 models', groups: [].concat(...parts.map(p => p.groups.map(g => Object.assign({}, g, { title: (g.kind === 'part' ? p.title + ' · ' : '') + g.title, src: p.id })))) };
+      if (k === 'q') obj = { kind: 'quant', id: 'qall', title: 'الاختبار الشامل — الكمي', sub: 'All 14 sections', items: [].concat(...parts.map(p => p.items.map((it, j) => Object.assign({}, it, { src: p.id, sidx: j })))) };
+      else obj = { kind: 'verbal', id: 'vall', title: 'الاختبار الشامل — اللفظي', sub: 'All 14 models', groups: [].concat(...parts.map(p => originGroups(p))) };
       cache[id] = obj; return obj;
     }
+    if (/^t-/.test(id)) return loadTopicSet(id);
     const r = await fetch('/p/data/' + id + '.bin', { cache: 'force-cache' });
     if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
@@ -79,6 +80,60 @@
     if (set.kind === 'quant') return set.items.map((it, i) => ({ it, gi: 0, idx: i }));
     const out = []; set.groups.forEach((g, gi) => g.items.forEach(it => out.push({ it: g.src ? Object.assign({}, it, { src: g.src }) : it, gi, idx: out.length })));
     return out;
+  }
+  // أصل كل سؤال (النموذج + ترتيبه فيه) حتى يُسجَّل في سجل المهارات مهما كان الاختبار الذي ظهر فيه
+  function originGroups(p) { let j = 0; return p.groups.map(g => Object.assign({}, g, { title: (g.kind === 'part' ? p.title + ' · ' : '') + g.title, src: p.id, items: g.items.map(it => Object.assign({}, it, { src: p.id, sidx: j++ })) })); }
+  // ---------- 🎯 المهارات: المواضيع + سجل الإجابات ----------
+  const TOPICS = { ana: { t: 'التناظر اللفظي', k: 'verbal', i: '🔗' }, sen: { t: 'إكمال الجمل', k: 'verbal', i: '✍️' }, err: { t: 'الخطأ السياقي', k: 'verbal', i: '🔍' }, read: { t: 'استيعاب المقروء', k: 'verbal', i: '📄' },
+    arith: { t: 'الحساب والأعداد', k: 'quant', i: '🔢' }, alg: { t: 'الجبر والمعادلات', k: 'quant', i: '𝑥' }, geo: { t: 'الهندسة', k: 'quant', i: '📐' }, stat: { t: 'الإحصاء والاحتمالات', k: 'quant', i: '📊' }, cmp: { t: 'أسئلة المقارنة', k: 'quant', i: '⚖️' } };
+  const TOPIC_ORDER = ['ana', 'sen', 'err', 'read', 'arith', 'alg', 'geo', 'stat', 'cmp'];
+  function itemTopics(it) { const t = []; if (it.topic) t.push(it.topic); if (it.cmp) t.push('cmp'); return t; }
+  const HIST_LS = 'qg_hist';
+  function histGet() { return lsGet(HIST_LS, { v: 1, items: {}, mig: 0, up: 0 }); }
+  function histSet(h) { h.up = Date.now(); lsSet(HIST_LS, h); }
+  function histMark(h, src, sidx, correct, topics) {
+    const m = h.items[src] || (h.items[src] = {}); const e = m[sidx] || [0, 0, 1, ''];
+    if (correct) e[1]++; else e[0]++; e[2] = correct ? 1 : 0; e[3] = topics.join(','); m[sidx] = e;
+  }
+  // تجميع السجل حسب الموضوع: {topic:{w,r,n}}
+  function histAgg(h) {
+    const agg = {}; TOPIC_ORDER.forEach(t => agg[t] = { w: 0, r: 0, items: 0, wrongNow: 0 });
+    for (const src in h.items) for (const i in h.items[src]) { const e = h.items[src][i]; (e[3] || '').split(',').filter(Boolean).forEach(t => { const a = agg[t]; if (!a) return; a.w += e[0]; a.r += e[1]; a.items++; if (!e[2]) a.wrongNow++; }); }
+    return agg;
+  }
+  // ترحيل الإجابات القديمة (قبل وجود السجل) من تقدّم الأقسام المحفوظ على الجهاز
+  async function histMigrate(onmsg) {
+    const h = histGet(); if (h.mig) return h;
+    const ids = []; for (let i = 1; i <= 14; i++) ids.push('q' + i, 'v' + i);
+    const any = ids.concat(['qall', 'vall']).some(id => Object.keys(progGet(id).a).length);
+    if (any) {
+      let got = 0; for (const id of ids) { try { await loadSet(id); } catch (e) {} got++; if (onmsg) onmsg('قراءة إجاباتك السابقة… ' + got + ' / ' + ids.length); }
+      const fold = (id) => { const set = cache[id]; if (!set) return; const items = flatItems(set); const pr = progGet(id); items.forEach((x, i) => { const a = pr.a[i]; if (!a) return; const src = x.it.src || id, sidx = x.it.sidx != null ? x.it.sidx : i; histMark(h, src, sidx, !!a.c, itemTopics(x.it)); }); };
+      ids.forEach(fold); try { await loadSet('qall'); await loadSet('vall'); fold('qall'); fold('vall'); } catch (e) {}
+    }
+    h.mig = 1; histSet(h); return h;
+  }
+  // مزامنة السجل مع الخادم (حتى تبقى نقاط القوة والضعف عند تغيير الجهاز)
+  let skillsT = 0, skillsSyncing = false;
+  function histMergeInto(h, remote) { if (!remote || !remote.items) return h; for (const src in remote.items) { const m = h.items[src] || (h.items[src] = {}); for (const i in remote.items[src]) { const r = remote.items[src][i], l = m[i]; if (!l || (r[0] + r[1]) > (l[0] + l[1])) m[i] = r; } } return h; }
+  async function skillsPull() { if (!auth) return histGet(); try { const r = await api({ op: 'skills_get', session: auth.session }); if (r.ok && r.data) { const h = histMergeInto(histGet(), JSON.parse(r.data)); histSet(h); return h; } } catch (e) {} return histGet(); }
+  function skillsPushSoon(ms) { clearTimeout(skillsT); skillsT = setTimeout(skillsPush, ms || 6000); }
+  async function skillsPush() { if (!auth || skillsSyncing) return; skillsSyncing = true; try { const h = histGet(); await api({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: h.items }) }); } catch (e) {} finally { skillsSyncing = false; } }
+  window.addEventListener('pagehide', () => { if (skillsT) { clearTimeout(skillsT); skillsT = 0; try { navigator.sendBeacon && auth && navigator.sendBeacon(window.QG.API, new Blob([JSON.stringify({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: histGet().items }) })], { type: 'text/plain' })); } catch (e) {} } });
+  // مجموعات التدريب الموجّه: t-<موضوع> أو t-wrong-q / t-wrong-v
+  async function loadTopicSet(id) {
+    const m = id.match(/^t-(wrong-([qv])|([a-z]+))$/); if (!m) throw new Error('bad set');
+    const topic = m[3], kind = m[2] ? (m[2] === 'q' ? 'quant' : 'verbal') : (TOPICS[topic] || {}).k; if (!kind) throw new Error('bad set');
+    const k = kind === 'quant' ? 'q' : 'v'; let got = 0; const el = () => document.getElementById('ldmsg');
+    const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const e = el(); if (e) e.textContent = 'تجهيز الأسئلة… ' + got + ' / 14'; return p; })));
+    const h = histGet();
+    const keep = (it, src, sidx) => m[2] ? (h.items[src] && h.items[src][sidx] && !h.items[src][sidx][2]) : itemTopics(it).indexOf(topic) >= 0;
+    const title = m[2] ? ('🔁 مراجعة أخطائي — ' + (kind === 'quant' ? 'الكمي' : 'اللفظي')) : (TOPICS[topic].i + ' تدريب: ' + TOPICS[topic].t);
+    let obj;
+    if (kind === 'quant') obj = { kind, id, title, sub: m[2] ? 'My mistakes' : 'Topic practice', items: [].concat(...parts.map(p => p.items.map((it, j) => Object.assign({}, it, { src: p.id, sidx: j })).filter(it => keep(it, p.id, it.sidx)))) };
+    else obj = { kind, id, title, sub: m[2] ? 'My mistakes' : 'Topic practice', groups: [].concat(...parts.map(p => originGroups(p).map(g => Object.assign({}, g, { items: g.items.filter(it => keep(it, p.id, it.sidx)) })).filter(g => g.items.length))) };
+    obj.topicSet = true; if (!m[2]) cache[id] = obj;   // مراجعة الأخطاء تتغيّر مع كل إجابة فلا تُخزَّن
+    return obj;
   }
   function logout(msg, tellServer) {
     if (tellServer && auth && auth.session) { try { api({ op: 'logout', session: auth.session }); } catch (e) {} }
@@ -103,6 +158,7 @@
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
     if (!auth) return renderLogin();
     heartbeat();
+    if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
     if (/^[qv]\d+$/.test(h)) return renderPlayer(h);
     if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
@@ -110,6 +166,9 @@
     if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
     if (h === 'qall' || h === 'vall') return renderPlayer(h);
     if (h === 'plan') return renderPlan();
+    if (/^t-[a-z-]+$/.test(h)) return renderPlayer(h);
+    if (h === 'skills') return renderSkills();
+    if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'admin') { if (auth.role === 'admin') return renderAdmin(); location.hash = ''; return; }
     renderHome();
   }
@@ -170,7 +229,7 @@
     const first = (auth.name || '').trim().split(/\s+/)[0] || '';
     const hi = auth.gender === 'طالبة' ? 'أهلاً' : 'أهلاً';
     const adminLinks = auth.role === 'admin' ? `<a class="chip" style="text-decoration:none;background:var(--gold);color:#1a1a1a;font-weight:700" href="#admin" title="لوحة المشرف: الطلاب، الحظر، النتائج">👑 الإدارة</a>` : '';
-    app.innerHTML = topbar(`<span class="sp"></span><a class="ib" href="#board" title="لوحة الصدارة">🏆</a>${adminLinks}<button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
+    app.innerHTML = topbar(`<span class="sp"></span><a class="ib" href="#board" title="لوحة الصدارة">🏆</a><a class="ib" href="#skills" title="نقاط القوة والضعف">🎯</a>${adminLinks}<button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib" id="lo" title="تسجيل الخروج">⎋</button>`) +
     `<main class="wrap">
       <div class="hero"><div><h1>${hi} ${esc(first)} 👋</h1><p>تدرّب قسماً قسماً: كل سؤال مع شرحه بعد الإجابة مباشرة، وتقدّمك محفوظ.</p></div>
       <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
@@ -181,6 +240,11 @@
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>
       <h2 class="h2">🧪 الاختبارات المحاكية</h2>
       <a class="mock" href="/test/"><span><b>17 اختباراً محاكياً لقياس</b><br><span class="mut">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · نفس شكل الاختبار المحوسب</span></span><span class="btn">ادخل ←</span></a>
+      <h2 class="h2">🎯 تدريب ذكي</h2>
+      <div class="wb two">
+        <a class="mock sk" href="#skills"><span><b>نقاط قوتك وضعفك</b><br><span class="mut">تحليل إجاباتك حسب الموضوع (تناظر، إكمال، هندسة، جبر…) مع تدريب موجّه على ما تخطئ فيه</span></span><span class="btn">افتح ←</span></a>
+        <a class="mock vc" href="#vocab"><span><b>قاموس الكلمات 📖</b><br><span class="mut">ترجمة كل كلمة جديدة في النماذج اللفظية · قابل للطباعة · وترجمة كل سؤال تظهر مع الشرح</span></span><span class="btn">افتح ←</span></a>
+      </div>
       <h2 class="h2">📅 خطة المذاكرة</h2>
       <a class="mock plan" href="#plan" id="plancard"><span><b>جدول مذاكرتك اليومي</b><br><span class="mut">اختر الخطة اللي تناسب وقتك (7 / 14 / 19 / 28 يوماً) وعلّم ✓ على كل يوم تنجزه</span></span><span class="btn">افتح ←</span></a>
     </main>`;
@@ -286,7 +350,9 @@
   async function renderPlayer(id) {
     app.innerHTML = topbar(`<span class="ttl">جارٍ التحميل…</span>`, `<a class="ib" href="#" title="رجوع">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>';
     let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + '<div class="center">تعذّر فتح الأسئلة (' + esc(e.message) + '). <a href="#">رجوع</a></div>'; return; }
+    if (set.kind === 'verbal') await loadVocab();
     const items = flatItems(set); const prog = progGet(id);
+    if (!items.length) { app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, `<a class="ib" href="#skills" title="رجوع">→</a>`) + `<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`; bindCtl(); return; }
     if (!prog.started) prog.started = Date.now();
     let cur = items.findIndex((x, i) => !prog.a[i]); if (cur < 0) cur = Math.min(prog.last || 0, items.length - 1);   // أول سؤال بدون إجابة
     P = { id, set, items, prog, cur, t0: Date.now(), passOpen: {}, sel: null };
@@ -324,13 +390,13 @@
       else {
         const open = P.passOpen[gi] != null ? P.passOpen[gi] : true;
         html += `<div class="ghd">Passage ${g.num}: ${esc(g.title)} <small>— استيعاب المقروء</small></div>
-        <div class="pass ${open ? '' : 'closed'}" id="pass"><div class="ph" id="ph"><span>📄 القطعة <span class="ar">اضغط للإخفاء/الإظهار</span></span><span id="pch">${open ? '▲' : '▼'}</span></div><div class="pb">${esc(g.passage)}</div></div>`;
+        <div class="pass ${open ? '' : 'closed'}" id="pass"><div class="ph" id="ph"><span>📄 القطعة <span class="ar">اضغط للإخفاء/الإظهار</span></span><span id="pch">${open ? '▲' : '▼'}</span></div><div class="pb">${wordsHtml(g.passage)}</div>${vocabChips(g.passage, 120) ? `<details class="tr vocab pw"><summary>📖 كلمات القطعة <small>(اضغط على أي كلمة في القطعة لترجمتها)</small></summary><div class="vcs">${vocabChips(g.passage, 120)}</div></details>` : ''}</div>`;
       }
     }
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
     html += `<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${items.length}</small></span><span class="tag ltr">${tag}</span></div>`;
     if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">`;
-    else html += `<p class="txt ltr">${esc(it.q)}</p>`;
+    else html += `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
     const two = set.kind === 'quant' || it.opts.every(o => o.length <= 28);
     html += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => {
       const lab = set.kind === 'quant' && /^[A-D]\)\s/.test(o) ? o.replace(/^[A-D]\)\s*/, '') : o;
@@ -342,6 +408,7 @@
       ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : 'النتيجة 🏁'}</button>` : `<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
       <div class="kbd" style="margin-top:8px">${a ? 'Enter للتالي' : 'اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد'}</div></div>`;
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' });
+    bindWords();
     const ph = $('#ph'); if (ph) ph.onclick = () => { const p = $('#pass'); p.classList.toggle('closed'); P.passOpen[gi] = !p.classList.contains('closed'); $('#pch').textContent = P.passOpen[gi] ? '▲' : '▼'; };
     document.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (P.prog.a[i]) return; P.sel = +b.dataset.k; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', +x.dataset.k === P.sel)); const c = $('#confirm'); if (c) c.disabled = false; });
     $('#prev').onclick = () => showQ(i - 1);
@@ -352,11 +419,21 @@
     const ok = a.s === it.ans; const corr = it.opts[it.ans];
     return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? '✅ إجابة صحيحة، أحسنت!' : '❌ إجابة خاطئة'}</div>
       ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
-      ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}</div>`;
+      ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}
+      ${P && P.set.kind === 'verbal' ? trHtml(it) : ''}</div>`;
+  }
+  // 🇸🇦 ترجمة السؤال والخيارات + كلمات السؤال
+  function trHtml(it) {
+    const ar = it.ar; let h = '';
+    if (ar && ar.q) h += `<details class="tr" open><summary>🇸🇦 ترجمة السؤال</summary><div class="trq">${esc(ar.q)}</div><ol class="tro">${it.opts.map((o, k) => `<li class="${k === it.ans ? 'ok' : ''}"><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o)}</span><span class="arr">${esc((ar.o || [])[k] || '')}</span></li>`).join('')}</ol></details>`;
+    const chips = vocabChips(it.q + ' ' + it.opts.join(' '), 40);
+    if (chips) h += `<details class="tr vocab" open><summary>📖 كلمات السؤال <small>(اضغط على أي كلمة في السؤال لترجمتها)</small></summary><div class="vcs">${chips}</div></details>`;
+    return h;
   }
   function answer(i, k) {
     const { it } = P.items[i]; if (P.prog.a[i]) return;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: Date.now() }; progSet(P.id, P.prog);
+    try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
     document.querySelectorAll('.opt').forEach(b => { b.disabled = true; const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
     $('#fb').innerHTML = feedback(it, P.prog.a[i]);
     const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${(i + 1 < P.items.length) ? 'التالي ←' : 'النتيجة 🏁'}</button>`; $('#next').onclick = () => { if (i + 1 < P.items.length) showQ(i + 1); else finish(); }; }
@@ -382,13 +459,15 @@
       <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
       <p style="color:var(--mut);margin:0">${esc(set.title)} · ${esc(set.sub)}</p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b>${Math.max(1, Math.round(secs / 60))}</b><span>دقيقة</span></div></div>
-      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#">الرئيسية</a></div>
+      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#skills">🎯 نقاط قوتي وضعفي</a><a class="btn ghost" href="#">الرئيسية</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
     const rv = $('#rev'); if (rv) rv.onclick = () => { document.onkeydown = onKey; showQ(wrong[0]); };
     document.querySelectorAll('.wl button').forEach(b => b.onclick = () => { document.onkeydown = onKey; showQ(+b.dataset.i); });
     window.scrollTo(0, 0);
+    skillsPushSoon(1500);
+    if (set.topicSet) { $('#saved').textContent = 'تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'; return; }
     try {
       if (set.id === 'qall' || set.id === 'vall') {   // نتائج كل قسم/نموذج على حدة (للوحة الصدارة) + ملخص
         const per = {}; items.forEach((x, i) => { const k = x.it.src || set.id; const o = per[k] || (per[k] = { n: 0, c: 0 }); o.n++; if (prog.a[i] && prog.a[i].c) o.c++; });
@@ -401,6 +480,109 @@
     } catch (e) { $('#saved').textContent = ''; }
   }
 
+  // ---------- 📖 القاموس: تحميل + بحث عن الكلمة ----------
+  let VOC = null, vocP = null;
+  const STOP = new Set('the a an of to in is are and or but for with on at by it that this as be was were has have had not from they their he she his her we you i our your which who what when where than then there these those its into also can will would could should may might do does did so if no yes all any more most some such very one two three four five six seven eight nine ten each other another both either neither about after before between during through over under up down out off again further once here why how am been being because until while my me him them us whom whose'.split(' '));
+  function loadVocab() { if (VOC) return Promise.resolve(VOC); if (vocP) return vocP; vocP = fetch('/p/data/vocab.json', { cache: 'force-cache' }).then(r => r.json()).then(j => (VOC = j)).catch(() => (VOC = {})); return vocP; }
+  function vocLook(w) {
+    if (!VOC) return ''; w = (w || '').toLowerCase().replace(/^[^a-z']+|[^a-z']+$/g, '').replace(/'s$/, ''); if (!w || w.length < 2) return '';
+    if (VOC[w]) return VOC[w];
+    const tries = [];
+    if (/ies$/.test(w)) tries.push(w.slice(0, -3) + 'y'); if (/ied$/.test(w)) tries.push(w.slice(0, -3) + 'y'); if (/es$/.test(w)) tries.push(w.slice(0, -2)); if (/s$/.test(w)) tries.push(w.slice(0, -1));
+    if (/ed$/.test(w)) tries.push(w.slice(0, -2), w.slice(0, -1)); if (/ing$/.test(w)) tries.push(w.slice(0, -3), w.slice(0, -3) + 'e'); if (/ly$/.test(w)) tries.push(w.slice(0, -2)); if (/er$/.test(w)) tries.push(w.slice(0, -2), w.slice(0, -1)); if (/est$/.test(w)) tries.push(w.slice(0, -3), w.slice(0, -2));
+    if (/(.)\1(ed|ing)$/.test(w)) tries.push(w.replace(/(.)\1(ed|ing)$/, '$1'));
+    for (const t of tries) if (t.length > 1 && VOC[t]) return VOC[t];
+    return '';
+  }
+  // يلفّ الكلمات التي لها ترجمة بعنصر قابل للضغط
+  function wordsHtml(text) {
+    if (!VOC) return esc(text);
+    return (text || '').split(/([A-Za-z][A-Za-z'’]*)/).map((w, i) => { if (!(i % 2)) return esc(w); if (STOP.has(w.toLowerCase())) return esc(w); const ar = vocLook(w.replace(/’/g, "'")); return ar ? `<span class="w" data-ar="${esc(ar)}">${esc(w)}</span>` : esc(w); }).join('');
+  }
+  function vocabChips(text, max) {
+    if (!VOC) return ''; const seen = new Set(); const out = [];
+    for (const m of (text || '').matchAll(/[A-Za-z][A-Za-z'’]*/g)) { const w = m[0].toLowerCase().replace(/’/g, "'").replace(/'s$/, ''); if (seen.has(w) || STOP.has(w) || w.length < 3) continue; const ar = vocLook(w); if (!ar) continue; seen.add(w); out.push(`<span class="vc"><b>${esc(w)}</b><span>${esc(ar)}</span></span>`); if (out.length >= (max || 40)) break; }
+    return out.join('');
+  }
+  let vtip = null;
+  function bindWords() {
+    if (bindWords.done) return; bindWords.done = true;
+    document.addEventListener('click', e => {
+      const w = e.target.closest('.w'); if (!vtip) { vtip = document.createElement('div'); vtip.className = 'vtip'; document.body.appendChild(vtip); }
+      document.querySelectorAll('.w.hl').forEach(x => x.classList.remove('hl'));
+      if (!w) { vtip.classList.remove('on'); return; }
+      vtip.innerHTML = `<b class="ltr">${esc(w.textContent)}</b><span>${esc(w.dataset.ar)}</span>`; vtip.classList.add('on'); w.classList.add('hl');
+      const r = w.getBoundingClientRect(); const tw = Math.min(260, window.innerWidth - 16); vtip.style.width = tw + 'px';
+      vtip.style.left = Math.max(8, Math.min(window.innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)) + 'px';
+      const th = vtip.offsetHeight || 60; vtip.style.top = (r.top + window.scrollY - th - 8 > window.scrollY ? r.top + window.scrollY - th - 8 : r.bottom + window.scrollY + 8) + 'px';
+    });
+  }
+  // ---------- 🎯 صفحة نقاط القوة والضعف ----------
+  function lvl(p, n) { if (n < 3) return { c: 'na', t: 'بحاجة لمزيد من الأسئلة' }; if (p >= 80) return { c: 'ok', t: 'قوي 💪' }; if (p >= 60) return { c: 'mid', t: 'متوسط' }; return { c: 'bad', t: 'يحتاج تركيز 🎯' }; }
+  function skillsBarsHtml(agg, compact) {
+    if (!agg) return compact ? '<h4>🎯 المهارات</h4><div class="mut" style="margin-bottom:8px">لا يوجد سجل بعد</div>' : '';
+    const rows = TOPIC_ORDER.filter(t => agg[t] && (agg[t].w + agg[t].r)).map(t => { const a = agg[t], n = a.w + a.r, p = Math.round(a.r * 100 / n), L = lvl(p, n); return `<div class="skrow ${L.c}"><span class="ic">${TOPICS[t].i}</span><span class="nm">${TOPICS[t].t}<small>${TOPICS[t].k === 'quant' ? 'الكمي' : 'اللفظي'} · ${n} إجابة · ${a.wrongNow} خطأ حالي</small></span><span class="bar"><i style="width:${p}%"></i></span><b class="pct">${p}%</b><span class="lv">${L.t}</span>${compact ? '' : `<a class="btn sm ${L.c === 'bad' ? 'gold' : 'ghost'}" href="#t-${t}">تدرّب</a>`}</div>`; }).join('');
+    return (compact ? '<h4>🎯 المهارات (من سجل الطالب)</h4>' : '') + (rows ? `<div class="sk">${rows}</div>` : `<div class="mut">${compact ? 'لا يوجد سجل بعد' : ''}</div>`);
+  }
+  async function renderSkills() {
+    document.title = 'نقاط القوة والضعف | Q-Guide';
+    app.innerHTML = topbar(`<span class="ttl">🎯 نقاط القوة والضعف</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحليل إجاباتك…</span></div>';
+    bindCtl();
+    if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) {} }
+    let h = await histMigrate(m => { const e = $('#ldmsg'); if (e) e.textContent = m; });
+    h = await skillsPull();
+    const agg = histAgg(h); const tot = (manifest && manifest.topics) || {};
+    const done = TOPIC_ORDER.filter(t => agg[t].w + agg[t].r);
+    const weak = done.map(t => ({ t, n: agg[t].w + agg[t].r, p: Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)) })).filter(x => x.n >= 3 && x.p < 80).sort((a, b) => a.p - b.p).slice(0, 3);
+    const strong = done.map(t => ({ t, n: agg[t].w + agg[t].r, p: Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)) })).filter(x => x.n >= 3 && x.p >= 80).sort((a, b) => b.p - a.p).slice(0, 3);
+    const wrongQ = Object.keys(h.items).filter(k => k[0] === 'q').reduce((a, k) => a + Object.values(h.items[k]).filter(e => !e[2]).length, 0);
+    const wrongV = Object.keys(h.items).filter(k => k[0] === 'v').reduce((a, k) => a + Object.values(h.items[k]).filter(e => !e[2]).length, 0);
+    const total = done.reduce((a, t) => a + agg[t].w + agg[t].r, 0);
+    const card = (t) => `<a class="tcard ${TOPICS[t].k}" href="#t-${t}"><span class="ic">${TOPICS[t].i}</span><b>${TOPICS[t].t}</b><small>${tot[t] || '—'} سؤال · ${TOPICS[t].k === 'quant' ? 'الكمي' : 'اللفظي'}</small>${agg[t].w + agg[t].r ? `<span class="mini ${lvl(Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)), agg[t].w + agg[t].r).c}">${Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r))}%</span>` : ''}</a>`;
+    app.innerHTML = topbar(`<span class="ttl">🎯 نقاط القوة والضعف</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap skills">
+      <div class="hero sk"><div><h1>تحليل مهاراتك</h1><p>${total ? `حلّلنا <b>${total}</b> إجابة من كل اختباراتك (الأقسام، الشامل، التدريب الموجّه). كل ما حليت أكثر صار التحليل أدق.` : 'ابدأ بحل أي قسم من الكمي أو اللفظي، وبعدها تظهر لك هنا المواضيع اللي تقوى فيها واللي تحتاج تركيز.'}</p></div></div>
+      ${weak.length ? `<h2 class="h2">🎯 ركّز على هذي المواضيع</h2><div class="focus">${weak.map(x => `<a class="fc bad" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة · ${agg[x.t].wrongNow} سؤال خطأ حالياً</small></span><span class="btn sm gold">تدرّب الآن</span></a>`).join('')}</div>` : ''}
+      ${strong.length ? `<h2 class="h2">💪 نقاط قوتك</h2><div class="focus">${strong.map(x => `<a class="fc ok" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة</small></span><span class="btn sm ghost">حافظ عليها</span></a>`).join('')}</div>` : ''}
+      <h2 class="h2">🔁 مراجعة أخطائي</h2>
+      <div class="wb two">
+        <a class="mock ${wrongQ ? '' : 'dim'}" href="#t-wrong-q"><span><b>📐 أخطائي في الكمي</b><br><span class="mut">${wrongQ ? wrongQ + ' سؤال آخر إجابة لك فيه كانت خطأ — حلّها من جديد مع الشرح' : 'ما فيه أخطاء محفوظة حالياً'}</span></span><span class="btn">${wrongQ || 0} ←</span></a>
+        <a class="mock ${wrongV ? '' : 'dim'}" href="#t-wrong-v"><span><b>📖 أخطائي في اللفظي</b><br><span class="mut">${wrongV ? wrongV + ' سؤال آخر إجابة لك فيه كانت خطأ — حلّها من جديد مع الترجمة والشرح' : 'ما فيه أخطاء محفوظة حالياً'}</span></span><span class="btn">${wrongV || 0} ←</span></a>
+      </div>
+      ${done.length ? `<h2 class="h2">📊 كل المواضيع</h2>${skillsBarsHtml(agg, false)}` : ''}
+      <h2 class="h2">📚 تدريب حسب الموضوع</h2>
+      <p class="mut" style="margin:-4px 0 10px">اختبارات تحتوي على نوع واحد فقط من الأسئلة، مجمّعة من كل النماذج الـ14:</p>
+      <div class="tgrid">${TOPIC_ORDER.filter(t => TOPICS[t].k === 'verbal').map(card).join('')}</div>
+      <div class="tgrid">${TOPIC_ORDER.filter(t => TOPICS[t].k === 'quant').map(card).join('')}</div>
+      <p class="mut" style="font-size:13px;margin-top:14px">ℹ️ تدريب المواضيع ومراجعة الأخطاء يدخل في تحليل مهاراتك فقط ولا يُحتسب في لوحة الصدارة. سجلّك محفوظ على جهازك ومتزامن مع حسابك.</p>
+    </main>`;
+    bindCtl();
+  }
+  // ---------- 📖 قاموس الكلمات ----------
+  async function renderVocab(model) {
+    document.title = 'قاموس الكلمات | Q-Guide';
+    app.innerHTML = topbar(`<span class="ttl">📖 قاموس الكلمات</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل القاموس…</span></div>';
+    bindCtl(); await loadVocab();
+    let rows = [], title = '';
+    if (model) {
+      let set; try { set = await loadSet(model); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#vocab">→</a>`) + '<div class="center">تعذّر فتح النموذج. <a href="#vocab">رجوع</a></div>'; return; }
+      title = set.title + ' · ' + set.sub.split(' · ').pop();
+      const seen = new Set(); const add = (txt, where) => { for (const m of (txt || '').matchAll(/[A-Za-z][A-Za-z'’]*/g)) { const w = m[0].toLowerCase().replace(/’/g, "'").replace(/'s$/, ''); if (seen.has(w) || STOP.has(w) || w.length < 3) continue; const ar = vocLook(w); if (!ar) continue; seen.add(w); rows.push([w, ar, where]); } };
+      set.groups.forEach(g => { const where = g.kind === 'passage' ? 'قطعة: ' + g.title : (g.ar || g.title); if (g.kind === 'passage') add(g.passage, where); g.items.forEach(it => add(it.q + ' ' + it.opts.join(' '), where)); });
+    } else { rows = Object.keys(VOC).filter(w => !STOP.has(w) && w.length > 2).sort().map(w => [w, VOC[w], '']); title = 'كل الكلمات (' + rows.length + ')'; }
+    const tabs = `<div class="vtabs"><a class="${model ? '' : 'on'}" href="#vocab">الكل</a>${Array.from({ length: 14 }, (_, i) => `<a class="${model === 'v' + (i + 1) ? 'on' : ''}" href="#vocab-v${i + 1}">نموذج ${i + 1}</a>`).join('')}</div>`;
+    app.innerHTML = topbar(`<span class="ttl">📖 قاموس الكلمات</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap vocab">
+      <div class="hero sk"><div><h1>قاموس الكلمات</h1><p>ترجمة كل كلمة جديدة تمرّ عليك في النماذج اللفظية (${Object.keys(VOC).length} كلمة). اختر نموذجاً لتظهر كلماته بترتيب ورودها، أو ابحث عن أي كلمة. تقدر تطبع القائمة أو تحفظها PDF من زر 🖨️.</p></div></div>
+      ${tabs}
+      <div class="vsearch"><input id="vq" class="ltr" placeholder="ابحث عن كلمة… search" autocomplete="off"><span class="mut" id="vn"></span></div>
+      <h2 class="h2 vt">${esc(title)}</h2>
+      <div class="vlist" id="vl"></div></main>`;
+    bindCtl();
+    const vl = $('#vl'), vn = $('#vn'), vq = $('#vq'); let lastWhere = '';
+    const paint = () => { const q = vq.value.trim().toLowerCase(); const list = q ? rows.filter(r => r[0].indexOf(q) >= 0 || r[1].indexOf(q) >= 0) : rows; vn.textContent = list.length + ' كلمة'; lastWhere = '';
+      vl.innerHTML = list.slice(0, 1500).map(r => { let hd = ''; if (model && r[2] !== lastWhere) { lastWhere = r[2]; hd = `<div class="vh">${esc(r[2])}</div>`; } return hd + `<div class="vr"><b class="ltr">${esc(r[0])}</b><span>${esc(r[1])}</span></div>`; }).join('') + (list.length > 1500 ? `<div class="mut" style="padding:10px">… ابحث لعرض المزيد (${list.length - 1500} كلمة أخرى)</div>` : ''); };
+    vq.oninput = paint; paint();
+    $('#prn').onclick = () => window.print();
+  }
   // ---------- avatar / profile ----------
   const PRESETS = ['adventurer', 'adventurer-neutral', 'avataaars', 'bottts-neutral', 'fun-emoji', 'thumbs', 'lorelei', 'notionists'];
   function avatarHtml(url, name, size) {
@@ -495,6 +677,7 @@
       ${d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ محظور منذ ${fmtD(d.ban.at)} بواسطة ${esc(d.ban.by_email)}${d.ban.reason ? ' — ' + esc(d.ban.reason) : ''}</div>` : ''}
       <div class="kv"><div><span>الاسم في الشيت</span><b>${esc(st.name || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
       <div class="acts"><button class="btn sm ghost" id="a_name">✏️ تعديل الاسم المعروض</button><button class="btn sm ghost" id="a_av">🖼 مسح الصورة</button><button class="btn sm ghost" id="a_kick">⎋ طرد الجلسة</button>${d.ban ? `<button class="btn sm" id="a_unban">فك الحظر</button>` : `<button class="btn sm danger" id="a_ban">⛔ حظر نهائي</button>`}</div>
+      ${skillsBarsHtml(d.skills && d.skills.data ? histAgg(JSON.parse(d.skills.data)) : null, true)}
       <h4>📚 نتائج الأقسام (${d.results.length})${d.results.length ? ' <button class="lnk" id="a_rr">حذف الكل</button>' : ''}</h4>
       <div class="alist">${d.results.slice(0, 40).map(r => `<div><span>${esc(r.set_id)}</span><span>${r.correct}/${r.n} (${r.pct}%)</span><span>${fmtS(r.secs)}</span><span class="mut">${fmtD(r.ts)}</span></div>`).join('') || '<div class="mut">لا توجد</div>'}</div>
       <h4>🧪 الاختبارات المحاكية (${d.exams.length})</h4>

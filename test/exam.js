@@ -273,7 +273,8 @@
           ${it.type === 'read' ? `<details><summary class="mut" style="cursor:pointer;font-size:13px">Passage: ${esc(it.ptitle || '')}</summary><div class="passage" style="max-height:none">${esc(it.passage)}</div></details>` : ''}
           ${it.type === 'quant' ? `<img src="${it.img}" alt="">` : `<p class="qtext" style="text-align:left">${esc(it.q)}</p>`}
           ${it.opts.map((o, j) => `<div class="o ${j === k ? 'k' : (j === a ? 'w' : '')}">${LETTERS[j]}) ${esc(o.replace(/^[A-D]\)\s*/, ''))}${j === k ? ' ✓' : (j === a ? ' ✗' : '')}</div>`).join('')}
-          ${it.exp ? `<div class="ex ar">${esc(it.exp)}</div>` : ''}</div>`;
+          ${it.exp ? `<div class="ex ar">${esc(it.exp)}</div>` : ''}
+          ${it.ar && it.ar.q ? `<div class="ex ar tr"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<div class="tro">${it.opts.map((o, j) => `<span class="${j === k ? 'k' : ''}">${LETTERS[j]}) ${esc((it.ar.o || [])[j] || '')}</span>`).join('')}</div></div>` : ''}</div>`;
       });
     });
     app.innerHTML = header() + h + '</div>'; window.scrollTo(0, 0);
