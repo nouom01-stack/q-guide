@@ -434,9 +434,10 @@
     const ok = a.s === it.ans; const corr = it.opts[it.ans];
     return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? '✅ إجابة صحيحة، أحسنت!' : '❌ إجابة خاطئة'}</div>
       ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
+      ${ok ? `<button class="lnk exshow" type="button" onclick="this.nextElementSibling.classList.toggle('on');this.textContent=this.nextElementSibling.classList.contains('on')?'إخفاء الشرح ▴':'عرض الشرح والترجمة ▾'">عرض الشرح والترجمة ▾</button><div class="exwrap">` : ''}
       ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}
       ${ytLink(it)}
-      ${P && P.set.kind === 'verbal' ? trHtml(it) : ''}</div>`;
+      ${P && P.set.kind === 'verbal' ? trHtml(it) : ''}${ok ? '</div>' : ''}</div>`;
   }
   function ytLink(it) {
     const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';

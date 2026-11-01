@@ -477,3 +477,7 @@ a{color:var(--navy)}
 .fb .ytx{background:var(--ytbg);border-color:var(--ytbd);color:var(--yt)}.fb .ytx:hover{background:var(--ythv);border-color:var(--yt)}
 .btn.ytbtn{background:var(--yt);color:#fff}.btn.ytbtn:hover{filter:brightness(.92)}[data-theme=dark] .btn.ytbtn{color:#1a1a1a}
 [data-theme=dark] .ytr-main,[data-theme=dark] .fb .ytx{background:var(--ytbg);border-color:var(--ytbd)}
+
+/* v17: الشرح مخفي عند الإجابة الصحيحة */
+.fb .exshow{background:none;border:0;color:var(--navy3);font-weight:700;font-size:calc(13.5px * var(--fs));cursor:pointer;padding:2px 0}
+.fb .exwrap{display:none}.fb .exwrap.on{display:block}
