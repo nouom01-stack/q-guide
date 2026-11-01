@@ -277,8 +277,7 @@
       const p = progGet(s.id); const ans = Object.keys(p.a).length; const pct = s.n ? Math.round(ans * 100 / s.n) : 0;
       const corr = Object.values(p.a).filter(x => x.c).length;
       const best = p.best != null ? `<span class="badge">أفضل نتيجة ${p.best}%</span>` : (ans ? `<span class="badge g">${corr}/${ans} صحيحة</span>` : `<span style="color:#B7BFD0">لم تبدأ</span>`);
-      const yt = ytFor(s.id);
-      return `<div class="set ${pct === 100 ? 'done' : ''}" role="button" tabindex="0" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}${yt ? `<a class="ytp" href="${yt.url}" target="_blank" rel="noopener" title="شرح ${yt.label} على يوتيوب · ${yt.dur}">${YTSVG}<span>الشرح</span></a>` : ''}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
+      return `<div class="set ${pct === 100 ? 'done' : ''}" role="button" tabindex="0" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
         <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></div>`;
     }).join('');
     const R = YT[tab === 'quant' ? 'q' : 'v'];
