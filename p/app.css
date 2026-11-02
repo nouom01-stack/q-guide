@@ -1097,16 +1097,17 @@ button.tool:hover{background:var(--dotbg)}
 .ru-bar{display:flex;align-items:center;gap:12px;margin:4px 0 10px}
 .ru-bar input{flex:1;max-width:520px;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:calc(15px * var(--fs))}
 .ru-bar input:focus{outline:none;border-color:var(--royal);box-shadow:0 0 0 3px color-mix(in srgb,var(--royal) 18%,transparent)}
-.ru-nav{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin-bottom:6px;scrollbar-width:thin}
+.ru-nav{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px;margin-bottom:6px}
+@media (max-width:640px){.ru-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}}
 .ru-nav a{flex:none;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-weight:700;font-size:calc(13.5px * var(--fs));white-space:nowrap}
 .ru-nav a:hover{border-color:var(--royal);color:var(--royal)}
-.ru-cols{columns:2 420px;column-gap:14px}
-.ru-s{break-inside:avoid;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px 10px;margin:0 0 14px;scroll-margin-top:80px;display:inline-block;width:100%}
+.ru-cols{display:flex;flex-direction:column;gap:14px}
+.ru-s{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px 8px;scroll-margin-top:80px}
+.ru-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));column-gap:22px}
 .ru-s h2{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-family:var(--disp);font-weight:800;font-size:calc(19px * var(--fs));color:var(--ink2)}
 .ru-s h2 .ic{font-size:1.05em}
 .ru-s h2 small{margin-inline-start:auto;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-weight:600;font-size:calc(12.5px * var(--fs));color:var(--mut)}
-.ru-i{padding:9px 0;border-top:1px dashed var(--line);break-inside:avoid}
-.ru-i:first-of-type{border-top:0}
+.ru-i{padding:10px 0;border-top:1px dashed var(--line);break-inside:avoid;min-width:0}
 .ru-a{font-weight:700;color:var(--ink);font-size:calc(14.5px * var(--fs));display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .ru-a small{color:var(--mut);font-weight:500;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(12px * var(--fs))}
 .ru-f{margin-top:4px;font-family:"Cambria Math","STIX Two Math","Segoe UI",Roboto,Arial,sans-serif;font-size:calc(17px * var(--fs));color:var(--ink2);background:var(--dotbg);border-radius:8px;padding:5px 10px;text-align:left;line-height:1.6;overflow-wrap:anywhere}
@@ -1114,6 +1115,6 @@ button.tool:hover{background:var(--dotbg)}
 .ru-x span{font-weight:700;color:var(--royal)}
 .ru-n{margin-top:4px;font-size:calc(13px * var(--fs));color:var(--warnt)}
 .ru-empty{text-align:center;padding:20px}
-@media print{.rules .ru-bar,.rules .ru-nav,.rules .rvid{display:none!important}.ru-cols{columns:2;column-gap:10px}.ru-s{border:1px solid #ccc;box-shadow:none;padding:8px 10px;margin-bottom:8px}.ru-f{background:#f3f3f3;font-size:13px;padding:2px 6px}.ru-a{font-size:12px}.ru-x,.ru-n{font-size:11px}.ru-s h2{font-size:15px}.ru-top p{display:none}}
-@media (max-width:640px){.ru-cols{columns:1}.ru-f{font-size:calc(16px * var(--fs))}}
+@media print{.rules .ru-bar,.rules .ru-nav,.rules .rvid{display:none!important}.ru-cols{gap:8px}.ru-g{grid-template-columns:1fr 1fr;column-gap:12px}.ru-s{break-inside:auto}.ru-s{border:1px solid #ccc;box-shadow:none;padding:8px 10px;margin-bottom:8px}.ru-f{background:#f3f3f3;font-size:13px;padding:2px 6px}.ru-a{font-size:12px}.ru-x,.ru-n{font-size:11px}.ru-s h2{font-size:15px}.ru-top p{display:none}}
+@media (max-width:640px){.ru-g{grid-template-columns:1fr}.ru-s{padding:12px 14px 6px}.ru-f{font-size:calc(16px * var(--fs))}}
 [data-theme="dark"] .modal h3,[data-theme="dark"] .modal h4{color:var(--ink2)}

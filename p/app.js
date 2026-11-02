@@ -763,7 +763,7 @@
     });
   }
   // ---------- 📐 قوانين الكمي ----------
-  let RULES = null; const RULES_V = 1, RULES_ON = false;
+  let RULES = null; const RULES_V = 1, RULES_ON = true;
   async function renderRules() {
     document.title = 'قوانين الكمي | Q-Guide';
     const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;
@@ -772,12 +772,12 @@
     if (location.hash !== '#rules') return;
     const R = YT.q.rules, nItems = RULES.reduce((a, s) => a + s.items.length, 0);
     app.innerHTML = topbar(`<span class="ttl">📐 قوانين الكمي</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + `<main class="wrap rules">
-      <div class="ru-top"><div><h1>قوانين الكمي</h1><p>${nItems} قانون وقاعدة تحتاجها في القدرات، مرتبة حسب الموضوع ومع مثال لكل قانون. تقدر تطبعها أو تحفظها PDF من زر 🖨️.</p></div>
+      <div class="ru-top"><div><h1>قوانين الكمي</h1><p>${nItems} قانون وقاعدة تحتاجها في القدرات، مرتبة حسب الموضوع ومعها أمثلة محلولة. تقدر تطبعها أو تحفظها PDF من زر 🖨️.</p></div>
         <a class="rvid" href="${ytUrl(R.id)}" target="_blank" rel="noopener">${YTSVG}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a></div>
       <div class="ru-bar"><input id="ruq" type="search" placeholder="ابحث عن قانون: مساحة، نسبة، زاوية، area…" autocomplete="off"><span class="mut" id="run"></span></div>
       <nav class="ru-nav" aria-label="المواضيع">${RULES.map(s => `<a href="#rules" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
-      <div class="ru-cols" id="ruc">${RULES.map(s => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2>
-        ${s.items.map(x => `<div class="ru-i" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f" dir="ltr">${esc(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span>e.g.</span> ${esc(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${esc(x.n)}</div>` : ''}</div>`).join('')}</section>`).join('')}</div>
+      <div class="ru-cols" id="ruc">${RULES.map(s => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2><div class="ru-g">
+        ${s.items.map(x => `<div class="ru-i" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f" dir="ltr">${esc(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span>e.g.</span> ${esc(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${esc(x.n)}</div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
       <p class="mut ru-empty" id="rue" hidden>ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.</p></main>`;
     bindCtl();
     $('#prn').onclick = () => window.print();
