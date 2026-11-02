@@ -220,6 +220,10 @@
     heartbeat(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
+    if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
+    if (h === 'arena') return renderArena();
+    if (/^duel-[A-Za-z0-9]{6}$/.test(h)) return renderArena(h.slice(5).toUpperCase());
+    if (h === 'board-arena') return renderBoard('arena');
     if (/^[qv]\d+$/.test(h)) return renderPlayer(h);
     if (/^[qv]\d+@\d+$/.test(h)) { const [sid, si] = h.split('@'); return renderPlayer(sid, +si); }
     if (h === 'notes') return renderNotes();
@@ -342,7 +346,7 @@
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
     const toolA = (href, i, b, s, tag) => `<a class="tool" href="${href}"><span class="ti">${i}</span><span class="tx"><b>${b}${tag || ''}</b><small>${s}</small></span></a>`;
     const toolB = (id, i, b, s) => `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
-    app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
+    app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a><a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     `<main class="wrap home">
       <div id="rz">${rzHtml()}</div>
       <div id="trip"></div>
@@ -353,6 +357,7 @@
       <section class="tgroups">
         <div class="tg"><h3>اختبر نفسك</h3>
           ${toolA('#level', '🧭', 'تحديد المستوى', lv ? `مستواك: ${LEVELS[lv.lvl].t} (${lv.pct}%) · تقدر تعيده` : '20 سؤال تعرف منها مستواك ونقاط ضعفك')}
+          ${toolA('#arena', '⚔️', 'الساحة 1v1', 'تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي', '<span class="beta">جديد</span>')}
           ${toolA('/test/', '🧪', 'الاختبارات المحاكية', '17 اختبار بنفس شكل قياس المحوسب')}
           <div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div></div>
         <div class="tg"><h3>تعلّم وراجع</h3>
@@ -1645,9 +1650,9 @@
     const setTitle = id => (id[0] === 'q' ? 'القسم ' : 'النموذج ') + id.slice(1) + (id[0] === 'q' ? ' (كمي)' : ' (لفظي)');
     const opts = [...Array.from({ length: 14 }, (_, i) => 'q' + (i + 1)), ...Array.from({ length: 14 }, (_, i) => 'v' + (i + 1))];
     app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span><button class="ib" id="lbref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button></div>
+      `<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button><button data-k="arena" class="${tabK === 'arena' ? 'on' : ''}">⚔️ الساحة</button></div>
       ${isSet ? `<div class="setpick"><label>اختر القسم:</label><select id="lbset">${opts.map(o => `<option value="${o}" ${o === setId ? 'selected' : ''}>${setTitle(o)}</option>`).join('')}</select></div>` : ''}
-      <p class="mut lbnote">${kind === 'exam' ? 'الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.'
+      <p class="mut lbnote">${kind === 'arena' ? 'ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أكثر.' : kind === 'exam' ? 'الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.'
         : isSet ? `ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`
         : kind === 'month' ? 'أفضل 100 طالب <b>هذا الشهر</b>: مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الشهر، وعند التساوي الأسرع وقتاً.'
         : 'الترتيب العام: مجموع الإجابات الصحيحة في <b>أول محاولة</b> لكل قسم ونموذج، وعند التساوي الأسرع وقتاً. إعادة القسم للتدريب لا تغيّر ترتيبك.'}</p>
@@ -1660,23 +1665,339 @@
     if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = '<div class="center">تعذّر تحميل اللوحة</div>'; return; }
     const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h} س ${m % 60} د` : m ? `${m} د` : `${s} ث`; };
     const pct = x => x.q ? Math.round(x.correct * 100 / x.q) : 0;
-    const unit = kind === 'exam' ? 'اختبار' : 'قسم';
+    const unit = kind === 'exam' ? 'اختبار' : 'قسم', isAr = kind === 'arena';
     // عرض الدرجة: المحاكي والقسم = نسبة مئوية؛ العام والشهر = إجابات صحيحة (+ النسبة)
-    const scoreHtml = x => kind === 'exam' ? `<b>${Math.round(x.score)}%</b>` : isSet ? `<b>${Math.round(x.score)}%</b> <small>${x.correct}/${x.q}</small>` : `<b>${x.score}</b> ✓`;
-    const subHtml = x => kind === 'exam' ? `${x.done} ${x.done === 1 ? 'اختبار' : 'اختبارات'} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : `${pct(x)}% دقة · ${fmt(x.secs)}`;
-    const mine = r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${r.total} ${r.total === 1 ? 'طالب' : 'طالباً'}</b><span>${kind === 'exam' ? Math.round(r.me.score) + '% متوسط · ' + r.me.done + ' ' + unit : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + ' إجابة صحيحة · ' + r.me.done + ' ' + unit} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">اختبار جديد</a>' : isSet ? `<a class="btn sm" href="#${setId}">افتح القسم</a>` : '<a class="btn sm" href="#">تدرّب</a>'}</div>`
+    const scoreHtml = x => isAr ? `<b>${x.r}</b>` : kind === 'exam' ? `<b>${Math.round(x.score)}%</b>` : isSet ? `<b>${Math.round(x.score)}%</b> <small>${x.correct}/${x.q}</small>` : `<b>${x.score}</b> ✓`;
+    const subHtml = x => isAr ? `${x.w} فوز من ${x.g} ${x.g === 1 ? 'مباراة' : 'مباريات'}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? 'اختبار' : 'اختبارات'} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : `${pct(x)}% دقة · ${fmt(x.secs)}`;
+    const mine = isAr ? (r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me.r} · ${r.me.w} فوز و${r.me.l} خسارة${r.me.d ? ' و' + r.me.d + ' تعادل' : ''}</span></div><a class="btn sm" href="#arena">العب مباراة</a></div>` : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>العب مباراة وحدة في الساحة وتظهر هنا.</span></div><a class="btn sm" href="#arena">ادخل الساحة</a></div>`)
+      : r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r.me.score) + '% متوسط · ' + r.me.done + ' ' + unit : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + ' إجابة صحيحة · ' + r.me.done + ' ' + unit} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">اختبار جديد</a>' : isSet ? `<a class="btn sm" href="#${setId}">افتح القسم</a>` : '<a class="btn sm" href="#">تدرّب</a>'}</div>`
       : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? 'أنهِ اختباراً محاكياً واحداً وتظهر هنا.' : isSet ? 'حل هذا القسم مرة واحدة وتظهر هنا.' : kind === 'month' ? 'حل قسماً هذا الشهر وتظهر هنا.' : 'حل قسماً أو نموذجاً واحداً وتظهر هنا.'}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">ابدأ اختباراً</a>' : isSet ? `<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : '<a class="btn sm" href="#">ابدأ قسماً</a>'}</div>`;
     if (!r.top.length) { el.innerHTML = mine + `<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
     const medal = k => ['🥇', '🥈', '🥉'][k - 1] || '';
     const top3 = r.top.slice(0, 3), rest = r.top.slice(3);
     const podium = top3.length >= 3 ? `<div class="podium">${[1, 0, 2].map(i => { const x = top3[i]; return `<div class="pd p${x.rank} ${x.me ? 'me' : ''}">${avatarHtml(x.a, x.n, x.rank === 1 ? 72 : 60)}<div class="pr">${medal(x.rank)}</div><b title="${esc(x.n)}">${esc(x.n)}</b><span class="pscore">${scoreHtml(x)}</span><span>${subHtml(x)}</span></div>`; }).join('')}</div>` : '';
     const list = top3.length >= 3 ? rest : r.top;
-    const cols = kind === 'exam' ? ['النسبة', 'الاختبارات', 'الوقت'] : isSet ? ['النسبة', 'الصحيحة', 'الوقت'] : ['الصحيحة', 'الدقة', 'الوقت'];
-    const cells = x => kind === 'exam' ? [`<b>${Math.round(x.score)}%</b>`, x.done, fmt(x.secs)] : isSet ? [`<b>${Math.round(x.score)}%</b>`, `${x.correct}/${x.q}`, fmt(x.secs)] : [`<b>${x.score}</b> ✓`, pct(x) + '%', fmt(x.secs)];
+    const cols = isAr ? ['التصنيف', 'الفوز', 'المباريات'] : kind === 'exam' ? ['النسبة', 'الاختبارات', 'الوقت'] : isSet ? ['النسبة', 'الصحيحة', 'الوقت'] : ['الصحيحة', 'الدقة', 'الوقت'];
+    const cells = x => isAr ? [`<b>${x.r}</b>`, x.w, x.g] : kind === 'exam' ? [`<b>${Math.round(x.score)}%</b>`, x.done, fmt(x.secs)] : isSet ? [`<b>${Math.round(x.score)}%</b>`, `${x.correct}/${x.q}`, fmt(x.secs)] : [`<b>${x.score}</b> ✓`, pct(x) + '%', fmt(x.secs)];
     el.innerHTML = mine + podium + `<div class="lbl-list">
-      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">${cols[0]}</span><span class="ac">${cols[1]}</span><span class="tm">${cols[2]}</span>${!isSet && kind !== 'exam' ? `<span class="dn">الأقسام</span>` : ''}</div>
-      ${list.map(x => { const c = cells(x); return `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? '<span class="you">أنت</span>' : ''}<span class="sc">${c[0]}</span><span class="ac">${c[1]}</span><span class="tm">${c[2]}</span>${!isSet && kind !== 'exam' ? `<span class="dn">${x.done}</span>` : ''}</div>`; }).join('')}</div>
+      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">${cols[0]}</span><span class="ac">${cols[1]}</span><span class="tm">${cols[2]}</span>${!isSet && kind !== 'exam' && !isAr ? `<span class="dn">الأقسام</span>` : ''}</div>
+      ${list.map(x => { const c = cells(x); return `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? '<span class="you">أنت</span>' : ''}<span class="sc">${c[0]}</span><span class="ac">${c[1]}</span><span class="tm">${c[2]}</span>${!isSet && kind !== 'exam' && !isAr ? `<span class="dn">${x.done}</span>` : ''}</div>`; }).join('')}</div>
       <p class="mut" style="font-size:12.5px;margin-top:10px">يُعرض أفضل 100 طالب، واللوحة تتحدث كل دقيقة. تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية.</p>`;
+  }
+
+  // ---------- ⚔️ الساحة 1v1: مباراة مباشرة بين طالبين (WebSocket مع الخادم) ----------
+  const AR = { ws: null, st: 'lobby', info: null, m: null, T: null, off: 0, tm: 0, stm: 0, since: 0, code: '', join: '', end: null, hist: [], sc: [0, 0], i: -1, dl: 0, lim: 0, mine: null, opA: false, opGone: false, goAt: 0, wantClose: false, retry: 0, err: '' };
+  const AR_T = { ana: 'تناظر لفظي', sen: 'إكمال جمل', err: 'خطأ سياقي', quant: 'كمي' };
+  const AR_IN = { ana: 'Choose the pair of words that best expresses a relationship similar to that in the original pair.', sen: 'Choose the word(s) that best complete(s) the sentence.', err: 'Choose the word that is used incorrectly in the context of the sentence.' };
+  const AR_LIVE = ['vs', 'q', 'rev'];
+  const arNow = () => Date.now() + AR.off;
+  const arWsUrl = () => window.QG.API.replace(/^http/, 'ws').replace(/\/$/, '') + '/arena?s=' + encodeURIComponent(auth.session);
+  const arMe = () => ({ n: auth.display || auth.name || '', a: auth.avatar || '' });
+  function arSend(o) { try { if (AR.ws && AR.ws.readyState === 1) { AR.ws.send(JSON.stringify(o)); return true; } } catch (e) {} return false; }
+  function arOpen() {
+    return new Promise((res, rej) => {
+      if (AR.ws && AR.ws.readyState === 1) return res();
+      if (AR.ws) { const o = AR.ws; AR.ws = null; try { o.close(); } catch (e) {} }
+      let ws; try { ws = new WebSocket(arWsUrl()); } catch (e) { return rej(e); }
+      AR.ws = ws; AR.wantClose = false; let ok = false;
+      const to = setTimeout(() => { if (!ok) { try { ws.close(); } catch (e) {} } }, 12000);
+      ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (m.t === 'hi' && !ok) { ok = true; clearTimeout(to); AR.retry = 0; res(m); } arMsg(m); };
+      ws.onclose = () => { clearTimeout(to); if (AR.ws !== ws) return; AR.ws = null; if (!ok) return rej(new Error('closed')); arDropped(); };
+    });
+  }
+  function arClose() { AR.wantClose = true; clearInterval(AR.stm); if (AR.ws) { const o = AR.ws; AR.ws = null; try { o.close(1000); } catch (e) {} } }
+  function arStop() { clearInterval(AR.tm); AR.tm = 0; }
+  // يُستدعى من route() لما يطلع الطالب من الساحة
+  function arLeave() {
+    window.onbeforeunload = null; document.onkeydown = null; arStop();
+    if (!AR.ws) return;
+    if (AR.m && AR_LIVE.includes(AR.st)) arSend({ t: 'quit', m: AR.m.m }); else if (['search', 'room', 'joining'].includes(AR.st)) arSend({ t: 'cancel' });
+    AR.st = 'lobby'; AR.m = null; setTimeout(arClose, 150);
+  }
+  function arDropped() {
+    if (AR.wantClose) return;
+    if (AR.m && AR_LIVE.includes(AR.st)) {
+      if (AR.retry >= 6) { AR.st = 'lobby'; AR.m = null; AR.err = 'انقطع اتصالك بالساحة، فما قدرنا نكمل المباراة.'; window.onbeforeunload = null; return renderArena(); }
+      AR.retry++; arNote('انقطع الاتصال… نحاول نرجعك للمباراة', 'warn');
+      setTimeout(() => { if (AR.wantClose || !AR.m) return; arOpen().then(() => arNote('')).catch(() => {}); }, 1200 + AR.retry * 600);
+      return;
+    }
+    if (['search', 'room', 'joining', 'connecting'].includes(AR.st)) { AR.st = 'lobby'; AR.err = 'انقطع الاتصال بالساحة. حاول مرة ثانية.'; arPanel(); }
+  }
+  async function arTest(id) {
+    if (cache['ar:' + id]) return cache['ar:' + id];
+    const r = await fetch('/test/data/' + id + '.bin?v=3', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+    const buf = new Uint8Array(await r.arrayBuffer()); const key = await getKey();
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
+    return (cache['ar:' + id] = JSON.parse(new TextDecoder().decode(plain)));
+  }
+  const arItem = i => { const r = AR.m.refs[i]; return AR.T.sections[r[0] - 1].items[r[1]]; };
+  const arAgo = t => { const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return 'الحين'; const m = Math.floor(s / 60); if (m < 60) return 'قبل ' + m + ' د'; const h = Math.floor(m / 60); if (h < 24) return 'قبل ' + h + ' س'; const d = Math.floor(h / 24); return d === 1 ? 'أمس' : 'قبل ' + d + ' أيام'; };
+  const arRes = { win: ['فوز', 'win'], loss: ['خسارة', 'loss'], draw: ['تعادل', 'draw'] };
+  const arStu = n => n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n <= 10 ? n + ' طلاب' : n + ' طالباً';
+
+  // ---------- صفحة الساحة ----------
+  async function renderArena(join) {
+    document.title = 'الساحة 1v1 | Q-Guide';
+    if (join) AR.join = join;
+    if (AR.m && AR_LIVE.includes(AR.st)) return arView();
+    if (AR.st === 'end') { AR.st = 'lobby'; arClose(); }
+    const me = arMe(), I = AR.info;
+    app.innerHTML = topbar(`<span class="ttl">⚔️ الساحة 1v1</span><span class="sp"></span><nav class="tnav"><a class="tn" href="#board-arena" title="لوحة ترتيب الساحة"><span class="i">🏆</span><span class="l">الترتيب</span></a></nav>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<main class="wrap arena">
+        <section class="ar-hero">
+          <div class="ar-hl"><h1>الساحة <span dir="ltr">1v1</span></h1>
+            <p>تحدَّ طالب من الدورة مباشرة في 20 سؤال: 10 لفظي و10 كمي. الإجابة الصحيحة تجيب 10 نقاط، وكل ما كنت أسرع تزيد لين 20.</p>
+            <div id="arp"></div></div>
+          <aside class="ar-me" id="arme">${arMeCard(me, I)}</aside>
+        </section>
+        <ul class="ar-rules">
+          <li><b>20</b><span>سؤال بالتناوب: لفظي ثم كمي</span></li>
+          <li><b>35 <small>ث</small> · 70 <small>ث</small></b><span>وقت السؤال اللفظي ثم الكمي</span></li>
+          <li><b><bdi dir="ltr">+16</bdi></b><span>تقريباً لكل فوز على خصم بنفس مستواك</span></li>
+        </ul>
+        <div class="ar-cols">
+          <section class="ar-box"><div class="ar-bh"><h2>الأعلى تصنيفاً</h2><a href="#board-arena">اللوحة كاملة</a></div><div id="artop"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></section>
+          <section class="ar-box"><div class="ar-bh"><h2>مبارياتك الأخيرة</h2></div><div id="arhist">${arHistHtml(I)}</div></section>
+        </div>
+      </main>`;
+    bindCtl(); arPanel();
+    if (AR.join) { const c = AR.join; AR.join = ''; arJoin(c); }
+    let r; try { r = await api({ op: 'arena_me', session: auth.session }); } catch (e) { r = null; }
+    if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
+    if (r && r.ok) { AR.info = r; const a = $('#arme'), h = $('#arhist'); if (a) a.innerHTML = arMeCard(me, r); if (h) h.innerHTML = arHistHtml(r); if (AR.st === 'lobby') arPanel(); }
+    api({ op: 'leaderboard', kind: 'arena', session: auth.session }).then(b => { const el = $('#artop'); if (!el) return; el.innerHTML = b && b.ok ? arTopHtml(b) : '<p class="mut">تعذّر تحميل الترتيب.</p>'; }).catch(() => {});
+  }
+  function arMeCard(me, I) {
+    const g = I ? I.g : 0;
+    return `<div class="ar-mh">${avatarHtml(me.a, me.n, 46)}<b>${esc(me.n)}</b></div>
+      <div class="ar-rt"><b>${I ? I.r : 1000}</b><span>${g ? 'تصنيفك' : 'تصنيف البداية'}</span></div>
+      ${g ? `<div class="ar-wl"><span class="w">${I.w} فوز</span><span class="l">${I.l} خسارة</span>${I.d ? `<span>${I.d} تعادل</span>` : ''}</div>
+      <p class="ar-rk">${I.rank ? `ترتيبك <b>#${I.rank}</b> من ${arStu(I.total)}` : 'ما تظهر في الترتيب'}${I.best > 1 ? ` · أطول سلسلة فوز ${I.best}` : ''}</p>`
+      : `<p class="ar-rk">العب أول مباراة ويطلع لك تصنيف وترتيب بين الطلاب.</p>`}`;
+  }
+  function arHistHtml(I) {
+    if (!I) return '<div class="center"><div class="spin" style="margin:0 auto"></div></div>';
+    if (!I.hist || !I.hist.length) return '<p class="ar-empty">ما لعبت أي مباراة للحين. أول مباراة تبدأ من زر «ابحث عن خصم».</p>';
+    return `<ol class="ar-list">${I.hist.map(h => `<li class="ar-hr"><span class="ar-chip ${arRes[h.res][1]}">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n, 32)}<span class="ar-hn"><b>${esc(h.op.n || 'طالب')}</b><small>${h.kind === 'friend' ? 'تحدي صديق' : 'خصم عشوائي'}${h.why === 'quit' ? ' · انسحاب' : h.why === 'left' ? ' · انقطاع' : ''} · ${arAgo(h.ts)}</small></span><span class="ar-hs" title="نقاطك – نقاط خصمك">${h.sc[0]} – ${h.sc[1]}</span>${h.rated ? `<em class="${h.d >= 0 ? 'up' : 'dn'}" dir="ltr">${h.d >= 0 ? '+' : ''}${h.d}</em>` : '<em class="nr">بدون تصنيف</em>'}</li>`).join('')}</ol>`;
+  }
+  function arTopHtml(b) {
+    if (!b.top.length) return '<p class="ar-empty">الترتيب فاضي. أول من يفوز يتصدر!</p>';
+    const rows = b.top.slice(0, 5); const meIn = rows.some(x => x.me);
+    const row = x => `<li class="ar-tr ${x.me ? 'me' : ''}"><span class="rk">${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span>${avatarHtml(x.a, x.n, 32)}<span class="ar-hn"><b>${esc(x.n)}</b><small>${x.w} فوز من ${x.g}</small></span><b class="ar-tv">${x.r}</b></li>`;
+    return `<ol class="ar-list">${rows.map(row).join('')}${!meIn && b.me ? `<li class="ar-gap" aria-hidden="true">⋯</li>${row(b.me)}` : ''}</ol>`;
+  }
+  // لوحة الأزرار حسب الحالة: جاهز · يدور · غرفة صديق · ما فيه أحد
+  function arPanel() {
+    const el = $('#arp'); if (!el) return; clearInterval(AR.stm);
+    const live = AR.info && AR.info.live;
+    const liveTxt = live && live.online ? `<p class="ar-live"><i></i>${live.waiting ? 'فيه طالب يدور خصم الحين' : `${live.online} في الساحة الحين`}</p>` : '';
+    const err = AR.err ? `<p class="ar-err" role="alert">${esc(AR.err)}</p>` : '';
+    if (AR.st === 'search') {
+      el.innerHTML = `<div class="ar-srch"><div class="ar-radar" aria-hidden="true"><i></i><i></i>${avatarHtml(arMe().a, arMe().n, 54)}</div><div><b>ندوّر لك على خصم…</b><span id="arel">0:00</span><small>أول طالب يضغط «ابحث عن خصم» يدخل معك مباشرة.</small></div></div>
+        <div class="ar-acts"><button class="ar-gh" id="arcx">إلغاء</button><button class="ar-lk" id="arrm">أو تحدَّ صديقك برابط</button></div>`;
+      const tick = () => { const e = $('#arel'); if (e) e.textContent = fmtDur((arNow() - AR.since) / 1000); }; tick(); AR.stm = setInterval(tick, 1000);
+    } else if (AR.st === 'room') {
+      const link = location.origin + '/p/#duel-' + AR.code;
+      const msg = `تحداك ${arMe().n} في ساحة Q-Guide ⚔️ 20 سؤال قدرات مباشر. ادخل من الرابط: ${link}`;
+      el.innerHTML = `<div class="ar-room"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>
+        <div class="ar-link"><input id="arlk" readonly value="${esc(link)}" dir="ltr" aria-label="رابط التحدي"><button class="ar-cp" id="arcp">نسخ</button></div>
+        <div class="ar-acts">${navigator.share ? '<button class="rz-go" id="arsh">مشاركة الرابط</button>' : ''}<a class="ar-gh" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">واتساب</a><button class="ar-gh" id="arcx">إلغاء</button></div>
+        <p class="ar-wait"><span class="ar-dotsl" aria-hidden="true"><i></i><i></i><i></i></span>بانتظار صاحبك… الرمز <b dir="ltr">${esc(AR.code)}</b></p></div>`;
+      $('#arcp').onclick = async () => { const i = $('#arlk'); try { await navigator.clipboard.writeText(i.value); toast('انسخ الرابط ✓'); } catch (e) { i.select(); toast('حدد الرابط وانسخه'); } };
+      const sh = $('#arsh'); if (sh) sh.onclick = () => navigator.share({ title: 'تحدي Q-Guide', text: msg }).catch(() => {});
+    } else if (AR.st === 'connecting' || AR.st === 'joining') {
+      el.innerHTML = `<div class="ar-srch"><div class="spin"></div><div><b>${AR.st === 'joining' ? 'ندخلك لتحدي صاحبك…' : 'نتصل بالساحة…'}</b></div></div>`;
+    } else {
+      el.innerHTML = `${err}${AR.st === 'noone' ? '<p class="ar-err">ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.</p>' : ''}
+        <div class="ar-acts"><button class="rz-go" id="arfd">⚔️ ${AR.st === 'noone' ? 'دوّر مرة ثانية' : 'ابحث عن خصم'}</button><button class="ar-gh" id="arrm">🔗 تحدَّ صديقك</button></div>${liveTxt}`;
+    }
+    const f = $('#arfd'); if (f) f.onclick = arFind;
+    const rm = $('#arrm'); if (rm) rm.onclick = arRoom;
+    const cx = $('#arcx'); if (cx) cx.onclick = arCancel;
+  }
+  async function arGo(first) {
+    AR.err = ''; AR.st = 'connecting'; arPanel();
+    try { await arOpen(); } catch (e) { AR.st = 'lobby'; AR.err = 'تعذّر الاتصال بالساحة. تأكد من الإنترنت وحاول مرة ثانية.'; arPanel(); return false; }
+    return first();
+  }
+  function arFind() { return arGo(() => arSend({ t: 'find' })); }
+  function arRoom() { return arGo(() => arSend({ t: 'room' })); }
+  function arJoin(code) { AR.err = ''; AR.st = 'joining'; arPanel(); arOpen().then(() => arSend({ t: 'join', code })).catch(() => { AR.st = 'lobby'; AR.err = 'تعذّر الاتصال بالساحة. افتح الرابط مرة ثانية.'; arPanel(); }); }
+  function arCancel() { arSend({ t: 'cancel' }); AR.st = 'lobby'; arPanel(); setTimeout(arClose, 150); }
+
+  function arMsg(m) {
+    if (m.now) AR.off = m.now - Date.now();
+    switch (m.t) {
+      case 'wait': AR.st = 'search'; AR.since = m.since; return arPanel();
+      case 'noone': AR.st = 'noone'; arPanel(); return setTimeout(arClose, 100);
+      case 'room': AR.st = 'room'; AR.code = m.code; return arPanel();
+      case 'roomexp': AR.st = 'lobby'; AR.err = 'انتهت صلاحية رابط التحدي. سوّ رابط جديد.'; arPanel(); return arClose();
+      case 'idle': return;
+      case 'err':
+        if (AR.st === 'end') { const n = $('#aragn'); if (n) n.textContent = m.msg; return; }
+        if (AR.m && AR_LIVE.includes(AR.st)) return toast(m.msg);
+        AR.st = 'lobby'; AR.err = m.msg; arPanel(); return arClose();
+      case 'replaced': AR.wantClose = true; AR.st = 'lobby'; AR.m = null; AR.err = 'فتحت الساحة في نافذة أو جهاز ثاني، فوقفناها هنا.'; window.onbeforeunload = null; return location.hash === '#arena' ? renderArena() : (location.hash = 'arena');
+      case 'match': return arMatch(m);
+      case 'go': AR.goAt = m.at; return arCount();
+      case 'q': return arQ(m);
+      case 'opans': if (m.i === AR.i) { AR.opA = true; arOpStatus(); } return;
+      case 'rev': return arRev(m);
+      case 'opleft': AR.opGone = true; arOpStatus(); return;
+      case 'opback': AR.opGone = false; arOpStatus(); return;
+      case 'end': return arEnd(m);
+      case 'void': { AR.st = 'lobby'; AR.m = null; AR.err = m.msg || 'انلغت المباراة.'; window.onbeforeunload = null; arStop(); arClose(); return location.hash === '#arena' ? renderArena() : (location.hash = 'arena'); }
+      case 'againwait': { const n = $('#aragn'); if (n) n.textContent = 'طلبت إعادة المباراة… بانتظار موافقة خصمك.'; const b = $('#arag'); if (b) b.disabled = true; return; }
+      case 'againask': { const n = $('#aragn'); if (n) { n.textContent = 'خصمك يبي إعادة المباراة! اضغط «إعادة المباراة» لو تبي.'; n.classList.add('hot'); } const b = $('#arag'); if (b) b.classList.add('pulse'); return; }
+    }
+  }
+
+  // ---------- المباراة ----------
+  async function arMatch(m) {
+    AR.m = m; AR.st = 'vs'; AR.end = null; AR.retry = 0; AR.opGone = false;
+    AR.sc = m.sc || [0, 0]; AR.hist = m.hist || m.refs.map(() => null); AR.i = m.resume ? m.i : -1;
+    if (location.hash !== '#arena') history.replaceState(null, '', '#arena');
+    window.onbeforeunload = e => { if (AR.m && AR_LIVE.includes(AR.st)) { e.preventDefault(); e.returnValue = ''; } };
+    arView();
+    try { AR.T = await arTest(m.test); }
+    catch (e) { const v = $('#arvm'); if (v) v.innerHTML = 'تعذّر تحميل الأسئلة. <button class="ar-lk" id="arrl">حاول مرة ثانية</button>'; const b = $('#arrl'); if (b) b.onclick = () => arMatch(m); return; }
+    if (AR.m !== m) return;
+    if (AR.pendQ) return arQ(AR.pendQ);
+    if (!m.resume || m.phase === 'prep') { arSend({ t: 'ready', m: m.m }); const v = $('#arvm'); if (v) v.textContent = 'بانتظار خصمك…'; }
+    else if (m.phase === 'count') { AR.goAt = m.at; arCount(); }
+    else if (m.phase === 'q') arQ({ i: m.i, dl: m.dl, lim: m.qt[m.refs[m.i][2]] * 1000, mine: m.mine, opAns: m.opAns });
+    else if (m.phase === 'rev') { arBoard(); const q = $('#arq'); if (q) q.innerHTML = '<div class="ar-hold"><div class="spin"></div>السؤال الجاي…</div>'; }
+  }
+  function arDots(who) { return AR.m.refs.map((r, j) => { const h = AR.hist[j]; const c = h ? (who === 0 ? (h.mo ? 'ok' : h.my == null ? 'na' : 'bad') : (h.oo ? 'ok' : h.op == null ? 'na' : 'bad')) : ''; return `<i class="${c}${j === AR.i ? ' cur' : ''}" title="${r[2] === 'v' ? 'لفظي' : 'كمي'}"></i>`; }).join(''); }
+  function arView() {
+    const m = AR.m, me = m.me, op = m.op, myN = arMe();
+    app.innerHTML = topbar(`<span class="ttl">⚔️ ${m.kind === 'friend' ? 'تحدي صديق' : 'مباراة الساحة'}</span><span class="sp"></span><button class="ar-quit" id="arqt">انسحاب</button>`, `<span class="brand"><img src="/assets/logo.png" alt="">Q-Guide</span>`) +
+      `<main class="wrap arena arm">
+        <div class="ar-sb" id="arsb">
+          <div class="ar-pl me">${avatarHtml(me.a || myN.a, myN.n, 44)}<span class="ar-pn"><b>أنت</b><small id="arms">${me.r}</small></span><b class="ar-ps" id="ars0">${AR.sc[0]}</b></div>
+          <div class="ar-mid"><span class="ar-qc" id="arqc">${AR.i >= 0 ? AR.i + 1 : '–'}<small>/${m.refs.length}</small></span><span class="ar-tm" id="artm">--</span></div>
+          <div class="ar-pl op"><b class="ar-ps" id="ars1">${AR.sc[1]}</b><span class="ar-pn"><b>${esc(op.n || 'خصمك')}</b><small id="aros">${op.r}</small></span>${avatarHtml(op.a, op.n, 44)}</div>
+          <div class="ar-dots" aria-hidden="true"><div class="r"><span>أنت</span><div id="ard0">${arDots(0)}</div></div><div class="r"><span>خصمك</span><div id="ard1">${arDots(1)}</div></div></div>
+          <div class="ar-bar"><i id="arbar"></i></div>
+        </div>
+        <div id="arnote" class="ar-note" hidden></div>
+        <div id="arq"><div class="ar-vs"><div class="ar-vp me">${avatarHtml(me.a || myN.a, myN.n, 88)}<b>${esc(myN.n)}</b><span>تصنيف ${me.r}</span></div><div class="ar-vx" id="arvx">VS</div><div class="ar-vp op">${avatarHtml(op.a, op.n, 88)}<b>${esc(op.n || 'خصمك')}</b><span>تصنيف ${op.r}</span></div></div>
+          <p class="ar-vsm" id="arvm">نحمّل الأسئلة…</p></div>
+      </main>`;
+    bindCtl();
+    $('#arqt').onclick = async () => { if (!AR.m || !AR_LIVE.includes(AR.st)) return; if (await QGDlg.confirm('تنسحب من المباراة؟ تنحسب لك خسارة.', { ok: 'انسحاب' })) { arSend({ t: 'quit', m: AR.m.m }); } };
+    document.onkeydown = e => { if (AR.st !== 'q' || e.ctrlKey || e.metaKey || e.altKey) return; const k = '1234'.indexOf(e.key) >= 0 ? '1234'.indexOf(e.key) : 'abcd'.indexOf(String(e.key).toLowerCase()); if (k >= 0) { e.preventDefault(); arAns(k); } };
+    if (AR.st === 'q') arQ({ i: AR.i, dl: AR.dl, lim: AR.lim, mine: AR.mine, opAns: AR.opA });
+  }
+  function arNote(t, cls) { const n = $('#arnote'); if (!n) return; n.hidden = !t; n.textContent = t || ''; n.className = 'ar-note ' + (cls || ''); }
+  function arCount() {
+    AR.st = 'vs'; arStop(); if (!$('#arvx')) arView();
+    const v = $('#arvm'), x = $('#arvx');
+    const run = () => { const s = Math.ceil((AR.goAt - arNow()) / 1000); if (s <= 0) { arStop(); return; } if (x) { x.textContent = s; x.classList.add('n'); } if (v) v.textContent = 'المباراة تبدأ بعد'; };
+    run(); AR.tm = setInterval(run, 200);
+  }
+  function arBoard() {
+    const d0 = $('#ard0'), d1 = $('#ard1'); if (d0) d0.innerHTML = arDots(0); if (d1) d1.innerHTML = arDots(1);
+    const qc = $('#arqc'); if (qc) qc.innerHTML = `${Math.max(1, AR.i + 1)}<small>/${AR.m.refs.length}</small>`;
+    const s0 = $('#ars0'), s1 = $('#ars1'); if (s0) s0.textContent = AR.sc[0]; if (s1) s1.textContent = AR.sc[1];
+  }
+  function arOpStatus() {
+    const s = $('#aros'); if (!s || !AR.m) return;
+    s.className = AR.opGone ? 'gone' : AR.opA && AR.st === 'q' ? 'done' : '';
+    s.textContent = AR.opGone ? 'انقطع اتصاله…' : AR.st === 'q' ? (AR.opA ? 'جاوب ✓' : 'يفكر…') : AR.m.op.r;
+    if (AR.st === 'q' && AR.mine != null) { const st = $('#arst'); if (st) st.innerHTML = AR.opA || AR.opGone ? '<span class="spin sm"></span> نكشف الإجابة…' : '<span class="spin sm"></span> بانتظار خصمك…'; }
+  }
+  function arQ(m) {
+    if (!AR.m) return;
+    if (!AR.T) { AR.pendQ = m; return; }
+    AR.pendQ = null;
+    AR.st = 'q'; AR.i = m.i; AR.dl = m.dl; AR.lim = m.lim; AR.mine = m.mine != null ? m.mine : null; AR.opA = !!m.opAns;
+    if (!$('#arsb')) arView();
+    arBoard(); arNote('');
+    const it = arItem(m.i), ty = it.type, n = AR.m.refs.length;
+    let h = `<div class="q ar-q"><div class="hd"><span class="n">سؤال ${m.i + 1}<small>من ${n}</small></span><span class="tag">${AR_T[ty] || ''}</span></div>`;
+    if (ty === 'quant') h += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${m.i + 1}">`;
+    else h += `<p class="ar-in ltr">${AR_IN[ty] || ''}</p><p class="txt ltr">${ty === 'ana' ? '<b>' + esc(it.q) + '</b>' : esc(it.q)}</p>`;
+    const two = ty === 'quant' || it.opts.every(o => o.length <= 28);
+    h += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => `<button type="button" class="opt${AR.mine === k ? ' sel' : ''}" data-k="${k}" ${AR.mine != null ? 'disabled' : ''}><span class="L">${LETTERS[k]}</span><span class="ot">${esc(ty === 'quant' ? o.replace(/^[A-D]\)\s*/, '') : o)}</span></button>`).join('') + '</div>';
+    h += `<div class="ar-st" id="arst">${AR.mine != null ? '' : 'اختر إجابتك بسرعة<span class="kb">، أو اضغط 1 إلى 4 من الكيبورد</span>'}</div></div>`;
+    $('#arq').innerHTML = h;
+    document.querySelectorAll('#arq .opt').forEach(b => b.onclick = () => arAns(+b.dataset.k));
+    arOpStatus();
+    const bar = $('#arbar'), tm = $('#artm');
+    const tick = () => {
+      const left = Math.max(0, AR.dl - arNow()), s = Math.ceil(left / 1000);
+      if (tm) { tm.textContent = fmtDur(s); tm.classList.toggle('low', s <= 5); }
+      if (bar) { bar.style.width = (left / AR.lim * 100).toFixed(1) + '%'; bar.classList.toggle('low', s <= 5); }
+      if (left <= 0) { arStop(); const st = $('#arst'); if (st && AR.mine == null) st.textContent = 'انتهى الوقت ⏱'; document.querySelectorAll('#arq .opt').forEach(b => b.disabled = true); }
+    };
+    arStop(); tick(); AR.tm = setInterval(tick, 200);
+    window.scrollTo({ top: 0, behavior: RM() ? 'auto' : 'smooth' });
+  }
+  function arAns(k) {
+    if (AR.st !== 'q' || AR.mine != null || !AR.m || arNow() > AR.dl + 500) return;
+    AR.mine = k;
+    document.querySelectorAll('#arq .opt').forEach(b => { b.disabled = true; b.classList.toggle('sel', +b.dataset.k === k); });
+    arSend({ t: 'ans', m: AR.m.m, i: AR.i, c: k });
+    arOpStatus();
+  }
+  function arRev(m) {
+    if (!AR.m) return;
+    AR.st = 'rev'; arStop(); AR.sc = m.sc;
+    AR.hist[m.i] = { k: m.k, my: m.me.c, mo: m.me.ok, op: m.op.c, oo: m.op.ok, mp: m.me.p, opp: m.op.p };
+    const op = AR.m.op;
+    document.querySelectorAll('#arq .opt').forEach(b => {
+      const k = +b.dataset.k; b.disabled = true; b.classList.remove('sel');
+      if (k === m.k) b.classList.add('ok'); else if (k === m.me.c) b.classList.add('bad');
+      if (k === m.op.c) b.insertAdjacentHTML('beforeend', `<span class="ar-om" title="اختيار خصمك">${avatarHtml(op.a, op.n, 24)}</span>`);
+    });
+    const st = $('#arst');
+    if (st) st.innerHTML = `<span class="ar-mine ${m.me.ok ? 'ok' : 'bad'}">${m.me.ok ? `صح! <bdi dir="ltr">+${m.me.p}</bdi>` : m.me.c == null ? 'ما جاوبت' : 'إجابتك خطأ'}</span><span class="ar-his">${esc(op.n || 'خصمك')}: ${m.op.ok ? `صح <bdi dir="ltr">+${m.op.p}</bdi>` : m.op.c == null ? 'ما جاوب' : 'خطأ'}</span>`;
+    if (m.me.ok) arPop('#ars0', m.me.p); if (m.op.ok) arPop('#ars1', m.op.p);
+    arBoard(); AR.opA = false; arOpStatus();
+    const tm = $('#artm'); if (tm) tm.classList.remove('low');
+  }
+  function arPop(sel, p) {
+    const el = $(sel); if (!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    if (RM()) return; const s = document.createElement('span'); s.className = 'ar-pop'; s.textContent = '+' + p; el.parentElement.appendChild(s); setTimeout(() => s.remove(), 1200);
+  }
+  function arEnd(m) {
+    if (!AR.m) return;
+    AR.st = 'end'; AR.end = m; arStop(); window.onbeforeunload = null; AR.sc = m.sc;
+    AR.done = m.done; m.keys.forEach((k, j) => { if (j < m.done && !AR.hist[j]) AR.hist[j] = { k, my: m.my[j], mo: m.my[j] === k, op: m.op[j], oo: m.op[j] === k, mp: m.pts[0][j], opp: m.pts[1][j] }; });
+    AR.i = -1; arBoard(); arOpStatus(); const qc = $('#arqc'); if (qc) qc.innerHTML = `${m.done}<small>/${AR.m.refs.length}</small>`; const tm = $('#artm'); if (tm) tm.textContent = 'انتهت'; const bar = $('#arbar'); if (bar) bar.style.width = '0%';
+    const qt = $('#arqt'); if (qt) qt.remove();
+    const op = AR.m.op, win = m.res === 'win', why = m.why;
+    const head = { win: 'فزت!', loss: 'خسرت هالمرة', draw: 'تعادل' }[m.res];
+    const sub = why === 'quit' ? (win ? 'خصمك انسحب من المباراة.' : 'انسحبت من المباراة.') : why === 'left' ? (win ? 'انقطع اتصال خصمك وما رجع.' : 'انقطع اتصالك وما رجعت في الوقت.')
+      : win ? `جاوبت ${m.cor[0]} صح من 20 وجبت نقاط أكثر من ${esc(op.n || 'خصمك')}.` : m.res === 'draw' ? 'نفس النقاط بالضبط!' : `${esc(op.n || 'خصمك')} جاب نقاط أكثر. راجع الأسئلة تحت وارجع أقوى.`;
+    const rt = m.rated && m.r ? `<p class="ar-rtc">تصنيفك <b>${m.r.now}</b> <em class="${m.r.d >= 0 ? 'up' : 'dn'}" dir="ltr">${m.r.d >= 0 ? '+' : ''}${m.r.d}</em></p>` : '<p class="ar-rtc">مباراة بدون تصنيف</p>';
+    $('#arq').innerHTML = `<section class="ar-end ${m.res}">
+      <div class="ar-eh"><h2>${head}</h2><p>${sub}</p></div>
+      <div class="ar-fin"><div class="me">${avatarHtml(AR.m.me.a || arMe().a, arMe().n, 56)}<b dir="ltr">${m.sc[0]}</b><span>${m.cor[0]} صح</span></div><span class="ar-fx">–</span><div class="op">${avatarHtml(op.a, op.n, 56)}<b dir="ltr">${m.sc[1]}</b><span>${m.cor[1]} صح</span></div></div>
+      ${rt}
+      <div class="ar-acts c"><button class="rz-go" id="arag">إعادة المباراة</button><button class="btn" id="arnw">خصم جديد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div>
+      <p class="ar-agn" id="aragn" aria-live="polite"></p>
+      ${m.done ? `<details class="ar-rv" id="arrvd"><summary>راجع ${m.done === 20 ? 'الأسئلة الـ20' : m.done === 1 ? 'السؤال' : 'الأسئلة الـ' + m.done} وإجاباتها</summary><div id="arrv"></div></details>` : ''}
+    </section>`;
+    if (win && !RM()) confetti();
+    if (AR.info) { if (m.rated && m.r) AR.info.r = m.r.now; AR.info.hist = null; }
+    $('#arag').onclick = () => { arSend({ t: 'again', m: m.m }); };
+    $('#arnw').onclick = () => { AR.st = 'lobby'; AR.m = null; renderArena().then(() => arFind()); };
+    $('#arbk').onclick = () => { AR.st = 'lobby'; AR.m = null; arClose(); renderArena(); };
+    const rvd = $('#arrvd'); if (rvd) rvd.addEventListener('toggle', () => { const r = $('#arrv'); if (r && !r.dataset.on) { r.dataset.on = 1; r.innerHTML = arReview(); } }, { once: true });
+  }
+  function arReview() {
+    const op = AR.m.op;
+    return AR.m.refs.slice(0, AR.done == null ? AR.m.refs.length : AR.done).map((r, j) => {
+      const it = arItem(j), h = AR.hist[j] || {}, ty = it.type;
+      const lab = o => esc(ty === 'quant' ? o.replace(/^[A-D]\)\s*/, '') : o);
+      return `<article class="ar-ri"><div class="ar-rih"><b>سؤال ${j + 1}</b><span class="tag">${AR_T[ty] || ''}</span><span class="ar-rir ${h.mo ? 'ok' : 'bad'}">${h.mo ? `أنت صح +${h.mp || 0}` : h.my == null ? 'ما جاوبت' : 'أنت خطأ'}</span><span class="ar-rio">${esc(op.n || 'خصمك')}: ${h.oo ? 'صح' : h.op == null ? 'ما جاوب' : 'خطأ'}</span></div>
+        ${ty === 'quant' ? `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${j + 1}" loading="lazy">` : `<p class="ltr">${esc(it.q)}</p>`}
+        <ul class="ar-ro ltr">${it.opts.map((o, k) => `<li class="${k === h.k ? 'k' : k === h.my ? 'w' : ''}"><b>${LETTERS[k]}</b> ${lab(o)}${k === h.my ? ' <small>اختيارك</small>' : ''}${k === h.op ? ' <small>خصمك</small>' : ''}</li>`).join('')}</ul>
+        ${it.exp ? `<details class="ar-ex"><summary>الشرح</summary><div>${fmtExp(it.exp)}</div></details>` : ''}</article>`;
+    }).join('');
   }
 
   applyFs(); applyTheme();
