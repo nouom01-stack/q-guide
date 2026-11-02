@@ -64,7 +64,7 @@
   }
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
-  const DATA_V = 2;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
+  const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (id === 'qall' || id === 'vall') {

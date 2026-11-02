@@ -35,7 +35,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function loadTest(id) {
     if (cache[id]) return cache[id];
-    const r = await fetch('/test/data/' + id + '.bin?v=2', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+    const r = await fetch('/test/data/' + id + '.bin?v=3', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     if (!cryptoKey) cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']);
     let plain; try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, cryptoKey, buf.slice(12)); } catch (e) { logout(); throw new Error('key'); }
