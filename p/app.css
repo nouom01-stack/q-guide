@@ -1448,3 +1448,21 @@ sup.ex .fr{font-size:.96em;margin:0 .04em}
 .fd-alt h4{margin:0 0 10px;font-size:calc(14px * var(--fs));color:var(--mut);font-weight:800}
 .fd-ai+.fd-ai{margin-top:14px}
 .fd-wa{border-top:1px dashed var(--line);padding-top:12px;margin-top:14px}
+.fd-res.sim{border-top:4px solid var(--royal)}.fd-res.sim .ic{background:var(--dotbg)}
+.fd-list{display:flex;flex-direction:column;gap:8px}
+.fd-it{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);text-decoration:none;color:var(--ink);transition:border-color .15s,background .15s}
+a.fd-it:hover{border-color:var(--royal);background:var(--card)}
+a.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
+.fd-it-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fd-it-h .fd-loc{font-size:calc(13px * var(--fs));padding:3px 10px;border-radius:8px}
+.fd-it-h small{color:var(--mut);font-size:calc(12.5px * var(--fs));font-weight:700}
+.fd-it-q{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(15px * var(--fs));line-height:1.7;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.fd-it-o{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(13px * var(--fs));color:var(--mut);line-height:1.8;overflow-wrap:anywhere}
+.fd-it-o b{color:var(--royal);font-weight:800;margin-inline-end:2px}
+.fd-it-o i{font-style:normal;margin:0 8px;opacity:.6}
+.fd-more{margin-top:10px;width:100%}
+.fd-more[hidden]{display:none}
+.fd-near .fd-list{margin-top:4px}
+[data-theme=dark] a.fd-it:hover{background:#1D2843}
+.fd-ex{margin-inline-start:auto;background:var(--okbg);color:var(--ok);border-radius:999px;padding:2px 10px;font-size:calc(12px * var(--fs));font-weight:800}
+[data-theme=dark] .fd-ex{color:var(--mint)}
