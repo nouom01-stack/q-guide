@@ -134,3 +134,11 @@ h1{margin:0 0 6px;font-size:calc(24px * var(--fs))}h2{margin:0 0 10px;font-size:
 .rv .ex.tr{margin-top:6px;background:#EEF4FF}.rv .ex.tr .tro{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px;margin-top:6px}.rv .ex.tr .tro span{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.7)}.rv .ex.tr .tro span.k{background:#DDF5E8;font-weight:700}
 .rv .ex.tr .wds{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.rv .ex.tr .wds span{background:rgba(255,255,255,.75);border:1px solid #DCE4F5;border-radius:999px;padding:1px 9px;font-size:calc(13px * var(--fs))}.rv .ex.tr .wds b{color:#15337A;unicode-bidi:isolate}
 [data-theme="dark"] .rv .ex.tr .wds span{background:rgba(255,255,255,.06);border-color:#33415f}[data-theme="dark"] .rv .ex.tr .wds b{color:#C9D4FF}
+/* 🆓 الزائر: الاختبار المحاكي 1 مفتوح والباقي مقفل */
+.tcard.lk{background:transparent;border-style:dashed;box-shadow:none}
+.tcard.lk .t{color:var(--mut)}
+.pill.lock{background:#FFF6E0;color:#94650A}
+.freeb{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;background:#0E2458;color:#fff;border-radius:14px;padding:16px 18px;margin:0 0 16px;border-inline-start:6px solid #F2B33D}
+.freeb div{display:flex;flex-direction:column;gap:2px;flex:1 1 360px;min-width:0}
+.freeb b{font-size:calc(17px * var(--fs))}
+.freeb span{color:rgba(255,255,255,.84);font-size:calc(14px * var(--fs));line-height:1.7}

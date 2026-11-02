@@ -10,6 +10,9 @@
   const PART_AR = { 1: 'التناظر اللفظي', 2: 'إكمال الجمل', 3: 'الخطأ السياقي', 4: 'استيعاب المقروء' };
   let auth = null, manifest = null, cryptoKey = null;
   const cache = {};
+  // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
+  const isFree = () => !!(auth && auth.role === 'free');
+  const FREE_SETS = ['q1', 'v1', 'placement'], JOIN_URL = 'https://www.youtube.com/@Q-guide1/join', PRICE = 140, FREE_GAMES = 3;
   // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات)
   const YT = {
     q: { name: 'القسم', rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: 'مقطع قواعد الكمي', d: 'كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام' }, list: 'PLNdATbln9B4k',
@@ -67,6 +70,7 @@
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
   async function loadSet(id) {
     if (cache[id]) return cache[id];
+    if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
     if (id === 'qall' || id === 'vall') {
       const k = id[0]; let got = 0; const el = () => document.getElementById('ldmsg');
       const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const m = el(); if (m) m.textContent = 'تحميل الأسئلة… ' + got + ' / 14'; return p; })));
@@ -76,7 +80,7 @@
       cache[id] = obj; return obj;
     }
     if (/^t-/.test(id)) return loadTopicSet(id);
-    const r = await fetch('/p/data/' + id + '.bin?v=' + DATA_V, { cache: 'force-cache' });
+    const r = await fetch('/p/data/' + (isFree() ? 'free/' : '') + id + '.bin?v=' + DATA_V, { cache: 'force-cache' });
     if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     const key = await getKey();
@@ -192,11 +196,11 @@
     obj.topicSet = true; if (!mode) cache[id] = obj;   // الأخطاء والدفتر يتغيّرون باستمرار فلا يُخزَّنون
     return obj;
   }
-  function logout(msg, tellServer) {
+  function logout(msg, tellServer, good) {
     if (tellServer && auth && auth.session) { try { api({ op: 'logout', session: auth.session }); } catch (e) {} }
     lsDel(LS.auth); auth = null; cryptoKey = null; P = null; document.onkeydown = null;
     try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {}
-    if (msg) { location.hash = ''; renderLogin(msg); } else route();
+    if (msg) { location.hash = ''; renderLogin(msg, good); } else route();
   }
   // 🔒 جلسة واحدة لكل طالب: نتأكد من الخادم عند الفتح وكل 3 دقائق
   let hbBusy = false;
@@ -204,11 +208,50 @@
     if (!auth || hbBusy) return; hbBusy = true;
     try {
       const r = await api({ op: 'me', session: auth.session });
-      if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || 'انتهت الجلسة، سجّل دخولك من جديد.'));
+      if (r && !r.ok && r.error === 'upgraded') logout(esc(r.msg || 'تم تفعيل اشتراكك، سجّل دخولك من جديد.'), false, 1);   // 🎉 الزائر اشترك
+      else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || 'انتهت الجلسة، سجّل دخولك من جديد.'));
       else if (r && r.ok && auth.role === 'admin' && r.staff && r.staff !== auth.staff) { auth.staff = r.staff; lsSet(LS.auth, auth); }
     } catch (e) {} finally { hbBusy = false; }
   }
   setInterval(heartbeat, 3 * 60 * 1000);
+
+  // ---------- 🆓 الزائر: المسارات المفتوحة + نافذة الاشتراك ----------
+  const freeRoute = h => h === '' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
+  function lockName(h) {
+    const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
+    if (/^board/.test(h)) return 'لوحة الصدارة'; if (h === 'qall' || h === 'vall') return 'الاختبار الشامل'; if (/^t-/.test(h)) return 'التدريب على نقاط ضعفك';
+    return { notes: 'دفتري', rules: 'قوانين الكمي', plan: 'خطة المذاكرة', skills: 'نقاط القوة والضعف', badges: 'الإنجازات', vocab: 'قاموس الكلمات', 'wb-q': 'مذكرة الكمي', 'wb-v': 'مذكرة اللفظي' }[h.replace(/-v\d+$/, '')] || '';
+  }
+  function subDlg(what) {
+    document.querySelectorAll('.subdlg').forEach(x => x.remove());
+    const ov = document.createElement('div'); ov.className = 'qgdlg subdlg'; ov.setAttribute('dir', 'rtl');
+    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، أبي أشترك في دورة Q-Guide' + (auth && auth.email ? '\nإيميلي في الموقع: ' + auth.email : ''));
+    ov.innerHTML = `<div class="qgdlg-box sub-box" role="dialog" aria-modal="true" aria-labelledby="subh">
+      <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
+      ${what ? `<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
+      <h3 id="subh">اشترك في دورة Q-Guide</h3>
+      <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>الساحة 1v1 بدون حد، ولوحات الصدارة</li><li>المذكرات وخطة المذاكرة ونقاط ضعفك</li></ul>
+      <h4>طريقة الاشتراك</h4>
+      <ol class="sub-s"><li>انتسب لقناة Q-guide1 في يوتيوب بـ <b>${PRICE} ريال</b></li><li>أرسل لنا على واتساب إيميلك اللي دخلت فيه هنا</li><li>نفعّل لك الدورة كاملة على نفس حسابك</li></ol>
+      <div class="sub-a"><a class="btn gold" href="${JOIN_URL}" target="_blank" rel="noopener">اشترك من يوتيوب</a><a class="btn wa" href="${wa}" target="_blank" rel="noopener">راسلنا على واتساب</a></div>
+    </div>`;
+    document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onK); };
+    const onK = e => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onK);
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    ov.querySelector('.sub-x').onclick = close; ov.querySelector('.sub-a a').focus({ preventScroll: true });
+  }
+  // أي زر فيه data-lock أو data-sub يفتح نافذة الاشتراك
+  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); subDlg(b.dataset.lock || ''); }); }
+  const lockTool = (i, b, s) => `<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
+  function freeHero() {
+    const lv = lsGet(LVL_LS, null);
+    return `<section class="fhero" aria-label="الحساب المجاني">
+      <div class="fh-t"><h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة كاملة.</p></div>
+      <div class="fh-a"><button type="button" class="btn gold" data-sub>اشترك في الدورة <small>${PRICE} ريال</small></button>${lv ? '' : '<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>'}</div>
+    </section>`;
+  }
 
   // ---------- routing ----------
   function route() {
@@ -221,6 +264,7 @@
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
+    if (isFree() && !freeRoute(h)) { history.replaceState(null, '', location.pathname); renderHome(); return subDlg(lockName(h)); }   // 🔒 للمشتركين
     if (h === 'arena') return renderArena();
     if (/^duel-[A-Za-z0-9]{6}$/.test(h)) return renderArena(h.slice(5).toUpperCase());
     if (h === 'board-arena') return renderBoard('arena');
@@ -241,7 +285,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
-    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : renderMembers(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-free') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -253,15 +297,16 @@
     renderLogin(); onCredential({ credential: cred }); return true;
   }
   // ---------- login ----------
-  function renderLogin(err) {
+  function renderLogin(err, good) {
     document.title = 'تسجيل الدخول | Q-Guide';
     app.innerHTML = `<div class="login"><div class="card">
       <img src="/assets/logo.png" alt="Q-Guide">
       <h1>منصة تدريب Q-Guide</h1>
       <p class="sub">أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>
-      ${err ? `<div class="err">${err}</div>` : ''}
-      <p class="note">سجّل دخولك بحساب Google <b>نفس الإيميل اللي اشتركت فيه بالدورة</b>.<br>المنصة للطلاب المشتركين فقط، والحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
+      ${err ? `<div class="${good ? 'okm' : 'err'}">${err}</div>` : ''}
+      <div class="lg-free"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>
+      <p class="note">مشترك في الدورة؟ سجّل بنفس إيميل Google اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
       <p class="note" style="margin-top:10px"><a class="btn sm ghost" style="gap:6px" href="https://wa.me/966508003683?text=${encodeURIComponent('السلام عليكم، أحتاج مساعدة في الدخول لمنصة Q-Guide')}" target="_blank" rel="noopener">💬 دعم فني عبر واتساب</a></p>
       <p class="note" style="margin-top:8px"><a href="/privacy/">سياسة الخصوصية</a> · <a href="/terms/">الشروط</a></p>
     </div></div>`;
@@ -278,7 +323,7 @@
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
   async function onCredential(resp) {
-    const host = $('#gbtn'); if (host) host.innerHTML = '<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ التحقق من اشتراكك…</span>';
+    const host = $('#gbtn'); if (host) host.innerHTML = '<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>';
     try {
       const r = await api({ op: 'login', idToken: resp.credential, ua: navigator.userAgent.slice(0, 120) });
       if (!r.ok) {
@@ -343,26 +388,27 @@
     const R = YT[tab === 'quant' ? 'q' : 'v'];
     const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
     const megaPct = (id, n) => Math.round(Object.keys(progGet(id).a || {}).length * 100 / n);
-    badgeCheck();
+    if (!isFree()) badgeCheck();
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
-    const toolA = (href, i, b, s, tag) => `<a class="tool" href="${href}"><span class="ti">${i}</span><span class="tx"><b>${b}${tag || ''}</b><small>${s}</small></span></a>`;
-    const toolB = (id, i, b, s) => `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
-    app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a><a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
+    const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
+    const toolA = (href, i, b, s, tag, free) => FR && !free ? lockTool(i, b, s) : `<a class="tool" href="${href}"><span class="ti">${i}</span><span class="tx"><b>${b}${tag || ''}</b><small>${s}</small></span></a>`;
+    const toolB = (id, i, b, s) => FR ? lockTool(i, b, s) : `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
+    app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? '<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>' : '<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>'}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     `<main class="wrap home">
-      <div id="rz">${rzHtml()}</div>
-      <div id="trip"></div>
+      ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
+      ${FR ? '' : '<div id="trip"></div>'}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener" title="${esc(R.rules.d)}">${YTSVG}<span>${R.rules.t}</span>${R.rules.dur ? `<small>${R.rules.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">كل المقاطع</a>${tab === 'quant' && RULES_ON ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : ''}</div>
       <div class="sheets" id="grid"></div>
       <h2 class="h2">أدوات المذاكرة</h2>
       <section class="tgroups">
         <div class="tg"><h3>اختبر نفسك</h3>
-          ${toolA('#level', '🧭', 'تحديد المستوى', lv ? `مستواك: ${LEVELS[lv.lvl].t} (${lv.pct}%) · تقدر تعيده` : '20 سؤال تعرف منها مستواك ونقاط ضعفك')}
-          ${toolA('#arena', '⚔️', 'الساحة 1v1', 'تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي', '<span class="beta">جديد</span>')}
-          ${toolA('/test/', '🧪', 'الاختبارات المحاكية', '17 اختبار بنفس شكل قياس المحوسب')}
-          <div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div></div>
+          ${toolA('#level', '🧭', 'تحديد المستوى', lv ? `مستواك: ${LEVELS[lv.lvl].t} (${lv.pct}%) · تقدر تعيده` : '20 سؤال تعرف منها مستواك ونقاط ضعفك', FR ? '<span class="frb">مجاني</span>' : '', 1)}
+          ${toolA('#arena', '⚔️', 'الساحة 1v1', FR ? `تحدَّ طالب مباشرة، ${FREE_GAMES} مباريات مجانية كل يوم` : 'تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي', FR ? '<span class="frb">مجاني</span>' : '<span class="beta">جديد</span>', 1)}
+          ${toolA('/test/', '🧪', 'الاختبارات المحاكية', FR ? 'الاختبار المحاكي 1 مجاني، والـ 16 الباقية للمشتركين' : '17 اختبار بنفس شكل قياس المحوسب', FR ? '<span class="frb">1 مجاني</span>' : '', 1)}
+          ${FR ? lockTool('🏁', 'الاختبار الشامل', 'كل الأسئلة في اختبار واحد متواصل') : `<div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div>`}</div>
         <div class="tg"><h3>تعلّم وراجع</h3>
-          ${toolA('#find', '🔎', 'ابحث عن سؤال', 'اكتب السؤال أو صوّره ونقولك وين تلقاه', '<span class="beta">جديد</span>')}
+          ${toolA('#find', '🔎', 'ابحث عن سؤال', FR ? 'اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين' : 'اكتب السؤال أو صوّره ونقولك وين تلقاه', FR ? '<span class="frb">مجاني</span>' : '<span class="beta">جديد</span>', 1)}
           ${RULES_ON ? toolA('#rules', '📐', 'قوانين الكمي', 'كل القوانين في صفحة وحدة، وتنطبع') : ''}
           ${toolA('#vocab', '📖', 'قاموس الكلمات', 'ترجمة ونطق كل كلمات اللفظي')}
           ${toolA('#notes', '📒', 'دفتري', nMarks ? `${nMarks} سؤال محفوظ مع ملاحظاتك` : 'الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها')}
@@ -374,7 +420,7 @@
           ${toolA('#badges', '🏅', 'إنجازاتي', `${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length} من ${BADGES.length} شارة`)}
           ${toolA('#board', '🏆', 'لوحة الصدارة', 'ترتيبك بين طلاب الدورة')}</div>
       </section>
-      ${auth.member === 'manual' ? '' : `<h2 class="h2" id="wbh">📘 مذكراتك</h2>
+      ${auth.member === 'manual' || FR ? '' : `<h2 class="h2" id="wbh">📘 مذكراتك</h2>
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>`}
     </main>`;
     $('#lo').onclick = async () => { if (await QGDlg.confirm('تسجيل الخروج؟', { ok: 'خروج' })) logout('', true); };
@@ -386,25 +432,27 @@
       const st = setState(s.id, s.n); const sub = tab === 'quant' ? `الأسئلة <bdi dir="ltr">${esc(s.range)}</bdi>` : `<bdi dir="ltr">${esc(s.sub)}</bdi>`;
       const stamp = st.done ? `<span class="stamp" title="أفضل نتيجة">✓ ${st.best != null ? st.best + '%' : ''}</span>` : st.ans ? `<span class="pill">${st.ans}/${s.n}</span>` : '';
       const foot = st.done ? (st.best != null ? `أفضل نتيجة ${st.best}%` : 'جاوبت كل الأسئلة') : st.ans ? `أجبت ${st.ans} من ${s.n}، منها ${st.ok} صح` : (st.best != null ? `أفضل نتيجة ${st.best}%` : `${s.n} سؤال`);
-      return `<button class="sheet ${st.done ? 'done' : st.ans ? 'doing' : ''}" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b>${stamp}</span><span class="sh-s">${sub}</span><span class="sh-dots" aria-hidden="true" style="--c:${cols(s.n, 16)};--cm:${cols(s.n, 12)}">${dotsHtml(s.id, s.n, -1)}</span><span class="sh-f">${foot}</span></button>`;
+      if (isFree() && FREE_SETS.indexOf(s.id) < 0) return `<button class="sheet lk" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b><span class="lkb">🔒</span></span><span class="sh-s">${sub}</span><span class="sh-lk">${s.n} سؤال مع الشرح للمشتركين</span></button>`;
+      return `<button class="sheet ${st.done ? 'done' : st.ans ? 'doing' : ''}${isFree() ? ' fr' : ''}" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b>${stamp}</span><span class="sh-s">${sub}</span><span class="sh-dots" aria-hidden="true" style="--c:${cols(s.n, 16)};--cm:${cols(s.n, 12)}">${dotsHtml(s.id, s.n, -1)}</span><span class="sh-f">${foot}</span></button>`;
     }).join('');
-    grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
+    grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { if (b.classList.contains('lk')) return subDlg(SET_NAME(b.dataset.id)); location.hash = b.dataset.id; });
+    bindSub(app);
     const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast('هدفك اليومي صار ' + nx + ' سؤال'); }; };
     bindGoal();
     const rb = $('#rem'); if (rb) rb.onclick = () => remDlg().then(() => { const l = $('#reml'); if (l) l.textContent = remLabel(); });
-    badgeCheckSoon(); remCtx();
+    if (!isFree()) badgeCheckSoon(); remCtx();
     const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; };
-    paintTrip();
+    if (!isFree()) paintTrip();
     if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); } }).catch(() => {}); }
-    renderWorkbooks();
+    if (!isFree()) renderWorkbooks();
     prefetchSets();
   }
   // ⚡ تحميل مسبق هادئ لملفات الأقسام في الخلفية (مرة واحدة لكل جلسة) حتى تفتح فوراً
   let prefetching = false;
   function prefetchSets() {
     if (prefetching || !manifest) return; const c = navigator.connection || {}; if (c.saveData) return; prefetching = true;
-    const ids = [...manifest.quant, ...manifest.verbal].map(s => s.id);
-    const run = () => { const id = ids.shift(); if (!id) return; fetch('/p/data/' + id + '.bin?v=' + DATA_V, { priority: 'low' }).catch(() => {}).finally(() => setTimeout(run, 400)); };
+    const ids = isFree() ? ['q1', 'v1'] : [...manifest.quant, ...manifest.verbal].map(s => s.id);
+    const run = () => { const id = ids.shift(); if (!id) return; fetch('/p/data/' + (isFree() ? 'free/' : '') + id + '.bin?v=' + DATA_V, { priority: 'low' }).catch(() => {}).finally(() => setTimeout(run, 400)); };
     setTimeout(run, 2500);
   }
   async function renderWorkbooks() {
@@ -642,7 +690,7 @@
         if (c === '(') {
           const prev = s[i - 1] || '', g = group(), next = s[i] || '';
           const keep = g.open || !g.single || (parts && (FR_RAD.includes(prev) || FR_AT.test(prev))) || FR_SUP.test(next);
-          h += !keep ? g.h : g.open ? '(' + g.h : /class="fr"/.test(g.h) ? `<span class="pb">(</span>${g.h}<span class="pb">)</span>` : `(${g.h})`;
+          h += !keep ? g.h : g.open ? '(' + g.h : /class="fr"/.test(g.h) ? `<span class="mpb">(</span>${g.h}<span class="mpb">)</span>` : `(${g.h})`;
           solo = parts === 0 && !g.open ? g : false; parts++; continue;
         }
         if (c === '^' && parts && /[(A-Za-z0-9−-]/.test(s[i + 1] || '')) { h += sup(); solo = false; continue; }
@@ -740,11 +788,12 @@
       <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
       <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
-      <div class="acts sacts">${nx ? `<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? `<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
-      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? 'القسم' : 'النموذج') : 'الاختبار'}</button>${nm ? `<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? `<a class="lnk2" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
+      <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? `<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : `<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? `<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
+      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? 'القسم' : 'النموذج') : 'الاختبار'}</button>${nm && !isFree() ? `<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? `<a class="lnk2" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
+    bindSub($('#pm'));
     const rv = $('#rev'); if (rv) rv.onclick = () => { document.onkeydown = onKey; showQ(wrong[0]); };
     document.querySelectorAll('.wl button').forEach(b => b.onclick = () => { document.onkeydown = onKey; showQ(+b.dataset.i); });
     window.scrollTo(0, 0);
@@ -759,7 +808,7 @@
         for (const k of Object.keys(per)) { try { await api({ op: 'result', session: auth.session, set: k, kind: set.kind + '-all', n: per[k].n, correct: per[k].c, secs: Math.round(share * per[k].n), wrong: '' }); } catch (e) {} }
       }
       const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
-      $('#saved').textContent = r.ok ? (r.admin ? 'وضع المشرف: النتيجة لا تُسجّل' : 'تم حفظ نتيجتك ✓') : '';
+      $('#saved').textContent = r.ok ? (r.admin ? 'وضع المشرف: النتيجة لا تُسجّل' : r.free ? 'نتيجتك محفوظة على جهازك ✓' : 'تم حفظ نتيجتك ✓') : '';
       if (!r.ok && r.error === 'session') { toast('انتهت الجلسة، سجّل دخولك من جديد'); }
     } catch (e) { $('#saved').textContent = ''; }
   }
@@ -920,7 +969,74 @@
     out.sort((a, b) => b.s - a.s || ix.K[a.i].len - ix.K[b.i].len);
     return out.slice(0, k || 30);
   }
-  const FIND_V = 1, FD_HI = 1.12, FD_MID = 0.85, WA_NUM = '966508003683';
+  // ---------- 🆓 بحث الزوار: الفهرس فيه بصمات الكلمات (hash) بدل نص الأسئلة ----------
+  // كل مدخل: [النوع، القسم، رقم السؤال، الاختبارات، كلمات السؤال، كلمات الخيارات، كلمات الترجمة، أرقام السؤال، أرقام الخيارات، أرقام الترجمة، عنوان القطعة، أزواج الكلمات]
+  // أزواج الكلمات المتتالية مبصومة بملح خاص بكل سؤال (رقمه) → تحافظ على دقة البحث بدون ما تكشف النص
+  const fdFnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h; };
+  const fdH = w => (w[0] === '_' ? '_' : '') + fdFnv(w).toString(36);
+  const fdH2 = (salt, g) => (fdFnv(salt + g) >>> 8).toString(36);
+  const fdWords = s => fdNorm(s).match(/[a-z0-9ء-ي]+/g) || [];
+  const fdPairs = s => { const w = fdWords(s), o = []; for (let i = 0; i + 2 <= w.length; i++) o.push(w[i] + ' ' + w[i + 1]); return [...new Set(o)]; };
+  function fdPubEntry(e, i) {   // من مدخل الفهرس الكامل (للبناء فقط)
+    const q = fdToks(e[3]), o = fdToks(e[4].join(' ')), a = fdToks(e[5]), g = e[6] ? fdToks(e[6]) : { en: [], ar: [], nu: [] }, salt = i.toString(36) + '|';
+    return [e[0], e[1], e[2], e[7], q.en.map(fdH), o.en.map(fdH), a.ar.map(fdH), q.nu.map(fdH), o.nu.map(fdH), a.nu.map(fdH),
+      g.en.filter(w => w[0] !== '_').concat(g.ar, g.nu).map(fdH), [...new Set(fdPairs(e[3] + ' ' + e[4].join(' ')).map(x => fdH2(salt, x)))]];
+  }
+  function fdPubBuild(P) {
+    const N = P.length, df = new Map();
+    const docs = P.map(p => { const nu = p[7].concat(p[8]); return { en: p[4].concat(p[5]), ar: p[6], nu: nu.length ? nu : p[9] }; });
+    docs.forEach(d => new Set(d.en.concat(d.ar)).forEach(w => df.set(w, (df.get(w) || 0) + 1)));
+    const idf = w => Math.log((N + 1) / ((df.get(w) || 0) + 1)) + 1;
+    const vec = tl => { const c = new Map(); tl.forEach(w => c.set(w, (c.get(w) || 0) + 1)); const v = new Map(); let z = 0; c.forEach((n, w) => { const x = (1 + Math.log(n)) * idf(w); v.set(w, x); z += x * x; }); z = Math.sqrt(z) || 1; v.forEach((x, w) => v.set(w, x / z)); return v; };
+    const cnt = a => { const c = new Map(); a.forEach(x => c.set(x, (c.get(x) || 0) + 1)); return c; };
+    const kdf = new Map(); let tot = 0;
+    const K = P.map(p => {   // نفس أوزان البحث بالكلمات: نص السؤال 2، الخيارات 1، الترجمة 1، عنوان القطعة 3
+      const tf = new Map(), add = (l, wt) => l.forEach(w => { if (w[0] !== '_') tf.set(w, (tf.get(w) || 0) + wt); });
+      add(p[4], 2); add(p[7], 2); add(p[5], 1); add(p[8], 1); add(p[6], 1); add(p[9], 1); add(p[10], 3);
+      let len = 0; tf.forEach((n, w) => { kdf.set(w, (kdf.get(w) || 0) + 1); len += n; }); tot += len; return { tf, len };
+    });
+    const kidf = w => Math.log(1 + (N - (kdf.get(w) || 0) + 0.5) / ((kdf.get(w) || 0) + 0.5));
+    return { P, idf, vec, cnt, kidf, K, avg: tot / (N || 1), D: docs.map((d, i) => ({ en: vec(d.en), ar: vec(d.ar), nu: cnt(d.nu), nn: d.nu.length, bg: new Set(P[i][11]) })) };
+  }
+  function fdPubSearch(ix, text, kind, k) {
+    const t = fdToks(text), q = { en: t.en.map(fdH), ar: t.ar.map(fdH), nu: t.nu.map(fdH) };
+    const qe = ix.vec(q.en), qa = ix.vec(q.ar), qn = ix.cnt(q.nu), qp = fdPairs(text);
+    const qu = [...new Set(q.en.filter(w => w[0] !== '_'))], qw = qu.reduce((a, w) => a + ix.idf(w), 0);
+    const cos = (a, b) => { let s = 0; if (a.size > b.size) [a, b] = [b, a]; a.forEach((x, w) => { const y = b.get(w); if (y) s += x * y; }); return s; };
+    const jac = (a, b) => { let i = 0, u = 0; const ks = new Set([...a.keys(), ...b.keys()]); ks.forEach(w => { const x = a.get(w) || 0, y = b.get(w) || 0; i += Math.min(x, y); u += Math.max(x, y); }); return u ? i / u : 0; };
+    const out = [];
+    ix.P.forEach((p, i) => {
+      if (kind && (kind === 'q' ? p[0] !== 'q' : p[0] === 'q')) return;
+      const d = ix.D[i]; let c = Math.max(q.en.length ? cos(qe, d.en) : 0, q.ar.length ? cos(qa, d.ar) : 0);
+      if (kind === 'v' && qw >= 9 && qu.length <= 6 && qu.some(w => ix.idf(w) >= 6)) { let hw = 0; qu.forEach(w => { if (d.en.has(w)) hw += ix.idf(w); }); c = Math.max(c, 0.92 * hw / qw); }
+      out.push({ i, c, nj: q.nu.length && d.nn ? jac(qn, d.nu) : 0 });
+    });
+    out.forEach(r => r.s = r.c + 0.5 * r.nj);
+    out.sort((a, b) => b.s - a.s);
+    const top = out.slice(0, 300);   // أزواج الكلمات تنحسب لأقرب 300 فقط (أسرع)
+    top.forEach(r => {
+      const B = ix.D[r.i].bg, salt = r.i.toString(36) + '|'; let inter = 0; qp.forEach(g => { if (B.has(fdH2(salt, g))) inter++; });
+      const dice = qp.length && B.size ? 2 * inter / (qp.length + B.size) : 0, cov = qp.length >= 6 ? inter / qp.length : 0;
+      r.s = r.c + 0.5 * r.nj + 0.5 * Math.max(dice, 0.9 * cov); if (ix.P[r.i][0] === 'p') r.s = Math.max(r.s, 1.7 * cov);
+    });
+    top.sort((a, b) => b.s - a.s);
+    return top.slice(0, k || 5);
+  }
+  function fdPubKeyword(ix, text, kind, k) {
+    const q = fdToks(text), terms = [...new Set(q.en.filter(w => w[0] !== '_').concat(q.ar, q.nu).map(fdH))];
+    if (!terms.length) return [];
+    const need = terms.length <= 3 ? 1 : Math.ceil(terms.length * 0.5), out = [];
+    ix.P.forEach((p, i) => {
+      if (kind && (kind === 'q' ? p[0] !== 'q' : p[0] === 'q')) return;
+      const D = ix.K[i]; let sc = 0, m = 0;
+      terms.forEach(w => { const f = D.tf.get(w); if (!f) return; m++; sc += ix.kidf(w) * f * 2.2 / (f + 1.2 * (0.25 + 0.75 * D.len / ix.avg)); });
+      if (m < need) return;
+      out.push({ i, s: sc * Math.pow(m / terms.length, 2), m });
+    });
+    out.sort((a, b) => b.s - a.s || ix.K[a.i].len - ix.K[b.i].len);
+    return out.slice(0, k || 30);
+  }
+  const FIND_V = 1, FD_HI = 1.12, FD_MID = 0.85, FDP_HI = 1.0, FDP_MID = 0.75, WA_NUM = '966508003683';   // FDP: حدود بحث الزوار (معايرة على نفس الأسئلة)
   let FD = null, fdOcr = null;
   async function fdLoad() {
     if (FD) return FD;
@@ -966,11 +1082,66 @@
     return e[1] ? `<a class="fd-it" href="#${e[1]}@${e[2]}">${body}</a>` : `<div class="fd-it">${body}</div>`;
   }
   const fdWa = (q, img, kind) => `https://wa.me/${WA_NUM}?text=` + encodeURIComponent(`السلام عليكم، بحثت في موقع Q-Guide عن هذا السؤال (${kind === 'q' ? 'كمي' : 'لفظي'}) وما لقيته:\n\n${String(q || '').trim().slice(0, 700)}${img ? '\n\n(بأرسل لكم صورة السؤال)' : ''}`);
+  const fdWaBtn = (q, img, kind) => `<a class="btn wa" href="${fdWa(q, img, kind)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>واتساب 0508003683</a>`;
+  // 🆓 بحث الزائر: نقوله إذا السؤال في الدورة ووين، بدون نص السؤال ولا حله (الفهرس فيه بصمات الكلمات فقط)
+  let FDP = null;
+  async function fdLoadPub() {
+    if (FDP) return FDP;
+    const gz = typeof DecompressionStream === 'function';
+    const r = await fetch('/p/data/free/' + (gz ? 'findp' : 'findp0') + '.bin?v=' + FIND_V); if (!r.ok) throw new Error('data ' + r.status);
+    const buf = new Uint8Array(await r.arrayBuffer()), key = await getKey();
+    let plain; try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)); } catch (e) { logout(); throw new Error('bad key'); }
+    const txt = gz ? await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : new TextDecoder().decode(plain);
+    FDP = fdPubBuild(JSON.parse(txt).e); return FDP;
+  }
+  const fdIsFreeP = p => p[1] === 'q1' || p[1] === 'v1';
+  const fdMainP = p => p[1] ? (p[0] === 'p' ? `القطعة في ${SET_NAME(p[1])}` : `${p[0] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(p[1])} · سؤال ${p[2] + 1}`) : `الاختبار المحاكي ${(p[3][0] || [])[0]} · القسم ${(p[3][0] || [])[1]} · سؤال ${(p[3][0] || [])[2]}`;
+  const fdLocP = p => {
+    const L = []; if (p[1]) L.push(fdMainP(p));
+    p[3].slice(0, 3).forEach(t => L.push(`الاختبار المحاكي ${t[0]} · القسم ${t[1]} · سؤال ${t[2]}`));
+    if (p[3].length > 3) L.push(`+ ${p[3].length - 3} اختبارات محاكية ثانية`);
+    return L.map((t, i) => `<span class="fd-loc${i ? '' : ' main'}">${t}</span>`).join('');
+  };
+  const fdActP = p => fdIsFreeP(p) ? `<a class="btn" href="#${p[1]}@${p[2]}">افتح السؤال (مجاني)</a>` : p[3].some(t => t[0] === 1) ? `<a class="btn" href="/test/">افتح الاختبار المحاكي 1 (مجاني)</a>` : `<button type="button" class="btn gold" data-sub>🔒 اشترك عشان تحله وتشوف الشرح</button>`;
+  function fdItemP(p, exact) {
+    const free = fdIsFreeP(p);
+    const body = `<span class="fd-it-h"><span class="fd-loc main">${fdMainP(p)}</span>${p[3].length && p[1] ? `<small>وفي ${fdTests(p[3].length)}</small>` : ''}${exact ? '<span class="fd-ex">✓ مطابق لكلامك</span>' : ''}<span class="fd-lk${free ? ' fr' : ''}">${free ? 'مجاني' : '🔒 للمشتركين'}</span></span>`;
+    return free ? `<a class="fd-it" href="#${p[1]}@${p[2]}">${body}</a>` : `<button type="button" class="fd-it" data-sub>${body}</button>`;
+  }
+  async function fdRunPub(R, q, kind, full, img) {
+    let ix; try { ix = await fdLoadPub(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
+    if (!$('#fdr')) return;
+    const res = fdPubSearch(ix, q, kind, 6), top = res[0], E = ix.P, p = top && E[top.i], sc = top ? top.s : 0, wa = fdWaBtn(q, img, kind);
+    const lock = `<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
+    if (full && p && sc >= FDP_HI) {
+      const same = res.slice(1).filter(r => r.s >= FDP_HI && sc - r.s < 0.03).map(r => E[r.i]);   // نفس السؤال في مكان ثاني
+      R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
+        <div class="fd-locs">${fdLocP(p)}${same.map(fdLocP).join('')}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div></div>`;
+    } else if (full && p && sc >= FDP_MID) {
+      R.innerHTML = `<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>يمكن يكون نفسه بأرقام أو خيارات ثانية:</small></div></div>
+        <div class="fd-locs">${fdLocP(p)}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div><div class="fd-acts fd-wa"><span class="fd-or">تبي نتأكد لك؟ أرسله لنا:</span>${wa}</div></div>`;
+    } else if (full) {
+      const near = res.filter(r => r.s >= 0.5).map(r => E[r.i]).slice(0, 5);
+      R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>أرسله لنا على واتساب ونتواصل معك${img ? '، وأرفق صورة السؤال في المحادثة' : ''}.</small></div></div>
+        <div class="fd-acts">${wa}</div>${near.length ? `<div class="fd-near"><h4>أسئلة قريبة منه في الدورة</h4><div class="fd-list">${near.map(x => fdItemP(x)).join('')}</div></div>` : ''}</div>`;
+    } else {
+      const seen = new Set(), list = [], exact = new Set(res.filter(r => r.s >= FDP_HI).map(r => r.i));
+      res.filter(r => r.s >= FDP_MID).concat(fdPubKeyword(ix, q, kind, 40)).forEach(r => { if (!seen.has(r.i)) { seen.add(r.i); list.push(r.i); } });
+      let shown = 10; const show = () => { const box = $('#fdl'); if (!box) return; box.innerHTML = list.slice(0, shown).map(i => fdItemP(E[i], exact.has(i))).join(''); bindSub(box); const mb = $('#fdmore'); if (mb) mb.hidden = shown >= list.length; };
+      R.innerHTML = list.length ? `<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة في الدورة فيها كلامك</b><small>لقينا ${list.length >= 40 ? 'أكثر من 40 سؤالاً' : fdQn(list.length)}${list.length > 10 ? '، هذي أقربها' : ''}. نص الأسئلة وحلها للمشتركين، وهنا تشوف وين تلقاها.</small></div></div>
+          <div class="fd-list" id="fdl"></div><button type="button" class="btn ghost fd-more" id="fdmore">عرض أسئلة أكثر</button>
+          <div class="fd-acts fd-wa"><span class="fd-or">ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو أرسله لنا:</span>${wa}</div></div>`
+        : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو أرسله لنا على واتساب.</small></div></div><div class="fd-acts">${wa}</div></div>`;
+      show(); const mb = $('#fdmore'); if (mb) mb.onclick = () => { shown += 10; show(); };
+    }
+    bindSub(R);
+    R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
+  }
   async function renderFind() {
     document.title = 'ابحث عن سؤال | Q-Guide';
     let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '';
     app.innerHTML = topbar(`<span class="ttl">🔎 ابحث عن سؤال</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap fd">
-      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك في أي قسم تلقاه.</p></div>
+      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك في أي قسم تلقاه.${isFree() ? ' حله وشرحه للمشتركين.' : ''}</p></div>
       <div class="fd-box">
         <div class="seg" id="fdk" role="tablist" aria-label="نوع السؤال"><button type="button" role="tab" data-k="q" class="${kind === 'q' ? 'on' : ''}" aria-selected="${kind === 'q'}">📐 الكمي</button><button type="button" role="tab" data-k="v" class="${kind === 'v' ? 'on' : ''}" aria-selected="${kind === 'v'}">📖 اللفظي</button></div>
         <label class="fd-l" for="fdq">نص السؤال</label>
@@ -983,7 +1154,7 @@
     bindCtl();
     const ta = $('#fdq'), R = $('#fdr'), go = $('#fdgo'), pv = $('#fdpv'), st = $('#fdst'), inp = $('#fdimg');
     if (!fdCanOcr()) { $('#fdil').hidden = true; }
-    fdLoad().catch(() => {});   // نجهّز الفهرس من البداية
+    (isFree() ? fdLoadPub() : fdLoad()).catch(() => {});   // نجهّز الفهرس من البداية
     $('#fdk').onclick = e => { const b = e.target.closest('button[data-k]'); if (!b || b.dataset.k === kind) return; kind = b.dataset.k; lsSet('qg_find_k', kind); $('#fdk').querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); if (ta.value.trim()) run(); };
     ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); run(); } };   // Enter يبحث · Shift+Enter سطر جديد
     ta.oninput = () => { if (usedImg && ocrTxt && !ta.value.includes(ocrTxt.slice(0, 24))) { pv.hidden = true; usedImg = false; ocrTxt = ''; } };   // كتب سؤال ثاني بدل نص الصورة
@@ -1004,6 +1175,7 @@
       const q = ta.value.trim(), T = fdToks(q), words = T.en.filter(w => w[0] !== '_').length + T.ar.length, full = words >= 6 || q.length >= 60;
       if (!words && T.nu.length < 2) { R.innerHTML = `<div class="fd-res tip"><p>اكتب كلمة أو أكثر من السؤال (مثل <bdi dir="ltr">probability</bdi> أو <bdi dir="ltr">circle area</bdi>)، أو السؤال كامل.</p></div>`; ta.focus(); return; }
       R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نبحث في ${kind === 'q' ? 'أسئلة الكمي' : 'أسئلة اللفظي'}…</div>`;
+      if (isFree()) return fdRunPub(R, q, kind, full, usedImg);   // 🆓 الزائر: المكان فقط
       let ix; try { ix = await fdLoad(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
       if (!$('#fdr')) return;
       const res = fdSearch(ix, q, kind, 4), top = res[0], E = ix.entries;
@@ -1011,7 +1183,7 @@
       const same = e ? res.filter(r => r.s >= FD_HI && E[r.i] !== e && E[r.i][3] === e[3]).map(r => E[r.i]) : [];   // نفس السؤال مكرر في قسم ثاني
       const alts = e ? res.slice(1).filter(r => r.s >= Math.max(FD_MID, sc - 0.06) && E[r.i][3] !== e[3]).map(r => E[r.i]).slice(0, 2) : [];   // أسئلة متقاربة جداً بنفس الدرجة
       const altHtml = alts.length ? `<div class="fd-alt"><h4>أو يمكن يكون ${alts.length > 1 ? 'واحد من هذي' : 'هذا'}:</h4>${alts.map(x => `<div class="fd-ai"><div class="fd-locs">${fdLoc(x)}</div>${fdPreview(x)}<div class="fd-acts">${fdOpen(x).replace('class="btn"', 'class="btn ghost"')}</div></div>`).join('')}</div>` : '';
-      const wa = `<a class="btn wa" href="${fdWa(q, usedImg, kind)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>واتساب 0508003683</a>`;
+      const wa = fdWaBtn(q, usedImg, kind);
       if (full && e && sc >= FD_HI) {
         R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
           <div class="fd-locs">${fdLoc(e)}${same.map(fdLoc).join('')}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}</div>`;
@@ -1315,15 +1487,18 @@
         <div class="lv-split"><div><span>📖 اللفظي</span><b>${res.v[0]}<small>/${res.v[1]}</small></b><div class="bar"><i style="width:${Math.round(res.v[0] * 100 / res.v[1])}%"></i></div></div><div><span>📐 الكمي</span><b>${res.q[0]}<small>/${res.q[1]}</small></b><div class="bar"><i style="width:${Math.round(res.q[0] * 100 / res.q[1])}%"></i></div></div><div><span>⏱ الوقت</span><b class="ltr">${fmtDur(res.secs)}</b></div></div></div>
       <div class="lv-grid">
         <section class="lv-card"><h3>المهارات</h3>${tp.map(x => `<div class="lv-tp ${x.ok === x.n ? 'ok' : x.ok === 0 ? 'bad' : 'mid'}"><span>${TOPICS[x.t].i} ${TOPICS[x.t].t}</span><b>${x.ok}/${x.n}</b></div>`).join('')}</section>
-        <section class="lv-card"><h3>ابدأ من هنا</h3>
+        ${isFree() ? `<section class="lv-card lv-sub"><h3>ابدأ من هنا</h3>
+          ${weak.length ? `<p>أضعف مهاراتك: <b>${weak.map(x => TOPICS[x.t].t).join('، ')}</b>.</p>` : '<p>جاوبت كل المهارات صح 👏</p>'}
+          <p class="mut">في الدورة تتدرب على كل مهارة بأسئلة من الأقسام كلها، وتمشي على ${rec.name} (${rec.days} يوماً) اللي تناسب مستواك.</p>
+          <button class="btn gold" data-sub>اشترك وابدأ خطتك</button></section>` : `<section class="lv-card"><h3>ابدأ من هنا</h3>
           ${weak.length ? `<p class="mut">أضعف مهاراتك في هذا الاختبار، تدرّب عليها بأسئلة من كل الأقسام:</p><div class="lv-tr">${weak.map(x => `<a class="btn sm ghost" href="#t-${x.t}">${TOPICS[x.t].i} ${TOPICS[x.t].t}</a>`).join('')}</div>` : '<p class="mut">جاوبت كل المهارات صح 👏 كمّل على الاختبارات المحاكية.</p>'}
           <div class="lv-plan"><span>الخطة المقترحة${exT > Date.now() ? ' لموعد اختبارك' : ' لمستواك'}:</span><b>${rec.name} <small>(${rec.days} يوماً · ${rec.daily})</small></b>
-            ${cur ? (cur.id === rec.id ? '<span class="fit ok">✓ هي نفس خطتك الحالية</span>' : `<span class="mut">خطتك الحالية: ${cur.name}</span> <a href="#plan">غيّرها من صفحة الخطة</a>`) : `<button class="btn gold sm" id="lvplan">ابدأ ${rec.name}</button>`}</div></section></div>
+            ${cur ? (cur.id === rec.id ? '<span class="fit ok">✓ هي نفس خطتك الحالية</span>' : `<span class="mut">خطتك الحالية: ${cur.name}</span> <a href="#plan">غيّرها من صفحة الخطة</a>`) : `<button class="btn gold sm" id="lvplan">ابدأ ${rec.name}</button>`}</div></section>`}</div>
       <div class="acts lv-acts"><button class="btn" id="lvrev">مراجعة إجاباتك مع الشرح</button><a class="btn ghost" href="#">الرئيسية</a><button class="lnk2" id="lvagain">↻ أعد الاختبار</button></div></main>`;
     bindCtl(); window.scrollTo({ top: 0 });
     if (fresh) { const rp = $('#rp'), ring = $('#ring'); if (RM()) { rp.textContent = res.pct; ring.style.setProperty('--p', res.pct); } else { const t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / 900), v = Math.round(res.pct * (1 - Math.pow(1 - k, 3))); rp.textContent = v; ring.style.setProperty('--p', v); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); } if (res.pct >= 85 && !RM()) setTimeout(confetti, 600); }
     const pb = $('#lvplan'); if (pb) pb.onclick = () => { const all = lsGet('qg_plan_all', {}); planSave({ id: rec.id, done: all[rec.id] || {}, started: Date.now() }); location.hash = 'plan'; };
-    $('#lvrev').onclick = () => levelReview(set, res);
+    $('#lvrev').onclick = () => levelReview(set, res); bindSub(app);
     $('#lvagain').onclick = () => { lsSet(LVLRUN_LS, { a: {}, t0: Date.now(), cur: 0 }); renderLevel('run'); };
   }
   function levelReview(set, res) {
@@ -1375,6 +1550,7 @@
   }
   function badgesMerge(rem) { if (!rem || typeof rem !== 'object') return; const B = lsGet(BADGE_LS, {}); let ch = false; for (const k in rem) if (BADGES.some(b => b.id === k) && (!B[k] || rem[k] < B[k])) { B[k] = rem[k]; ch = true; } if (ch) lsSet(BADGE_LS, B); }
   function badgeCheck() {
+    if (isFree()) return;   // 🆓 الإنجازات للمشتركين
     let S; try { S = badgeStats(); } catch (e) { return []; }
     const B = lsGet(BADGE_LS, {}), first = !Object.keys(B).length, got = [];
     BADGES.forEach(b => { if (!B[b.id] && b.v(S) >= b.n) { B[b.id] = Date.now(); got.push(b); } });
@@ -1643,7 +1819,7 @@
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
@@ -1761,6 +1937,31 @@
       ems.forEach(e => { const em = e.toLowerCase(); if (seen.has(em)) return; seen.add(em); items.push({ email: em, name }); });
     });
     return { items, bad };
+  }
+  // ---------- 🆓 الزوار (حسابات مجانية): للمالك — العدد والإيميلات للتسويق ----------
+  async function renderFreeUsers() {
+    document.title = 'الزوار | Q-Guide';
+    const top = () => { app.innerHTML = admTop('free'); bindCtl(); $('#admref').onclick = () => { ADM.free = null; renderFreeUsers(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.free) ADM.free = await admCall({ op: 'adm_free_list' }); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-free') return;
+    top(); paintFree();
+  }
+  function paintFree() {
+    const W = $('#adm'); if (!W || !ADM.free) return; const F = ADM.free, q = (ADM.fq || '').trim().toLowerCase();
+    const list = F.rows.filter(x => !q || [x.email, x.name].some(v => String(v || '').toLowerCase().includes(q)));
+    const leads = F.rows.filter(x => !x.conv);
+    W.innerHTML = `<div class="stf">
+      <div class="fstats"><div><b>${F.total}</b><span>زائر سجّل دخول</span></div><div><b>${F.today}</b><span>اليوم</span></div><div><b>${F.week}</b><span>آخر 7 أيام</span></div><div class="ok"><b>${F.conv}</b><span>اشتركوا بعدها</span></div></div>
+      <div class="facts"><button class="btn" id="fcopy" ${leads.length ? '' : 'disabled'}>📋 نسخ إيميلات الزوار (${leads.length})</button><span class="mut">الإيميلات اللي ما اشتركت للحين، كل إيميل في سطر — جاهزة تلصقها في Mailchimp.</span></div>
+      <h3 class="sh">آخر الزوار <small>${F.rows.length}</small></h3>
+      ${F.rows.length > 8 ? `<div class="abar"><input id="fq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.fq || '')}"></div>` : ''}
+      <div class="slist">${list.slice(0, 300).map(x => `<div class="srow"><span class="c-st">${avatarHtml('', x.name || x.email, 40)}<span class="who"><b>${esc(x.name || x.email.split('@')[0])}</b><small class="ltr">${esc(x.email)}</small></span></span>
+        <span class="rl">${x.conv ? '<span class="rbdg viewer">✓ اشترك</span>' : '<span class="rbdg wait">زائر</span>'}</span>
+        <span class="meta"><small>أول دخول: ${fmtD(x.created_at)}</small><small>آخر دخول: <b>${fmtD(x.last_at)}</b> (${x.logins} مرة)</small></span></div>`).join('') || `<div class="sempty">${F.rows.length ? 'لا نتائج' : 'ما دخل أي زائر للحين.'}</div>`}</div></div>`;
+    $('#fcopy').onclick = async () => { const em = leads.map(x => x.email).join('\n'); try { await navigator.clipboard.writeText(em); toast('انسخت ' + leads.length + ' إيميل ✓'); } catch (e) { QGDlg.alert(em); } };
+    const fq = $('#fq'); if (fq) fq.oninput = e => { ADM.fq = e.target.value; const pos = e.target.selectionStart; paintFree(); const i = $('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
   }
   async function renderMembers() {
     document.title = 'المشتركون | Q-Guide';
@@ -2048,7 +2249,7 @@
   }
 
   // ---------- ⚔️ الساحة 1v1: مباراة مباشرة بين طالبين (WebSocket مع الخادم) ----------
-  const AR = { ws: null, st: 'lobby', info: null, m: null, T: null, off: 0, tm: 0, stm: 0, since: 0, code: '', join: '', end: null, hist: [], sc: [0, 0], i: -1, dl: 0, lim: 0, mine: null, opA: false, opGone: false, goAt: 0, wantClose: false, retry: 0, err: '' };
+  const AR = { ws: null, st: 'lobby', info: null, m: null, T: null, B: null, items: [], left: null, qc: null, off: 0, tm: 0, stm: 0, since: 0, code: '', join: '', end: null, hist: [], sc: [0, 0], i: -1, dl: 0, lim: 0, mine: null, opA: false, opGone: false, goAt: 0, wantClose: false, retry: 0, err: '' };
   const AR_T = { ana: 'تناظر لفظي', sen: 'إكمال جمل', err: 'خطأ سياقي', quant: 'كمي' };
   const AR_IN = { ana: 'Choose the pair of words that best expresses a relationship similar to that in the original pair.', sen: 'Choose the word(s) that best complete(s) the sentence.', err: 'Choose the word that is used incorrectly in the context of the sentence.' };
   const AR_LIVE = ['vs', 'q', 'rev'];
@@ -2093,7 +2294,23 @@
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
     return (cache['ar:' + id] = JSON.parse(new TextDecoder().decode(plain)));
   }
-  const arItem = i => { const r = AR.m.refs[i]; return AR.T.sections[r[0] - 1].items[r[1]]; };
+  // ⚔️ أسئلة الساحة: كل سؤال مشفّر بمفتاح خاص فيه، والخادم يرسل المفتاح مع بداية السؤال (الزائر ما يشوف إلا اللي لعبه)
+  const AR_V = 1;
+  async function arBlob(id) {
+    if (cache['arb:' + id]) return cache['arb:' + id];
+    const r = await fetch('/test/data/ar/' + id + '.json?v=' + AR_V, { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+    return (cache['arb:' + id] = (await r.json()).i);
+  }
+  async function arOpen1(i, k) {
+    if (!k || !AR.m || !AR.B || AR.items[i]) return;
+    const r = AR.m.refs[i], b64 = AR.B[r[0] + '.' + r[1]]; if (!b64) return;
+    const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', hex2buf(k), 'AES-GCM', false, ['decrypt']);
+    AR.items[i] = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(0, 12) }, key, raw.slice(12))));
+  }
+  const arOpenAll = ks => Promise.all((ks || []).map((k, i) => k ? arOpen1(i, k).catch(() => {}) : null));
+  const arSeq = f => { AR.qc = (AR.qc || Promise.resolve()).then(f).catch(() => {}); };   // رسائل المباراة بالترتيب (فك السؤال قبل عرضه)
+  const arItem = i => AR.items[i];
   const arAgo = t => { const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return 'الحين'; const m = Math.floor(s / 60); if (m < 60) return 'قبل ' + m + ' د'; const h = Math.floor(m / 60); if (h < 24) return 'قبل ' + h + ' س'; const d = Math.floor(h / 24); return d === 1 ? 'أمس' : 'قبل ' + d + ' أيام'; };
   const arRes = { win: ['فوز', 'win'], loss: ['خسارة', 'loss'], draw: ['تعادل', 'draw'] };
   const arStu = n => n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n <= 10 ? n + ' طلاب' : n + ' طالباً';
@@ -2127,7 +2344,7 @@
     if (AR.join) { const c = AR.join; AR.join = ''; arJoin(c); }
     let r; try { r = await api({ op: 'arena_me', session: auth.session }); } catch (e) { r = null; }
     if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
-    if (r && r.ok) { AR.info = r; const a = $('#arme'), h = $('#arhist'); if (a) a.innerHTML = arMeCard(me, r); if (h) h.innerHTML = arHistHtml(r); if (AR.st === 'lobby') arPanel(); }
+    if (r && r.ok) { AR.info = r; if (r.free) AR.left = r.free.left; const a = $('#arme'), h = $('#arhist'); if (a) a.innerHTML = arMeCard(me, r); if (h) h.innerHTML = arHistHtml(r); if (AR.st === 'lobby') arPanel(); }
     api({ op: 'leaderboard', kind: 'arena', session: auth.session }).then(b => { const el = $('#artop'); if (!el) return; el.innerHTML = b && b.ok ? arTopHtml(b) : '<p class="mut">تعذّر تحميل الترتيب.</p>'; }).catch(() => {});
   }
   function arMeCard(me, I) {
@@ -2170,9 +2387,13 @@
       const sh = $('#arsh'); if (sh) sh.onclick = () => navigator.share({ title: 'تحدي Q-Guide', text: msg }).catch(() => {});
     } else if (AR.st === 'connecting' || AR.st === 'joining') {
       el.innerHTML = `<div class="ar-srch"><div class="spin"></div><div><b>${AR.st === 'joining' ? 'ندخلك لتحدي صاحبك…' : 'نتصل بالساحة…'}</b></div></div>`;
+    } else if (isFree() && AR.left === 0) {   // 🆓 خلصت مبارياته المجانية اليوم
+      el.innerHTML = `<div class="ar-cap"><b>خلصت مبارياتك المجانية اليوم</b><span>ترجع لك ${FREE_GAMES} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاختبارات المحاكية.</span>
+        <div class="ar-acts"><button class="rz-go" data-sub>⭐ اشترك والعب بدون حد</button></div></div>`;
+      bindSub(el);
     } else {
       el.innerHTML = `${err}${AR.st === 'noone' ? '<p class="ar-err">ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.</p>' : ''}
-        <div class="ar-acts"><button class="rz-go" id="arfd">⚔️ ${AR.st === 'noone' ? 'دوّر مرة ثانية' : 'ابحث عن خصم'}</button><button class="ar-gh" id="arrm">🔗 تحدَّ صديقك</button></div>${liveTxt}`;
+        <div class="ar-acts"><button class="rz-go" id="arfd">⚔️ ${AR.st === 'noone' ? 'دوّر مرة ثانية' : 'ابحث عن خصم'}</button><button class="ar-gh" id="arrm">🔗 تحدَّ صديقك</button></div>${liveTxt}${isFree() && AR.left != null ? `<p class="ar-free">باقي لك <b>${AR.left}</b> من ${FREE_GAMES} مباريات مجانية اليوم</p>` : ''}`;
     }
     const f = $('#arfd'); if (f) f.onclick = arFind;
     const rm = $('#arrm'); if (rm) rm.onclick = arRoom;
@@ -2191,25 +2412,31 @@
   function arMsg(m) {
     if (m.now) AR.off = m.now - Date.now();
     switch (m.t) {
+      case 'hi': if (m.left != null) AR.left = m.left; return;
       case 'wait': AR.st = 'search'; AR.since = m.since; return arPanel();
       case 'noone': AR.st = 'noone'; arPanel(); return setTimeout(arClose, 100);
       case 'room': AR.st = 'room'; AR.code = m.code; return arPanel();
       case 'roomexp': AR.st = 'lobby'; AR.err = 'انتهت صلاحية رابط التحدي. سوّ رابط جديد.'; arPanel(); return arClose();
       case 'idle': return;
       case 'err':
+        if (m.code === 'limit') {   // 🆓 خلصت مبارياته المجانية (بحث، رابط تحدي، أو إعادة)
+          AR.left = 0;
+          if (AR.st === 'end') { const n = $('#aragn'); if (n) n.textContent = m.msg; return; }
+          AR.st = 'lobby'; AR.err = ''; if ($('#arp')) arPanel(); return arClose();
+        }
         if (AR.st === 'end') { const n = $('#aragn'); if (n) n.textContent = m.msg; return; }
         if (AR.m && AR_LIVE.includes(AR.st)) return toast(m.msg);
         AR.st = 'lobby'; AR.err = m.msg; arPanel(); return arClose();
       case 'replaced': AR.wantClose = true; AR.st = 'lobby'; AR.m = null; AR.err = 'فتحت الساحة في نافذة أو جهاز ثاني، فوقفناها هنا.'; window.onbeforeunload = null; return location.hash === '#arena' ? renderArena() : (location.hash = 'arena');
       case 'match': return arMatch(m);
       case 'go': AR.goAt = m.at; return arCount();
-      case 'q': return arQ(m);
+      case 'q': return arSeq(() => arOpen1(m.i, m.k).catch(() => {}).then(() => arQ(m)));
       case 'opans': if (m.i === AR.i) { AR.opA = true; arOpStatus(); } return;
-      case 'rev': return arRev(m);
+      case 'rev': return arSeq(() => arRev(m));
       case 'opleft': AR.opGone = true; arOpStatus(); return;
       case 'opback': AR.opGone = false; arOpStatus(); return;
-      case 'end': return arEnd(m);
-      case 'void': { AR.st = 'lobby'; AR.m = null; AR.err = m.msg || 'انلغت المباراة.'; window.onbeforeunload = null; arStop(); arClose(); return location.hash === '#arena' ? renderArena() : (location.hash = 'arena'); }
+      case 'end': if (m.left != null) AR.left = m.left; return arSeq(() => arOpenAll(m.ks).then(() => arEnd(m)));
+      case 'void': { if (m.left != null) AR.left = m.left; AR.st = 'lobby'; AR.m = null; AR.err = m.msg || 'انلغت المباراة.'; window.onbeforeunload = null; arStop(); arClose(); return location.hash === '#arena' ? renderArena() : (location.hash = 'arena'); }
       case 'againwait': { const n = $('#aragn'); if (n) n.textContent = 'طلبت إعادة المباراة… بانتظار موافقة خصمك.'; const b = $('#arag'); if (b) b.disabled = true; return; }
       case 'againask': { const n = $('#aragn'); if (n) { n.textContent = 'خصمك يبي إعادة المباراة! اضغط «إعادة المباراة» لو تبي.'; n.classList.add('hot'); } const b = $('#arag'); if (b) b.classList.add('pulse'); return; }
     }
@@ -2217,15 +2444,16 @@
 
   // ---------- المباراة ----------
   async function arMatch(m) {
+    if (!AR.m || AR.m.m !== m.m) { AR.B = null; AR.items = []; AR.T = null; AR.qc = null; AR.pendQ = null; }   // مباراة جديدة
     AR.m = m; AR.st = 'vs'; AR.end = null; AR.retry = 0; AR.opGone = false;
     AR.sc = m.sc || [0, 0]; AR.hist = m.hist || m.refs.map(() => null); AR.i = m.resume ? m.i : -1;
     if (location.hash !== '#arena') history.replaceState(null, '', '#arena');
     window.onbeforeunload = e => { if (AR.m && AR_LIVE.includes(AR.st)) { e.preventDefault(); e.returnValue = ''; } };
     arView();
-    try { AR.T = await arTest(m.test); }
+    try { AR.B = await arBlob(m.test); await arOpenAll(m.ks); }
     catch (e) { const v = $('#arvm'); if (v) v.innerHTML = 'تعذّر تحميل الأسئلة. <button class="ar-lk" id="arrl">حاول مرة ثانية</button>'; const b = $('#arrl'); if (b) b.onclick = () => arMatch(m); return; }
     if (AR.m !== m) return;
-    if (AR.pendQ) return arQ(AR.pendQ);
+    if (AR.pendQ) { const q = AR.pendQ; await arOpen1(q.i, q.k).catch(() => {}); return arQ(q); }
     if (!m.resume || m.phase === 'prep') { arSend({ t: 'ready', m: m.m }); const v = $('#arvm'); if (v) v.textContent = 'بانتظار خصمك…'; }
     else if (m.phase === 'count') { AR.goAt = m.at; arCount(); }
     else if (m.phase === 'q') arQ({ i: m.i, dl: m.dl, lim: m.qt[m.refs[m.i][2]] * 1000, mine: m.mine, opAns: m.opAns });
@@ -2272,12 +2500,14 @@
   }
   function arQ(m) {
     if (!AR.m) return;
-    if (!AR.T) { AR.pendQ = m; return; }
+    if (!AR.B) { AR.pendQ = m; return; }
     AR.pendQ = null;
     AR.st = 'q'; AR.i = m.i; AR.dl = m.dl; AR.lim = m.lim; AR.mine = m.mine != null ? m.mine : null; AR.opA = !!m.opAns;
     if (!$('#arsb')) arView();
     arBoard(); arNote('');
-    const it = arItem(m.i), ty = it.type, n = AR.m.refs.length;
+    const it = arItem(m.i), n = AR.m.refs.length;
+    if (!it) { $('#arq').innerHTML = '<div class="ar-hold">تعذّر عرض هذا السؤال. ننتقل للي بعده…</div>'; return; }
+    const ty = it.type;
     let h = `<div class="q ar-q"><div class="hd"><span class="n">سؤال ${m.i + 1}<small>من ${n}</small></span><span class="tag">${AR_T[ty] || ''}</span></div>`;
     if (ty === 'quant') h += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${m.i + 1}">`;
     else h += `<p class="ar-in ltr">${AR_IN[ty] || ''}</p><p class="txt ltr">${ty === 'ana' ? '<b>' + esc(it.q) + '</b>' : esc(it.q)}</p>`;
@@ -2339,26 +2569,31 @@
       <div class="ar-eh"><h2>${head}</h2><p>${sub}</p></div>
       <div class="ar-fin"><div class="me">${avatarHtml(AR.m.me.a || arMe().a, arMe().n, 56)}<b dir="ltr">${m.sc[0]}</b><span>${m.cor[0]} صح</span></div><span class="ar-fx">–</span><div class="op">${avatarHtml(op.a, op.n, 56)}<b dir="ltr">${m.sc[1]}</b><span>${m.cor[1]} صح</span></div></div>
       ${rt}
-      <div class="ar-acts c"><button class="rz-go" id="arag">إعادة المباراة</button><button class="btn" id="arnw">خصم جديد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div>
+      ${isFree() && AR.left === 0 ? `<div class="ar-acts c"><button class="rz-go" data-sub>⭐ اشترك والعب بدون حد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div><p class="ar-free">هذي كانت آخر مباراة مجانية لك اليوم، وترجع لك ${FREE_GAMES} مباريات بكرة.</p>`
+        : `<div class="ar-acts c"><button class="rz-go" id="arag">إعادة المباراة</button><button class="btn" id="arnw">خصم جديد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div>${isFree() && AR.left != null ? `<p class="ar-free">باقي لك <b>${AR.left}</b> من ${FREE_GAMES} مباريات مجانية اليوم</p>` : ''}`}
       <p class="ar-agn" id="aragn" aria-live="polite"></p>
       ${m.done ? `<details class="ar-rv" id="arrvd"><summary>راجع ${m.done === 20 ? 'الأسئلة الـ20' : m.done === 1 ? 'السؤال' : 'الأسئلة الـ' + m.done} وإجاباتها</summary><div id="arrv"></div></details>` : ''}
     </section>`;
     if (win && !RM()) confetti();
     if (AR.info) { if (m.rated && m.r) AR.info.r = m.r.now; AR.info.hist = null; }
-    $('#arag').onclick = () => { arSend({ t: 'again', m: m.m }); };
-    $('#arnw').onclick = () => { AR.st = 'lobby'; AR.m = null; renderArena().then(() => arFind()); };
+    const ag = $('#arag'); if (ag) ag.onclick = () => { arSend({ t: 'again', m: m.m }); };
+    const nw = $('#arnw'); if (nw) nw.onclick = () => { AR.st = 'lobby'; AR.m = null; renderArena().then(() => arFind()); };
+    bindSub($('#arq'));
     $('#arbk').onclick = () => { AR.st = 'lobby'; AR.m = null; arClose(); renderArena(); };
-    const rvd = $('#arrvd'); if (rvd) rvd.addEventListener('toggle', () => { const r = $('#arrv'); if (r && !r.dataset.on) { r.dataset.on = 1; r.innerHTML = arReview(); } }, { once: true });
+    const rvd = $('#arrvd'); if (rvd) rvd.addEventListener('toggle', async () => { const r = $('#arrv'); if (!r || r.dataset.on) return; r.dataset.on = 1;
+      if (!isFree()) { r.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; try { AR.T = await arTest(AR.m.test); } catch (e) {} }   // الشرح من ملف الاختبار (للمشتركين)
+      r.innerHTML = arReview(); bindSub(r); }, { once: true });
   }
   function arReview() {
     const op = AR.m.op;
-    return AR.m.refs.slice(0, AR.done == null ? AR.m.refs.length : AR.done).map((r, j) => {
-      const it = arItem(j), h = AR.hist[j] || {}, ty = it.type;
+    const full = (r) => AR.T ? AR.T.sections[r[0] - 1].items[r[1]] : null;
+    return (isFree() ? '<p class="ar-exl">🔒 شرح كل سؤال للمشتركين في الدورة. <button type="button" class="lnk" data-sub>اشترك</button></p>' : '') + AR.m.refs.slice(0, AR.done == null ? AR.m.refs.length : AR.done).map((r, j) => {
+      const it = arItem(j), h = AR.hist[j] || {}; if (!it) return ''; const ty = it.type, fx = full(r), exp = fx && fx.exp;
       const lab = o => esc(ty === 'quant' ? o.replace(/^[A-D]\)\s*/, '') : o);
       return `<article class="ar-ri"><div class="ar-rih"><b>سؤال ${j + 1}</b><span class="tag">${AR_T[ty] || ''}</span><span class="ar-rir ${h.mo ? 'ok' : 'bad'}">${h.mo ? `أنت صح +${h.mp || 0}` : h.my == null ? 'ما جاوبت' : 'أنت خطأ'}</span><span class="ar-rio">${esc(op.n || 'خصمك')}: ${h.oo ? 'صح' : h.op == null ? 'ما جاوب' : 'خطأ'}</span></div>
         ${ty === 'quant' ? `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${j + 1}" loading="lazy">` : `<p class="ltr">${esc(it.q)}</p>`}
         <ul class="ar-ro ltr">${it.opts.map((o, k) => `<li class="${k === h.k ? 'k' : k === h.my ? 'w' : ''}"><b>${LETTERS[k]}</b> ${lab(o)}${k === h.my ? ' <small>اختيارك</small>' : ''}${k === h.op ? ' <small>خصمك</small>' : ''}</li>`).join('')}</ul>
-        ${it.exp ? `<details class="ar-ex"><summary>الشرح</summary><div>${fmtExp(it.exp)}</div></details>` : ''}</article>`;
+        ${exp ? `<details class="ar-ex"><summary>الشرح</summary><div>${fmtExp(exp)}</div></details>` : ''}</article>`;
     }).join('');
   }
 

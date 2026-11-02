@@ -23,6 +23,8 @@
   const INSTR = { ana: 'Choose the pair of words that best expresses a relationship similar to that in the original pair.', sen: 'Choose the word(s) that best complete(s) the sentence.',
     err: 'Choose the word that is used incorrectly in the context of the sentence.', read: 'Read the passage and answer the question.', quant: 'Solve the problem and choose the best answer.' };
   let auth = null, manifest = null, cryptoKey = null, state = null; const cache = {};
+  // 🆓 الزائر (حساب مجاني): الاختبار المحاكي 1 فقط، والباقي يفتح نافذة الاشتراك في منصة التدريب
+  const isFree = () => !!(auth && auth.role === 'free'), FREE_TESTS = ['t1'], SUB_URL = '/p/#sub';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -35,7 +37,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function loadTest(id) {
     if (cache[id]) return cache[id];
-    const r = await fetch('/test/data/' + id + '.bin?v=3', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+    const r = await fetch('/test/data/' + (isFree() ? 'free/' : '') + id + '.bin?v=3', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     if (!cryptoKey) cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']);
     let plain; try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, cryptoKey, buf.slice(12)); } catch (e) { logout(); throw new Error('key'); }
@@ -56,7 +58,7 @@
     document.title = 'تسجيل الدخول | Q-Guide';
     app.innerHTML = `<div class="login ar"><div class="card"><img src="/assets/logo.png" alt=""><h1>الاختبارات المحاكية</h1><p class="mut">نفس شكل اختبار قياس المحوسب: 4 أقسام × 24 سؤال، 25 دقيقة لكل قسم</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>${err ? `<div class="err">${err}</div>` : ''}
-      <p class="mut" style="font-size:13px">سجّل دخولك بحساب Google <b>نفس الإيميل اللي اشتركت فيه بالدورة</b>.</p><p style="font-size:13px"><a href="/p/">منصة التدريب</a> · <a href="/privacy/">الخصوصية</a></p></div></div>`;
+      <p class="mut" style="font-size:13px">سجّل دخولك بحساب Google. المشترك تنفتح له الاختبارات الـ 17، وغير المشترك يجرّب <b>الاختبار المحاكي 1 مجاناً</b>.</p><p style="font-size:13px"><a href="/p/">منصة التدريب</a> · <a href="/privacy/">الخصوصية</a></p></div></div>`;
     mountGoogle();
   }
   let gTries = 0;
@@ -108,18 +110,20 @@
   let lobbySeq = 0;
   function paintLobby(stale) {
     const cards = manifest.map(t => {
+      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return `<div class="tcard lk"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}">اشترك وافتحه</a></div></div>`;
       const s = state[t.id] || { status: 'none' };
       let body, act;
       if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? `<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = `<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
       else if (s.status === 'in_progress') { body = `<div class="meta">متوقف عند القسم ${s.nextSection} من 4</div>`; act = `<button class="btn" data-go="${t.id}">متابعة الاختبار</button>`; }
-      else { body = `<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · أول محاولة تُحسب في لوحة الصدارة</div>`; act = `<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
+      else { body = `<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم${isFree() ? '' : ' · أول محاولة تُحسب في لوحة الصدارة'}</div>`; act = `<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
       const pill = s.status === 'done' ? '<span class="pill done">مكتمل</span>' : s.status === 'in_progress' ? '<span class="pill prog">جارٍ</span>' : '<span class="pill none">لم يبدأ</span>';
       const adm = auth.role === 'admin' && s.status !== 'none' ? `<button class="btn sm ghost" data-reset="${t.id}" style="margin-top:6px">إعادة تعيين (مشرف)</button>` : '';
       return `<div class="tcard"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span>${pill}</div><div class="mut" style="font-size:13px">${esc(t.en)}</div>${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
     }).join('');
     app.innerHTML = header() + `<div class="page ar">
-      <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.</p>
-      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><a class="btn ghost sm" href="/p/">← منصة التدريب</a><a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a>${stale ? '<span class="mut" style="font-size:12.5px">⟳ جارٍ التحديث…</span>' : ''}</p></div>
+      <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>${isFree() ? '.' : '، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.'}</p>
+      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><a class="btn ghost sm" href="/p/">← منصة التدريب</a>${isFree() ? '' : '<a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a>'}${stale ? '<span class="mut" style="font-size:12.5px">⟳ جارٍ التحديث…</span>' : ''}</p></div>
+      ${isFree() ? `<div class="freeb"><div><b>أنت على الحساب المجاني</b><span>الاختبار المحاكي 1 مفتوح لك كامل. الاختبارات الـ 16 الباقية، مع أقسام الدورة كلها، للمشتركين.</span></div><a class="btn gold" href="${SUB_URL}">اشترك في الدورة</a></div>` : ''}
       <div class="tests">${cards}</div></div>`;
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => startFlow(b.dataset.go));
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
@@ -130,6 +134,7 @@
   // ---------- flow ----------
   let T = null; // current test data
   async function startFlow(id, retake) {
+    if (isFree() && FREE_TESTS.indexOf(id) < 0) { location.href = SUB_URL; return; }
     const s = state[id] || { status: 'none' };
     if (s.status === 'done' && !retake) return renderReview(id);
     app.innerHTML = header() + '<div class="page center"><div class="spin" style="margin:30px auto"></div>Loading test…</div>';
