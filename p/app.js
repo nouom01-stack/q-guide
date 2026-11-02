@@ -363,6 +363,16 @@
   }
 
   // ---------- player ----------
+  // ⏱️ الوقت الفعلي فقط: وقت كل سؤال من آخر إجابة (بحد أقصى 4 دقائق للسؤال)، ولا يُحسب وقت إغلاق الصفحة أو تصغيرها
+  const Q_CAP = 4 * 60 * 1000;
+  function fmtDur(t) { t = Math.max(0, Math.round(t)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; return h ? h + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0') : m + ':' + String(x).padStart(2, '0'); }
+  function activeSecs(prog) {
+    const arr = Object.values(prog.a || {}).filter(a => a && a.t).sort((x, y) => x.t - y.t);
+    let prev = prog.started || (arr[0] && arr[0].t) || Date.now(), tot = 0;
+    for (const a of arr) { tot += a.ms != null ? a.ms : Math.min(Math.max(0, a.t - prev), Q_CAP); prev = a.t; }
+    return Math.round(tot / 1000);
+  }
+  document.addEventListener('visibilitychange', () => { if (!P) return; if (document.hidden) P.hidAt = Date.now(); else if (P.hidAt) { P.lastAct += Date.now() - P.hidAt; P.hidAt = 0; } });
   let P = null; // player state
   async function renderPlayer(id) {
     app.innerHTML = topbar(`<span class="ttl">جارٍ التحميل…</span>`, `<a class="ib" href="#" title="رجوع">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>';
@@ -372,7 +382,7 @@
     if (!items.length) { app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, `<a class="ib" href="#skills" title="رجوع">→</a>`) + `<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`; bindCtl(); return; }
     if (!prog.started) prog.started = Date.now();
     let cur = items.findIndex((x, i) => !prog.a[i]); if (cur < 0) cur = Math.min(prog.last || 0, items.length - 1);   // أول سؤال بدون إجابة
-    P = { id, set, items, prog, cur, t0: Date.now(), passOpen: {}, sel: null };
+    P = { id, set, items, prog, cur, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
       ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
@@ -455,7 +465,8 @@
   }
   function answer(i, k) {
     const { it } = P.items[i]; if (P.prog.a[i]) return;
-    P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: Date.now() }; progSet(P.id, P.prog);
+    const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
+    P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
     try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
     document.querySelectorAll('.opt').forEach(b => { b.disabled = true; const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
     $('#fb').innerHTML = feedback(it, P.prog.a[i]);
@@ -473,7 +484,7 @@
     const { items, prog, set } = P; const n = items.length; const answered = Object.keys(prog.a).length;
     if (answered < n) { toast('باقي ' + (n - answered) + ' سؤال بدون إجابة'); const f = items.findIndex((x, i) => !prog.a[i]); return showQ(f); }
     const correct = Object.values(prog.a).filter(a => a.c).length; const pct = Math.round(correct * 100 / n);
-    const secs = Math.round((Date.now() - (prog.started || Date.now())) / 1000);
+    const secs = activeSecs(prog);
     const wrong = items.map((x, i) => i).filter(i => prog.a[i] && !prog.a[i].c);
     const firstTime = !prog.done;
     if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; progSet(P.id, prog);
@@ -481,7 +492,7 @@
     $('#pm').innerHTML = `<div class="sum"><div class="ring" style="--p:${pct}"><b>${pct}<small>%</small></b></div>
       <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
       <p style="color:var(--mut);margin:0">${esc(set.title)} · ${esc(set.sub)}</p>
-      <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b>${Math.max(1, Math.round(secs / 60))}</b><span>دقيقة</span></div></div>
+      <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
       <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${ytFor(set.id) ? `<a class="btn ytbtn" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} على يوتيوب</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#skills">🎯 نقاط قوتي وضعفي</a><a class="btn ghost" href="#">الرئيسية</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
