@@ -1388,3 +1388,63 @@ sup.ex .fr{font-size:.96em;margin:0 .04em}
 [data-theme=dark] .sgrid textarea{background:#111A30}
 [data-theme=dark] .mres b small,[data-theme=dark] .rbdg.wait{background:#2a3350}
 [data-theme=dark] .mres .ok b{color:var(--mint)}[data-theme=dark] .mres .bad b,[data-theme=dark] .rbdg.ban{color:var(--coral)}
+
+/* =====================================================================
+   v28 — 🔎 ابحث عن سؤال: نص أو صورة → وين تلقاه في الدورة
+   ===================================================================== */
+.fd{max-width:880px}
+.fd-top h1{margin:0;font-family:var(--disp);font-weight:800;font-size:calc(28px * var(--fs));color:var(--ink2)}
+.fd-top p{margin:4px 0 14px;color:var(--mut);max-width:640px}
+.fd-box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--sh)}
+.fd-box .seg{margin-bottom:14px}
+.fd-l{display:block;font-weight:800;color:var(--mut);font-size:calc(13px * var(--fs));margin-bottom:6px}
+#fdq{display:block;width:100%;box-sizing:border-box;font:inherit;font-weight:500;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(16px * var(--fs));line-height:1.7;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:#FBFCFE;color:var(--ink);resize:vertical;min-height:132px;text-align:left}
+#fdq:focus{outline:none;border-color:var(--navy3);background:var(--card)}
+#fdq::placeholder{color:#A3ACC2}
+.fd-img{display:flex;align-items:center;gap:12px;margin-top:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:12px;font-size:calc(13.5px * var(--fs));font-weight:700}
+.fd-img[hidden]{display:none}
+.fd-img img{width:68px;height:50px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:none;background:#fff}
+.fd-img>span{flex:1;min-width:0;line-height:1.6}
+.fd-img.ok>span{color:var(--ok)}.fd-img.bad>span{color:var(--bad)}.fd-img.busy>span{color:var(--mut)}
+.fd-acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.fd-acts .btn{text-decoration:none}
+.fd-hint{margin:12px 0 0;font-size:calc(12.5px * var(--fs));color:var(--mut);line-height:1.7}
+.spin.sm{width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:-3px;margin-inline-end:6px}
+#fdr{margin-top:16px}
+#fdr:empty{display:none}
+.fd-res{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--sh)}
+.fd-res.tip,.fd-res.wait{color:var(--mut);font-weight:700;text-align:center}
+.fd-res.tip p{margin:0}
+.fd-h{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.fd-h .ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;flex:none}
+.fd-h b{display:block;font-size:calc(18px * var(--fs));color:var(--ink2);line-height:1.4}
+.fd-h small{color:var(--mut);font-size:calc(13.5px * var(--fs))}
+.fd-res.ok{border-top:4px solid var(--ok)}.fd-res.ok .ic{background:var(--okbg);color:var(--ok)}
+.fd-res.mid{border-top:4px solid var(--gold)}.fd-res.mid .ic{background:#FFF4E0}
+.fd-res.no{border-top:4px solid var(--bad)}.fd-res.no .ic{background:var(--badbg);color:var(--bad)}
+.fd-locs{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:12px}
+.fd-loc{background:var(--dotbg);border-radius:10px;padding:6px 12px;font-weight:700;font-size:calc(14px * var(--fs));color:var(--ink);line-height:1.6}
+.fd-loc.main{background:var(--navy);color:#fff;font-size:calc(15px * var(--fs))}
+.fd-pv{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg)}
+.fd-pv>p{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(15.5px * var(--fs));line-height:1.75;color:var(--ink);white-space:pre-line;overflow-wrap:anywhere}
+.fd-pv .fd-pt{font-size:calc(14px * var(--fs));color:var(--mut)}
+.fd-pv img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:8px;background:#fff}
+.fd-pv.has-img{padding:8px;background:#fff}
+.fd-pv.has-img>p,.fd-pv.has-img>.fd-o{display:none}
+.fd-o{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.fd-o li{display:flex;align-items:center;gap:8px;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(14.5px * var(--fs));color:var(--ink);min-width:0;overflow-wrap:anywhere}
+.fd-o .L{flex:none;width:24px;height:24px;border-radius:7px;background:#EEF1F8;color:var(--navy);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:calc(12.5px * var(--fs))}
+.fd-or{font-size:calc(13px * var(--fs));color:var(--mut);font-weight:700}
+.btn.wa{background:#1FA855;color:#fff}.btn.wa:hover{background:#178A45}
+.btn.wa svg{flex:none}
+.fd-near{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.fd-near h4{margin:0 0 10px;font-size:calc(14px * var(--fs));color:var(--mut);font-weight:800}
+@media (max-width:640px){.fd-box,.fd-res{padding:13px}.fd-o{grid-template-columns:1fr}.fd-acts .btn{flex:1 1 auto}}
+[data-theme=dark] #fdq{background:#111A30}
+[data-theme=dark] .fd-res.mid .ic{background:#3A2E12}
+[data-theme=dark] .fd-o .L{background:#223050;color:var(--ink)}
+[data-theme=dark] .fd-pv.has-img{background:#fff}
+.fd-alt{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.fd-alt h4{margin:0 0 10px;font-size:calc(14px * var(--fs));color:var(--mut);font-weight:800}
+.fd-ai+.fd-ai{margin-top:14px}
+.fd-wa{border-top:1px dashed var(--line);padding-top:12px;margin-top:14px}

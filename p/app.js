@@ -230,6 +230,7 @@
     if (h === 'badges') return renderBadges();
     if (h === 'level') return renderLevel();
     if (h === 'rules') return renderRules();
+    if (h === 'find') return renderFind();
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
     if (h === 'board' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : h === 'board-month' ? 'month' : 'practice');
@@ -361,6 +362,7 @@
           ${toolA('/test/', '🧪', 'الاختبارات المحاكية', '17 اختبار بنفس شكل قياس المحوسب')}
           <div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div></div>
         <div class="tg"><h3>تعلّم وراجع</h3>
+          ${toolA('#find', '🔎', 'ابحث عن سؤال', 'اكتب السؤال أو صوّره ونقولك وين تلقاه', '<span class="beta">جديد</span>')}
           ${RULES_ON ? toolA('#rules', '📐', 'قوانين الكمي', 'كل القوانين في صفحة وحدة، وتنطبع') : ''}
           ${toolA('#vocab', '📖', 'قاموس الكلمات', 'ترجمة ونطق كل كلمات اللفظي')}
           ${toolA('#notes', '📒', 'دفتري', nMarks ? `${nMarks} سؤال محفوظ مع ملاحظاتك` : 'الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها')}
@@ -845,6 +847,158 @@
       const th = vtip.offsetHeight || 60; vtip.style.top = (r.top + window.scrollY - th - 8 > window.scrollY ? r.top + window.scrollY - th - 8 : r.bottom + window.scrollY + 8) + 'px';
     });
   }
+  // ---------- 🔎 ابحث عن سؤال: الطالب يكتب السؤال أو يصوّره ونقول له وين يلقاه في الدورة ----------
+  // 🔎 محرك البحث عن سؤال (نفس الكود ينحط في app.js): TF-IDF + تطابق الأرقام، بالإنجليزي أو العربي
+  const FD_STOP = new Set('the of a an is are to in on and or if find what which following value then that its it be by for with from as at this these those than how many much will was were has have had does do not shape figure above below given evaluate calculate determine choose word option options answer question best correct each one'.split(' '));
+  const FD_STOP_AR = new Set('من في على الى عن مع ثم او هو هي ما ماذا كم اي اذا التي الذي الذين هذا هذه ذلك تلك كان كانت قيمه اوجد احسب العدد عدد فان لكل كل بين عند'.split(' '));
+  function fdNorm(s) {
+    return String(s || '').normalize('NFKC').toLowerCase().replace(/[−–—]/g, '-').replace(/×/g, '*').replace(/÷/g, '/')
+      .replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+  }
+  const FD_SYN = { chance: 'probability', likelihood: 'probability', withdrawn: 'draw', drawn: 'draw', picked: 'draw', chosen: 'draw', selected: 'draw', select: 'draw', pick: 'draw', choose: 'draw', percentage: 'percent', mean: 'average', avg: 'average', total: 'sum', kilometer: 'km', kilometre: 'km', hr: 'hour', hrs: 'hour', min: 'minute', sec: 'second', marble: 'ball' };
+  function fdToks(s) {
+    const t = fdNorm(s), en = [], ar = [], nu = [];
+    for (const m of t.matchAll(/[a-z]{2,}|\d+(?:\.\d+)?|[ء-ي]{2,}/g)) {
+      const w = m[0];
+      if (/^\d/.test(w)) nu.push(w.replace(/\.0+$/, ''));
+      else if (/^[a-z]/.test(w)) { if (!FD_STOP.has(w)) { const st = w.length < 5 || /ss$/.test(w) ? w : /ies$/.test(w) ? w.slice(0, -3) + 'y' : /(sh|ch|x|z)es$/.test(w) ? w.slice(0, -2) : w.replace(/s$/, ''); en.push(FD_SYN[st] || FD_SYN[w] || st); } }
+      else { let a = w.replace(/^(و|ف|ب|ل|ك)?ال/, ''); if (a.length >= 2 && !FD_STOP_AR.has(w) && !FD_STOP_AR.has(a)) ar.push(a); }
+    }
+    for (const m of t.matchAll(/(?:^|[^a-z])([a-z])(?=[^a-z]|$)/g)) en.push('_' + m[1]);   // متغيّرات حرف واحد (x، m) بوزن قليل عبر IDF
+    return { en, ar, nu };
+  }
+  const fdSh = s => { const w = fdNorm(s).match(/[a-z0-9\u0621-\u064A]+/g) || [], g = new Set(); for (let i = 0; i + 3 <= w.length; i++) g.add(w[i] + ' ' + w[i + 1] + ' ' + w[i + 2]); return g; };   // كل 3 كلمات متتالية
+  const fdTri = s => { const t = ' ' + fdNorm(s).replace(/\s+/g, ' ').replace(/[^a-z0-9\u0621-\u064A+\-*/=<>√∠∥%.: ]/g, '') + ' ', g = new Set(); for (let i = 0; i + 3 <= t.length; i++) g.add(t.slice(i, i + 3)); return g; };
+  function fdBuild(entries) {   // entries: [kind, set, idx, text, opts, arabic, group, tests]
+    const docs = entries.map(e => { const a = fdToks(e[3] + ' ' + e[4].join(' ')), b = fdToks(e[5]); return { en: a.en, ar: b.ar, nu: a.nu.concat(b.nu.length && !a.nu.length ? b.nu : []) }; });
+    const df = new Map(), N = docs.length; docs.forEach(d => new Set(d.en.concat(d.ar)).forEach(w => df.set(w, (df.get(w) || 0) + 1)));
+    const idf = w => Math.log((N + 1) / ((df.get(w) || 0) + 1)) + 1;
+    const vec = tl => { const c = new Map(); tl.forEach(w => c.set(w, (c.get(w) || 0) + 1)); const v = new Map(); let z = 0; c.forEach((n, w) => { const x = (1 + Math.log(n)) * idf(w); v.set(w, x); z += x * x; }); z = Math.sqrt(z) || 1; v.forEach((x, w) => v.set(w, x / z)); return v; };
+    const cnt = a => { const c = new Map(); a.forEach(x => c.set(x, (c.get(x) || 0) + 1)); return c; };
+    return { entries, idf, vec, cnt, D: docs.map((d, i) => ({ en: vec(d.en), ar: vec(d.ar), nu: cnt(d.nu), nn: d.nu.length, tg: fdTri(entries[i][3] + ' ' + entries[i][4].join(' ')), sh: fdSh(entries[i][3] + ' ' + entries[i][4].join(' ')) })) };
+  }
+  function fdSearch(ix, text, kind, k) {
+    const q = fdToks(text), qe = ix.vec(q.en), qa = ix.vec(q.ar), qn = ix.cnt(q.nu), qt = fdTri(text), qs = fdSh(text);
+    const qu = [...new Set(q.en.filter(w => w[0] !== '_'))], qw = qu.reduce((a, w) => a + ix.idf(w), 0);   // وزن كلمات الطالب النادرة
+    const cos = (a, b) => { let s = 0; if (a.size > b.size) [a, b] = [b, a]; a.forEach((x, w) => { const y = b.get(w); if (y) s += x * y; }); return s; };
+    const jac = (a, b) => { let i = 0, u = 0; const ks = new Set([...a.keys(), ...b.keys()]); ks.forEach(w => { const x = a.get(w) || 0, y = b.get(w) || 0; i += Math.min(x, y); u += Math.max(x, y); }); return u ? i / u : 0; };
+    const out = [];
+    ix.entries.forEach((e, i) => {
+      if (kind && (kind === 'q' ? e[0] !== 'q' : e[0] === 'q')) return;
+      const d = ix.D[i]; let c = Math.max(q.en.length ? cos(qe, d.en) : 0, q.ar.length ? cos(qa, d.ar) : 0);
+      if (kind === 'v' && qw >= 9 && qu.length <= 6 && qu.some(w => ix.idf(w) >= 6)) { let hw = 0; qu.forEach(w => { if (d.en.has(w)) hw += ix.idf(w); }); c = Math.max(c, 0.92 * hw / qw); }   // سؤال قصير (مثل CAR : POLLUTION) كل كلماته موجودة
+      const nj = q.nu.length && d.nn ? jac(qn, d.nu) : 0;
+      let inter = 0; if (qt.size && d.tg.size) qt.forEach(g => { if (d.tg.has(g)) inter++; });
+      let hit = 0; if (qs.size >= 6) qs.forEach(g => { if (d.sh.has(g)) hit++; });
+      const cov = qs.size >= 6 ? hit / qs.size : 0;   // كم من جمل الطالب موجودة حرفياً (لو نسخ السؤال بدون خيارات أو جزء من قطعة)
+      const tri = Math.max(qt.size && d.tg.size ? 2 * inter / (qt.size + d.tg.size) : 0, 0.9 * cov);   // تشابه حرفي — يفرّق بين الأسئلة المتشابهة جداً
+      let sc = c + 0.5 * nj + 0.5 * tri; if (e[0] === 'p') sc = Math.max(sc, 1.7 * cov);   // القطعة طويلة: يكفي إن الجزء المنسوخ موجود فيها
+      out.push({ i, s: sc, c, nj, tri });
+    });
+    out.sort((a, b) => b.s - a.s);
+    return out.slice(0, k || 5);
+  }
+  const FIND_V = 1, FD_HI = 1.12, FD_MID = 0.85, WA_NUM = '966508003683';
+  let FD = null, fdOcr = null;
+  async function fdLoad() {
+    if (FD) return FD;
+    const gz = typeof DecompressionStream === 'function';   // المتصفحات القديمة تاخذ نسخة بدون ضغط
+    const r = await fetch('/p/data/' + (gz ? 'find' : 'find0') + '.bin?v=' + FIND_V); if (!r.ok) throw new Error('data ' + r.status);
+    const buf = new Uint8Array(await r.arrayBuffer()), key = await getKey();
+    let plain; try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)); } catch (e) { logout(); throw new Error('bad key'); }
+    const txt = gz ? await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : new TextDecoder().decode(plain);
+    FD = fdBuild(JSON.parse(txt).e); return FD;
+  }
+  // 📷 قراءة الصورة داخل المتصفح (Tesseract) — الصورة ما تطلع من جهاز الطالب
+  const fdCanOcr = () => typeof Worker !== 'undefined' && typeof WebAssembly === 'object' && typeof DecompressionStream === 'function';
+  function fdOcrRun(buf) {
+    if (!fdOcr) { const w = new Worker('/p/ocr/ocr-worker.js?v=1'); fdOcr = { w, n: 0, wait: {} }; w.onmessage = e => { const c = fdOcr.wait[e.data.id]; if (!c) return; delete fdOcr.wait[e.data.id]; e.data.error ? c[1](new Error(e.data.error)) : c[0](e.data.text); }; w.onerror = () => { Object.values(fdOcr.wait).forEach(c => c[1](new Error('ocr'))); fdOcr = null; }; }
+    return new Promise((res, rej) => { const id = ++fdOcr.n; fdOcr.wait[id] = [res, rej]; fdOcr.w.postMessage({ id, buf, model: 'eng-fast' }, [buf]); });
+  }
+  async function fdPrep(file) {   // نوحّد المقاس (عرض 1000–2000) ونخليها PNG بخلفية بيضاء
+    const bmp = await createImageBitmap(file); const w = bmp.width, h = bmp.height, sc = w < 1000 ? 1000 / w : w > 2000 ? 2000 / w : 1;
+    const c = document.createElement('canvas'); c.width = Math.round(w * sc); c.height = Math.round(h * sc);
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/png')); return blob.arrayBuffer();
+  }
+  const fdLoc = e => {   // مواقع السؤال: القسم/النموذج + الاختبارات المحاكية
+    const L = [];
+    if (e[1]) L.push(e[0] === 'p' ? `القطعة في ${SET_NAME(e[1])}${e[6] ? ' · ' + esc(e[6]) : ''}` : `${e[0] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(e[1])} · سؤال ${e[2] + 1}${e[6] ? ' · قطعة ' + `<bdi dir="ltr">${esc(e[6])}</bdi>` : ''}`);
+    e[7].slice(0, 3).forEach(t => L.push(`الاختبار المحاكي ${t[0]} · القسم ${t[1]} · سؤال ${t[2]}`));
+    if (e[7].length > 3) L.push(`+ ${e[7].length - 3} اختبارات محاكية ثانية`);
+    return L.map((t, i) => `<span class="fd-loc${i ? '' : ' main'}">${t}</span>`).join('');
+  };
+  function fdPreview(e) {
+    if (e[0] === 'p') return `<div class="fd-pv ltr"><p class="fd-pt">${esc(e[3].slice(0, 420))}${e[3].length > 420 ? '…' : ''}</p></div>`;
+    const opts = e[4].length ? `<ol class="fd-o">${e[4].map((o, j) => `<li><span class="L">${LETTERS[j]}</span><span>${e[0] === 'q' ? mx(o) : esc(o)}</span></li>`).join('')}</ol>` : '';
+    return `<div class="fd-pv ltr" data-img="${e[0] === 'q' && e[1] ? e[1] + ':' + e[2] : ''}"><p>${e[0] === 'q' ? mx(e[3]) : esc(e[3])}</p>${opts}</div>`;
+  }
+  const fdOpen = e => e[1] ? `<a class="btn" href="#${e[1]}@${e[2]}">افتح السؤال</a>` : '';
+  const fdWa = (q, img, kind) => `https://wa.me/${WA_NUM}?text=` + encodeURIComponent(`السلام عليكم، بحثت في موقع Q-Guide عن هذا السؤال (${kind === 'q' ? 'كمي' : 'لفظي'}) وما لقيته:\n\n${String(q || '').trim().slice(0, 700)}${img ? '\n\n(بأرسل لكم صورة السؤال)' : ''}`);
+  async function renderFind() {
+    document.title = 'ابحث عن سؤال | Q-Guide';
+    let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '';
+    app.innerHTML = topbar(`<span class="ttl">🔎 ابحث عن سؤال</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap fd">
+      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك في أي قسم تلقاه.</p></div>
+      <div class="fd-box">
+        <div class="seg" id="fdk" role="tablist" aria-label="نوع السؤال"><button type="button" role="tab" data-k="q" class="${kind === 'q' ? 'on' : ''}" aria-selected="${kind === 'q'}">📐 الكمي</button><button type="button" role="tab" data-k="v" class="${kind === 'v' ? 'on' : ''}" aria-selected="${kind === 'v'}">📖 اللفظي</button></div>
+        <label class="fd-l" for="fdq">نص السؤال</label>
+        <textarea id="fdq" dir="ltr" rows="5" spellcheck="false" placeholder="Paste the question here… (with the choices if you can)"></textarea>
+        <div class="fd-img" id="fdpv" hidden><img id="fdth" alt=""><span id="fdst"></span><button type="button" class="ib" id="fdx" title="إزالة الصورة">✕</button></div>
+        <div class="fd-acts"><label class="btn ghost" id="fdil" for="fdimg">📷 صورة السؤال</label><input type="file" id="fdimg" accept="image/*" hidden><button type="button" class="btn" id="fdgo">🔎 ابحث</button></div>
+        <p class="fd-hint">اكتب السؤال بالإنجليزي مثل ما هو، أو صوّره وحنا نقرأ النص من الصورة على جهازك. تقدر تكتبه بالعربي بعد.</p>
+      </div>
+      <div id="fdr" aria-live="polite"></div></main>`;
+    bindCtl();
+    const ta = $('#fdq'), R = $('#fdr'), go = $('#fdgo'), pv = $('#fdpv'), st = $('#fdst'), inp = $('#fdimg');
+    if (!fdCanOcr()) { $('#fdil').hidden = true; }
+    fdLoad().catch(() => {});   // نجهّز الفهرس من البداية
+    $('#fdk').onclick = e => { const b = e.target.closest('button[data-k]'); if (!b || b.dataset.k === kind) return; kind = b.dataset.k; lsSet('qg_find_k', kind); $('#fdk').querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); if (ta.value.trim()) run(); };
+    ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); } };
+    ta.oninput = () => { if (usedImg && ocrTxt && !ta.value.includes(ocrTxt.slice(0, 24))) { pv.hidden = true; usedImg = false; ocrTxt = ''; } };   // كتب سؤال ثاني بدل نص الصورة
+    go.onclick = () => run();
+    $('#fdx').onclick = () => { pv.hidden = true; usedImg = false; ocrTxt = ''; inp.value = ''; };
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      usedImg = true; pv.hidden = false; pv.className = 'fd-img busy'; $('#fdth').src = URL.createObjectURL(f); go.disabled = true;
+      st.innerHTML = '<span class="spin sm"></span> ' + (lsGet('qg_ocr_ok', 0) ? 'جارٍ قراءة الصورة…' : 'أول مرة: نجهّز قارئ الصور (حوالي 5 ميجا) ثم نقرأ الصورة…');
+      try {
+        const text = (await fdOcrRun(await fdPrep(f))).replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim();
+        if (text.replace(/[^A-Za-z0-9ء-ي]/g, '').length < 12) { pv.className = 'fd-img bad'; st.textContent = 'ما قدرنا نقرأ نص واضح من الصورة. جرّب صورة أوضح أو اكتب السؤال.'; return; }
+        lsSet('qg_ocr_ok', 1); ta.value = ocrTxt = text; pv.className = 'fd-img ok'; st.textContent = '✓ قرينا النص من الصورة — صحّحه فوق إذا فيه خطأ'; run();
+      } catch (e) { pv.className = 'fd-img bad'; st.textContent = 'تعذّرت قراءة الصورة على جهازك. اكتب السؤال بدلها.'; }
+      finally { go.disabled = false; inp.value = ''; }
+    };
+    async function run() {
+      const q = ta.value.trim(), T = fdToks(q);
+      if (T.en.length + T.ar.length + T.nu.length < (kind === 'v' ? 2 : 3) || q.length < (kind === 'v' ? 8 : 12)) { R.innerHTML = `<div class="fd-res tip"><p>اكتب السؤال كامل (جملة على الأقل) عشان نقدر نلقاه.</p></div>`; ta.focus(); return; }
+      R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نبحث في ${kind === 'q' ? 'أسئلة الكمي' : 'أسئلة اللفظي'}…</div>`;
+      let ix; try { ix = await fdLoad(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
+      if (!$('#fdr')) return;
+      const res = fdSearch(ix, q, kind, 4), top = res[0], E = ix.entries;
+      const e = top && E[top.i], sc = top ? top.s : 0;
+      const same = e ? res.filter(r => r.s >= FD_HI && E[r.i] !== e && E[r.i][3] === e[3]).map(r => E[r.i]) : [];   // نفس السؤال مكرر في قسم ثاني
+      const alts = e ? res.slice(1).filter(r => r.s >= Math.max(FD_MID, sc - 0.06) && E[r.i][3] !== e[3]).map(r => E[r.i]).slice(0, 2) : [];   // أسئلة متقاربة جداً بنفس الدرجة
+      const altHtml = alts.length ? `<div class="fd-alt"><h4>أو يمكن يكون ${alts.length > 1 ? 'واحد من هذي' : 'هذا'}:</h4>${alts.map(x => `<div class="fd-ai"><div class="fd-locs">${fdLoc(x)}</div>${fdPreview(x)}<div class="fd-acts">${fdOpen(x).replace('class="btn"', 'class="btn ghost"')}</div></div>`).join('')}</div>` : '';
+      const wa = `<a class="btn wa" href="${fdWa(q, usedImg, kind)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>واتساب 0508003683</a>`;
+      if (e && sc >= FD_HI) {
+        R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
+          <div class="fd-locs">${fdLoc(e)}${same.map(fdLoc).join('')}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}</div>`;
+      } else if (e && sc >= FD_MID) {
+        R.innerHTML = `<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>قارنه بسؤالك وتأكد إنه نفسه:</small></div></div>
+          <div class="fd-locs">${fdLoc(e)}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}<div class="fd-acts fd-wa"><span class="fd-or">مو نفسه؟ أرسله لنا:</span>${wa}</div></div>`;
+      } else {
+        const near = e && sc >= 0.5 ? `<div class="fd-near"><h4>أقرب سؤال عندنا — قارنه بسؤالك</h4><div class="fd-locs">${fdLoc(e)}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e).replace('class="btn"', 'class="btn ghost"')}</div></div>` : '';
+        R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>أرسله لنا على واتساب ونتواصل معك${usedImg ? '، وأرفق صورة السؤال في المحادثة' : ''}.</small></div></div>
+          <div class="fd-acts">${wa}</div>${near}</div>`;
+      }
+      // صورة سؤال الكمي من ملف القسم (نفس الصورة اللي يشوفها في الدورة)
+      R.querySelectorAll('.fd-pv[data-img]').forEach(async el => { const [sid, i] = (el.dataset.img || '').split(':'); if (!sid) return;
+        try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
+      R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
+    }
+  }
+
   // ---------- 📐 قوانين الكمي ----------
   let RULES = null; const RULES_V = 3, RULES_ON = true;
   async function renderRules() {

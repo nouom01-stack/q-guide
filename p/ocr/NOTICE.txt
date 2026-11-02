@@ -1,0 +1,5 @@
+قراءة صور الأسئلة في «ابحث عن سؤال» تتم داخل متصفح الطالب بمحرّك Tesseract (بدون رفع الصورة لأي خادم).
+
+- tesseract-core-*.js / *.wasm  — tesseract.js-core 7.0.0 (https://github.com/naptha/tesseract.js-core), Apache License 2.0 (LICENSE-tesseract.js-core)
+- eng-fast.traineddata.gz       — tessdata 4.0.0_fast (https://github.com/naptha/tessdata), Apache License 2.0
+- Tesseract OCR                 — https://github.com/tesseract-ocr/tesseract, Apache License 2.0
