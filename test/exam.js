@@ -7,6 +7,19 @@
   const app = $('#app');
   const LS = { auth: 'qg_auth', fs: 'qg_exfs', ex: 'qg_ex_', exState: 'qg_ex_state' };
   const LETTERS = ['A', 'B', 'C', 'D'];
+  // نعزل التعابير الرياضية داخل الترجمة العربية حتى ما يتلخبط ترتيبها
+  const MRUN = /[A-Za-z0-9\u00B2\u00B3\u00B9\u2070-\u209F√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*[A-Za-z0-9√π∠△∥][A-Za-z0-9\u00B2\u00B3\u00B9\u2070-\u209F√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*/g;
+  function arMath(s) {
+    s = String(s || ''); let out = '', last = 0;
+    for (const m of s.matchAll(MRUN)) {
+      const t = m[0], a = m.index; let lead = t.match(/^[\s.,:]*/)[0].length, trail = t.match(/[\s.,:]*$/)[0].length; let core = t.slice(lead, t.length - trail);
+      while (core.endsWith(')') && (core.match(/\(/g) || []).length < (core.match(/\)/g) || []).length) { core = core.slice(0, -1); trail++; }
+      while (core.startsWith('(') && (core.match(/\(/g) || []).length > (core.match(/\)/g) || []).length) { core = core.slice(1); lead++; }
+      if (!/[A-Za-z0-9√π∠△∥]/.test(core)) continue;
+      out += esc(s.slice(last, a + lead)) + `<bdi dir="ltr">${esc(core)}</bdi>`; last = a + t.length - trail;
+    }
+    return out + esc(s.slice(last));
+  }
   const INSTR = { ana: 'Choose the pair of words that best expresses a relationship similar to that in the original pair.', sen: 'Choose the word(s) that best complete(s) the sentence.',
     err: 'Choose the word that is used incorrectly in the context of the sentence.', read: 'Read the passage and answer the question.', quant: 'Solve the problem and choose the best answer.' };
   let auth = null, manifest = null, cryptoKey = null, state = null; const cache = {};
@@ -22,7 +35,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function loadTest(id) {
     if (cache[id]) return cache[id];
-    const r = await fetch('/test/data/' + id + '.bin', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+    const r = await fetch('/test/data/' + id + '.bin?v=2', { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     if (!cryptoKey) cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']);
     let plain; try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, cryptoKey, buf.slice(12)); } catch (e) { logout(); throw new Error('key'); }
@@ -274,7 +287,7 @@
           ${it.type === 'quant' ? `<img src="${it.img}" alt="">` : `<p class="qtext" style="text-align:left">${esc(it.q)}</p>`}
           ${it.opts.map((o, j) => `<div class="o ${j === k ? 'k' : (j === a ? 'w' : '')}">${LETTERS[j]}) ${esc(o.replace(/^[A-D]\)\s*/, ''))}${j === k ? ' ✓' : (j === a ? ' ✗' : '')}</div>`).join('')}
           ${it.exp ? `<div class="ex ar">${esc(it.exp)}</div>` : ''}
-          ${it.ar && it.ar.q ? `<div class="ex ar tr"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<div class="tro">${it.opts.map((o, j) => `<span class="${j === k ? 'k' : ''}">${LETTERS[j]}) ${esc((it.ar.o || [])[j] || '')}</span>`).join('')}</div></div>` : ''}</div>`;
+          ${it.ar && it.ar.q ? `<div class="ex ar tr"><b>🇸🇦 الترجمة:</b> ${arMath(it.ar.q)}${(it.ar.o || []).some(Boolean) ? `<div class="tro">${it.opts.map((o, j) => `<span class="${j === k ? 'k' : ''}">${LETTERS[j]}) ${arMath((it.ar.o || [])[j] || '')}</span>`).join('')}</div>` : ''}${it.wd && it.wd.length ? `<div class="wds">${it.wd.map(x => `<span><b dir="ltr">${esc(x[0])}</b> ${esc(x[1])}</span>`).join('')}</div>` : ''}</div>` : ''}</div>`;
       });
     });
     app.innerHTML = header() + h + '</div>'; window.scrollTo(0, 0);

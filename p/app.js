@@ -19,6 +19,7 @@
   const ytUrl = id => 'https://youtu.be/' + id;
   function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'); return { id: raw.slice(0, i), dur: raw.slice(i + 1), url: ytUrl(raw.slice(0, i)), label: k.name + ' ' + m[2] }; }
   const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
+  const GRIDSVG = '<svg class="gi" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.9"/><circle cx="8" cy="3" r="1.9"/><circle cx="13" cy="3" r="1.9"/><circle cx="3" cy="8" r="1.9"/><circle cx="8" cy="8" r="1.9"/><circle cx="13" cy="8" r="1.9"/><circle cx="3" cy="13" r="1.9"/><circle cx="8" cy="13" r="1.9"/><circle cx="13" cy="13" r="1.9" fill-opacity=".45"/></g></svg>';
   const LOSVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>';
 
   // ---------- utils ----------
@@ -63,6 +64,7 @@
   }
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
+  const DATA_V = 2;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (id === 'qall' || id === 'vall') {
@@ -74,7 +76,7 @@
       cache[id] = obj; return obj;
     }
     if (/^t-/.test(id)) return loadTopicSet(id);
-    const r = await fetch('/p/data/' + id + '.bin', { cache: 'force-cache' });
+    const r = await fetch('/p/data/' + id + '.bin?v=' + DATA_V, { cache: 'force-cache' });
     if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     const key = await getKey();
@@ -126,9 +128,31 @@
   // مزامنة السجل مع الخادم (حتى تبقى نقاط القوة والضعف عند تغيير الجهاز)
   let skillsT = 0, skillsSyncing = false;
   function histMergeInto(h, remote) { if (!remote || !remote.items) return h; for (const src in remote.items) { const m = h.items[src] || (h.items[src] = {}); for (const i in remote.items[src]) { const r = remote.items[src][i], l = m[i]; if (!l || (r[0] + r[1]) > (l[0] + l[1])) m[i] = r; } } return h; }
-  async function skillsPull() { if (!auth) return histGet(); try { const r = await api({ op: 'skills_get', session: auth.session }); if (r.ok && r.data) { const rem = JSON.parse(r.data); const h = histMergeInto(histGet(), rem); histSet(h); daysMerge(rem.days); return h; } } catch (e) {} return histGet(); }
+  let skillsPulled = false;
+  async function skillsPull() {
+    if (!auth) return histGet();
+    try {
+      const r = await api({ op: 'skills_get', session: auth.session });
+      if (r.ok) skillsPulled = true;
+      if (r.ok && r.data) {
+        const rem = JSON.parse(r.data); const h = histMergeInto(histGet(), rem); histSet(h); daysMerge(rem.days);
+        // موعد الاختبار والخطة: الأحدث يكسب (حتى تلحقك على أي جهاز)
+        if (rem.exam && (rem.exam.up || 0) > ((lsGet(EXAM_LS, null) || {}).up || 0)) lsSet(EXAM_LS, rem.exam);
+        if (rem.plan && planUp(rem.plan) > planUp(planState())) lsSet(PLAN_LS, rem.plan);
+        return h;
+      }
+    } catch (e) {}
+    return histGet();
+  }
   function skillsPushSoon(ms) { clearTimeout(skillsT); skillsT = setTimeout(skillsPush, ms || 6000); }
-  async function skillsPush() { if (!auth || skillsSyncing) return; skillsSyncing = true; try { const h = histGet(); await api({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: h.items, days: daysGet() }) }); } catch (e) {} finally { skillsSyncing = false; } }
+  async function skillsPush() {
+    if (!auth || skillsSyncing) return; skillsSyncing = true;
+    try {
+      if (!skillsPulled) { await skillsPull(); if (!skillsPulled) return; }   // لا نكتب فوق نسخة الخادم قبل ما ندمجها
+      const h = histGet(), pl = planState();
+      await api({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: h.items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null }) });
+    } catch (e) {} finally { skillsSyncing = false; }
+  }
 
   // ---------- 🔥 النشاط اليومي: سلسلة الأيام + هدف اليوم ----------
   const DAYS_LS = 'qg_days', GOAL_LS = 'qg_goal', GOALS = [20, 40, 60, 100];
@@ -290,14 +314,6 @@
             <span class="gt"><b>${met ? '✓ ' : ''}${today}<small> من ${goal}</small></b><small>${met ? 'حققت هدف اليوم' : 'هدف اليوم'}</small></span></button></div>
       </div></section>`;
   }
-  function planRowHtml() {
-    const st = planState(); const plan = PLANS.find(p => p.id === st.id); if (!plan) return '';
-    const days = plan.build(), done = st.done || {}; const cur = days.find(d => !d.tasks.every((t, i) => done[d.n] && done[d.n][i]));
-    if (!cur) return `<a class="prow" href="#plan">🎉 <span>خلّصت ${plan.name} كاملة. بالتوفيق في اختبارك!</span></a>`;
-    const links = cur.tasks.filter(t => t.link).map(t => `<a href="${t.link}">${t.lt}</a>`);
-    const what = links.length ? links.join(' و') : esc(cur.tasks[0].t.replace(/<[^>]+>/g, ''));
-    return `<div class="prow"><span class="pi">📅</span><span class="pt"><b>خطتك اليوم</b> <span class="mut">(اليوم ${cur.n} من ${plan.days})</span>: ${what}</span><a class="pgo" href="#plan">افتح الخطة</a></div>`;
-  }
   let homePulled = false;
   async function renderHome() {
     document.title = 'منصة التدريب | Q-Guide';
@@ -311,7 +327,7 @@
     app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     `<main class="wrap home">
       <div id="rz">${rzHtml()}</div>
-      ${planRowHtml()}
+      <div id="trip"></div>
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener" title="${esc(R.rules.d)}">${YTSVG}<span>${R.rules.t}</span>${R.rules.dur ? `<small>${R.rules.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">كل المقاطع</a></div>
       <div class="sheets" id="grid"></div>
@@ -341,7 +357,9 @@
     grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
     const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast('هدفك اليومي صار ' + nx + ' سؤال'); }; };
     bindGoal();
-    if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); } }).catch(() => {}); }
+    const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; };
+    paintTrip();
+    if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); } }).catch(() => {}); }
     renderWorkbooks();
     prefetchSets();
   }
@@ -350,7 +368,7 @@
   function prefetchSets() {
     if (prefetching || !manifest) return; const c = navigator.connection || {}; if (c.saveData) return; prefetching = true;
     const ids = [...manifest.quant, ...manifest.verbal].map(s => s.id);
-    const run = () => { const id = ids.shift(); if (!id) return; fetch('/p/data/' + id + '.bin', { priority: 'low' }).catch(() => {}).finally(() => setTimeout(run, 400)); };
+    const run = () => { const id = ids.shift(); if (!id) return; fetch('/p/data/' + id + '.bin?v=' + DATA_V, { priority: 'low' }).catch(() => {}).finally(() => setTimeout(run, 400)); };
     setTimeout(run, 2500);
   }
   async function renderWorkbooks() {
@@ -453,12 +471,14 @@
     P = { id, set, items, prog, cur, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span></button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${items.map((x, i) => `<i class="${prog.a[i] ? (prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('')}</div><main class="wrap" id="pm"></main>
-      <div class="nav" id="nav"><div class="bg"></div><div class="sh"><div class="lg"><span><i style="background:var(--okbg);border:1px solid var(--ok)"></i>صحيحة</span><span><i style="background:var(--badbg);border:1px solid var(--bad)"></i>خاطئة</span><span><i style="background:#EEF1F8"></i>لم تُجب</span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة القسم من البداية</button></div><div class="ng" id="ng"></div></div></div>`;
-    $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); };
+      <aside class="sheetp" aria-label="ورقة الإجابة"><div class="sp-h"><b>ورقة الإجابة</b><span id="spn"></span></div><div class="qgrid" id="spg"></div></aside>
+      <div class="nav" id="nav" role="dialog" aria-modal="true" aria-label="كل الأسئلة"><div class="bg"></div><div class="sh"><div class="nvh"><b>كل الأسئلة</b><span class="nlg"><span><i class="ok"></i>صحيحة</span><span><i class="bad"></i>خاطئة</span><span><i></i>ما جاوبتها</span></span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة من البداية</button></div><div class="qgrid big" id="ng"></div></div></div>`;
+    $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); const c = $('#ng .cur'); if (c) c.focus({ preventScroll: true }); };
     bindCtl();
     $('#nav .bg').onclick = () => $('#nav').classList.remove('open');
+    const spg = $('#spg'); spg.innerHTML = sheetBtns(); spg.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) showQ(+b.dataset.i); };
     $('#reset').onclick = async () => { if (await QGDlg.confirm('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟', { ok: 'ابدأ من جديد', danger: true })) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
     showQ(cur);
     document.onkeydown = onKey;
@@ -466,15 +486,22 @@
   function onKey(e) {
     if (!P || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
+    const nav = $('#nav'); if (nav && nav.classList.contains('open')) { if (k === 'escape') nav.classList.remove('open'); return; }
     const idx = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : ('1234'.indexOf(k) >= 0 ? '1234'.indexOf(k) : -1);
     if (idx >= 0) { const b = document.querySelectorAll('.opt')[idx]; if (b && !b.disabled) b.click(); }
-    else if (k === 'enter' || k === 'arrowleft') { const c = $('#confirm'); if (c && !c.disabled) return c.click(); const n = $('#next'); if (n && !n.disabled) n.click(); }
+    else if (k === 'enter' || k === 'arrowleft') { const c = $('#confirm'); if (c && !c.disabled) return c.click(); const n = $('#next'); if (n && !n.disabled) return n.click(); const s = $('#skip'); if (s && k === 'arrowleft') s.click(); }
     else if (k === 'arrowright') { const p = $('#prev'); if (p) p.click(); }
   }
   function updateCounter() {
-    const n = Object.keys(P.prog.a).length; $('#cnt').textContent = (P.cur + 1) + ' / ' + P.items.length;
+    const n = P.items.length, ans = Object.keys(P.prog.a).length; $('#cnt').textContent = (P.cur + 1) + ' / ' + n;
     const sb = $('#sb'); if (sb) { const o = sb.querySelector('i.cur'); if (o) o.classList.remove('cur'); const c = sb.children[P.cur]; if (c) c.classList.add('cur'); }
+    const g = $('#spg'); if (g) { const o = g.querySelector('.cur'); if (o) o.classList.remove('cur'); const c = g.children[P.cur]; if (c) { c.classList.add('cur'); if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight) g.scrollTop = c.offsetTop - g.clientHeight / 2; } }
+    const sn = $('#spn'); if (sn) sn.textContent = `أجبت ${ans} من ${n}`;
   }
+  // أزرار ورقة الإجابة (اللوحة الجانبية + نافذة كل الأسئلة): كل سؤال متاح بضغطة
+  function sheetBtns() { return P.items.map((x, i) => { const a = P.prog.a[i]; return `<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${i + 1}${a ? (a.c ? '، إجابتك صحيحة' : '، إجابتك خاطئة') : ''}">${i + 1}</button>`; }).join(''); }
+  // أقرب سؤال بدون إجابة بعد i (ويرجع من البداية)، أو -1
+  function nextOpen(i) { const n = P.items.length; for (let k = 1; k < n; k++) { const j = (i + k) % n; if (!P.prog.a[j]) return j; } return -1; }
   function showQ(i) {
     const { set, items, prog } = P; P.cur = i; prog.last = i; progSet(P.id, prog); updateCounter();
     const { it, gi } = items[i]; const a = prog.a[i]; P.sel = null;
@@ -490,7 +517,7 @@
     }
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
     html += `<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${items.length}</small></span><span class="tag ltr">${tag}</span></div>`;
-    if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">`;
+    if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">` + qtrHtml(it);
     else html += `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
     const two = set.kind === 'quant' || it.opts.every(o => o.length <= 28);
     html += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => {
@@ -500,14 +527,16 @@
     }).join('') + '</div>';
     html += `<div id="fb">${a ? feedback(it, a) : ''}</div>
       <div class="acts"><button class="btn ghost sm" id="prev" ${i === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span>
-      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : 'النتيجة 🏁'}</button>` : `<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
+      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : nextOpen(i) < 0 ? 'النتيجة 🏁' : 'التالي ←'}</button>` : `${nextOpen(i) >= 0 ? '<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>' : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
       <div class="kbd" style="margin-top:8px">${a ? 'Enter للتالي' : 'اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد'}</div></div>`;
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' });
     bindWords();
+    const qd = $('#qtr'); if (qd) qd.addEventListener('toggle', () => lsSet(QTR_LS, qd.open ? 1 : 0));
     const ph = $('#ph'); if (ph) ph.onclick = () => { const p = $('#pass'); p.classList.toggle('closed'); P.passOpen[gi] = !p.classList.contains('closed'); $('#pch').textContent = P.passOpen[gi] ? '▲' : '▼'; };
     document.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (P.prog.a[i]) return; P.sel = +b.dataset.k; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', +x.dataset.k === P.sel)); const c = $('#confirm'); if (c) c.disabled = false; });
     $('#prev').onclick = () => showQ(i - 1);
-    const nx = $('#next'); if (nx) nx.onclick = () => { if (i + 1 < items.length) showQ(i + 1); else finish(); };
+    const nx = $('#next'); if (nx) nx.onclick = () => { if (i + 1 < items.length) showQ(i + 1); else { const o = nextOpen(i); if (o >= 0) showQ(o); else finish(); } };
+    const sk = $('#skip'); if (sk) sk.onclick = () => { const o = nextOpen(i); if (o >= 0) showQ(o); };
     const cf = $('#confirm'); if (cf) cf.onclick = () => { if (P.sel == null) return; answer(i, P.sel); };
   }
   function feedback(it, a) {
@@ -524,6 +553,28 @@
     const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';
     return `<a class="ytx" href="${yt.url}" target="_blank" rel="noopener">${YTSVG}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو على يوتيوب</span><span class="go">←</span></a>`;
   }
+  // 🇸🇦 ترجمة أسئلة الكمي: تظهر قبل الإجابة (الترجمة ما تكشف الحل) ونتذكّر إذا الطالب يفضّلها مفتوحة
+  const QTR_LS = 'qg_qtr';
+  // نعزل التعابير الرياضية (x + 3 = 7، m∠ABC…) داخل النص العربي حتى ما يتلخبط ترتيبها
+  const MRUN = /[A-Za-z0-9\u00B2\u00B3\u00B9\u2070-\u209F√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*[A-Za-z0-9√π∠△∥][A-Za-z0-9\u00B2\u00B3\u00B9\u2070-\u209F√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*/g;
+  function arMath(s) {
+    s = String(s || ''); let out = '', last = 0;
+    for (const m of s.matchAll(MRUN)) {
+      let t = m[0], a = m.index;
+      let lead = t.match(/^[\s.,:]*/)[0].length, trail = t.match(/[\s.,:]*$/)[0].length;
+      let core = t.slice(lead, t.length - trail);
+      while (core.endsWith(')') && (core.match(/\(/g) || []).length < (core.match(/\)/g) || []).length) { core = core.slice(0, -1); trail++; }
+      while (core.startsWith('(') && (core.match(/\(/g) || []).length > (core.match(/\)/g) || []).length) { core = core.slice(1); lead++; }
+      if (!/[A-Za-z0-9√π∠△∥]/.test(core)) continue;
+      out += esc(s.slice(last, a + lead)) + `<bdi dir="ltr">${esc(core)}</bdi>`; last = a + t.length - trail;
+    }
+    return out + esc(s.slice(last));
+  }
+  function qtrHtml(it) {
+    const ar = it.ar; if (!ar || !ar.q) return ''; const w = it.wd || [];
+    const ot = (ar.o || []).some(Boolean) ? `<ol class="qt-o">${it.opts.map((o, k) => ar.o[k] ? `<li><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o.replace(/^[A-D]\)\s*/, ''))}</span><span class="arr">${arMath(ar.o[k])}</span></li>` : '').join('')}</ol>` : '';
+    return `<details class="qtr" id="qtr" ${lsGet(QTR_LS, 0) ? 'open' : ''}><summary><span class="qt-f" aria-hidden="true">🇸🇦</span>ترجمة السؤال <small>ومعاني الكلمات</small></summary><div class="qt-b"><p class="qt-ar">${arMath(ar.q)}</p>${ot}${w.length ? `<div class="vcs">${w.map(x => `<span class="vc"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></span>`).join('')}</div>` : ''}</div></details>`;
+  }
   // 🇸🇦 ترجمة السؤال والخيارات + كلمات السؤال
   function trHtml(it) {
     const ar = it.ar; let h = '';
@@ -537,21 +588,23 @@
     const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
     const good = k === it.ans; const sbi = $('#sb') && $('#sb').children[i]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
+    const gbi = $('#spg') && $('#spg').children[i]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', `سؤال ${i + 1}، إجابتك ${good ? 'صحيحة' : 'خاطئة'}`); }
     P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + ' صح ورا بعض'; rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
     const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast('🎉 حققت هدف اليوم: ' + goal + ' سؤال!'), 700);
     try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
     document.querySelectorAll('.opt').forEach(b => { b.disabled = true; b.classList.remove('sel'); const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
     if (!RM()) { const btn = document.querySelector(`.opt[data-k="${k}"]`); if (btn) { if (good) burst(btn.querySelector('.L') || btn); else btn.classList.add('shake'); } }
     $('#fb').innerHTML = feedback(it, P.prog.a[i]);
-    const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${(i + 1 < P.items.length) ? 'التالي ←' : 'النتيجة 🏁'}</button>`; $('#next').onclick = () => { if (i + 1 < P.items.length) showQ(i + 1); else finish(); }; }
+    const sk = $('#skip'); if (sk) sk.remove();
+    const nxo = nextOpen(i);   // بعد الإجابة: التالي = أقرب سؤال ما جاوبته، والنتيجة لما تخلص كل الأسئلة
+    const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${nxo < 0 ? 'النتيجة 🏁' : 'التالي ←'}</button>`; $('#next').onclick = () => { if (nxo >= 0) showQ(nxo); else finish(); }; }
     const kb = $('.kbd'); if (kb) kb.textContent = 'Enter للتالي';
     updateCounter();
     const fbEl = $('#fb'); if (fbEl) setTimeout(() => fbEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   }
   function renderNav() {
-    let frontier = P.items.findIndex((x, i) => !P.prog.a[i]); if (frontier < 0) frontier = P.items.length;
-    const ng = $('#ng'); ng.innerHTML = P.items.map((x, i) => { const a = P.prog.a[i]; const locked = !a && i !== frontier; return `<button class="${a ? (a.c ? 'ok' : 'bad') : ''} ${i === P.cur ? 'cur' : ''}" data-i="${i}" ${locked ? 'disabled title="أجب على الأسئلة بالترتيب"' : ''}>${locked ? '🔒' : i + 1}</button>`; }).join('');
-    ng.querySelectorAll('button').forEach(b => b.onclick = () => { $('#nav').classList.remove('open'); showQ(+b.dataset.i); });
+    const ng = $('#ng'); ng.innerHTML = sheetBtns();
+    ng.onclick = e => { const b = e.target.closest('button[data-i]'); if (!b) return; $('#nav').classList.remove('open'); showQ(+b.dataset.i); };
   }
   async function finish() {
     const { items, prog, set } = P; const n = items.length; const answered = Object.keys(prog.a).length;
@@ -940,66 +993,195 @@
     W.querySelectorAll('[data-role]').forEach(sel => sel.onchange = async () => { const em = sel.dataset.role; const x = S.staff.find(y => y.email === em) || {}; try { await admCall({ op: 'adm_staff_add', email: em, name: x.name || '', note: x.note || '', role: sel.value }); toast('تم تغيير الصلاحية ✓'); await admLoadStaff(true); paintStaff(); } catch (e) { toast(e.message); } });
   }
 
+  // ---------- ⏳ موعد الاختبار + العدّادات ----------
+  const EXAM_LS = 'qg_exam', TRIPX_LS = 'qg_trip_x', DAYMS = 864e5;
+  function examGet() { const e = lsGet(EXAM_LS, null); return e && /^\d{4}-\d{2}-\d{2}$/.test(e.d || '') ? e : null; }
+  function examAt(e) { e = e || examGet(); if (!e) return 0; const [y, m, d] = e.d.split('-').map(Number); const [hh, mm] = String(e.t || '08:00').split(':').map(Number); return new Date(y, m - 1, d, hh || 0, mm || 0).getTime(); }
+  const day0 = t => { const d = new Date(t || Date.now()); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const dayDiff = (a, b) => Math.round((day0(b) - day0(a)) / DAYMS);   // كم يوم تقويمي من a إلى b
+  const addDays = (t, n) => { const d = new Date(day0(t)); d.setDate(d.getDate() + n); return d.getTime(); };
+  const fmtDay = t => new Date(t).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fmtTime = t => new Date(t).toLocaleTimeString('ar-SA-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+  const byDays = n => n === 1 ? 'بيوم' : n === 2 ? 'بيومين' : `بـ${n} ${n <= 10 ? 'أيام' : 'يوم'}`;
+  const p2 = n => String(n).padStart(2, '0');
+  function cdParts(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 }; }
+  // عدّاد كبير (مربعات) أو صغير (أيام + ساعات:دقائق:ثواني) — يتحدّث كل ثانية
+  function cdHtml(at, small) {
+    const p = cdParts(at - Date.now());
+    if (small) return `<span class="cds" data-cd="${at}"><b data-u="d">${p.d}</b><small>يوم</small><span class="hms" dir="ltr" data-u="hms">${p2(p.h)}:${p2(p.m)}:${p2(p.s)}</span></span>`;
+    return `<div class="cd" data-cd="${at}" role="timer" aria-label="باقي ${p.d} يوم على اختبارك"><span class="cdu"><b data-u="d">${p.d}</b><small>يوم</small></span><span class="cdu"><b data-u="h">${p2(p.h)}</b><small>ساعة</small></span><span class="cdu"><b data-u="m">${p2(p.m)}</b><small>دقيقة</small></span><span class="cdu sec"><b data-u="s">${p2(p.s)}</b><small>ثانية</small></span></div>`;
+  }
+  setInterval(() => {
+    const els = document.querySelectorAll('[data-cd]'); if (!els.length) return; const now = Date.now();
+    els.forEach(el => { const p = cdParts(+el.dataset.cd - now); el.querySelectorAll('[data-u]').forEach(b => { const u = b.dataset.u; const v = u === 'd' ? String(p.d) : u === 'hms' ? `${p2(p.h)}:${p2(p.m)}:${p2(p.s)}` : p2(p[u]); if (b.textContent !== v) b.textContent = v; }); });
+  }, 1000);
+  function examMsg(dl) {   // dl = أيام تقويمية حتى يوم الاختبار
+    if (dl < 0) return 'إن شاء الله أبدعت في اختبارك 🎉 حدّث الموعد إذا عندك اختبار جديد';
+    if (dl === 0) return 'اليوم اختبارك! ثق في تدريبك، وبالتوفيق 🤲';
+    if (dl === 1) return 'بكرة اختبارك: راجع أخطاءك بهدوء ونم بدري';
+    if (dl <= 7) return 'الأسبوع الأخير: ركّز على أخطائك والاختبارات المحاكية';
+    if (dl <= 21) return 'المرحلة المهمة: كل يوم تذاكر فيه يفرق في درجتك';
+    return 'وقتك يكفي إذا مشيت على خطة. الاستمرار أهم من الكمية';
+  }
+  function fitInfo(end, exT) {   // نهاية الخطة مقابل يوم الاختبار
+    const gap = dayDiff(end, exT);
+    if (gap >= 1) return { c: 'ok', gap, t: `تخلص قبل اختبارك ${byDays(gap)}`, s: `✓ قبل اختبارك ${byDays(gap)}` };
+    if (gap === 0) return { c: 'warn', gap, t: 'تخلص يوم اختبارك نفسه', s: '⚠ تخلص يوم اختبارك' };
+    return { c: 'bad', gap, t: `تخلص بعد اختبارك ${byDays(-gap)}`, s: `⚠ بعد اختبارك ${byDays(-gap)}` };
+  }
+  // نافذة تحديد موعد الاختبار
+  function examDlg() {
+    return new Promise(res => {
+      const ex = examGet(); const box = document.createElement('div'); box.className = 'modal';
+      box.innerHTML = `<div class="m exm" role="dialog" aria-modal="true" aria-labelledby="exh"><h3 id="exh">🎯 موعد اختبارك</h3>
+        <p class="mut">حدّد موعد اختبار القدرات، ونعرض لك عدّاد تنازلي في الصفحة الرئيسية ونعلّم لك الخطة اللي تلحق قبله.</p>
+        <div class="exf"><label><span>التاريخ</span><input type="date" id="exd" min="${dayKey()}" value="${ex ? ex.d : ''}" dir="ltr"></label><label><span>الوقت <small>(اختياري)</small></span><input type="time" id="ext" value="${ex ? ex.t || '08:00' : '08:00'}" dir="ltr"></label></div>
+        <div class="acts"><button class="btn" id="exok">حفظ الموعد</button><button class="btn ghost" id="exno">إلغاء</button>${ex ? '<span class="sp"></span><button class="lnk" id="exdel">حذف الموعد</button>' : ''}</div></div>`;
+      document.body.appendChild(box);
+      const close = v => { box.remove(); document.removeEventListener('keydown', onK); res(v); };
+      const onK = e => { if (e.key === 'Escape') close(false); };
+      document.addEventListener('keydown', onK);
+      box.addEventListener('click', e => { if (e.target === box) close(false); });
+      $('#exno').onclick = () => close(false);
+      const del = $('#exdel'); if (del) del.onclick = () => { lsSet(EXAM_LS, { d: '', up: Date.now() }); skillsPushSoon(1500); toast('تم حذف موعد الاختبار'); close(true); };
+      $('#exok').onclick = () => {
+        const d = $('#exd').value, t = $('#ext').value || '08:00';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('اختر تاريخ الاختبار'); $('#exd').focus(); return; }
+        const at = examAt({ d, t }); if (at < Date.now() - DAYMS) { toast('التاريخ اللي اخترته مضى'); return; }
+        lsSet(EXAM_LS, { d, t, up: Date.now() }); lsDel(TRIPX_LS); skillsPushSoon(1500); toast('تم حفظ موعد اختبارك ✓'); close(true);
+      };
+      setTimeout(() => { const i = $('#exd'); if (i) i.focus(); }, 60);
+    });
+  }
+  function bindExam(root, after) { (root || document).querySelectorAll('[data-exam]').forEach(b => b.onclick = async () => { if (await examDlg()) after(); }); }
+
   // ---------- 📅 خطة المذاكرة ----------
   const PLAN_Q = ['1-50', '51-100', '101-150', '151-200', '201-250', '251-300', '301-350', '351-400', '401-450', '451-500', '501-550', '551-600', '601-642'];
-  const PLAN_QD = ['36:19', '34:43', '35:56', '34:46', '36:17', '35:14', '40:08', '36:51', '', '', '', '', ''];
-  const PLAN_VD = ['24:15', '23:59', '19:54', '25:05', '17:50', '23:07', '17:37', '16:33', '', '', '', '', '', ''];
-  const pq = i => ({ k: 'q', t: `كمي <bdi dir="ltr">${PLAN_Q[i - 1]}</bdi> — مشاهدة المقطع${PLAN_QD[i - 1] ? ' (' + PLAN_QD[i - 1] + ')' : ''}`, link: '#q' + i, lt: 'حل القسم ' + i });
-  const pv = i => ({ k: 'v', t: `لفظي Model ${i} — مشاهدة المقطع${PLAN_VD[i - 1] ? ' (' + PLAN_VD[i - 1] + ')' : ''}`, link: '#v' + i, lt: 'حل النموذج ' + i });
-  const pt = (t) => ({ k: 't', t });
-  const pr = (t) => ({ k: 'r', t });
-  const TEST1 = 'حل الاختبارات: اختبار الكمي + اختبار اللفظي من الوصف — ساعة';
+  // كل مهمة = شاهد مقطع الشرح ثم حل نفس القسم هنا في المنصة (حل القسم هو نفسه اختبار المقطع)
+  const pq = i => ({ k: 'q', set: 'q' + i, t: `كمي <bdi dir="ltr">${PLAN_Q[i - 1]}</bdi>: شاهد المقطع ثم حل القسم ${i}` });
+  const pv = i => ({ k: 'v', set: 'v' + i, t: `لفظي Model ${i}: شاهد المقطع ثم حل النموذج ${i}` });
+  const WQ = ['#t-wrong-q', 'أخطائي في الكمي'], WV = ['#t-wrong-v', 'أخطائي في اللفظي'];
+  const pr = (t, links) => ({ k: 'r', t, links: links || [] });
+  const QREV = () => pr('راجع كل أخطائك في الكمي (بدل المقطع)', [WQ]);
   const PLANS = [
     { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 4 ساعات يومياً', fit: 'للي اختباره بعد أسبوع', content: '13 مقطع كمي · 14 مقطع لفظي',
-      build() { const d = []; for (let i = 1; i <= 6; i++) d.push({ n: i, time: '≈ 4 ساعات', tasks: [pq(2 * i - 1), pv(2 * i - 1), pq(2 * i), pv(2 * i), pt('حل الاختبارات: اختبارات الوصف للمقاطع الأربعة — ساعتين')] });
-        d.push({ n: 7, time: '≈ 4 ساعات', tasks: [pq(13), pv(13), pv(14), pr('مراجعة أخطاء اختبارات الكمي كلها'), pt('حل الاختبارات: اختبارات الوصف للمقاطع الثلاثة — ساعة ونص')] }); return d; } },
+      build() { const d = []; for (let i = 1; i <= 6; i++) d.push({ n: i, time: '≈ 4 ساعات', tasks: [pq(2 * i - 1), pv(2 * i - 1), pq(2 * i), pv(2 * i)] });
+        d.push({ n: 7, time: '≈ 4 ساعات', tasks: [pq(13), pv(13), pv(14), pr('راجع كل أخطائك في الكمي', [WQ])] }); return d; } },
     { id: 'intense', name: 'الخطة المكثفة', days: 14, daily: 'حوالي ساعتين يومياً', fit: 'للي اختباره قريب', content: '13 مقطع كمي · 14 مقطع لفظي',
-      build() { const d = []; for (let i = 1; i <= 13; i++) d.push({ n: i, time: PLAN_QD[i - 1] && i % 2 ? '≈ ساعة و55 د' : '≈ ساعتين', tasks: [pq(i), pv(i), pt(TEST1)] });
-        d.push({ n: 14, time: '≈ ساعتين', tasks: [pr('مراجعة أخطاء اختبارات الكمي كلها (بدل المقطع)'), pv(14), pt(TEST1)] }); return d; } },
+      build() { const d = []; for (let i = 1; i <= 13; i++) d.push({ n: i, time: '≈ ساعتين', tasks: [pq(i), pv(i)] });
+        d.push({ n: 14, time: '≈ ساعتين', tasks: [QREV(), pv(14)] }); return d; } },
     { id: 'balanced', name: 'الخطة المتوازنة', days: 19, daily: 'حوالي ساعتين · 5 أيام بالأسبوع', fit: 'الأنسب لأغلب الطلاب', content: '13 مقطع كمي · 14 مقطع لفظي', star: true,
       build() { const d = []; let k = 1;
-        const study = n => d.push({ n, time: '≈ ساعتين', tasks: [pq(k), pv(k), pt(TEST1)], w: Math.ceil(n / 7) }), rev = n => d.push({ n, time: '≈ ساعة', tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها في اختبارات هالأسبوع')], w: Math.ceil(n / 7) }), rest = n => d.push({ n, time: 'راحة', tasks: [{ k: 'rest', t: 'يوم راحة — استرجع نشاطك' }], w: Math.ceil(n / 7) });
+        const study = n => d.push({ n, time: '≈ ساعتين', tasks: [pq(k), pv(k)], w: Math.ceil(n / 7) }), rev = n => d.push({ n, time: '≈ ساعة', tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع', [WQ, WV])], w: Math.ceil(n / 7) }), rest = n => d.push({ n, time: 'راحة', tasks: [{ k: 'rest', t: 'يوم راحة: استرجع نشاطك' }], w: Math.ceil(n / 7) });
         for (let w = 0; w < 2; w++) { for (let i = 1; i <= 5; i++) { study(w * 7 + i); k++; } rev(w * 7 + 6); rest(w * 7 + 7); }
         for (let i = 15; i <= 17; i++) { study(i); k++; }
-        d.push({ n: 18, time: '≈ ساعتين', tasks: [pr('مراجعة أخطاء اختبارات الكمي كلها (بدل المقطع)'), pv(14), pt(TEST1)], w: 3 }); rev(19); return d; } },
+        d.push({ n: 18, time: '≈ ساعتين', tasks: [QREV(), pv(14)], w: 3 }); rev(19); return d; } },
     { id: 'relaxed', name: 'الخطة المريحة', days: 28, daily: 'يوم مذاكرة ساعتين + يوم مراجعة خفيف', fit: 'للي عنده دوام أو مدرسة', content: '13 مقطع كمي · 14 مقطع لفظي',
       build() { const d = []; for (let k = 1; k <= 14; k++) { const n = 2 * k - 1; const w = Math.ceil(n / 7);
-          if (k <= 13) d.push({ n, time: '≈ ساعتين', tasks: [pq(k), pv(k), pt(TEST1)], w }); else d.push({ n, time: '≈ ساعتين', tasks: [pr('مراجعة أخطاء اختبارات الكمي كلها (بدل المقطع)'), pv(14), pt(TEST1)], w });
-          d.push({ n: n + 1, time: '≈ 30 دقيقة', tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها أمس + راجع ملاحظاتك')], w: Math.ceil((n + 1) / 7) }); } return d; } },
+          d.push({ n, time: '≈ ساعتين', tasks: k <= 13 ? [pq(k), pv(k)] : [QREV(), pv(14)], w });
+          d.push({ n: n + 1, time: '≈ 30 دقيقة', tasks: [pr('مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك', [WQ, WV])], w: Math.ceil((n + 1) / 7) }); } return d; } },
   ];
   const PLAN_LS = 'qg_plan';
   function planState() { return lsGet(PLAN_LS, { id: '', done: {} }); }
+  const planUp = p => (p && (p.up || p.started)) || 0;
+  function planSave(st) { st.up = Date.now(); lsSet(PLAN_LS, st); skillsPushSoon(2500); }
+  function planInfo(plan, st) {   // تواريخ الخطة + موقعك منها
+    const days = plan.build(), done = st.done || {};
+    const dayDone = d => d.tasks.every((t, i) => done[d.n] && done[d.n][i]);
+    const nDone = days.filter(dayDone).length, cur = days.find(d => !dayDone(d)) || null;
+    const start = day0(st.started || Date.now()), end = addDays(start, plan.days - 1), today = day0();
+    const expect = Math.min(plan.days, dayDiff(start, today) + 1);   // اليوم المفروض حسب التاريخ
+    return { days, done, dayDone, nDone, cur, start, end, lag: cur ? expect - cur.n : 0, left: dayDiff(today, end) };
+  }
+  // روابط المهمة: المقطع على يوتيوب + حل القسم (مع تقدّمك فيه)
+  function taskSolve(t, cls) {
+    if (t.set) {
+      const p = progGet(t.set), ans = Object.keys(p.a || {}).length, nm = SET_NAME(t.set);
+      const tot = manifest ? ((manifest[t.k === 'q' ? 'quant' : 'verbal'] || []).find(s => s.id === t.set) || {}).n : 0;
+      const lab = p.done ? `✓ ${nm}${p.best != null ? ` <small>${p.best}%</small>` : ''}` : ans ? `كمّل ${nm} <small>${ans}${tot ? '/' + tot : ''}</small>` : `حل ${nm}`;
+      return `<a class="${cls} ${p.done ? 'ok' : ''}" href="#${t.set}">${lab}</a>`;
+    }
+    return (t.links || []).map(l => `<a class="${cls}" href="${l[0]}">${l[1]}</a>`).join('');
+  }
+  function taskLinks(t) {
+    const y = t.set ? ytFor(t.set) : null;
+    return (y ? `<a class="go yt" href="${y.url}" target="_blank" rel="noopener" title="مقطع شرح ${y.label} على يوتيوب">${YTSVG}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
+  }
+  // بطاقة «رحلتك للاختبار» في الرئيسية: عدّاد الاختبار + مهمة اليوم من الخطة
+  function tripHtml() {
+    const ex = examGet(), exT = ex ? examAt(ex) : 0, now = Date.now();
+    const st = planState(), plan = PLANS.find(p => p.id === st.id) || null;
+    if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : `<div class="trip invite"><span class="tr-i" aria-hidden="true">⏳</span><span class="tr-t"><b>متى اختبارك؟</b> حدّد الموعد ونعرض لك عدّاد تنازلي، ونقترح لك خطة مذاكرة تلحق قبله.</span><span class="tr-b"><button class="btn sm" data-exam>حدّد الموعد</button><a class="btn sm ghost" href="#plan">خطط المذاكرة</a></span><button class="tr-x" id="trx" title="إخفاء" aria-label="إخفاء">✕</button></div>`;
+    let h = '<section class="trip" aria-label="موعد اختبارك وخطتك">';
+    if (ex) {
+      const dl = dayDiff(now, exT), live = exT > now;
+      h += `<div class="tr-ex"><div class="tr-l"><span class="tr-k">${live ? (dl === 0 ? '⏳ اختبارك اليوم بعد' : '⏳ باقي على اختبارك') : dl === 0 ? '🤲 اليوم اختبارك' : '🎓 كان اختبارك'}</span><span class="tr-d">${fmtDay(exT)}، الساعة ${fmtTime(exT)} <button class="lnk" data-exam>تعديل</button></span><span class="tr-m">${examMsg(dl)}</span></div>${live ? cdHtml(exT) : ''}</div>`;
+    }
+    if (plan) {
+      const I = planInfo(plan, st);
+      if (!I.cur) h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">🎉</span><div class="tr-pt"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now ? '. الحين راجع أخطاءك وحل الاختبارات المحاكية' : ''}.</span></div><a class="tr-go" href="#plan">الخطة</a></div>`;
+      else {
+        const links = I.cur.tasks.map(t => t.k === 'rest' ? '<span class="tchip rest">😴 يوم راحة</span>' : taskSolve(t, 'tchip')).join('');
+        const fit = ex && exT > now ? fitInfo(I.end, exT) : null;
+        const tags = `<span>${I.left >= 0 ? 'تخلص' : 'كانت تخلص'} ${fmtDay(I.end)}</span>` + (fit ? `<span class="fit ${fit.c}">${fit.s}</span>` : I.left > 0 ? `<span>باقي ${dLabel(I.left)}</span>` : '') + (I.lag > 0 ? `<span class="fit warn">متأخر ${I.lag === 1 ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : '') + (ex ? '' : '<button class="lnk" data-exam>حدّد موعد اختبارك</button>');
+        h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span><b>خطتك اليوم</b> <span class="mut">(اليوم ${I.cur.n} من ${plan.days})</span></span><span class="tr-lk">${links}</span><small class="tr-end">${tags}</small></div><a class="tr-go" href="#plan">افتح الخطة</a></div>`;
+      }
+    } else h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span>ما اخترت خطة مذاكرة. <a href="#plan">اختر خطة تلحق قبل اختبارك</a></span></div></div>`;
+    return h + '</section>';
+  }
   function renderPlan() {
     document.title = 'خطة المذاكرة | Q-Guide';
+    if (!manifest) fetch('/p/data/manifest.json').then(r => r.json()).then(m => { if (!manifest) { manifest = m; if (location.hash === '#plan') renderPlan(); } }).catch(() => {});
     const st = planState(); const plan = PLANS.find(p => p.id === st.id) || null;
     app.innerHTML = topbar(`<span class="ttl">📅 خطة المذاكرة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap" id="planwrap"></main>`;
     bindCtl();
-    const W = $('#planwrap');
+    const W = $('#planwrap'), now = Date.now();
+    const ex = examGet(), exT = ex ? examAt(ex) : 0, live = exT > now;
     if (!plan) {   // اختيار الخطة
-      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل الخطط تغطي المقاطع الـ13 كمي والـ14 لفظي مع اختباراتها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
-        <div class="plans">${PLANS.map(p => `<button class="pcard ${p.star ? 'star' : ''}" data-p="${p.id}">${p.star ? '<span class="pstar">⭐ الأنسب لأغلب الطلاب</span>' : ''}<span class="pn">${p.name}</span><span class="pd">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🎯 ${p.fit}</span><span class="pm mut">${p.content}</span><span class="btn">ابدأ هذه الخطة</span></button>`).join('')}</div>
-        <div class="sum" style="margin-top:16px"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل اختباره مباشرة • بعد الاختبار اقرأ شرح كل سؤال أخطأت فيه وسجّل أخطاءك عشان ترجع لها • علّم ✓ عند إنهاء كل يوم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
-      W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { const all = lsGet('qg_plan_all', {}); lsSet(PLAN_LS, { id: b.dataset.p, done: all[b.dataset.p] || {}, started: Date.now() }); renderPlan(); });
+      const today = day0(), endOf = p => addDays(today, p.days - 1);
+      let rec = null;
+      if (live) { const fits = PLANS.filter(p => dayDiff(endOf(p), exT) >= 1); rec = fits.length ? fits.reduce((a, b) => b.days > a.days ? b : a) : PLANS[0]; }
+      const dl = live ? dayDiff(now, exT) : 0;
+      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (13 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة. تقدر تغيّر الخطة في أي وقت.</p></div></div>
+        <div class="exrow"><span class="exi" aria-hidden="true">🎯</span><div class="ext">${ex ? `<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? `باقي ${dLabel(dl)}. علّمنا لك بالنجمة ⭐ الخطة اللي تلحق قبله` : 'اختبارك اليوم! بالتوفيق') : 'الموعد المحفوظ مضى. حدّثه إذا عندك اختبار جديد'}</span>` : `<b>متى اختبارك؟</b><span>حدّد الموعد ونعلّم لك الخطة اللي تلحق قبله، ونعرض لك عدّاد تنازلي</span>`}</div><button class="btn sm ${ex ? 'ghost' : ''}" data-exam>${ex ? 'تعديل الموعد' : 'حدّد الموعد'}</button></div>
+        <div class="plans">${PLANS.map(p => { const star = rec ? p === rec : !live && p.star; const end = endOf(p); const f = live ? fitInfo(end, exT) : null;
+          return `<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? 'الأنسب لموعد اختبارك' : 'الأنسب لأغلب الطلاب'}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
+        ${rec && dayDiff(endOf(rec), exT) < 1 ? `<div class="pverd bad">⚠ باقي على اختبارك ${dl ? dLabel(dl) : 'أقل من يوم'} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.</div>` : ''}
+        <div class="sum" style="margin-top:16px;text-align:right"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • علّم ✓ عند إنهاء كل يوم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
+      W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { const all = lsGet('qg_plan_all', {}); planSave({ id: b.dataset.p, done: all[b.dataset.p] || {}, started: Date.now() }); renderPlan(); });
+      bindExam(W, renderPlan);
       return;
     }
-    const days = plan.build(); const done = st.done || {};
-    const isDone = (d, i) => !!(done[d.n] && done[d.n][i]); const dayDone = d => d.tasks.every((t, i) => isDone(d, i));
-    const nDone = days.filter(dayDone).length; const cur = days.find(d => !dayDone(d)); const pct = Math.round(nDone * 100 / days.length);
-    const icon = { q: '🔵', v: '🟢', t: '🟠', r: '🟠', rest: '😴' };
+    const I = planInfo(plan, st), { days, done, cur } = I;
+    const isDone = (d, i) => !!(done[d.n] && done[d.n][i]);
+    const pct = Math.round(I.nDone * 100 / days.length);
+    const icon = { q: '🔵', v: '🟢', r: '🟠', rest: '😴' };
+    const fit = live ? fitInfo(I.end, exT) : null;
+    const lagT = !cur ? 'خلّصت كل الأيام 🎉' : I.lag > 0 ? `<span class="fit warn">متأخر ${I.lag === 1 ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : I.lag < 0 ? `<span class="fit ok">متقدم ${-I.lag === 1 ? 'يوم' : dLabel(-I.lag)} عن الجدول 👏</span>` : '<span class="fit ok">ماشي على الجدول ✓</span>';
+    const leftT = I.left > 0 ? `باقي ${dLabel(I.left)}` : I.left === 0 ? 'اليوم آخر يوم في الخطة' : `كان المفروض تخلص قبل ${dLabel(-I.left)}`;
+    let verd = '';
+    if (fit) verd = fit.c === 'ok' ? `✓ خطتك ${fit.t}${fit.gap >= 3 ? '. استغلها في مراجعة أخطائك والاختبارات المحاكية' : '. التزم بالجدول عشان تلحق'}.`
+      : fit.c === 'warn' ? '⚠ خطتك تخلص يوم اختبارك نفسه. حاول تسبق الجدول بيوم أو يومين.'
+      : (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return `⚠ خطتك ${fit.t}. ${sh ? `بدّل لـ«${sh.name}» (${dLabel(sh.days)})، أو ضاعف` : 'حاول تضاعف'} بعض الأيام عشان تلحق.`; })();
     let lastW = 0;
-    W.innerHTML = `<div class="hero"><div><h1>${plan.name} <small class="mut" style="font-size:15px;font-weight:500">${plan.days} يوماً · ${plan.daily}</small></h1>
-        <p>${cur ? `أنت في <b>اليوم ${cur.n}</b> — أنجزت ${nDone} من ${days.length} يوماً` : '🎉 أنهيت الخطة كاملة! جاهز للاختبار بإذن الله.'}</p></div>
-        <div class="pctl"><button class="chip" id="chg">تغيير الخطة</button><button class="chip" id="rst" title="يمسح علامات الإنجاز">إعادة البدء</button></div></div>
-      <div class="bar big"><i style="width:${pct}%"></i></div>
-      <div class="days">${days.map(d => { const wk = plan.days > 14 && d.w !== lastW ? `<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW; const dd = dayDone(d); const isCur = cur && cur.n === d.n;
-        return wk + `<section class="day ${dd ? 'done' : ''} ${isCur ? 'cur' : ''}" id="day${d.n}"><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${dd ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time}</span>${isCur ? '<span class="now">اليوم الحالي</span>' : ''}</header>
-          <ul>${d.tasks.map((t, i) => `<li class="${isDone(d, i) ? 'ok' : ''} k${t.k}"><label><input type="checkbox" data-day="${d.n}" data-i="${i}" ${isDone(d, i) ? 'checked' : ''}><span class="ic">${icon[t.k] || ''}</span><span class="tt">${t.t}</span></label>${t.link ? `<a class="go" href="${t.link}">${t.lt} ↗</a>` : ''}</li>`).join('')}</ul></section>`; }).join('')}</div>
-      <div class="sum" style="margin-top:16px">🔵 كمي · 🟢 لفظي · 🟠 اختبارات ومراجعة — <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل اختباره مباشرة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.<br><span class="mut">ملاحظة: القسم 14 من الكمي (<bdi dir="ltr">643-733</bdi>) إضافي خارج الجدول — حِلّه بعد ما تخلص الخطة أو في أيام المراجعة.</span></div>`;
-    const save = () => lsSet(PLAN_LS, Object.assign(st, { done }));
+    W.innerHTML = `<div class="hero"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>
+        <div class="pctl"><button class="btn sm ghost" id="chg">تغيير الخطة</button><button class="btn sm ghost" id="rst" title="يمسح علامات الإنجاز ويبدأ الخطة من اليوم">إعادة البدء</button></div></div>
+      <div class="pstats">
+        <div class="pst"><span class="pk">📅 تقدّمك</span><b>${cur ? `اليوم ${cur.n}` : '🎉 خلصت'}<small> من ${days.length}</small></b><div class="bar"><i style="width:${pct}%"></i></div><span class="ps">${lagT}</span></div>
+        <div class="pst"><span class="pk">🏁 نهاية الخطة</span><b>${fmtDay(I.end)}</b><span class="ps">${leftT}</span></div>
+        <div class="pst ex">${ex ? `<span class="pk">🎯 ${live ? 'باقي على اختبارك' : 'موعد اختبارك'}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>`}<span class="ps">${live ? fmtDay(exT) + '، ' + fmtTime(exT) + ' · ' : ''}<button class="lnk" data-exam>تعديل</button></span>` : `<span class="pk">🎯 موعد اختبارك</span><b class="none">ما حدّدته</b><span class="ps"><button class="btn sm" data-exam>حدّد الموعد</button></span>`}</div>
+      </div>
+      ${verd ? `<div class="pverd ${fit.c}">${verd}</div>` : ''}
+      <div class="days">${days.map(d => { const wk = plan.days > 14 && d.w !== lastW ? `<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW; const dd = I.dayDone(d); const isCur = cur && cur.n === d.n;
+        return wk + `<section class="day ${dd ? 'done' : ''} ${isCur ? 'cur' : ''}" id="day${d.n}"><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${dd ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time} · ${fmtDay(addDays(I.start, d.n - 1))}</span>${isCur ? '<span class="now">اليوم الحالي</span>' : ''}</header>
+          <ul>${d.tasks.map((t, i) => `<li class="${isDone(d, i) ? 'ok' : ''} k${t.k}"><label><input type="checkbox" data-day="${d.n}" data-i="${i}" ${isDone(d, i) ? 'checked' : ''}><span class="ic" aria-hidden="true">${icon[t.k] || ''}</span><span class="tt">${t.t}</span></label><span class="tl">${taskLinks(t)}</span></li>`).join('')}</ul></section>`; }).join('')}</div>
+      <div class="sum" style="margin-top:16px;text-align:right">🔵 كمي · 🟢 لفظي · 🟠 مراجعة. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.<br><span class="mut">ملاحظة: القسم 14 من الكمي (<bdi dir="ltr">643-733</bdi>) إضافي خارج الجدول. حِلّه بعد ما تخلص الخطة أو في أيام المراجعة.</span></div>`;
+    const save = () => planSave(Object.assign(st, { done }));
     W.querySelectorAll('input[data-i]').forEach(c => c.onchange = () => { done[c.dataset.day] = done[c.dataset.day] || {}; if (c.checked) done[c.dataset.day][c.dataset.i] = 1; else delete done[c.dataset.day][c.dataset.i]; save(); renderPlan(); });
     W.querySelectorAll('input[data-day]:not([data-i])').forEach(c => c.onchange = () => { const d = days.find(x => x.n == c.dataset.day); done[d.n] = {}; if (c.checked) d.tasks.forEach((t, i) => done[d.n][i] = 1); save(); renderPlan(); });
-    $('#chg').onclick = async () => { if (await QGDlg.confirm('تغيير الخطة؟ (علامات الإنجاز الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)', { ok: 'تغيير' })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = done; lsSet('qg_plan_all', all); lsSet(PLAN_LS, { id: '', done: {} }); renderPlan(); } };
-    $('#rst').onclick = async () => { if (await QGDlg.confirm('مسح كل علامات الإنجاز والبدء من اليوم 1؟', { ok: 'إعادة البدء', danger: true })) { lsSet(PLAN_LS, { id: plan.id, done: {}, started: Date.now() }); renderPlan(); } };
+    $('#chg').onclick = async () => { if (await QGDlg.confirm('تغيير الخطة؟ (علامات الإنجاز الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)', { ok: 'تغيير' })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = done; lsSet('qg_plan_all', all); planSave({ id: '', done: {} }); renderPlan(); } };
+    $('#rst').onclick = async () => { if (await QGDlg.confirm('مسح كل علامات الإنجاز والبدء من اليوم 1؟', { ok: 'إعادة البدء', danger: true })) { planSave({ id: plan.id, done: {}, started: Date.now() }); renderPlan(); } };
+    bindExam(W, renderPlan);
     if (cur) { const el = $('#day' + cur.n); if (el && days.length > 8) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150); }
   }
 
