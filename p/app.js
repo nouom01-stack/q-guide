@@ -597,19 +597,95 @@
   const QTR_LS = 'qg_qtr', QNAMES = new Set(['ahmed', 'khalid', 'khaled', 'mohamed', 'mohammed', 'muhammad', 'sara', 'sarah', 'nora', 'ali', 'saad']);   // أسماء الأشخاص ما تحتاج ترجمة
   // نعزل التعابير الرياضية (x + 3 = 7، m∠ABC…) داخل النص العربي حتى ما يتلخبط ترتيبها
   const MRUN = /[A-Za-z0-9\u00B2\u00B3\u00B9\u2070-\u209F√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*[A-Za-z0-9√π∠△∥][A-Za-z0-9\u00B2\u00B3\u00B9\u2070-\u209F√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*/g;
-  function arMath(s) {
-    s = String(s || ''); let out = '', last = 0;
-    for (const m of s.matchAll(MRUN)) {
-      let t = m[0], a = m.index;
+  function arMath(s, fx, re, sp) {
+    fx = fx || esc; s = String(s || ''); let out = '', last = 0;
+    const seg = (t, a) => {
       let lead = t.match(/^[\s.,:]*/)[0].length, trail = t.match(/[\s.,:]*$/)[0].length;
       let core = t.slice(lead, t.length - trail);
       while (core.endsWith(')') && (core.match(/\(/g) || []).length < (core.match(/\)/g) || []).length) { core = core.slice(0, -1); trail++; }
       while (core.startsWith('(') && (core.match(/\(/g) || []).length > (core.match(/\)/g) || []).length) { core = core.slice(1); lead++; }
-      if (!/[A-Za-z0-9√π∠△∥]/.test(core)) continue;
-      out += esc(s.slice(last, a + lead)) + `<bdi dir="ltr">${esc(core)}</bdi>`; last = a + t.length - trail;
+      if (!/[A-Za-z0-9√π∠△∥\u0391-\u03C9½⅓⅔¼¾]/.test(core)) return;
+      out += esc(s.slice(last, a + lead)) + `<bdi dir="ltr">${fx(core)}</bdi>`; last = a + t.length - trail;
+    };
+    for (const m of s.matchAll(re || MRUN)) {
+      let t = m[0], a = m.index, k;
+      // «المقام المشترك 15: 1/3 + …» → نفصل «15» عن المعادلة حتى تنقرأ بالترتيب (النسبة 3 : 4 والوقت 3:40 تبقى كما هي)
+      if (sp) while ((k = t.search(/[^\s]:\s/)) >= 0) { seg(t.slice(0, k + 2), a); a += k + 2; t = t.slice(k + 2); }
+      seg(t, a);
     }
     return out + esc(s.slice(last));
   }
+  // ➗ كسور حقيقية بدل السلاش: 3/4 ، (x + 1)/2 ، 2 3/4 ، ½ ، 8^(2/3) → بسط فوق خط ومقام تحته (km/h و m/s تبقى وحدات)
+  const FR_VUL = { '½': '1/2', '⅓': '1/3', '⅔': '2/3', '¼': '1/4', '¾': '3/4', '⅕': '1/5', '⅖': '2/5', '⅗': '3/5', '⅘': '4/5', '⅙': '1/6', '⅚': '5/6', '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8' };
+  const FR_AT = /[A-Za-z0-9²³¹⁰-₟Α-ω°%!′″∞']/, FR_SUP = /[²³¹⁰-ⁿ^!]/, FR_RAD = '√∛∜';
+  const frac = (n, d) => `<span class="fr"><span class="fn">${n}</span><span class="fd">${d}</span></span>`;
+  function mx(src) {
+    const s = String(src == null ? '' : src), n = s.length; let i = 0;
+    const atomCh = () => { const c = s[i]; if (c === undefined) return false;
+      if (c === '.') return /\d/.test(s[i + 1] || '') && (i === 0 || /[\d\s(−+×÷=]/.test(s[i - 1]));
+      if (c === ',') return /\d/.test(s[i - 1] || '') && /^\d{3}(?!\d)/.test(s.slice(i + 1, i + 5));
+      if (c === "'") return /[A-Za-z]/.test(s[i - 1] || '') && /[A-Za-z]/.test(s[i + 1] || '');
+      return FR_AT.test(c); };
+    const startsOpd = () => s[i] === '(' || FR_RAD.includes(s[i]) || atomCh();
+    const group = () => { i++; const r = seq(')'); if (s[i] === ')') { i++; return r; } return { h: r.h, single: false, open: true }; };
+    const sup = () => { i++; if (s[i] === '(') return `<sup class="ex">${group().h}</sup>`;
+      const st = i; if (s[i] === '−' || s[i] === '-') i++; while (i < n && atomCh()) i++; return `<sup class="ex">${esc(s.slice(st, i))}</sup>`; };
+    function opd() {   // معامل متلاصق بدون مسافات: 2ab ، n(n + 1) ، √3 ، (√3/4)s²
+      const st = i; let h = '', parts = 0, solo = null;
+      while (i < n) {
+        const c = s[i];
+        if (FR_RAD.includes(c)) { h += esc(c); i++; parts++; solo = false; continue; }
+        if (c === '(') {
+          const prev = s[i - 1] || '', g = group(), next = s[i] || '';
+          const keep = g.open || !g.single || (parts && (FR_RAD.includes(prev) || FR_AT.test(prev))) || FR_SUP.test(next);
+          h += !keep ? g.h : g.open ? '(' + g.h : /class="fr"/.test(g.h) ? `<span class="pb">(</span>${g.h}<span class="pb">)</span>` : `(${g.h})`;
+          solo = parts === 0 && !g.open ? g : false; parts++; continue;
+        }
+        if (c === '^' && parts && /[(A-Za-z0-9−-]/.test(s[i + 1] || '')) { h += sup(); solo = false; continue; }
+        if (atomCh()) { const a = i; while (i < n && atomCh()) i++; h += esc(s.slice(a, i)); parts++; solo = false; continue; }
+        break;
+      }
+      return { h, raw: s.slice(st, i), solo };
+    }
+    const isUnit = (a, b) => (/^(km|m|cm|mm|mi)$/.test(a) && /^(h|hr|hrs|s|sec|min)$/.test(b)) || /^(and|he|his)$/i.test(a);
+    const digits = x => /^\d+$/.test(x);
+    function seq(end) {
+      const out = [];
+      while (i < n && s[i] !== end) {
+        const c = s[i];
+        if (/\s/.test(c)) { const a = i; while (i < n && /\s/.test(s[i])) i++; out.push({ k: 'sp', h: esc(s.slice(a, i)), raw: s.slice(a, i) }); continue; }
+        if (FR_VUL[c]) { const [a, b] = FR_VUL[c].split('/'), f = frac(a, b), p = out[out.length - 1]; i++;
+          if (p && p.k === 'o' && digits(p.raw)) { out.pop(); out.push({ k: 'mix', h: `<span class="mxn">${p.h}${f}</span>` }); } else out.push({ k: 'fr', h: f }); continue; }
+        if (startsOpd()) {
+          const L = opd(); let j = i; while (j < n && s[j] === ' ') j++;
+          if (s[j] === '/' && L.raw) {
+            let k = j + 1; while (k < n && s[k] === ' ') k++;
+            const save = i; i = k;
+            if (startsOpd()) {
+              const R = opd();
+              if (isUnit(L.raw, R.raw)) { out.push({ k: 'o', h: L.h + esc(s.slice(save, k)) + R.h, raw: L.raw + '/' + R.raw }); continue; }
+              const f = frac(L.solo ? L.solo.h : L.h, R.solo ? R.solo.h : R.h), p = out[out.length - 1], q = out[out.length - 2];
+              if (digits(L.raw) && digits(R.raw) && p && p.raw === ' ' && q && q.k === 'o' && digits(q.raw)) { out.pop(); out.pop(); out.push({ k: 'mix', h: `<span class="mxn">${q.h}${f}</span>` }); }
+              else out.push({ k: 'fr', h: f });
+              continue;
+            }
+            i = save;
+          }
+          if (L.raw) out.push({ k: 'o', h: L.h, raw: L.raw }); else { out.push({ k: 'ch', h: esc(s[i]) }); i++; }
+          continue;
+        }
+        out.push({ k: 'ch', h: esc(c), raw: c }); i++;
+      }
+      const core = out.filter(x => x.k !== 'sp');
+      return { h: out.map(x => x.h).join(''), single: core.length === 1 && core[0].k === 'fr' };
+    }
+    let h = '';
+    while (i < n) { h += seq(null).h; if (i < n) { h += esc(s[i]); i++; } }
+    return h;
+  }
+  // نص عربي فيه تعابير رياضية: نعزلها LTR ونرسم كسورها
+  const MRUN_FX = /[A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*[A-Za-z0-9Α-ω½⅓⅔¼¾√π∠△∥][A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*/g;
+  const arFx = s => arMath(s, mx, MRUN_FX, 1);
   function qtrHtml(it) {
     const ar = it.ar; if (!ar || !ar.q) return ''; const w = (it.wd || []).filter(x => !QNAMES.has(x[0]));
     const ot = (ar.o || []).some(Boolean) ? `<ol class="qt-o">${it.opts.map((o, k) => ar.o[k] ? `<li><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o.replace(/^[A-D]\)\s*/, ''))}</span><span class="arr">${arMath(ar.o[k])}</span></li>` : '').join('')}</ol>` : '';
@@ -777,16 +853,42 @@
     if (location.hash !== '#rules') return;
     const R = YT.q.rules, nItems = RULES.reduce((a, s) => a + s.items.length, 0);
     app.innerHTML = topbar(`<span class="ttl">📐 قوانين الكمي</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + `<main class="wrap rules">
-      <div class="ru-top"><div><h1>قوانين الكمي</h1><p>${nItems} قانون وقاعدة تحتاجها في القدرات، مرتبة حسب الموضوع ومعها أمثلة محلولة. تقدر تطبعها أو تحفظها PDF من زر 🖨️.</p></div>
+      <div class="ru-top"><div><h1>قوانين الكمي</h1><p>${nItems} قانون وقاعدة تحتاجها في القدرات، مرتبة حسب الموضوع${RULES.some(s => s.items.some(x => x.q)) ? '. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك' : ' ومعها أمثلة محلولة'}. تقدر تطبعها أو تحفظها PDF من زر 🖨️.</p></div>
         <a class="rvid" href="${ytUrl(R.id)}" target="_blank" rel="noopener">${YTSVG}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a></div>
       <div class="ru-bar"><input id="ruq" type="search" placeholder="ابحث عن قانون: مساحة، نسبة، زاوية، area…" autocomplete="off"><span class="mut" id="run"></span></div>
       <nav class="ru-nav" aria-label="المواضيع">${RULES.map(s => `<a href="#rules" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
-      <div class="ru-cols" id="ruc">${RULES.map(s => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2><div class="ru-g">
-        ${s.items.map(x => `<div class="ru-i" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f" dir="ltr">${esc(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span>e.g.</span> ${esc(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${esc(x.n)}</div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
+      <div class="ru-cols" id="ruc">${RULES.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2><div class="ru-g">
+        ${s.items.map((x, ii) => `<div class="ru-i" data-s="${si}" data-i="${ii}" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f" dir="ltr">${mx(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span class="eg">e.g.</span> ${mx(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${arFx(x.n)}</div>` : ''}${x.q ? `<div class="ru-qb"><button type="button" class="ru-b" data-m="ex" aria-expanded="false">مثال محلول</button><button type="button" class="ru-b" data-m="pr" aria-expanded="false">سؤال تدريبي</button></div><div class="ru-p" hidden></div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
       <p class="mut ru-empty" id="rue" hidden>ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.</p></main>`;
     bindCtl();
     $('#prn').onclick = () => window.print();
     document.querySelectorAll('.ru-nav a').forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById('ru-' + a.dataset.go); if (el) el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); });
+    // مثال محلول / سؤال تدريبي تحت كل قانون (تنبني عند الفتح فقط)
+    // سؤال المقارنة: «Quantity A / Quantity B» في عمودين مثل الاختبار
+    const ruQ = t => { const L = String(t).split('\n'), A = L.find(x => /^Quantity A:/.test(x)), B = L.find(x => /^Quantity B:/.test(x));
+      if (!A || !B) return `<div class="ru-qq" dir="ltr">${mx(t)}</div>`;
+      const rest = L.filter(x => x !== A && x !== B).join('\n').trim(), v = x => mx(x.replace(/^Quantity [AB]:\s*/, ''));
+      return `${rest ? `<div class="ru-qq" dir="ltr">${mx(rest)}</div>` : ''}<div class="ru-cmp" dir="ltr"><div><small>A</small><span>${v(A)}</span></div><div><small>B</small><span>${v(B)}</span></div></div>`; };
+    const ruEx = e => `${ruQ(e.q)}<div class="ru-h">الحل</div><ol class="ru-st${e.s.length < 2 ? ' one' : ''}">${e.s.map(t => `<li>${arFx(t)}</li>`).join('')}</ol><div class="ru-ans"><span>الجواب</span><b dir="ltr">${mx(e.a)}</b></div>`;
+    const ruPr = p => `${ruQ(p.q)}<div class="opts ${p.o.every(o => o.length <= 14) ? 'two' : ''}">${p.o.map((o, k) => `<button type="button" class="opt" data-k="${k}"><span class="L">${LETTERS[k]}</span><span>${mx(o)}</span></button>`).join('')}</div><div class="ru-fb" aria-live="polite"></div>`;
+    $('#ruc').onclick = e => {
+      const b = e.target.closest('.ru-b'), o = e.target.closest('.ru-p .opt');
+      if (b) {
+        const card = b.closest('.ru-i'), p = card.querySelector('.ru-p'), on = b.getAttribute('aria-expanded') === 'true', it = RULES[+card.dataset.s].items[+card.dataset.i];
+        card.querySelectorAll('.ru-b').forEach(x => x.setAttribute('aria-expanded', 'false'));
+        if (on) { p.hidden = true; p.innerHTML = ''; return; }
+        b.setAttribute('aria-expanded', 'true'); p.className = 'ru-p ' + b.dataset.m;
+        p.innerHTML = b.dataset.m === 'ex' ? ruEx(it.q.ex) : ruPr(it.q.pr); p.hidden = false;
+        const r = p.getBoundingClientRect(); if (r.bottom > innerHeight) p.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
+        return;
+      }
+      if (o && !o.disabled) {
+        const card = o.closest('.ru-i'), pr = RULES[+card.dataset.s].items[+card.dataset.i].q.pr, k = +o.dataset.k, ok = k === pr.k;
+        card.querySelectorAll('.ru-p .opt').forEach(x => { x.disabled = true; const j = +x.dataset.k; if (j === pr.k) x.classList.add('ok'); else if (j === k) x.classList.add('bad'); });
+        const fb = card.querySelector('.ru-fb'); fb.className = 'ru-fb ' + (ok ? 'ok' : 'bad');
+        fb.innerHTML = `<b>${ok ? '✓ إجابة صحيحة' : `✗ الإجابة الصحيحة ${LETTERS[pr.k]}`}</b><p>${arFx(pr.e)}</p>`;
+      }
+    };
     const q = $('#ruq'), cnt = $('#run'), paint = () => { const v = q.value.trim().toLowerCase(); let n = 0;
       document.querySelectorAll('.ru-s').forEach(s => { let k = 0; s.querySelectorAll('.ru-i').forEach(i => { const on = !v || i.dataset.k.indexOf(v) >= 0; i.hidden = !on; if (on) k++; }); s.hidden = !k; n += k; });
       cnt.textContent = v ? n + ' نتيجة' : ''; $('#rue').hidden = n > 0; };

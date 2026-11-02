@@ -1112,7 +1112,7 @@ button.tool:hover{background:var(--dotbg)}
 .ru-a small{color:var(--mut);font-weight:500;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(12px * var(--fs))}
 .ru-f{margin-top:4px;font-family:"Cambria Math","STIX Two Math","Segoe UI",Roboto,Arial,sans-serif;font-size:calc(17px * var(--fs));color:var(--ink2);background:var(--dotbg);border-radius:8px;padding:5px 10px;text-align:left;line-height:1.6;overflow-wrap:anywhere}
 .ru-x{margin-top:4px;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(13.5px * var(--fs));color:var(--mut);text-align:left;overflow-wrap:anywhere}
-.ru-x span{font-weight:700;color:var(--royal)}
+.ru-x .eg{font-weight:700;color:var(--royal)}
 .ru-n{margin-top:4px;font-size:calc(13px * var(--fs));color:var(--warnt)}
 .ru-empty{text-align:center;padding:20px}
 @media print{.rules .ru-bar,.rules .ru-nav,.rules .rvid{display:none!important}.ru-cols{gap:8px}.ru-g{grid-template-columns:1fr 1fr;column-gap:12px}.ru-s{break-inside:auto}.ru-s{border:1px solid #ccc;box-shadow:none;padding:8px 10px;margin-bottom:8px}.ru-f{background:#f3f3f3;font-size:13px;padding:2px 6px}.ru-a{font-size:12px}.ru-x,.ru-n{font-size:11px}.ru-s h2{font-size:15px}.ru-top p{display:none}}
@@ -1312,3 +1312,55 @@ em.up{color:var(--mint)}em.dn{color:var(--coral)}em.nr{color:var(--mut);font-wei
 @media (hover:none){.ar-st .kb{display:none}}
 [data-theme="dark"] .pd b,[data-theme="dark"] .pd .pscore{color:var(--ink2)}
 @media (max-width:640px){.ar-hero .ar-acts>.rz-go,.ar-hero .ar-acts>.ar-gh{flex:1 1 auto;justify-content:center}.ar-dots .r>div{flex:1}}
+
+/* =====================================================================
+   v26 — 📐 قوانين الكمي: كسور حقيقية بدل السلاش + مثال محلول وسؤال تدريبي تحت كل قانون
+   ===================================================================== */
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .14em;line-height:1.15;font-size:.88em;white-space:nowrap}
+.fr>.fn{border-bottom:max(1px,.075em) solid currentColor;padding:0 .18em .08em}
+.fr>.fd{padding:.06em .18em 0}
+.fr .fr{font-size:.94em}
+sup.ex{font-size:.78em;line-height:1}
+sup.ex .fr{font-size:.96em;margin:0 .04em}
+.pb{display:inline-block;vertical-align:middle;transform:scaleY(1.55);margin:0 .02em;line-height:1}
+.mxn{white-space:nowrap}.mxn>.fr{margin-inline-start:.1em}
+.ru-x .fr{font-size:.95em}
+.ru-qb{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.ru-b{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border-radius:999px;border:1px solid transparent;background:var(--dotbg);color:var(--royal);font-weight:700;font-size:calc(13px * var(--fs));line-height:1.5;transition:background .15s,border-color .15s,color .15s}
+.ru-b::after{content:"";width:6px;height:6px;border-right:1.8px solid currentColor;border-bottom:1.8px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+.ru-b:hover{border-color:var(--royal)}
+.ru-b:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
+.ru-b[aria-expanded="true"]{background:var(--royal);border-color:var(--royal);color:#fff}
+.ru-b[aria-expanded="true"]::after{transform:translateY(1px) rotate(225deg)}
+[data-theme="dark"] .ru-b[aria-expanded="true"]{color:#0F1626}
+.ru-p{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg)}
+.ru-qq{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(15.5px * var(--fs));line-height:1.75;color:var(--ink);text-align:left;white-space:pre-line;overflow-wrap:anywhere}
+.ru-h{margin-top:10px;font-weight:800;color:var(--royal);font-size:calc(13px * var(--fs))}
+.ru-st{margin:2px 0 0;padding:0;list-style:none;counter-reset:st}
+.ru-st li{counter-increment:st;position:relative;padding-inline-start:30px;margin:6px 0;font-size:calc(14.5px * var(--fs));line-height:1.9;color:var(--ink)}
+.ru-st li::before{content:counter(st);position:absolute;inset-inline-start:0;top:.3em;width:21px;height:21px;border-radius:50%;background:var(--dotbg);color:var(--royal);font-weight:800;font-size:calc(12px * var(--fs));display:flex;align-items:center;justify-content:center;line-height:1}
+.ru-st.one li{padding-inline-start:0}.ru-st.one li::before{display:none}
+.ru-ans{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.ru-ans span{font-weight:800;color:var(--mut);font-size:calc(13px * var(--fs))}
+.ru-ans b{background:var(--okbg);color:var(--ok);border-radius:8px;padding:3px 11px;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(15.5px * var(--fs));line-height:1.6}
+[data-theme="dark"] .ru-ans b{color:var(--mint)}
+.ru-p .opts{margin-top:10px;gap:8px}
+@media (max-width:640px){.ru-p .opts.two{grid-template-columns:1fr 1fr}}
+.ru-cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ru-cmp>div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px 9px;text-align:center}
+.ru-cmp small{font-weight:800;color:var(--royal);font-size:calc(12px * var(--fs));font-family:"Segoe UI",Roboto,Arial,sans-serif}
+.ru-cmp span{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(16px * var(--fs));line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.ru-p .opt{padding:8px 10px;gap:10px;font-size:calc(15px * var(--fs));border-radius:10px;line-height:1.5}
+.ru-p .opt:not(.ok):not(.bad){background:var(--card)}
+.ru-p .opt .L{width:26px;height:26px;border-radius:7px;font-size:calc(13px * var(--fs))}
+.ru-p .opt:not([disabled]):hover{border-color:var(--royal)}
+.ru-fb:empty{display:none}
+.ru-fb{margin-top:10px;border-radius:10px;padding:9px 12px;font-size:calc(14.5px * var(--fs));line-height:1.85}
+.ru-fb.ok{background:var(--okbg)}.ru-fb.bad{background:var(--badbg)}
+.ru-fb b{display:block;font-weight:800}
+.ru-fb.ok b{color:var(--ok)}.ru-fb.bad b{color:var(--bad)}
+[data-theme="dark"] .ru-fb.ok b{color:var(--mint)}[data-theme="dark"] .ru-fb.bad b{color:var(--coral)}
+.ru-fb p{margin:2px 0 0;color:var(--ink)}
+@media (max-width:640px){.ru-p{padding:10px 11px}.ru-b{padding:5px 12px}}
+@media (prefers-reduced-motion:reduce){.ru-b,.ru-b::after{transition:none}}
+@media print{.ru-qb,.ru-p{display:none!important}}
