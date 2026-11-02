@@ -684,7 +684,7 @@
     return h;
   }
   // نص عربي فيه تعابير رياضية: نعزلها LTR ونرسم كسورها
-  const MRUN_FX = /[A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*[A-Za-z0-9Α-ω½⅓⅔¼¾√π∠△∥][A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄\[\]{} ]*/g;
+  const MRUN_FX = /[A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷±∓=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄…→⇒!\[\]{} ]*[A-Za-z0-9Α-ω½⅓⅔¼¾√π∠△∥][A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷±∓=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄…→⇒!\[\]{} ]*/g;
   const arFx = s => arMath(s, mx, MRUN_FX, 1);
   function qtrHtml(it) {
     const ar = it.ar; if (!ar || !ar.q) return ''; const w = (it.wd || []).filter(x => !QNAMES.has(x[0]));
@@ -844,7 +844,7 @@
     });
   }
   // ---------- 📐 قوانين الكمي ----------
-  let RULES = null; const RULES_V = 2, RULES_ON = true;
+  let RULES = null; const RULES_V = 3, RULES_ON = true;
   async function renderRules() {
     document.title = 'قوانين الكمي | Q-Guide';
     const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;
