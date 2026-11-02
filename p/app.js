@@ -126,10 +126,24 @@
   // مزامنة السجل مع الخادم (حتى تبقى نقاط القوة والضعف عند تغيير الجهاز)
   let skillsT = 0, skillsSyncing = false;
   function histMergeInto(h, remote) { if (!remote || !remote.items) return h; for (const src in remote.items) { const m = h.items[src] || (h.items[src] = {}); for (const i in remote.items[src]) { const r = remote.items[src][i], l = m[i]; if (!l || (r[0] + r[1]) > (l[0] + l[1])) m[i] = r; } } return h; }
-  async function skillsPull() { if (!auth) return histGet(); try { const r = await api({ op: 'skills_get', session: auth.session }); if (r.ok && r.data) { const h = histMergeInto(histGet(), JSON.parse(r.data)); histSet(h); return h; } } catch (e) {} return histGet(); }
+  async function skillsPull() { if (!auth) return histGet(); try { const r = await api({ op: 'skills_get', session: auth.session }); if (r.ok && r.data) { const rem = JSON.parse(r.data); const h = histMergeInto(histGet(), rem); histSet(h); daysMerge(rem.days); return h; } } catch (e) {} return histGet(); }
   function skillsPushSoon(ms) { clearTimeout(skillsT); skillsT = setTimeout(skillsPush, ms || 6000); }
-  async function skillsPush() { if (!auth || skillsSyncing) return; skillsSyncing = true; try { const h = histGet(); await api({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: h.items }) }); } catch (e) {} finally { skillsSyncing = false; } }
-  window.addEventListener('pagehide', () => { if (skillsT) { clearTimeout(skillsT); skillsT = 0; try { navigator.sendBeacon && auth && navigator.sendBeacon(window.QG.API, new Blob([JSON.stringify({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: histGet().items }) })], { type: 'text/plain' })); } catch (e) {} } });
+  async function skillsPush() { if (!auth || skillsSyncing) return; skillsSyncing = true; try { const h = histGet(); await api({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: h.items, days: daysGet() }) }); } catch (e) {} finally { skillsSyncing = false; } }
+
+  // ---------- 🔥 النشاط اليومي: سلسلة الأيام + هدف اليوم ----------
+  const DAYS_LS = 'qg_days', GOAL_LS = 'qg_goal', GOALS = [20, 40, 60, 100];
+  const dayKey = t => { const d = new Date(t || Date.now()); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  function daysGet() {
+    let d = lsGet(DAYS_LS, null); if (d) return d;
+    d = {};   // أول مرة: نبني السجل من إجاباتك المحفوظة
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || k.indexOf(LS.prog) !== 0) continue; const p = JSON.parse(localStorage.getItem(k) || '{}'); Object.values(p.a || {}).forEach(a => { if (a && a.t) { const dk = dayKey(a.t); d[dk] = (d[dk] || 0) + 1; } }); } } catch (e) {}
+    lsSet(DAYS_LS, d); return d;
+  }
+  function daysAdd() { const d = daysGet(), k = dayKey(); d[k] = (d[k] || 0) + 1; lsSet(DAYS_LS, d); return d[k]; }
+  function daysMerge(rem) { if (!rem || typeof rem !== 'object') return; const d = daysGet(); let ch = false; for (const k in rem) { if (/^\d{4}-\d{2}-\d{2}$/.test(k) && (+rem[k] || 0) > (d[k] || 0)) { d[k] = +rem[k]; ch = true; } } if (ch) lsSet(DAYS_LS, d); }
+  function streakOf(d) { let n = 0; const t = new Date(); if (!d[dayKey(t)]) t.setDate(t.getDate() - 1); while (d[dayKey(t)]) { n++; t.setDate(t.getDate() - 1); } return n; }
+  function goalGet() { const g = lsGet(GOAL_LS, 40); return GOALS.indexOf(g) >= 0 ? g : 40; }
+  window.addEventListener('pagehide', () => { if (skillsT) { clearTimeout(skillsT); skillsT = 0; try { navigator.sendBeacon && auth && navigator.sendBeacon(window.QG.API, new Blob([JSON.stringify({ op: 'skills_set', session: auth.session, data: JSON.stringify({ v: 1, items: histGet().items, days: daysGet() }) })], { type: 'text/plain' })); } catch (e) {} } });
   // مجموعات التدريب الموجّه: t-<موضوع> أو t-wrong-q / t-wrong-v
   async function loadTopicSet(id) {
     const m = id.match(/^t-(wrong-([qv])|([a-z]+))$/); if (!m) throw new Error('bad set');
@@ -168,7 +182,7 @@
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
     if (!auth) return renderLogin();
-    document.body.classList.remove('rec-on'); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
+    document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat();
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
@@ -236,53 +250,98 @@
   function topbar(inner, left) {
     return `<header class="top"><div class="w">${left || `<a class="brand" href="#"><img src="/assets/logo.png" alt="">Q-Guide</a>`}${ctlHtml()}${inner || ''}</div></header>`;
   }
+  // ---------- home: ورقة الإجابة ----------
+  const SET_NAME = id => (id[0] === 'q' ? 'القسم ' : 'النموذج ') + id.slice(1);
+  function setState(id, n) { const p = progGet(id); const a = p.a || {}; let ans = 0, ok = 0, last = 0, gap = -1; for (let i = 0; i < n; i++) { const x = a[i]; if (x) { ans++; if (x.c) ok++; if (x.t > last) last = x.t; } else if (gap < 0) gap = i; } return { ans, ok, last, n, gap: gap < 0 ? 0 : gap, done: n > 0 && ans >= n, best: p.best }; }
+  function dotsHtml(id, n, cur) { const a = progGet(id).a || {}; let h = ''; for (let i = 0; i < n; i++) { const x = a[i]; h += `<i class="${x ? (x.c ? 'ok' : 'bad') : ''}${i === cur ? ' cur' : ''}"></i>`; } return h; }
+  function pickResume() {
+    let best = null;
+    for (const s of [...manifest.quant, ...manifest.verbal]) { const st = setState(s.id, s.n); if (st.last && (!best || st.last > best.st.last)) best = { s, st }; }
+    if (!best) { const s = manifest[lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant'][0]; return { s, st: setState(s.id, s.n), mode: 'new' }; }
+    if (!best.st.done) return { s: best.s, st: best.st, mode: 'cont' };
+    const list = best.s.id[0] === 'q' ? manifest.quant : manifest.verbal; const i = list.indexOf(best.s);
+    const nx = list.slice(i + 1).concat(list.slice(0, i)).find(x => !setState(x.id, x.n).done);
+    if (nx) return { s: nx, st: setState(nx.id, nx.n), mode: 'next', prev: best };
+    return { s: best.s, st: best.st, mode: 'alldone' };
+  }
+  const cols = (n, max) => Math.max(1, Math.ceil(n / Math.ceil(n / max)));   // صفوف متساوية بدون فقاعات يتيمة
+  const dLabel = n => n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';
+  function rzHtml() {
+    const first = (auth.display || auth.name || '').trim().split(/\s+/)[0] || '';
+    const R = pickResume(), rs = R.s, st = R.st;
+    const D = daysGet(), streak = streakOf(D), today = D[dayKey()] || 0, goal = goalGet();
+    const wk = []; for (let k = 6; k >= 0; k--) { const t = new Date(); t.setDate(t.getDate() - k); wk.push({ l: 'حنثرخجس'[t.getDay()], n: D[dayKey(t)] || 0, today: k === 0 }); }
+    const nm = SET_NAME(rs.id) + (rs.id[0] === 'v' ? ` <bdi class="rz-mn">${esc(rs.sub)}</bdi>` : '');
+    let kick, title, sub, cta, href = '#' + rs.id, cur = st.gap;
+    if (R.mode === 'cont') { kick = 'كمّل من حيث وقفت'; title = nm; sub = `السؤال ${st.gap + 1} من ${st.n}`; cta = 'كمّل الحل'; }
+    else if (R.mode === 'next') { kick = `خلّصت ${SET_NAME(R.prev.s.id)}${R.prev.st.best != null ? ' بنسبة ' + R.prev.st.best + '%' : ''} 👏`; title = 'التالي: ' + nm; sub = `${st.n} سؤال، وكل سؤال معه شرحه`; cta = 'ابدأ ' + SET_NAME(rs.id); }
+    else if (R.mode === 'new') { kick = 'جاهز تبدأ؟'; title = nm; sub = `${st.n} سؤال، وكل سؤال معه شرحه`; cta = 'ابدأ ' + SET_NAME(rs.id); cur = 0; }
+    else { kick = 'خلّصت كل الأقسام 🎉'; title = 'راجع الأسئلة اللي غلطت فيها'; sub = 'التدريب على أخطائك يثبّت المعلومة قبل الاختبار'; cta = 'مراجعة أخطائي'; href = '#skills'; cur = -1; }
+    const C = 2 * Math.PI * 20, dash = Math.min(1, today / goal) * C, met = today >= goal;
+    return `<section class="rz" aria-label="متابعة المذاكرة">
+      <div class="rz-top"><h1 class="rz-hi">أهلاً ${esc(first)} 👋</h1>
+        <div class="rz-streak" title="الأيام اللي حليت فيها أسئلة"><span class="rz-fire ${streak ? '' : 'off'}">🔥 ${streak ? dLabel(streak) + ' ورا بعض' : 'ابدأ سلسلتك اليوم'}</span>
+          <span class="rz-week">${wk.map(d => `<i class="${d.n ? 'on' : ''}${d.today ? ' t' : ''}" title="${d.n} سؤال"><b>${d.l}</b></i>`).join('')}</span></div></div>
+      <div class="rz-body">
+        <div class="rz-what"><span class="rz-k">${kick}</span><b class="rz-set">${title}</b><span class="rz-sub">${sub}</span></div>
+        <div class="rz-dots" aria-hidden="true" style="--c:${cols(st.n, 30)};--cm:${cols(st.n, 17)}">${R.mode === 'alldone' ? '' : dotsHtml(rs.id, st.n, cur)}</div>
+        <div class="rz-act"><a class="rz-go" href="${href}"><span class="pl">▶</span>${cta}</a>
+          <button class="rz-goal ${met ? 'met' : ''} ${today ? '' : 'zero'}" id="goal" title="اضغط لتغيير هدفك اليومي"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" class="bg"/><circle cx="24" cy="24" r="20" class="fg" stroke-dasharray="${dash.toFixed(1)} ${C.toFixed(1)}"/></svg>
+            <span class="gt"><b>${met ? '✓ ' : ''}${today}<small> من ${goal}</small></b><small>${met ? 'حققت هدف اليوم' : 'هدف اليوم'}</small></span></button></div>
+      </div></section>`;
+  }
+  function planRowHtml() {
+    const st = planState(); const plan = PLANS.find(p => p.id === st.id); if (!plan) return '';
+    const days = plan.build(), done = st.done || {}; const cur = days.find(d => !d.tasks.every((t, i) => done[d.n] && done[d.n][i]));
+    if (!cur) return `<a class="prow" href="#plan">🎉 <span>خلّصت ${plan.name} كاملة. بالتوفيق في اختبارك!</span></a>`;
+    const links = cur.tasks.filter(t => t.link).map(t => `<a href="${t.link}">${t.lt}</a>`);
+    const what = links.length ? links.join(' و') : esc(cur.tasks[0].t.replace(/<[^>]+>/g, ''));
+    return `<div class="prow"><span class="pi">📅</span><span class="pt"><b>خطتك اليوم</b> <span class="mut">(اليوم ${cur.n} من ${plan.days})</span>: ${what}</span><a class="pgo" href="#plan">افتح الخطة</a></div>`;
+  }
+  let homePulled = false;
   async function renderHome() {
     document.title = 'منصة التدريب | Q-Guide';
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = '<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'; return; } }
-    const tab = lsGet(LS.tab, 'quant');
-    const first = (auth.name || '').trim().split(/\s+/)[0] || '';
-    const hi = auth.gender === 'طالبة' ? 'أهلاً' : 'أهلاً';
+    const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
     const adminLinks = auth.role === 'admin' ? `<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    const R = YT[tab === 'quant' ? 'q' : 'v'];
+    const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
+    const megaPct = (id, n) => Math.round(Object.keys(progGet(id).a || {}).length * 100 / n);
+    const pst = planState(), pl = PLANS.find(p => p.id === pst.id);
     app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
-    `<main class="wrap">
-      <div class="hero"><div><h1>${hi} ${esc(first)} 👋</h1><p>تدرّب قسماً قسماً: كل سؤال مع شرحه بعد الإجابة مباشرة، وتقدّمك محفوظ.</p></div>
-      <div class="tabs"><button data-t="quant" class="${tab === 'quant' ? 'on' : ''}">📐 الكمي <small>(14 قسم)</small></button><button data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}">📖 اللفظي <small>(14 نموذج)</small></button></div></div>
-      <div id="ytr"></div>
-      <div class="grid" id="grid"></div>
-      <h2 class="h2">🏁 الاختبار الشامل</h2>
-      <div class="wb" id="mega"></div>
-      <h2 class="h2">📘 مذكراتك الخاصة</h2>
+    `<main class="wrap home">
+      <div id="rz">${rzHtml()}</div>
+      ${planRowHtml()}
+      <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
+        <span class="sp"></span><a class="rvid" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener" title="${esc(R.rules.d)}">${YTSVG}<span>${R.rules.t}</span>${R.rules.dur ? `<small>${R.rules.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">كل المقاطع</a></div>
+      <div class="sheets" id="grid"></div>
+      <h2 class="h2">أدوات المذاكرة</h2>
+      <section class="tools">
+        <a class="tool" href="/test/"><span class="ti">🧪</span><span class="tx"><b>الاختبارات المحاكية</b><small>17 اختبار بنفس شكل اختبار قياس المحوسب، 25 دقيقة لكل قسم</small></span></a>
+        <div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div>
+        <a class="tool" href="#skills"><span class="ti">🎯</span><span class="tx"><b>نقاط قوتك وضعفك</b><small>اعرف وش تغلط فيه وتدرّب عليه بس</small></span></a>
+        <a class="tool" href="#vocab"><span class="ti">📖</span><span class="tx"><b>قاموس الكلمات</b><small>ترجمة كل كلمة جديدة في النماذج اللفظية</small></span></a>
+        <a class="tool" href="#plan"><span class="ti">📅</span><span class="tx"><b>خطة المذاكرة</b><small>${pl ? 'أنت على ' + pl.name : 'اختر خطة 7 أو 14 أو 19 أو 28 يوم'}</small></span></a>
+        <a class="tool" href="#board"><span class="ti">🏆</span><span class="tx"><b>لوحة الصدارة</b><small>شوف ترتيبك بين طلاب الدورة</small></span></a>
+      </section>
+      <h2 class="h2">📘 مذكراتك</h2>
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>
-      <h2 class="h2">🧪 الاختبارات المحاكية</h2>
-      <a class="mock" href="/test/"><span><b>17 اختباراً محاكياً لقياس</b><br><span class="mut">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم · نفس شكل الاختبار المحوسب</span></span><span class="btn">ادخل ←</span></a>
-      <h2 class="h2">🎯 تدريب ذكي</h2>
-      <div class="wb two">
-        <a class="mock sk" href="#skills"><span><b>نقاط قوتك وضعفك</b><br><span class="mut">تحليل إجاباتك حسب الموضوع (تناظر، إكمال، هندسة، جبر…) مع تدريب موجّه على ما تخطئ فيه</span></span><span class="btn">افتح ←</span></a>
-        <a class="mock vc" href="#vocab"><span><b>قاموس الكلمات 📖</b><br><span class="mut">ترجمة كل كلمة جديدة في النماذج اللفظية · قابل للطباعة · وترجمة كل سؤال تظهر مع الشرح</span></span><span class="btn">افتح ←</span></a>
-      </div>
-      <h2 class="h2">📅 خطة المذاكرة</h2>
-      <a class="mock plan" href="#plan" id="plancard"><span><b>جدول مذاكرتك اليومي</b><br><span class="mut">اختر الخطة اللي تناسب وقتك (7 / 14 / 19 / 28 يوماً) وعلّم ✓ على كل يوم تنجزه</span></span><span class="btn">افتح ←</span></a>
     </main>`;
     $('#lo').onclick = async () => { if (await QGDlg.confirm('تسجيل الخروج؟', { ok: 'خروج' })) logout('', true); };
     $('#me').onclick = () => renderProfile();
     bindCtl();
-    const mega = (id, title, n, desc) => { const pr = progGet(id); const ans = Object.keys(pr.a).length; const pct = Math.round(ans * 100 / n);
-      return `<button class="set wide ${pct === 100 ? 'done' : ''}" data-id="${id}"><span class="t">${title}</span><span class="s">${desc}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓' : 'أجبت ' + ans + ' من ' + n) : n + ' سؤال'}</span>${pr.best != null ? `<span class="badge">أفضل نتيجة ${pr.best}%</span>` : '<span style="color:#B7BFD0">لم تبدأ</span>'}</span></button>`; };
-    const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
-    $('#mega').innerHTML = mega('qall', '📐 كل أسئلة الكمي', nq, 'الأقسام الـ14 كاملة في اختبار واحد متواصل — ' + nq + ' سؤال') + mega('vall', '📖 كل أسئلة اللفظي', nv, 'النماذج الـ14 كاملة من الأول إلى الأخير — ' + nv + ' سؤال');
-    $('#mega').querySelectorAll('.set').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
     document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { lsSet(LS.tab, b.dataset.t); renderHome(); });
     const grid = $('#grid');
-    grid.innerHTML = manifest[tab].map((s, i) => {
-      const p = progGet(s.id); const ans = Object.keys(p.a).length; const pct = s.n ? Math.round(ans * 100 / s.n) : 0;
-      const corr = Object.values(p.a).filter(x => x.c).length;
-      const best = p.best != null ? `<span class="badge">أفضل نتيجة ${p.best}%</span>` : (ans ? `<span class="badge g">${corr}/${ans} صحيحة</span>` : `<span style="color:#B7BFD0">لم تبدأ</span>`);
-      return `<div class="set ${pct === 100 ? 'done' : ''}" role="button" tabindex="0" data-id="${s.id}"><span class="num">${i + 1}</span><span class="t">${esc(s.title)}</span><span class="s ltr" style="text-align:right;direction:rtl">${esc(s.sub)}${s.range ? ' · ' + s.range : ''}</span>
-        <span class="bar"><i style="width:${pct}%"></i></span><span class="meta"><span>${ans ? (pct === 100 ? 'مكتمل ✓ · ' + s.n + ' سؤال' : 'أجبت ' + ans + ' من ' + s.n) : s.n + ' سؤال'}</span>${best}</span></div>`;
+    grid.innerHTML = manifest[tab].map(s => {
+      const st = setState(s.id, s.n); const sub = tab === 'quant' ? `الأسئلة <bdi dir="ltr">${esc(s.range)}</bdi>` : `<bdi dir="ltr">${esc(s.sub)}</bdi>`;
+      const stamp = st.done ? `<span class="stamp" title="أفضل نتيجة">✓ ${st.best != null ? st.best + '%' : ''}</span>` : st.ans ? `<span class="pill">${st.ans}/${s.n}</span>` : '';
+      const foot = st.done ? (st.best != null ? `أفضل نتيجة ${st.best}%` : 'جاوبت كل الأسئلة') : st.ans ? `أجبت ${st.ans} من ${s.n}، منها ${st.ok} صح` : (st.best != null ? `أفضل نتيجة ${st.best}%` : `${s.n} سؤال`);
+      return `<button class="sheet ${st.done ? 'done' : st.ans ? 'doing' : ''}" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b>${stamp}</span><span class="sh-s">${sub}</span><span class="sh-dots" aria-hidden="true" style="--c:${cols(s.n, 16)};--cm:${cols(s.n, 12)}">${dotsHtml(s.id, s.n, -1)}</span><span class="sh-f">${foot}</span></button>`;
     }).join('');
-    const R = YT[tab === 'quant' ? 'q' : 'v'];
-    $('#ytr').innerHTML = `<div class="ytr"><a class="ytr-main" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener">${YTSVG}<span><b>ابدأ من هنا: ${R.rules.t}${R.rules.dur ? ` <small>(${R.rules.dur})</small>` : ''}</b><small>${R.rules.d}</small></span></a><a class="ytr-list" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">▶ كل مقاطع ${tab === 'quant' ? 'الكمي' : 'اللفظي'}</a></div>`;
-    grid.querySelectorAll('.set').forEach(b => { b.onclick = e => { if (e.target.closest('a')) return; location.hash = b.dataset.id; }; b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); location.hash = b.dataset.id; } }; });
+    grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { location.hash = b.dataset.id; });
+    const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast('هدفك اليومي صار ' + nx + ' سؤال'); }; };
+    bindGoal();
+    if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); } }).catch(() => {}); }
     renderWorkbooks();
     prefetchSets();
   }
@@ -363,6 +422,15 @@
   }
 
   // ---------- player ----------
+  // 🎉 لمسات تفاعلية (تحترم إعداد تقليل الحركة)
+  const RM = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function burst(el) { const b = document.createElement('span'); b.className = 'burst'; const C = ['#12A16B', '#F2B33D', '#2350C4']; b.innerHTML = Array.from({ length: 10 }, (_, j) => `<i style="--a:${j * 36}deg;--c:${C[j % 3]}"></i>`).join(''); el.appendChild(b); setTimeout(() => b.remove(), 800); }
+  function confetti() {
+    if (RM()) return; const cv = document.createElement('canvas'); cv.className = 'confetti'; document.body.appendChild(cv);
+    const dpr = Math.min(2, window.devicePixelRatio || 1), W = innerWidth, H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+    const C = ['#F2B33D', '#12A16B', '#2350C4', '#E5484D', '#7FB3FF'], ps = Array.from({ length: 150 }, () => ({ x: W / 2 + (Math.random() - .5) * W * .3, y: H * .32, vx: (Math.random() - .5) * 13, vy: -Math.random() * 13 - 4, r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3, w: 6 + Math.random() * 6, h: 4 + Math.random() * 4, c: C[(Math.random() * C.length) | 0] }));
+    const t0 = performance.now(); (function f(t) { const e = t - t0; ctx.clearRect(0, 0, W, H); ps.forEach(p => { p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; ctx.save(); ctx.globalAlpha = Math.max(0, 1 - e / 2200); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); }); if (e < 2200) requestAnimationFrame(f); else cv.remove(); })(t0);
+  }
   // ⏱️ الوقت الفعلي فقط: وقت كل سؤال من آخر إجابة (بحد أقصى 4 دقائق للسؤال)، ولا يُحسب وقت إغلاق الصفحة أو تصغيرها
   const Q_CAP = 4 * 60 * 1000;
   function fmtDur(t) { t = Math.max(0, Math.round(t)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; return h ? h + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0') : m + ':' + String(x).padStart(2, '0'); }
@@ -385,8 +453,8 @@
     P = { id, set, items, prog, cur, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<div class="pbar"><i id="pb"></i></div><main class="wrap" id="pm"></main>
+      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="ib" id="navb" title="قائمة الأسئلة">☷</button><span class="chip cnt" id="cnt" dir="ltr"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${items.map((x, i) => `<i class="${prog.a[i] ? (prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('')}</div><main class="wrap" id="pm"></main>
       <div class="nav" id="nav"><div class="bg"></div><div class="sh"><div class="lg"><span><i style="background:var(--okbg);border:1px solid var(--ok)"></i>صحيحة</span><span><i style="background:var(--badbg);border:1px solid var(--bad)"></i>خاطئة</span><span><i style="background:#EEF1F8"></i>لم تُجب</span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة القسم من البداية</button></div><div class="ng" id="ng"></div></div></div>`;
     $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); };
     bindCtl();
@@ -405,7 +473,7 @@
   }
   function updateCounter() {
     const n = Object.keys(P.prog.a).length; $('#cnt').textContent = (P.cur + 1) + ' / ' + P.items.length;
-    $('#pb').style.width = Math.round(n * 100 / P.items.length) + '%';
+    const sb = $('#sb'); if (sb) { const o = sb.querySelector('i.cur'); if (o) o.classList.remove('cur'); const c = sb.children[P.cur]; if (c) c.classList.add('cur'); }
   }
   function showQ(i) {
     const { set, items, prog } = P; P.cur = i; prog.last = i; progSet(P.id, prog); updateCounter();
@@ -444,7 +512,8 @@
   }
   function feedback(it, a) {
     const ok = a.s === it.ans; const corr = it.opts[it.ans];
-    return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? '✅ إجابة صحيحة، أحسنت!' : '❌ إجابة خاطئة'}</div>
+    const OKS = ['✅ إجابة صحيحة، أحسنت!', '✅ صح! كفو عليك', '✅ ممتاز، إجابة صحيحة', '✅ صح عليك 👏', '✅ برافو، إجابة صحيحة'];
+    return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? OKS[(it.n || 0) % OKS.length] : '❌ إجابة خاطئة، شوف الشرح'}</div>
       ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
       ${ok ? `<button class="lnk exshow" type="button" onclick="this.nextElementSibling.classList.toggle('on');this.textContent=this.nextElementSibling.classList.contains('on')?'إخفاء الشرح ▴':'عرض الشرح والترجمة ▾'">عرض الشرح والترجمة ▾</button><div class="exwrap">` : ''}
       ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}
@@ -467,8 +536,12 @@
     const { it } = P.items[i]; if (P.prog.a[i]) return;
     const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
+    const good = k === it.ans; const sbi = $('#sb') && $('#sb').children[i]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
+    P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + ' صح ورا بعض'; rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
+    const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast('🎉 حققت هدف اليوم: ' + goal + ' سؤال!'), 700);
     try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
-    document.querySelectorAll('.opt').forEach(b => { b.disabled = true; const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
+    document.querySelectorAll('.opt').forEach(b => { b.disabled = true; b.classList.remove('sel'); const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
+    if (!RM()) { const btn = document.querySelector(`.opt[data-k="${k}"]`); if (btn) { if (good) burst(btn.querySelector('.L') || btn); else btn.classList.add('shake'); } }
     $('#fb').innerHTML = feedback(it, P.prog.a[i]);
     const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${(i + 1 < P.items.length) ? 'التالي ←' : 'النتيجة 🏁'}</button>`; $('#next').onclick = () => { if (i + 1 < P.items.length) showQ(i + 1); else finish(); }; }
     const kb = $('.kbd'); if (kb) kb.textContent = 'Enter للتالي';
@@ -489,17 +562,21 @@
     const firstTime = !prog.done;
     if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; progSet(P.id, prog);
     document.onkeydown = null;
-    $('#pm').innerHTML = `<div class="sum"><div class="ring" style="--p:${pct}"><b>${pct}<small>%</small></b></div>
+    const nm = /^([qv])(\d{1,2})$/.exec(set.id), nx = nm && +nm[2] < 14 ? nm[1] + (+nm[2] + 1) : null;
+    $('#pm').innerHTML = `<div class="sum"><div class="ring" id="ring" style="--p:0"><b><span id="rp">0</span><small>%</small></b></div>
       <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
-      <p style="color:var(--mut);margin:0">${esc(set.title)} · ${esc(set.sub)}</p>
+      <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
-      <div class="acts" style="justify-content:center"><button class="btn gold" id="again">↻ إعادة القسم</button>${/^[qv]\d{1,2}$/.test(set.id) ? `<a class="btn ghost" href="#board-set-${set.id}">🏆 ترتيب هذا القسم</a>` : ''}${ytFor(set.id) ? `<a class="btn ytbtn" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} على يوتيوب</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}<a class="btn ghost" href="#skills">🎯 نقاط قوتي وضعفي</a><a class="btn ghost" href="#">الرئيسية</a></div>
+      <div class="acts sacts">${nx ? `<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>` : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? `<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
+      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? 'القسم' : 'النموذج') : 'الاختبار'}</button>${nm ? `<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? `<a class="lnk2" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
     const rv = $('#rev'); if (rv) rv.onclick = () => { document.onkeydown = onKey; showQ(wrong[0]); };
     document.querySelectorAll('.wl button').forEach(b => b.onclick = () => { document.onkeydown = onKey; showQ(+b.dataset.i); });
     window.scrollTo(0, 0);
+    (function count() { const ring = $('#ring'), rp = $('#rp'); if (!ring) return; if (RM()) { ring.style.setProperty('--p', pct); rp.textContent = pct; return; } const t0 = performance.now(), D = 900; (function f(t) { const e = Math.min(1, (t - t0) / D), v = Math.round(pct * (1 - Math.pow(1 - e, 3))); ring.style.setProperty('--p', v); rp.textContent = v; if (e < 1) requestAnimationFrame(f); })(t0); })();
+    if (pct >= 85) setTimeout(confetti, 350);
     skillsPushSoon(1500);
     if (set.topicSet) { $('#saved').textContent = 'تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'; return; }
     try {
