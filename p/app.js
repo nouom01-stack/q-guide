@@ -240,7 +240,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
-    if (h === 'admin' || h === 'admin-staff') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : renderStaff(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -284,7 +284,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, display: r.display || r.name, avatar: r.avatar || '' };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '' };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -372,8 +372,8 @@
           ${toolA('#badges', '🏅', 'إنجازاتي', `${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length} من ${BADGES.length} شارة`)}
           ${toolA('#board', '🏆', 'لوحة الصدارة', 'ترتيبك بين طلاب الدورة')}</div>
       </section>
-      <h2 class="h2">📘 مذكراتك</h2>
-      <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>
+      ${auth.member === 'manual' ? '' : `<h2 class="h2" id="wbh">📘 مذكراتك</h2>
+      <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>`}
     </main>`;
     $('#lo').onclick = async () => { if (await QGDlg.confirm('تسجيل الخروج؟', { ok: 'خروج' })) logout('', true); };
     $('#me').onclick = () => renderProfile();
@@ -407,7 +407,8 @@
   }
   async function renderWorkbooks() {
     const el = $('#wb'); if (!el) return;
-    if (!auth.files || !auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || auth.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
+    if (!auth.files || !auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || auth.phone || ''; auth.member = r.member || ''; lsSet(LS.auth, auth); } } catch (e) {} }
+    if (auth.member === 'manual') { ['#wbh', '#wb'].forEach(k => { const x = $(k); if (x) x.remove(); }); return; }   // المذكرة الشخصية تنعمل من الشيت برقم الجوال
     const f = auth.files || {}; if (!$('#wb')) return;
     const card = (id, title, icon, desc, k) => id ? `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">PDF في Drive</a></div></div>`
@@ -422,6 +423,7 @@
     const title = kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي';
     document.title = title + ' | Q-Guide';
     if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
+    if (auth.member === 'manual') { toast('المذكرة الشخصية غير متاحة لحسابك'); location.hash = ''; return; }
     if (auth.role !== 'admin' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق'); location.hash = ''; return; }
     let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json')).json(); } catch (e) { toast('تعذّر تحميل المذكرة'); location.hash = ''; return; }
     const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, lsGet(lastKey, 1)));
@@ -1442,11 +1444,12 @@
   // ---------- 👑 لوحة المشرف ----------
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI';
   const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
-  let ADM = { list: null, q: '', f: 'all', role: '', staff: null };
+  let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '' };
+  const isOwner = () => (ADM.role || auth.staff) === 'owner';
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a><a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
@@ -1463,14 +1466,14 @@
     const W = $('#adm'); if (!W) return; const all = ADM.list; const day = Date.now() - 86400000;
     const stats = { n: all.filter(s => !s.banned).length, banned: all.filter(s => s.banned).length, today: all.filter(s => s.lastLogin > day).length, never: all.filter(s => !s.logins && !s.banned).length };
     const q = ADM.q.trim().toLowerCase();
-    let list = all.filter(s => !q || [s.name, s.display, s.email, s.phone, s.user].some(x => String(x || '').toLowerCase().includes(q)));
+    let list = all.filter(s => !q || [s.name, s.display, s.email, s.typed, s.phone, s.user].some(x => String(x || '').toLowerCase().includes(q)));
     if (ADM.f === 'banned') list = list.filter(s => s.banned); else if (ADM.f === 'today') list = list.filter(s => s.lastLogin > day); else if (ADM.f === 'never') list = list.filter(s => !s.logins && !s.banned);
     list.sort((a, b) => (b.lastLogin || 0) - (a.lastLogin || 0));
     W.innerHTML = `<div class="astats"><div><b>${stats.n}</b><span>طالب مشترك</span></div><div><b>${stats.today}</b><span>دخل آخر 24 ساعة</span></div><div><b>${stats.never}</b><span>لم يدخل الموقع</span></div><div class="bad"><b>${stats.banned}</b><span>محظور</span></div></div>
       <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل'], ['banned', 'محظور']].map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
       <div class="atable"><div class="arow head"><span class="c-st">الطالب</span><span class="c-ph">الجوال</span><span class="c-n">الأقسام</span><span class="c-n">المحاكي</span><span class="c-dt">آخر دخول</span><span class="c-act">إجراءات</span></div>
-      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small></span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span><span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span></div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
-      <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. لإضافة طالب أو تعديل بياناته استخدم الشيت.</p>`;
+      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.typed || s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.manual ? ' · <span class="bdg man">➕ من اللوحة</span>' : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small></span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span><span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span></div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
+      <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. ${isOwner() ? 'لإضافة مشتركين استخدم تبويب «➕ المشتركون» أو الشيت، وبيانات طلاب الشيت تتعدّل من الشيت.' : 'لإضافة طالب أو تعديل بياناته استخدم الشيت.'}</p>`;
     $('#aq').oninput = e => { ADM.q = e.target.value; const pos = e.target.selectionStart; paintAdmin(); const i = $('#aq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { ADM.f = b.dataset.f; paintAdmin(); });
     W.querySelectorAll('[data-view]').forEach(b => b.onclick = () => admStudent(b.dataset.view));
@@ -1490,11 +1493,12 @@
     const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = '<div class="m"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div>'; document.body.appendChild(m);
     m.onclick = e => { if (e.target === m) m.remove(); };
     let d; try { d = await admCall({ op: 'adm_student', email }); } catch (e) { m.remove(); toast(e.message); return; }
-    const st = d.student || {}, pf = d.profile || {}; const fmtS = x => { const mm = Math.round(x / 60); return mm ? mm + ' د' : x + ' ث'; };
+    const st = d.student || {}, pf = d.profile || {}, mb = !d.student && d.member ? d.member : null; const fmtS = x => { const mm = Math.round(x / 60); return mm ? mm + ' د' : x + ' ث'; };
     const byTest = {}; d.exams.forEach(x => { (byTest[x.test] = byTest[x.test] || []).push(x); });
-    m.querySelector('.m').innerHTML = `<h3 style="display:flex;align-items:center;gap:10px">${avatarHtml(pf.avatar || st.yt, pf.name || st.name, 44)}<span>${esc(pf.name || st.name || email)}<small class="mut" style="display:block;font-weight:400;font-size:13px">${esc(email)}</small></span></h3>
+    m.querySelector('.m').innerHTML = `<h3 style="display:flex;align-items:center;gap:10px">${avatarHtml(pf.avatar || st.yt, pf.name || st.name, 44)}<span>${esc(pf.name || st.name || (mb && mb.name) || email)}<small class="mut" style="display:block;font-weight:400;font-size:13px">${esc((mb && mb.typed) || email)}</small></span></h3>
       ${d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ محظور منذ ${fmtD(d.ban.at)} بواسطة ${esc(d.ban.by_email)}${d.ban.reason ? ' — ' + esc(d.ban.reason) : ''}</div>` : ''}
-      <div class="kv"><div><span>الاسم في الشيت</span><b>${esc(st.name || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
+      ${mb ? `<div class="sum mbox">➕ مشترك أُضيف من اللوحة بواسطة ${esc((mb.added_by || '').split('@')[0])} · ${fmtD(mb.added_at)}${isOwner() ? ' <button class="lnk" id="a_mrm">حذف الاشتراك</button>' : ''}</div>` : ''}
+      <div class="kv"><div><span>${mb ? 'الاسم' : 'الاسم في الشيت'}</span><b>${esc((mb ? mb.name : st.name) || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
       <div class="acts"><button class="btn sm ghost" id="a_name">✏️ تعديل الاسم المعروض</button><button class="btn sm ghost" id="a_av">🖼 مسح الصورة</button><button class="btn sm ghost" id="a_kick">⎋ طرد الجلسة</button>${d.ban ? `<button class="btn sm" id="a_unban">فك الحظر</button>` : `<button class="btn sm danger" id="a_ban">⛔ حظر نهائي</button>`}</div>
       ${skillsBarsHtml(d.skills && d.skills.data ? histAgg(JSON.parse(d.skills.data)) : null, true)}
       <h4>📚 نتائج الأقسام (${d.results.length})${d.results.length ? ' <button class="lnk" id="a_rr">حذف الكل</button>' : ''}</h4>
@@ -1511,6 +1515,7 @@
     m.querySelector('#a_kick').onclick = async () => { try { await admCall({ op: 'adm_kick', email }); toast('تم طرد الجلسة — يحتاج تسجيل دخول جديد'); } catch (e) { toast(e.message); } };
     const bb = m.querySelector('#a_ban'); if (bb) bb.onclick = () => { m.remove(); admBan(email); };
     const ub = m.querySelector('#a_unban'); if (ub) ub.onclick = () => { m.remove(); admUnban(email); };
+    const mr = m.querySelector('#a_mrm'); if (mr) mr.onclick = async () => { m.remove(); if (await admMemberRemove(email)) { ADM.list = null; renderAdmin(); } };
     const rr = m.querySelector('#a_rr'); if (rr) rr.onclick = async () => { if (!await QGDlg.confirm('حذف كل نتائج الأقسام لهذا الطالب؟ (تؤثر على لوحة الصدارة)', { danger: true })) return; try { await admCall({ op: 'adm_reset_results', email }); toast('تم'); again(); } catch (e) { toast(e.message); } };
     m.querySelectorAll('[data-rx]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('حذف كل محاولات ' + b.dataset.rx + ' لهذا الطالب ليبدأه من جديد؟', { danger: true })) return; try { await admCall({ op: 'adm_reset_exam', email, test: b.dataset.rx }); toast('تم'); again(); } catch (e) { toast(e.message); } });
     if (ADM.role === 'viewer') m.querySelectorAll('#a_name,#a_av,#a_kick,#a_ban,#a_unban,#a_rr,[data-rx]').forEach(x => x.remove());
@@ -1549,6 +1554,67 @@
     };
     W.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { const em = b.dataset.rm; if (!await QGDlg.confirm('حذف صلاحية الإشراف من ' + em + '؟ تنتهي جلسته في لوحة الإدارة فوراً.', { ok: 'حذف', danger: true })) return; try { await admCall({ op: 'adm_staff_remove', email: em }); toast('تم الحذف'); await admLoadStaff(true); renderStaff(); } catch (e) { toast(e.message); } });
     W.querySelectorAll('[data-role]').forEach(sel => sel.onchange = async () => { const em = sel.dataset.role; const x = S.staff.find(y => y.email === em) || {}; try { await admCall({ op: 'adm_staff_add', email: em, name: x.name || '', note: x.note || '', role: sel.value }); toast('تم تغيير الصلاحية ✓'); await admLoadStaff(true); paintStaff(); } catch (e) { toast(e.message); } });
+  }
+
+  // ---------- ➕ المشتركون: المالك يضيف إيميلات تدخل الدورة مباشرة (بدون الشيت) ----------
+  const EM_RE = /[^\s,;:<>"'()]+@[^\s,;:<>"'()]+\.[a-z]{2,}/gi;
+  function parseMembers(txt) {   // كل سطر: إيميل وبعده الاسم (اختياري) · سطر فيه أكثر من إيميل = كل واحد لحاله
+    const items = [], bad = [], seen = new Set();
+    String(txt || '').split(/\n/).forEach(line => {
+      const l = line.trim(); if (!l) return; const ems = l.match(EM_RE) || [];
+      if (!ems.length) { bad.push(l); return; }
+      const name = ems.length > 1 ? '' : l.replace(ems[0], '').replace(/^[\s,;:|\-–—]+|[\s,;:|\-–—]+$/g, '').trim().slice(0, 60);
+      ems.forEach(e => { const em = e.toLowerCase(); if (seen.has(em)) return; seen.add(em); items.push({ email: em, name }); });
+    });
+    return { items, bad };
+  }
+  async function renderMembers() {
+    document.title = 'المشتركون | Q-Guide';
+    const top = () => { app.innerHTML = admTop('members'); bindCtl(); $('#admref').onclick = () => { ADM.members = null; renderMembers(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.members) ADM.members = (await admCall({ op: 'adm_members_list' })).members; }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-members') return;
+    top(); paintMembers();
+  }
+  async function admMemberRemove(email) {
+    if (!await QGDlg.confirm('حذف اشتراك ' + email + '؟\nيطلع من الموقع فوراً وما يقدر يدخل مرة ثانية إلا إذا أضفته من جديد.', { ok: 'حذف الاشتراك', danger: true })) return false;
+    try { const r = await admCall({ op: 'adm_members_remove', email }); toast(r.inSheet ? 'تم الحذف — بس الإيميل مسجّل في الشيت فيقدر يدخل منه' : 'تم حذف الاشتراك'); ADM.members = null; return true; } catch (e) { toast(e.message); return false; }
+  }
+  function paintMembers(res) {
+    const W = $('#adm'); if (!W) return; const M = ADM.members || []; const q = ADM.mq.trim().toLowerCase();
+    const list = M.filter(x => !q || [x.email, x.typed, x.name, x.display].some(v => String(v || '').toLowerCase().includes(q)));
+    const st = x => x.banned ? '<span class="rbdg ban">⛔ محظور</span>' : x.logins ? '<span class="rbdg viewer">✓ دخل الموقع</span>' : '<span class="rbdg wait">لم يدخل بعد</span>';
+    const row = x => `<div class="srow"><span class="c-st">${avatarHtml(x.avatar, x.display || x.name || x.email, 40)}<span class="who"><b>${esc(x.display || x.name || x.email.split('@')[0])}</b><small class="ltr">${esc(x.typed || x.email)}</small></span></span>
+      <span class="rl">${st(x)}</span>
+      <span class="meta"><small>أضافه ${esc((x.added_by || '').split('@')[0])} · ${fmtD(x.added_at)}</small><small>آخر دخول: <b>${x.lastLogin ? fmtD(x.lastLogin) : '—'}</b></small>${x.inSheet ? '<small>📊 مسجّل في الشيت أيضاً</small>' : ''}</span>
+      <span class="c-act"><button class="btn sm danger" data-mrm="${esc(x.email)}">حذف</button></span></div>`;
+    const G = [['added', '✓ أُضيفوا ويقدرون يدخلون الحين', 'ok'], ['updated', '✎ كانوا مضافين وتحدّث اسمهم', 'ok'], ['exists', 'مضافين من قبل', ''], ['sheet', 'مسجّلين في الشيت أصلاً — ما يحتاجون إضافة', ''], ['staff', 'مشرفين — يدخلون بدون إضافة', ''], ['banned', '⛔ محظورين — فك الحظر من تبويب الطلاب أولاً', 'bad'], ['invalid', 'إيميلات غير صحيحة', 'bad']];
+    const resHtml = res ? `<div class="mres">${G.filter(([k]) => res[k] && res[k].length).map(([k, t, c]) => `<div class="${c}"><b>${t} <small>${res[k].length}</small></b><span dir="ltr">${res[k].map(esc).join(' · ')}</span></div>`).join('')}</div>` : '';
+    W.innerHTML = `<div class="stf">
+      <form class="sadd" id="madd" autocomplete="off"><h3>➕ إضافة مشتركين</h3>
+        <div class="sgrid"><label class="wide"><span>إيميلات Google — كل إيميل في سطر، وتقدر تكتب اسم الطالب بعد الإيميل</span><textarea id="m_em" rows="5" dir="ltr" spellcheck="false" placeholder="ahmed@gmail.com أحمد محمد&#10;sara@gmail.com"></textarea></label></div>
+        <div class="acts"><button class="btn gold" type="submit" id="m_go" disabled>إضافة</button><span class="mcnt" id="m_cnt"></span></div>
+        ${resHtml}
+        <p class="mnote">يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة الشخصية (باسم الطالب وجواله) تنعمل من الشيت، فما تطلع للمضافين من هنا.</p></form>
+      <h3 class="sh">المضافون من اللوحة <small>${M.length}</small></h3>
+      ${M.length > 8 ? `<div class="abar"><input id="mq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.mq)}"></div>` : ''}
+      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${M.length ? 'لا نتائج' : 'ما أضفت أحد بعد — اكتب الإيميلات فوق واضغط «إضافة».'}</div>`}</div></div>`;
+    const ta = $('#m_em'), go = $('#m_go'), cnt = $('#m_cnt');
+    const upd = () => { ADM.draft = ta.value; const p = parseMembers(ta.value); go.disabled = !p.items.length;
+      go.textContent = p.items.length > 1 ? `إضافة ${p.items.length} إيميلات` : 'إضافة';
+      cnt.innerHTML = !ta.value.trim() ? '<span class="mut">اكتب إيميل أو أكثر</span>' : (p.items.length ? `<span class="ok">${p.items.length === 1 ? 'إيميل واحد جاهز' : p.items.length === 2 ? 'إيميلين جاهزين' : p.items.length + ' إيميلات جاهزة'}</span>` : '') + (p.bad.length ? `<span class="bad">${p.bad.length === 1 ? 'سطر واحد' : p.bad.length + ' أسطر'} بدون إيميل صحيح</span>` : ''); };
+    ta.value = ADM.draft; ta.oninput = upd; upd();
+    $('#madd').onsubmit = async e => {
+      e.preventDefault(); const p = parseMembers(ta.value); if (!p.items.length) return;
+      go.disabled = true; go.textContent = 'جارٍ الإضافة…';
+      try { const r = await admCall({ op: 'adm_members_add', items: p.items });
+        ADM.draft = p.bad.join('\n'); ADM.members = (await admCall({ op: 'adm_members_list' })).members; ADM.list = null;
+        toast(r.added.length ? 'تمت الإضافة ✓' : 'ما فيه إيميلات جديدة'); app.innerHTML = admTop('members'); bindCtl(); $('#admref').onclick = () => { ADM.members = null; renderMembers(); }; paintMembers(r);
+      } catch (err) { toast(err.message); upd(); }
+    };
+    const mq = $('#mq'); if (mq) mq.oninput = e => { ADM.mq = e.target.value; const pos = e.target.selectionStart; paintMembers(res); const i = $('#mq'); i.focus(); i.setSelectionRange(pos, pos); };
+    W.querySelectorAll('[data-mrm]').forEach(b => b.onclick = async () => { if (await admMemberRemove(b.dataset.mrm)) { ADM.list = null; renderMembers(); } });
   }
 
   // ---------- ⏳ موعد الاختبار + العدّادات ----------

@@ -1365,3 +1365,26 @@ sup.ex .fr{font-size:.96em;margin:0 .04em}
 @media (prefers-reduced-motion:reduce){.ru-b,.ru-b::after{transition:none}}
 @media print{.ru-qb,.ru-p{display:none!important}}
 .ru-st bdi,.ru-fb bdi,.ru-n bdi{display:inline-block;max-width:100%}
+
+/* =====================================================================
+   v27 — ➕ المشتركون: المالك يضيف إيميلات تدخل الدورة من لوحة الإدارة
+   ===================================================================== */
+.sgrid textarea{font:inherit;font-weight:500;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(15px * var(--fs));line-height:1.75;padding:10px 12px;border-radius:11px;border:1.5px solid var(--line);background:#FBFCFE;color:var(--ink);resize:vertical;min-height:132px;text-align:left}
+.sgrid textarea:focus{outline:none;border-color:var(--navy3);background:var(--card)}
+.sgrid textarea::placeholder{color:#A3ACC2}
+.mcnt{display:flex;gap:12px;flex-wrap:wrap;font-weight:700;font-size:calc(13px * var(--fs))}
+.mcnt .ok{color:var(--ok)}.mcnt .bad{color:var(--bad)}
+.mres{margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mres>div{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.mres>div:last-child{border-bottom:0}
+.mres b{font-size:calc(13.5px * var(--fs));color:var(--ink2)}.mres b small{background:#EEF1F8;color:var(--mut);border-radius:999px;padding:0 8px;margin-inline-start:4px;font-size:calc(12px * var(--fs))}
+.mres .ok b{color:var(--ok)}.mres .bad b{color:var(--bad)}
+.mres span{font-size:calc(12.5px * var(--fs));color:var(--mut);text-align:left;overflow-wrap:anywhere;font-family:"Segoe UI",Roboto,Arial,sans-serif}
+.mnote{margin:12px 0 0;font-size:calc(12.5px * var(--fs));color:var(--mut);line-height:1.7}
+.rbdg.wait{background:#EEF1F8;color:var(--mut)}.rbdg.ban{background:var(--badbg);color:var(--bad)}
+.bdg.man{color:var(--royal)}
+.sum.mbox{padding:10px 14px;margin-bottom:10px;text-align:right;font-size:calc(14px * var(--fs));border-radius:12px}
+.sum.mbox .lnk{margin-inline-start:6px;color:var(--bad)}
+[data-theme=dark] .sgrid textarea{background:#111A30}
+[data-theme=dark] .mres b small,[data-theme=dark] .rbdg.wait{background:#2a3350}
+[data-theme=dark] .mres .ok b{color:var(--mint)}[data-theme=dark] .mres .bad b,[data-theme=dark] .rbdg.ban{color:var(--coral)}
