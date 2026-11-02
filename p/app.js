@@ -763,7 +763,7 @@
     });
   }
   // ---------- 📐 قوانين الكمي ----------
-  let RULES = null; const RULES_V = 1, RULES_ON = true;
+  let RULES = null; const RULES_V = 2, RULES_ON = true;
   async function renderRules() {
     document.title = 'قوانين الكمي | Q-Guide';
     const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;

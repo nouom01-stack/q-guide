@@ -200,7 +200,7 @@
 {"a":"مساحة المربع بدلالة قطره","f":"A = d²/2","x":"d = 10 → A = 100/2 = 50","en":"Square area from the diagonal"},
 {"a":"المستطيل","f":"A = l × w ; P = 2(l + w) ; diagonal = √(l² + w²)","x":"8 × 6 → A = 48, P = 28, diagonal = √(64 + 36) = 10","en":"Rectangle"},
 {"a":"متوازي الأضلاع","f":"A = base × height ; P = 2(a + b)","x":"base 9, height 4 → A = 9 × 4 = 36","en":"Parallelogram","n":"الارتفاع هو البعد العمودي بين القاعدتين وليس طول الضلع المائل."},
-{"a":"زوايا متوازي الأضلاع","f":"opposite angles equal ; consecutive angles = 180° ; diagonals bisect each other","x":"one angle 65° → angles 65°, 115°, 65°, 115°","en":"Parallelogram angles"},
+{"a":"زوايا متوازي الأضلاع","f":"opposite angles are equal ; consecutive angles add up to 180° ; diagonals bisect each other","x":"one angle 65° → angles 65°, 115°, 65°, 115°","en":"Parallelogram angles"},
 {"a":"المعيّن","f":"A = (d₁ × d₂)/2 ; P = 4s ; diagonals bisect each other at right angles","x":"d₁ = 6, d₂ = 8 → A = 24, side = √(3² + 4²) = 5","en":"Rhombus"},
 {"a":"شبه المنحرف","f":"A = ½ × (b₁ + b₂) × h","x":"bases 7 and 13, h = 4 → A = ½ × 20 × 4 = 40","en":"Trapezoid"},
 {"a":"أكبر مساحة لمحيط ثابت","f":"same perimeter → among rectangles, the square has the largest area","x":"P = 20: 5 × 5 = 25 > 6 × 4 = 24 > 9 × 1 = 9","en":"Maximum area"},
