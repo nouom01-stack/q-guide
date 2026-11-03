@@ -58,7 +58,6 @@
       <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">مساعد Q-Guide</b><small>يشرح لك السؤال على طريقة شرح الدورة</small></div><button type="button" class="qgai-x" aria-label="إغلاق">✕</button></header>
       <div class="qgai-ctx">${String(o.label || '').split(' · ').filter(Boolean).map((t, i) => `<span class="${/✗/.test(t) ? 'bad' : /الصحيحة/.test(t) ? 'ok' : ''}">${esc(t)}</span>`).join('')}</div>
       <div class="qgai-log" aria-live="polite"></div>
-      <div class="qgai-chips"></div>
       <form class="qgai-f" autocomplete="off"><textarea rows="1" maxlength="300" placeholder="اسأل عن هذا السؤال…" aria-label="اكتب سؤالك عن هذا السؤال"></textarea><button type="submit" class="qgai-s" aria-label="أرسل">${SEND}</button></form>
       <div class="qgai-ft"><span class="qgai-left"></span><span>المساعد ذكاء اصطناعي وممكن يغلط، والإجابة المعتمدة هي إجابة الدورة.</span></div>
     </section>`;
@@ -104,13 +103,7 @@
       if (m.q) { const u = C.msgs.map(x => x.r === 'u' && x.t === m.q).lastIndexOf(true); if (u >= 0) C.msgs.splice(u, 1); } ask(m.q); });
     const sb = log.querySelector('.qgai-sub'); if (sb) sb.onclick = () => { close(true); CFG.onSub && CFG.onSub('المساعد الذكي'); };
     if (atEnd) log.scrollTop = log.scrollHeight; W.stick = false;
-    // اقتراحات سريعة بعد الشرح الأول
-    const last = C.msgs[C.msgs.length - 1], turns = C.msgs.filter(m => m.r === 'u').length;
-    const canAsk = !C.busy && last && last.r === 'a' && !last.live && turns < C.follow;
-    const asked = new Set(C.msgs.filter(m => m.r === 'u').map(m => m.t));
-    const chips = ['ما فهمت، اشرحها أبسط', ...(C.wrong ? ['ليش إجابتي غلط؟'] : []), 'وش القاعدة اللي لازم أحفظها؟'].filter(t => !asked.has(t));
-    const ch = W.ov.querySelector('.qgai-chips'); ch.innerHTML = canAsk ? chips.map(t => `<button type="button">${esc(t)}</button>`).join('') : '';
-    ch.querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent));
+    const turns = C.msgs.filter(m => m.r === 'u').length;
     const blocked = C.msgs.some(m => m.r === 'lim'), full = turns >= C.follow, any = C.msgs.some(m => m.r === 'a' && !m.live && m.t);
     W.ta.disabled = C.busy || blocked || full || !any;
     W.ta.placeholder = full ? 'وصلت لحد الأسئلة على هذا السؤال' : blocked ? 'خلص رصيد اليوم' : 'اسأل عن هذا السؤال…';
@@ -191,7 +184,9 @@ html.qgai-lock,html.qgai-lock body{overflow:hidden}
 .qgai-ctx span{font-size:calc(12.5px * var(--fs,1));font-weight:700;color:var(--ai);background:var(--aibg);border:1px solid var(--aibd);border-radius:999px;padding:3px 10px}
 .qgai-ctx span.ok{color:#137A4C;background:#E6F6EE;border-color:#BFE6D1}.qgai-ctx span.bad{color:#B42B2B;background:#FCE9E9;border-color:#F2C4C4}
 [data-theme="dark"] .qgai-ctx span.ok{color:#7FE0AE;background:#12301F;border-color:#1F5A3A}[data-theme="dark"] .qgai-ctx span.bad{color:#FFB3B3;background:#381A21;border-color:#6A2A33}
-.qgai-log{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 18px 8px;display:flex;flex-direction:column;gap:14px}
+.qgai-log{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 18px 8px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin;scrollbar-color:var(--aibd) transparent}
+.qgai-log::-webkit-scrollbar{width:8px}.qgai-log::-webkit-scrollbar-track{background:transparent}.qgai-log::-webkit-scrollbar-thumb{background:var(--aibd);border-radius:8px}
+[data-theme="dark"] .qgai{color-scheme:dark}
 .qgai-m.a .qgai-tx{font-size:calc(16px * var(--fs,1));line-height:1.85}
 .qgai-l{margin:0 0 2px}.qgai-sp{height:6px}
 .qgai-l b{color:var(--ai2);font-weight:800}
@@ -219,9 +214,6 @@ html.qgai-lock,html.qgai-lock body{overflow:hidden}
 .qgai-lim p{margin:6px 0 14px;color:var(--mut,#6B7590);font-size:calc(14.5px * var(--fs,1));line-height:1.7}
 .qgai-sub{background:var(--gold,#E9A23B);color:#1a1a1a;border:0;border-radius:12px;padding:11px 22px;font:inherit;font-weight:800;font-size:calc(15px * var(--fs,1));cursor:pointer}
 .qgai-sub:hover{background:var(--gold2,#C98620)}
-.qgai-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 8px}.qgai-chips:empty{display:none}
-.qgai-chips button{background:var(--card,#fff);border:1px solid var(--aibd);color:var(--ai);border-radius:999px;padding:6px 12px;font:inherit;font-weight:700;font-size:calc(13.5px * var(--fs,1));cursor:pointer}
-.qgai-chips button:hover{background:var(--aibg);border-color:var(--ai)}
 .qgai-f{display:flex;align-items:flex-end;gap:8px;padding:10px 14px 8px;border-top:1px solid var(--line,#E1E6F0)}
 .qgai-f textarea{flex:1;resize:none;min-height:44px;max-height:120px;border:1.5px solid var(--line,#D9E0EE);border-radius:14px;padding:10px 14px;font:inherit;font-size:calc(15.5px * var(--fs,1));line-height:1.5;background:var(--bg,#F5F7FC);color:inherit}
 .qgai-f textarea:focus{border-color:var(--ai);outline:none;background:var(--card,#fff)}

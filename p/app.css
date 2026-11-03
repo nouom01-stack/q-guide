@@ -1365,6 +1365,19 @@ sup.ex .fr{font-size:.96em;margin:0 .04em}
 @media (prefers-reduced-motion:reduce){.ru-b,.ru-b::after{transition:none}}
 @media print{.ru-qb,.ru-p{display:none!important}}
 .ru-st bdi,.ru-fb bdi,.ru-n bdi{display:inline-block;max-width:100%}
+/* 📘 قواعد اللفظي: طريقة الحل فوق كل قسم + العنوان الفرعي للأنواع */
+.ru-how{margin:2px 0 6px;background:var(--dotbg);border-radius:12px;padding:10px 14px 6px}
+.ru-how h3{margin:0 0 2px;font-size:calc(14px * var(--fs));font-weight:800;color:var(--royal)}
+.ru-how ol{margin:0;padding:0;list-style:none;counter-reset:hw}
+.ru-how li{counter-increment:hw;position:relative;padding-inline-start:30px;margin:6px 0;font-size:calc(14.5px * var(--fs));line-height:1.85;color:var(--ink)}
+.ru-how li::before{content:counter(hw);position:absolute;inset-inline-start:0;top:.3em;width:21px;height:21px;border-radius:50%;background:var(--card);color:var(--royal);font-weight:800;font-size:calc(12px * var(--fs));display:flex;align-items:center;justify-content:center;line-height:1}
+.ru-how li bdi{display:inline-block;max-width:100%}
+.ru-sub{margin:12px 0 0;font-size:calc(13.5px * var(--fs));font-weight:800;color:var(--mut)}
+.ru-how[hidden],.ru-sub[hidden]{display:none}
+.ru-f.v{font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(15px * var(--fs));line-height:1.7;font-weight:600}
+.rules-v .ru-qq{white-space:pre-line}
+@media print{.ru-how{background:#f3f3f3;padding:6px 10px;margin-bottom:4px}.ru-how li{font-size:11px;margin:2px 0;line-height:1.5}.ru-how li::before{width:16px;height:16px;font-size:9px;top:0}.ru-sub{font-size:11px;margin-top:6px}.ru-f.v{font-size:12px}}
+@media (max-width:640px){.ru-how{padding:9px 12px 4px}}
 
 /* =====================================================================
    v27 — ➕ المشتركون: المالك يضيف إيميلات تدخل الدورة من لوحة الإدارة

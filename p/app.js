@@ -220,7 +220,7 @@
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^board/.test(h)) return 'لوحة الصدارة'; if (h === 'qall' || h === 'vall') return 'الاختبار الشامل'; if (/^t-/.test(h)) return 'التدريب على نقاط ضعفك';
-    return { notes: 'دفتري', rules: 'قوانين الكمي', plan: 'خطة المذاكرة', skills: 'نقاط القوة والضعف', badges: 'الإنجازات', vocab: 'قاموس الكلمات', 'wb-q': 'مذكرة الكمي', 'wb-v': 'مذكرة اللفظي' }[h.replace(/-v\d+$/, '')] || '';
+    return { notes: 'دفتري', rules: 'قوانين الكمي', 'rules-v': 'قواعد اللفظي', plan: 'خطة المذاكرة', skills: 'نقاط القوة والضعف', badges: 'الإنجازات', vocab: 'قاموس الكلمات', 'wb-q': 'مذكرة الكمي', 'wb-v': 'مذكرة اللفظي' }[h.replace(/-v\d+$/, '')] || '';
   }
   function subDlg(what) {
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
@@ -273,7 +273,7 @@
     if (h === 'notes') return renderNotes();
     if (h === 'badges') return renderBadges();
     if (h === 'level') return renderLevel();
-    if (h === 'rules') return renderRules();
+    if (h === 'rules' || h === 'rules-v') return renderRules(h === 'rules-v' ? 'v' : 'q');
     if (h === 'find') return renderFind();
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]$/.test(h)) return renderWorkbook(h.slice(3));
@@ -398,7 +398,7 @@
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
-        <span class="sp"></span><a class="rvid" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener" title="${esc(R.rules.d)}">${YTSVG}<span>${R.rules.t}</span>${R.rules.dur ? `<small>${R.rules.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">كل المقاطع</a>${tab === 'quant' && RULES_ON ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : ''}</div>
+        <span class="sp"></span><a class="rvid" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener" title="${esc(R.rules.d)}">${YTSVG}<span>${R.rules.t}</span>${R.rules.dur ? `<small>${R.rules.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">كل المقاطع</a>${!RULES_ON ? '' : tab === 'quant' ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : '<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>'}</div>
       <div class="sheets" id="grid"></div>
       <h2 class="h2">أدوات المذاكرة</h2>
       <section class="tgroups">
@@ -409,7 +409,7 @@
           ${FR ? lockTool('🏁', 'الاختبار الشامل', 'كل الأسئلة في اختبار واحد متواصل') : `<div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div>`}</div>
         <div class="tg"><h3>تعلّم وراجع</h3>
           ${toolA('#find', '🔎', 'ابحث عن سؤال', FR ? 'اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين' : 'اكتب السؤال أو صوّره ونقولك وين تلقاه', FR ? '<span class="frb">مجاني</span>' : '<span class="beta">جديد</span>', 1)}
-          ${RULES_ON ? toolA('#rules', '📐', 'قوانين الكمي', 'كل القوانين في صفحة وحدة، وتنطبع') : ''}
+          ${RULES_ON ? toolA('#rules', '📐', 'قوانين الكمي', 'القوانين اللي تحتاجها أسئلة الدورة، وتنطبع') + toolA('#rules-v', '📘', 'قواعد اللفظي', 'طرق الحل وأنواع الأسئلة في صفحة وحدة', FR ? '' : '<span class="beta">جديد</span>') : ''}
           ${toolA('#vocab', '📖', 'قاموس الكلمات', 'ترجمة ونطق كل كلمات اللفظي')}
           ${toolA('#notes', '📒', 'دفتري', nMarks ? `${nMarks} سؤال محفوظ مع ملاحظاتك` : 'الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها')}
           ${isStaff ? toolA('#cards', '🃏', 'بطاقات الحفظ', 'احفظ كلمات اللفظي بالبطاقات', '<span class="beta">تجريبي</span>') : ''}</div>
@@ -1219,38 +1219,48 @@
     }
   }
 
-  // ---------- 📐 قوانين الكمي ----------
-  let RULES = null; const RULES_V = 3, RULES_ON = true;
-  async function renderRules() {
-    document.title = 'قوانين الكمي | Q-Guide';
+  // ---------- 📐 قوانين الكمي · 📘 قواعد اللفظي (من أسئلة الدورة) ----------
+  const RULES_V = 4, RULES_ON = true, RU_DATA = {};
+  const RU_CFG = {
+    q: { hash: '#rules', ttl: '📐 قوانين الكمي', h1: 'قوانين الكمي', file: 'rules.json?v=' + RULES_V, yt: () => YT.q.rules,
+      ph: 'ابحث عن قانون: مساحة، نسبة، زاوية، area…', none: 'ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.',
+      intro: n => `${n} قانون وقاعدة تحتاجها أسئلة الدورة، مرتبة حسب الموضوع. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.` },
+    v: { hash: '#rules-v', ttl: '📘 قواعد اللفظي', h1: 'قواعد اللفظي', file: 'rules_v.json?v=1', yt: () => YT.v.rules,
+      ph: 'ابحث: سبب ونتيجة، although، main idea…', none: 'ما لقينا قاعدة بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.',
+      intro: () => 'طريقة الحل في كل نوع من أسئلة اللفظي، وأنواع العلاقات والقرائن والأسئلة اللي تكررت في أسئلة الدورة. تحت كل نوع مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.' } };
+  async function renderRules(kind) {
+    kind = kind === 'v' ? 'v' : 'q'; const C = RU_CFG[kind], VB = kind === 'v';
+    document.title = C.h1 + ' | Q-Guide';
     const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;
-    if (!RULES) { app.innerHTML = topbar(`<span class="ttl">📐 قوانين الكمي</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl();
-      try { RULES = await (await fetch('/p/data/rules.json?v=' + RULES_V)).json(); } catch (e) { app.innerHTML = topbar('', back) + '<div class="center">تعذّر التحميل. <a href="#">رجوع</a></div>'; return; } }
-    if (location.hash !== '#rules') return;
-    const R = YT.q.rules, nItems = RULES.reduce((a, s) => a + s.items.length, 0);
-    app.innerHTML = topbar(`<span class="ttl">📐 قوانين الكمي</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + `<main class="wrap rules">
-      <div class="ru-top"><div><h1>قوانين الكمي</h1><p>${nItems} قانون وقاعدة تحتاجها في القدرات، مرتبة حسب الموضوع${RULES.some(s => s.items.some(x => x.q)) ? '. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك' : ' ومعها أمثلة محلولة'}. تقدر تطبعها أو تحفظها PDF من زر 🖨️.</p></div>
+    if (!RU_DATA[kind]) { app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl();
+      try { RU_DATA[kind] = await (await fetch('/p/data/' + C.file)).json(); } catch (e) { app.innerHTML = topbar('', back) + '<div class="center">تعذّر التحميل. <a href="#">رجوع</a></div>'; return; } }
+    if (location.hash !== C.hash) return;
+    const D = RU_DATA[kind], R = C.yt(), nItems = D.reduce((a, s) => a + s.items.length, 0);
+    const tx = VB ? esc : mx;   // اللفظي نص إنجليزي عادي، والكمي نرسم كسوره وأسسه
+    app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + `<main class="wrap rules${VB ? ' rules-v' : ''}">
+      <div class="ru-top"><div><h1>${C.h1}</h1><p>${C.intro(nItems)}</p></div>
         <a class="rvid" href="${ytUrl(R.id)}" target="_blank" rel="noopener">${YTSVG}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a></div>
-      <div class="ru-bar"><input id="ruq" type="search" placeholder="ابحث عن قانون: مساحة، نسبة، زاوية، area…" autocomplete="off"><span class="mut" id="run"></span></div>
-      <nav class="ru-nav" aria-label="المواضيع">${RULES.map(s => `<a href="#rules" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
-      <div class="ru-cols" id="ruc">${RULES.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2><div class="ru-g">
-        ${s.items.map((x, ii) => `<div class="ru-i" data-s="${si}" data-i="${ii}" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f" dir="ltr">${mx(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span class="eg">e.g.</span> ${mx(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${arFx(x.n)}</div>` : ''}${x.q ? `<div class="ru-qb"><button type="button" class="ru-b" data-m="ex" aria-expanded="false">مثال محلول</button><button type="button" class="ru-b" data-m="pr" aria-expanded="false">سؤال تدريبي</button></div><div class="ru-p" hidden></div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
-      <p class="mut ru-empty" id="rue" hidden>ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.</p></main>`;
+      <div class="ru-bar"><input id="ruq" type="search" placeholder="${C.ph}" autocomplete="off"><span class="mut" id="run"></span></div>
+      <nav class="ru-nav" aria-label="المواضيع">${D.map(s => `<a href="${C.hash}" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
+      <div class="ru-cols" id="ruc">${D.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2>${s.how ? `<div class="ru-how"><h3>طريقة الحل</h3><ol>${s.how.map(t => `<li>${arFx(t)}</li>`).join('')}</ol></div>` : ''}${s.sub ? `<h3 class="ru-sub">${esc(s.sub)}</h3>` : ''}<div class="ru-g">
+        ${s.items.map((x, ii) => `<div class="ru-i" data-s="${si}" data-i="${ii}" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + (VB ? (x.x || '') + ' ' : '') + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f${VB ? ' v' : ''}" dir="ltr">${tx(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span class="eg">e.g.</span> ${tx(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${arFx(x.n)}</div>` : ''}${x.q ? `<div class="ru-qb"><button type="button" class="ru-b" data-m="ex" aria-expanded="false">مثال محلول</button><button type="button" class="ru-b" data-m="pr" aria-expanded="false">سؤال تدريبي</button></div><div class="ru-p" hidden></div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
+      <p class="mut ru-empty" id="rue" hidden>${C.none}</p></main>`;
     bindCtl();
     $('#prn').onclick = () => window.print();
     document.querySelectorAll('.ru-nav a').forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById('ru-' + a.dataset.go); if (el) el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); });
     // مثال محلول / سؤال تدريبي تحت كل قانون (تنبني عند الفتح فقط)
     // سؤال المقارنة: «Quantity A / Quantity B» في عمودين مثل الاختبار
-    const ruQ = t => { const L = String(t).split('\n'), A = L.find(x => /^Quantity A:/.test(x)), B = L.find(x => /^Quantity B:/.test(x));
+    const ruQ = t => { if (VB) return `<div class="ru-qq" dir="ltr">${esc(t)}</div>`;
+      const L = String(t).split('\n'), A = L.find(x => /^Quantity A:/.test(x)), B = L.find(x => /^Quantity B:/.test(x));
       if (!A || !B) return `<div class="ru-qq" dir="ltr">${mx(t)}</div>`;
       const rest = L.filter(x => x !== A && x !== B).join('\n').trim(), v = x => mx(x.replace(/^Quantity [AB]:\s*/, ''));
       return `${rest ? `<div class="ru-qq" dir="ltr">${mx(rest)}</div>` : ''}<div class="ru-cmp" dir="ltr"><div><small>A</small><span>${v(A)}</span></div><div><small>B</small><span>${v(B)}</span></div></div>`; };
-    const ruEx = e => `${ruQ(e.q)}<div class="ru-h">الحل</div><ol class="ru-st${e.s.length < 2 ? ' one' : ''}">${e.s.map(t => `<li>${arFx(t)}</li>`).join('')}</ol><div class="ru-ans"><span>الجواب</span><b dir="ltr">${mx(e.a)}</b></div>`;
-    const ruPr = p => `${ruQ(p.q)}<div class="opts ${p.o.every(o => o.length <= 14) ? 'two' : ''}">${p.o.map((o, k) => `<button type="button" class="opt" data-k="${k}"><span class="L">${LETTERS[k]}</span><span>${mx(o)}</span></button>`).join('')}</div><div class="ru-fb" aria-live="polite"></div>`;
+    const ruEx = e => `${ruQ(e.q)}<div class="ru-h">الحل</div><ol class="ru-st${e.s.length < 2 ? ' one' : ''}">${e.s.map(t => `<li>${arFx(t)}</li>`).join('')}</ol><div class="ru-ans"><span>الجواب</span><b dir="ltr">${tx(e.a)}</b></div>`;
+    const ruPr = p => `${ruQ(p.q)}<div class="opts ${p.o.every(o => o.length <= 14) ? 'two' : ''}">${p.o.map((o, k) => `<button type="button" class="opt" data-k="${k}"><span class="L">${LETTERS[k]}</span><span${VB ? ' dir="ltr"' : ''}>${tx(o)}</span></button>`).join('')}</div><div class="ru-fb" aria-live="polite"></div>`;
     $('#ruc').onclick = e => {
       const b = e.target.closest('.ru-b'), o = e.target.closest('.ru-p .opt');
       if (b) {
-        const card = b.closest('.ru-i'), p = card.querySelector('.ru-p'), on = b.getAttribute('aria-expanded') === 'true', it = RULES[+card.dataset.s].items[+card.dataset.i];
+        const card = b.closest('.ru-i'), p = card.querySelector('.ru-p'), on = b.getAttribute('aria-expanded') === 'true', it = D[+card.dataset.s].items[+card.dataset.i];
         card.querySelectorAll('.ru-b').forEach(x => x.setAttribute('aria-expanded', 'false'));
         if (on) { p.hidden = true; p.innerHTML = ''; return; }
         b.setAttribute('aria-expanded', 'true'); p.className = 'ru-p ' + b.dataset.m;
@@ -1259,14 +1269,15 @@
         return;
       }
       if (o && !o.disabled) {
-        const card = o.closest('.ru-i'), pr = RULES[+card.dataset.s].items[+card.dataset.i].q.pr, k = +o.dataset.k, ok = k === pr.k;
+        const card = o.closest('.ru-i'), pr = D[+card.dataset.s].items[+card.dataset.i].q.pr, k = +o.dataset.k, ok = k === pr.k;
         card.querySelectorAll('.ru-p .opt').forEach(x => { x.disabled = true; const j = +x.dataset.k; if (j === pr.k) x.classList.add('ok'); else if (j === k) x.classList.add('bad'); });
         const fb = card.querySelector('.ru-fb'); fb.className = 'ru-fb ' + (ok ? 'ok' : 'bad');
         fb.innerHTML = `<b>${ok ? '✓ إجابة صحيحة' : `✗ الإجابة الصحيحة ${LETTERS[pr.k]}`}</b><p>${arFx(pr.e)}</p>`;
       }
     };
     const q = $('#ruq'), cnt = $('#run'), paint = () => { const v = q.value.trim().toLowerCase(); let n = 0;
-      document.querySelectorAll('.ru-s').forEach(s => { let k = 0; s.querySelectorAll('.ru-i').forEach(i => { const on = !v || i.dataset.k.indexOf(v) >= 0; i.hidden = !on; if (on) k++; }); s.hidden = !k; n += k; });
+      document.querySelectorAll('.ru-s').forEach(s => { let k = 0; s.querySelectorAll('.ru-i').forEach(i => { const on = !v || i.dataset.k.indexOf(v) >= 0; i.hidden = !on; if (on) k++; }); s.hidden = !k; n += k;
+        s.querySelectorAll('.ru-how,.ru-sub').forEach(x => x.hidden = !!v); });   // وقت البحث نعرض النتائج بس
       cnt.textContent = v ? n + ' نتيجة' : ''; $('#rue').hidden = n > 0; };
     q.oninput = paint;
   }
