@@ -289,7 +289,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
-    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-free' || h === 'admin-ai') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : renderMembers(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -1150,44 +1150,150 @@
     bindSub(R);
     R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
   }
+  // ---------- 🔎 البحث الذكي على الخادم: يقارن سؤالك بكل أسئلة الدورة (والصورة تنقرى هناك) ----------
+  // يقول وين السؤال بالضبط، أو إنه نفسه بصياغة/ترتيب/خيارات/أرقام مختلفة، أو سؤال جديد. لو الخادم ما رد نرجع للبحث المحلي.
+  const FS = {
+    exact: ['ok', '✓', 'السؤال موجود في الدورة بالضبط', 'تلقاه هنا:'],
+    reorder: ['ok', '✓', 'السؤال موجود في الدورة', 'نفس السؤال، بس ترتيب الخيارات مختلف. تلقاه هنا:'],
+    wording: ['ok', '✓', 'السؤال موجود في الدورة', 'نفس الأرقام والخيارات بصياغة مختلفة شوي. تلقاه هنا:'],
+    opts_same: ['mid', '≈', 'نفس السؤال بخيارات مختلفة', 'والإجابة الصحيحة موجودة بين خياراتك. تلقاه هنا:'],
+    opts_diff: ['mid', '≈', 'نفس السؤال، بس الخيارات مختلفة', 'وإجابة سؤال الدورة مو من خياراتك، فتأكد من الخيارات. تلقاه هنا:'],
+    numbers: ['mid', '≈', 'نفس فكرة السؤال بأرقام مختلفة', 'نفس طريقة الحل، بس الإجابة غالباً غير. تلقاه هنا:'],
+    new: ['no', '✕', 'سؤال جديد، ما هو موجود في الدورة', 'أرسله لنا على واتساب ونتواصل معك.'] };
+  const FS_EV = { exact: 'لقاه في الدورة', reorder: 'لقاه في الدورة', wording: 'لقاه في الدورة', opts_same: 'لقى سؤال قريب', opts_diff: 'لقى سؤال قريب', numbers: 'لقى سؤال قريب', new: 'ما لقاه في الدورة' };
+  const fsLoc = r => { let m = String(r).match(/^([qv])(\d+):(\d+)$/); if (m) return { set: m[1] + m[2], i: +m[3], t: `${m[1] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(m[1] + m[2])} · سؤال ${+m[3] + 1}` };
+    m = String(r).match(/^t(\d+):(\d+):(\d+)$/); return m ? { test: +m[1], t: `الاختبار المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}` } : { t: esc(r) }; };
+  const fsLocs = refs => { const L = refs.map(fsLoc); return L.slice(0, 4).map((l, i) => `<span class="fd-loc${i ? '' : ' main'}">${l.t}</span>`).join('') + (L.length > 4 ? `<span class="fd-loc">+ ${L.length - 4} ${L.length - 4 === 1 ? 'مكان ثاني' : 'أماكن ثانية'}</span>` : ''); };
+  const fsMore = n => n === 1 ? 'وفي مكان ثاني' : n === 2 ? 'وفي مكانين ثانيين' : n <= 10 ? `وفي ${n} أماكن ثانية` : `وفي ${n} مكاناً ثانياً`;
+  const fsFreeLoc = it => it.refs.map(fsLoc).find(x => x.set && FREE_SETS.indexOf(x.set) >= 0);
+  const fsTxt = (it, s) => it.s === 'q' ? mx(s) : esc(s);
+  function fsOpen(it, ghost) {
+    const c = ghost ? 'btn ghost' : 'btn', L = it.refs.map(fsLoc);
+    if (isFree()) {
+      const f = fsFreeLoc(it); if (f) return `<a class="${c}" href="#${f.set}@${f.i}">افتح السؤال (مجاني)</a>`;
+      if (it.refs.some(r => /^t1:/.test(r))) return `<a class="${c}" href="/test/">افتح الاختبار المحاكي 1 (مجاني)</a>`;
+      return `<button type="button" class="btn gold" data-sub>🔒 اشترك عشان تحله وتشوف الشرح</button>`;
+    }
+    const l = L.find(x => x.set); if (l) return `<a class="${c}" href="#${l.set}@${l.i}">افتح السؤال</a>`;
+    const t = L.find(x => x.test); return t ? `<a class="${c}" href="/test/">افتح الاختبار المحاكي ${t.test}</a>` : '';
+  }
+  function fsPreview(it) { const l = it.refs.map(fsLoc).find(x => x.set); return fdPreview([it.s, l ? l.set : '', l ? l.i : -1, it.e || it.a || '', it.o || []]); }
+  function fsDiff(r, it) {   // وش الفرق بين سؤالك وسؤال الدورة
+    const d = it.d || {}, q = r.q, rows = [], nums = a => a.map(x => `<bdi dir="ltr">${esc(x)}</bdi>`).join('، ');
+    if (r.status === 'numbers') {
+      if (d.extra && d.miss) rows.push(['🔢', `في سؤالك <b>${nums(d.extra)}</b>، وفي سؤال الدورة <b>${nums(d.miss)}</b>`]);
+      else if (d.extra) rows.push(['🔢', `في سؤالك أرقام مو موجودة في سؤال الدورة: <b>${nums(d.extra)}</b>`]);
+      else if (d.miss) rows.push(['🔢', `سؤال الدورة فيه أرقام مو موجودة في سؤالك: <b>${nums(d.miss)}</b>`]);
+      if (d.ops) rows.push(['➗', 'فيه إشارة أو عملية مختلفة في المعادلة (مثل + بدل ×، أو سالب بدل موجب)']);
+    } else if (d.miss && !d.extra) rows.push(['🖼️', `سؤال الدورة فيه أرقام ما ذكرتها: <b>${nums(d.miss)}</b> (غالباً في الرسم)`]);
+    if (d.swap) rows.push(['⇄', 'القيمة A والقيمة B مبدّلة بين سؤالك وسؤال الدورة، فانتبه للإجابة']);
+    if (d.qx && d.qx.length && /^opts_/.test(r.status)) rows.push(['🔤', `${d.qx.length === 1 ? 'خيار في سؤالك مو موجود' : 'خيارات في سؤالك مو موجودة'} في سؤال الدورة: ${d.qx.map(i => `<b><bdi dir="ltr">${LETTERS[i]}) ${fsTxt(it, q.opts[i] || '')}</bdi></b>`).join('، ')}`]);
+    return rows.length ? `<ul class="fd-diff">${rows.map(x => `<li><span aria-hidden="true">${x[0]}</span><p>${x[1]}</p></li>`).join('')}</ul>` : '';
+  }
+  function fsAns(r, it) {   // الإجابة (مخفية لين يضغط) — بحرف سؤاله هو لو نقدر
+    if (it.k == null || !it.o || !it.o.length) return '';
+    const d = it.d || {}, q = r.q, same = /^(exact|reorder|wording|opts_same)$/.test(r.status);
+    let a;
+    if (same && d.ansAt >= 0 && (q.opts[d.ansAt] || it.o[d.ansAt]) != null) {
+      const o = q.opts[d.ansAt] && !/^\s*[a-d]\s*$/i.test(q.opts[d.ansAt]) ? q.opts[d.ansAt] : it.o[d.ansAt];   // خيارات المقارنة المختصرة (A / B) نعرضها بنص الدورة
+      a = `الإجابة الصحيحة في سؤالك: <b><bdi dir="ltr">${LETTERS[d.ansAt]}) ${fsTxt(it, o)}</bdi></b>${d.ansAt !== it.k && !d.swap ? ` <small>(في الدورة حرفها ${LETTERS[it.k]})</small>` : ''}`;
+    } else a = `${r.status === 'numbers' ? 'إجابة سؤال الدورة (بأرقامه هو)' : 'إجابة سؤال الدورة'}: <b><bdi dir="ltr">${LETTERS[it.k]}) ${fsTxt(it, it.o[it.k])}</bdi></b>${r.status === 'opts_diff' ? ' — ومو موجودة بين خياراتك' : ''}`;
+    return `<div class="fd-ans"><button type="button" class="btn ghost sm" data-ans aria-expanded="false">👁️ اعرض الإجابة</button><p hidden>${a}</p></div>`;
+  }
+  function fsItem(it) {   // سطر في «أسئلة قريبة»
+    const L = it.refs.map(fsLoc), l = L.find(x => x.set), more = it.refs.length > 1 ? `<small>${fsMore(it.refs.length - 1)}</small>` : '';
+    if (isFree()) {
+      const f = fsFreeLoc(it), body = `<span class="fd-it-h"><span class="fd-loc main">${L[0].t}</span>${more}<span class="fd-lk${f ? ' fr' : ''}">${f ? 'مجاني' : '🔒 للمشتركين'}</span></span>`;
+      return f ? `<a class="fd-it" href="#${f.set}@${f.i}">${body}</a>` : `<button type="button" class="fd-it" data-sub>${body}</button>`;
+    }
+    const body = `<span class="fd-it-h"><span class="fd-loc main">${L[0].t}</span>${more}</span><span class="fd-it-q ltr">${fsTxt(it, it.e || it.a || '')}</span>${(it.o || []).length ? `<span class="fd-it-o ltr">${it.o.map((o, j) => `<b>${LETTERS[j]}</b> ${fsTxt(it, o)}`).join('<i>·</i>')}</span>` : ''}`;
+    return l ? `<a class="fd-it" href="#${l.set}@${l.i}">${body}</a>` : `<div class="fd-it">${body}</div>`;
+  }
+  function fdImgs(R) {   // صورة سؤال الكمي من ملف القسم (نفس الصورة اللي يشوفها في الدورة)
+    R.querySelectorAll('.fd-pv[data-img]').forEach(async el => { const [sid, i] = (el.dataset.img || '').split(':'); if (!sid || el.classList.contains('has-img')) return;
+      try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
+  }
+  function fsShow(R, r, q, img, kind) {
+    if (!$('#fdr')) return;
+    const S = FS[r.status] || FS.new, free = isFree(), it = r.best, wa = fdWaBtn(q, img, (it && it.s) || kind);
+    if (window.QGT) QGT.ev('find', FS_EV[r.status] || 'ما لقاه في الدورة', img ? 1 : 0);
+    let h = `<div class="fd-res ${S[0]}"><div class="fd-h"><span class="ic" aria-hidden="true">${S[1]}</span><div><b>${S[2]}</b><small>${S[3]}</small></div></div>`;
+    if (it) {
+      h += `<div class="fd-locs">${fsLocs(it.refs)}</div>${fsDiff(r, it)}`;
+      if (free) h += fsFreeLoc(it) ? '' : `<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
+      else h += fsPreview(it) + fsAns(r, it);
+      h += `<div class="fd-acts">${fsOpen(it)}</div>`;
+      if (r.alts && r.alts.length) h += `<div class="fd-alt"><h4>${r.alts.length > 1 ? 'أو يمكن يكون واحد من هذي:' : 'أو يمكن يكون هذا:'}</h4>${r.alts.map(a => `<div class="fd-ai"><div class="fd-locs">${fsLocs(a.refs)}</div>${free ? '' : fsPreview(a)}<div class="fd-acts">${fsOpen(a, true)}</div></div>`).join('')}</div>`;
+      if (S[0] !== 'ok') h += `<div class="fd-acts fd-wa"><span class="fd-or">تبي نتأكد لك؟ أرسله لنا:</span>${wa}</div>`;
+    } else h += `<div class="fd-acts">${wa}</div>`;
+    if (r.similar && r.similar.length) h += `<div class="fd-near"><h4>${it ? 'أسئلة قريبة منه في الدورة' : 'أقرب الأسئلة له في الدورة — يمكن تفيدك'}</h4><div class="fd-list">${r.similar.map(fsItem).join('')}</div></div>`;
+    R.innerHTML = h + '</div>';
+    bindSub(R); fdImgs(R);
+    R.querySelectorAll('[data-ans]').forEach(b => b.onclick = () => { const p = b.nextElementSibling; p.hidden = !p.hidden; b.setAttribute('aria-expanded', !p.hidden); b.textContent = p.hidden ? '👁️ اعرض الإجابة' : '🙈 اخفِ الإجابة'; });
+    R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
+  }
+  async function fsImgData(file) {   // نصغّر الصورة (أطول ضلع 1600) ونرسلها JPEG
+    if (typeof createImageBitmap !== 'function') return file.size < 3.2e6 ? await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(file); }) : null;
+    const bmp = await createImageBitmap(file), m = Math.max(bmp.width, bmp.height), sc = m > 1600 ? 1600 / m : 1;
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.86);
+  }
   async function renderFind() {
     document.title = 'ابحث عن سؤال | Q-Guide';
     let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '';
     app.innerHTML = topbar(`<span class="ttl">🔎 ابحث عن سؤال</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap fd">
-      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك في أي قسم تلقاه.${isFree() ? ' حله وشرحه للمشتركين.' : ''}</p></div>
+      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك وين تلقاه بالضبط، أو إذا هو نفسه بأرقام أو خيارات مختلفة، أو سؤال جديد.${isFree() ? ' حله وشرحه للمشتركين.' : ''}</p></div>
       <div class="fd-box">
         <div class="seg" id="fdk" role="tablist" aria-label="نوع السؤال"><button type="button" role="tab" data-k="q" class="${kind === 'q' ? 'on' : ''}" aria-selected="${kind === 'q'}">📐 الكمي</button><button type="button" role="tab" data-k="v" class="${kind === 'v' ? 'on' : ''}" aria-selected="${kind === 'v'}">📖 اللفظي</button></div>
         <label class="fd-l" for="fdq">نص السؤال</label>
         <textarea id="fdq" dir="ltr" rows="5" spellcheck="false" placeholder="Paste the question here… (with the choices if you can)"></textarea>
         <div class="fd-img" id="fdpv" hidden><img id="fdth" alt=""><span id="fdst"></span><button type="button" class="ib" id="fdx" title="إزالة الصورة">✕</button></div>
         <div class="fd-acts"><label class="btn ghost" id="fdil" for="fdimg">📷 صورة السؤال</label><input type="file" id="fdimg" accept="image/*" hidden><button type="button" class="btn" id="fdgo">🔎 ابحث</button></div>
-        <p class="fd-hint">اكتب السؤال كامل، أو كلمات منه بس (مثل <bdi dir="ltr">circle area</bdi>) ونطلع لك الأسئلة المشابهة. وتقدر تصوّره وحنا نقرأ النص من الصورة على جهازك.</p>
+        <p class="fd-hint">اكتب السؤال كامل مع الخيارات، أو صوّره (مع الرسم والخيارات) ونقراه لك. وتقدر تكتب كلمات منه بس (مثل <bdi dir="ltr">circle area</bdi>) ونطلع لك الأسئلة اللي فيها.</p>
       </div>
       <div id="fdr" aria-live="polite"></div></main>`;
     bindCtl();
     const ta = $('#fdq'), R = $('#fdr'), go = $('#fdgo'), pv = $('#fdpv'), st = $('#fdst'), inp = $('#fdimg');
-    if (!fdCanOcr()) { $('#fdil').hidden = true; }
-    (isFree() ? fdLoadPub() : fdLoad()).catch(() => {});   // نجهّز الفهرس من البداية
+    (isFree() ? fdLoadPub() : fdLoad()).catch(() => {});   // نجهّز الفهرس المحلي (للكلمات، ولو الخادم ما رد)
+    const call = p => api(Object.assign({ op: 'find', session: auth.session, kind }, p)).catch(() => null);
     $('#fdk').onclick = e => { const b = e.target.closest('button[data-k]'); if (!b || b.dataset.k === kind) return; kind = b.dataset.k; lsSet('qg_find_k', kind); $('#fdk').querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); if (ta.value.trim()) run(); };
     ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); run(); } };   // Enter يبحث · Shift+Enter سطر جديد
     ta.oninput = () => { if (usedImg && ocrTxt && !ta.value.includes(ocrTxt.slice(0, 24))) { pv.hidden = true; usedImg = false; ocrTxt = ''; } };   // كتب سؤال ثاني بدل نص الصورة
     go.onclick = () => run();
     $('#fdx').onclick = () => { pv.hidden = true; usedImg = false; ocrTxt = ''; inp.value = ''; };
+    async function localOcr(f) {   // احتياط: قراءة الصورة على جهاز الطالب لو الخادم ما قدر
+      if (!fdCanOcr()) return '';
+      st.innerHTML = '<span class="spin sm"></span> ' + (lsGet('qg_ocr_ok', 0) ? 'نقرأ الصورة على جهازك…' : 'نجهّز قارئ الصور على جهازك (حوالي 5 ميجا) ثم نقرأ الصورة…');
+      try { const t = (await fdOcrRun(await fdPrep(f))).replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim(); if (t.replace(/[^A-Za-z0-9ء-ي]/g, '').length >= 12) { lsSet('qg_ocr_ok', 1); return t; } } catch (e) {}
+      return '';
+    }
     inp.onchange = async () => {
       const f = inp.files && inp.files[0]; if (!f) return;
       usedImg = true; pv.hidden = false; pv.className = 'fd-img busy'; $('#fdth').src = URL.createObjectURL(f); go.disabled = true;
-      st.innerHTML = '<span class="spin sm"></span> ' + (lsGet('qg_ocr_ok', 0) ? 'جارٍ قراءة الصورة…' : 'أول مرة: نجهّز قارئ الصور (حوالي 5 ميجا) ثم نقرأ الصورة…');
+      st.innerHTML = '<span class="spin sm"></span> نقرأ السؤال من الصورة…';
+      R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقرأ الصورة ونقارنها بكل أسئلة الدورة…</div>`;
       try {
-        const text = (await fdOcrRun(await fdPrep(f))).replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim();
-        if (text.replace(/[^A-Za-z0-9ء-ي]/g, '').length < 12) { pv.className = 'fd-img bad'; st.textContent = 'ما قدرنا نقرأ نص واضح من الصورة. جرّب صورة أوضح أو اكتب السؤال.'; return; }
-        lsSet('qg_ocr_ok', 1); ta.value = ocrTxt = text; pv.className = 'fd-img ok'; st.textContent = '✓ قرينا النص من الصورة — صحّحه فوق إذا فيه خطأ'; run();
-      } catch (e) { pv.className = 'fd-img bad'; st.textContent = 'تعذّرت قراءة الصورة على جهازك. اكتب السؤال بدلها.'; }
-      finally { go.disabled = false; inp.value = ''; }
+        let data = null; try { data = await fsImgData(f); } catch (e) {}
+        const r = data ? await call({ img: data }) : null;
+        if (r && r.ok) { ta.value = ocrTxt = r.text || ''; pv.className = 'fd-img ok'; st.textContent = '✓ قرينا السؤال من الصورة — لو فيه خطأ صحّحه فوق واضغط ابحث'; fsShow(R, r, ocrTxt, true, kind); return; }
+        if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
+        if (r && r.error === 'noq') { pv.className = 'fd-img bad'; st.textContent = r.msg; R.innerHTML = ''; return; }
+        const why = r && r.error === 'limit' ? r.msg : '';
+        const t = await localOcr(f);
+        if (!t) { pv.className = 'fd-img bad'; st.textContent = why || 'تعذّرت قراءة الصورة الحين. جرّب صورة أوضح أو اكتب السؤال.'; R.innerHTML = ''; return; }
+        ta.value = ocrTxt = t; pv.className = 'fd-img ok'; st.textContent = (why ? why + ' ' : '') + '✓ قرينا النص على جهازك — صحّحه فوق إذا فيه خطأ'; run(true);
+      } finally { go.disabled = false; inp.value = ''; }
     };
-    async function run() {
+    async function run(fromImg) {
       const q = ta.value.trim(), T = fdToks(q), words = T.en.filter(w => w[0] !== '_').length + T.ar.length, full = words >= 6 || q.length >= 60;
       if (!words && T.nu.length < 2) { R.innerHTML = `<div class="fd-res tip"><p>اكتب كلمة أو أكثر من السؤال (مثل <bdi dir="ltr">probability</bdi> أو <bdi dir="ltr">circle area</bdi>)، أو السؤال كامل.</p></div>`; ta.focus(); return; }
-      R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نبحث في ${kind === 'q' ? 'أسئلة الكمي' : 'أسئلة اللفظي'}…</div>`;
+      R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقارن سؤالك بكل أسئلة الدورة…</div>`;
+      if (full) {   // سؤال كامل: محرك المقارنة على الخادم
+        const r = await call({ text: q });
+        if (r && r.ok) return fsShow(R, r, q, usedImg || fromImg, kind);
+        if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
+      }
       if (isFree()) return fdRunPub(R, q, kind, full, usedImg);   // 🆓 الزائر: المكان فقط
       let ix; try { ix = await fdLoad(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
       if (!$('#fdr')) return;
@@ -1217,9 +1323,7 @@
           : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو أرسله لنا على واتساب.</small></div></div><div class="fd-acts">${wa}</div></div>`;
         show(); const mb = $('#fdmore'); if (mb) mb.onclick = () => { shown += 10; show(); };
       }
-      // صورة سؤال الكمي من ملف القسم (نفس الصورة اللي يشوفها في الدورة)
-      R.querySelectorAll('.fd-pv[data-img]').forEach(async el => { const [sid, i] = (el.dataset.img || '').split(':'); if (!sid) return;
-        try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
+      fdImgs(R);
       R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
     }
   }
@@ -1844,7 +1948,7 @@
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
@@ -1964,6 +2068,28 @@
     return { items, bad };
   }
   // ---------- 🆓 الزوار (حسابات مجانية): للمالك — العدد والإيميلات للتسويق ----------
+  // 🔎 عمليات «ابحث عن سؤال»: وش يبحث عنه الطلاب، والأسئلة الجديدة اللي ما هي في الدورة
+  const FL_ST = { exact: ['ok', 'موجود بالضبط'], reorder: ['ok', 'موجود · ترتيب الخيارات غير'], wording: ['ok', 'موجود بصياغة ثانية'], opts_same: ['mid', 'خيارات مختلفة · الإجابة نفسها'],
+    opts_diff: ['mid', 'خيارات مختلفة · الإجابة غير'], numbers: ['mid', 'أرقام مختلفة'], new: ['no', 'سؤال جديد'], keywords: ['sim', 'كلمات'] };
+  async function renderFindLog() {
+    document.title = 'البحث عن الأسئلة | Q-Guide';
+    let only = lsGet('qg_fl_only', '');
+    const draw = async () => {
+      app.innerHTML = admTop('find'); bindCtl(); $('#admref').onclick = draw;
+      let r; try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } r = await admCall({ op: 'adm_find_log', only, limit: 150 }); }
+      catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+      if (location.hash !== '#admin-find') return;
+      const c = {}; (r.last30 || []).forEach(x => { c[x.status] = x.n; }); const tot = Object.values(c).reduce((a, x) => a + x, 0);
+      const found = (c.exact || 0) + (c.reorder || 0) + (c.wording || 0), near = (c.opts_same || 0) + (c.opts_diff || 0) + (c.numbers || 0);
+      const row = x => { const S = FL_ST[x.status] || ['sim', x.status], loc = x.ref ? fsLoc(x.ref).t : '';
+        return `<div class="fl-row"><div class="fl-h"><span class="fl-st ${S[0]}">${S[1]}</span><span class="fl-src" title="${x.src === 'img' ? 'بحث بصورة' : 'بحث بنص'}">${x.src === 'img' ? '📷' : '⌨️'}</span>${loc ? `<span class="fl-loc">${loc}</span>` : ''}<small>${arAgo(x.ts)} · ${esc(x.name || x.email)}${x.free ? ' · زائر' : ''}</small></div><p class="fl-q ltr">${esc(x.q)}</p></div>`; };
+      $('#adm').innerHTML = `<div class="fl"><div class="fl-sum"><div><b>${tot}</b><span>بحث في آخر 30 يوم</span></div><div class="ok"><b>${found}</b><span>لقيناها في الدورة</span></div><div class="mid"><b>${near}</b><span>نفسها بأرقام أو خيارات ثانية</span></div><div class="no"><b>${c.new || 0}</b><span>أسئلة جديدة</span></div></div>
+        <div class="seg fl-f" role="tablist"><button type="button" data-o="" class="${only ? '' : 'on'}" aria-selected="${!only}">كل عمليات البحث</button><button type="button" data-o="new" class="${only ? 'on' : ''}" aria-selected="${!!only}">اللي ما لقيناها بالضبط</button></div>
+        ${r.rows.length ? `<div class="fl-list">${r.rows.map(row).join('')}</div>` : `<div class="sum">${only ? 'ما فيه أسئلة جديدة للحين 👌' : 'ما أحد بحث للحين.'}</div>`}</div>`;
+      $('#adm').querySelectorAll('.fl-f button').forEach(b => b.onclick = () => { only = b.dataset.o; lsSet('qg_fl_only', only); draw(); });
+    };
+    draw();
+  }
   async function renderFreeUsers() {
     document.title = 'الزوار | Q-Guide';
     const top = () => { app.innerHTML = admTop('free'); bindCtl(); $('#admref').onclick = () => { ADM.free = null; renderFreeUsers(); }; };
