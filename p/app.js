@@ -285,7 +285,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
-    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-free') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : renderMembers(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-free' || h === 'admin-ai') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -618,7 +618,7 @@
       <div class="acts"><button class="btn ghost sm" id="prev" ${i === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span>
       ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : nextOpen(i) < 0 ? 'النتيجة 🏁' : 'التالي ←'}</button>` : `${nextOpen(i) >= 0 ? '<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>' : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
       <div class="kbd" style="margin-top:8px">${a ? 'Enter للتالي' : 'اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد'}</div></div>`;
-    $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' }); if (window.QGAI) QGAI.fill($('#pm'));
     bindWords();
     const qd = $('#qtr'); if (qd) qd.addEventListener('toggle', () => lsSet(QTR_LS, qd.open ? 1 : 0));
     $('#mkS').onclick = e => { const b = e.currentTarget, c = markOf(mkSrc, mkI), on = !(c && c.s); markSet(mkSrc, mkI, { s: on ? 1 : 0 }); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); toast(on ? '⭐ انحفظ السؤال في دفتري' : 'انشال السؤال من دفتري'); badgeCheckSoon(); };
@@ -638,8 +638,16 @@
       ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
       ${ok ? `<button class="lnk exshow" type="button" onclick="this.nextElementSibling.classList.toggle('on');this.textContent=this.nextElementSibling.classList.contains('on')?'إخفاء الشرح ▴':'عرض الشرح والترجمة ▾'">عرض الشرح والترجمة ▾</button><div class="exwrap">` : ''}
       ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}
+      ${aiSlot(it, a)}
       ${ytLink(it)}
       ${P && P.set.kind === 'verbal' ? trHtml(it) : ''}${ok ? '</div>' : ''}</div>`;
+  }
+  // 🤖 «اشرح لي أكثر»: مرجع السؤال في بنك المساعد = القسم/النموذج الأصلي + ترتيبه فيه
+  function aiSlot(it, a) {
+    if (!window.QGAI || !P || !a) return ''; const src = it.src || P.id, idx = it.sidx != null ? it.sidx : P.cur;
+    if (!/^[qv]\d{1,2}$/.test(src)) return '';
+    const wrong = a.s !== it.ans;
+    return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: `سؤال ${P.cur + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? ` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
   }
   function ytLink(it) {
     const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';
@@ -762,7 +770,7 @@
     try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
     document.querySelectorAll('.opt').forEach(b => { b.disabled = true; b.classList.remove('sel'); const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
     if (!RM()) { const btn = document.querySelector(`.opt[data-k="${k}"]`); if (btn) { if (good) burst(btn.querySelector('.L') || btn); else btn.classList.add('shake'); } }
-    $('#fb').innerHTML = feedback(it, P.prog.a[i]);
+    $('#fb').innerHTML = feedback(it, P.prog.a[i]); if (window.QGAI) QGAI.fill($('#fb'));
     const sk = $('#skip'); if (sk) sk.remove();
     const nxo = nextOpen(i);   // بعد الإجابة: التالي = أقرب سؤال ما جاوبته، والنتيجة لما تخلص كل الأسئلة
     const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${nxo < 0 ? 'النتيجة 🏁' : 'التالي ←'}</button>`; $('#next').onclick = () => { if (nxo >= 0) showQ(nxo); else finish(); }; }
@@ -1819,7 +1827,7 @@
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
@@ -1962,6 +1970,44 @@
         <span class="meta"><small>أول دخول: ${fmtD(x.created_at)}</small><small>آخر دخول: <b>${fmtD(x.last_at)}</b> (${x.logins} مرة)</small></span></div>`).join('') || `<div class="sempty">${F.rows.length ? 'لا نتائج' : 'ما دخل أي زائر للحين.'}</div>`}</div></div>`;
     $('#fcopy').onclick = async () => { const em = leads.map(x => x.email).join('\n'); try { await navigator.clipboard.writeText(em); toast('انسخت ' + leads.length + ' إيميل ✓'); } catch (e) { QGDlg.alert(em); } };
     const fq = $('#fq'); if (fq) fq.oninput = e => { ADM.fq = e.target.value; const pos = e.target.selectionStart; paintFree(); const i = $('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
+  }
+  // ---------- 🤖 المساعد الذكي: للمالك — التشغيل والحدود وآخر الشروحات وبلاغات الطلاب ----------
+  const AI_MODE = { off: ['⏸ متوقف', 'ما يظهر زر «اشرح لي» لأحد'], owner: ['🧪 تجربة', 'يظهر لك وللمشرفين بس'], on: ['✅ مفتوح للجميع', 'المشتركين والزوار حسب الحد اليومي'] };
+  async function renderAiAdmin() {
+    document.title = 'المساعد الذكي | Q-Guide';
+    const top = () => { app.innerHTML = admTop('ai'); bindCtl(); $('#admref').onclick = () => { ADM.ai = null; renderAiAdmin(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.ai) ADM.ai = await admCall({ op: 'adm_ai', flagged: !!ADM.aiF }); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-ai') return;
+    top(); paintAi();
+  }
+  function aiRefLabel(ref) {
+    let m = ref.match(/^q(\d+):(\d+)$/); if (m) return `الكمي · القسم ${m[1]} · سؤال ${+m[2] + 1}`;
+    m = ref.match(/^v(\d+):(\d+)$/); if (m) return `اللفظي · النموذج ${m[1]} · سؤال ${+m[2] + 1}`;
+    m = ref.match(/^t(\d+):(\d):(\d+)$/); if (m) return `المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}`;
+    return ref;
+  }
+  function paintAi() {
+    const W = $('#adm'); if (!W || !ADM.ai) return; const A = ADM.ai, S = A.set;
+    const nr = A.today.nr || 0, usd = Math.max(0, nr - 10000) * 0.011 / 1000;   // Cloudflare: أول 10,000 وحدة يومياً مجانية، وبعدها 0.011$ لكل 1000 وحدة
+    W.innerHTML = `<div class="stf aiadm">
+      ${A.on ? '' : '<div class="sum warn">⚠️ ربط الذكاء الاصطناعي (Workers AI) ما هو مفعّل في الخادم.</div>'}
+      <div class="fstats"><div><b>${A.today.n}</b><span>شرح اليوم</span></div><div><b>${A.today.u}</b><span>طالب استخدمه اليوم</span></div><div><b>${A.week.n}</b><span>شرح آخر 7 أيام</span></div><div class="${A.flagged ? 'bad' : ''}"><b>${A.flagged}</b><span>بلاغ «الشرح فيه غلط»</span></div></div>
+      <p class="aicost">استهلاك اليوم: <b dir="ltr">${nr.toLocaleString('en')}</b> وحدة من <span dir="ltr">10,000</span> مجانية يومياً${usd > 0 ? ` · التكلفة الزائدة <b dir="ltr">$${usd.toFixed(2)}</b> <small>(حوالي ${(usd * 3.75).toFixed(2)} ريال)</small>` : ' <small>(ما فيه تكلفة زائدة)</small>'}</p>
+      <section class="aiset"><h3 class="sh">الإعدادات</h3>
+        <div class="aimode" role="radiogroup" aria-label="حالة المساعد">${Object.entries(AI_MODE).map(([k, [t, d]]) => `<label class="${S.mode === k ? 'on' : ''}"><input type="radio" name="aimode" value="${k}" ${S.mode === k ? 'checked' : ''}><b>${t}</b><small>${d}</small></label>`).join('')}</div>
+        <div class="airow"><label><span>شروحات المشترك في اليوم</span><input type="number" id="aipaid" min="0" max="200" inputmode="numeric" value="${S.paid}"></label><label><span>شروحات الزائر في اليوم</span><input type="number" id="aifree" min="0" max="50" inputmode="numeric" value="${S.free}"></label><label><span>النموذج</span><select id="aimodel">${Object.entries(A.models).map(([k, v]) => `<option value="${k}" ${k === S.model ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>
+        <div class="aiact"><button class="btn" id="aisave">حفظ الإعدادات</button><span class="mut">الشرح الأول للسؤال ينحسب من رصيد الطالب، وأسئلة المتابعة على نفس السؤال (لين ${esc(String(S.follow))}) ما تنحسب.</span></div></section>
+      <div class="aihd"><h3 class="sh">آخر الشروحات <small>${A.logs.length}</small></h3><label class="aiflt"><input type="checkbox" id="aiflg" ${ADM.aiF ? 'checked' : ''}> البلاغات بس</label></div>
+      <div class="ailog">${A.logs.map(l => { const m = l.ref.match(/^([qv]\d+):(\d+)$/);
+        return `<details class="ailg${l.flag ? ' fl' : ''}"><summary><span class="who"><b>${esc(l.who)}</b><small>${fmtD(l.ts)}</small></span><span class="ref">${esc(aiRefLabel(l.ref))}</span><span class="fq${l.turn > 1 ? '' : ' first'}">${l.turn > 1 ? `سؤال متابعة: «${esc(l.q)}»` : 'أول شرح'}</span>${l.flag ? '<span class="rbdg flg">🚩 بلاغ</span>' : ''}</summary>
+          <div class="aian">${window.QGAI ? QGAI.render(l.a) : esc(l.a)}</div><div class="aimeta"><span dir="ltr">${esc(String(l.model || '').split('/').pop())}</span><span>${(l.ms / 1000).toFixed(1)} ث</span>${m ? `<a href="#${m[1]}@${m[2]}">افتح السؤال ←</a>` : ''}</div></details>`; }).join('') || `<div class="sempty">${ADM.aiF ? 'ما فيه بلاغات 👍' : 'ما استخدم أحد المساعد للحين.'}</div>`}</div></div>`;
+    W.querySelectorAll('input[name=aimode]').forEach(r => r.onchange = () => W.querySelectorAll('.aimode label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)));
+    $('#aisave').onclick = async e => { const b = e.currentTarget; b.disabled = true;
+      try { const mode = (W.querySelector('input[name=aimode]:checked') || {}).value; ADM.ai = await admCall({ op: 'adm_ai_set', flagged: !!ADM.aiF, set: { mode, paid: +$('#aipaid').value, free: +$('#aifree').value, model: $('#aimodel').value } });
+        if (window.QGAI) QGAI.status(true); paintAi(); toast('انحفظت إعدادات المساعد ✓'); } catch (er) { toast(er.message); b.disabled = false; } };
+    $('#aiflg').onchange = e => { ADM.aiF = e.target.checked; ADM.ai = null; renderAiAdmin(); };
   }
   async function renderMembers() {
     document.title = 'المشتركون | Q-Guide';
@@ -2597,6 +2643,8 @@
     }).join('');
   }
 
+  // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
+  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg(''), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });
   applyFs(); applyTheme();
   if (!gsiFromHash()) route();
 })();
