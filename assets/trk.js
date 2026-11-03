@@ -6,13 +6,13 @@
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
   const host = u => { try { return new URL(u).hostname.replace(/^(www|m|l|lm|mobile)\./, ''); } catch (e) { return ''; } };
   // من وين جاء: utm_source أو الموقع اللي فتح منه الرابط
+  const M = [[/tiktok/, 'TikTok'], [/instagram|^ig$|^insta$/, 'Instagram'], [/youtube|youtu\.be|^yt$/, 'YouTube'], [/snapchat|^snap$/, 'Snapchat'], [/(^|\.)t\.co$|twitter|(^|\.)x\.com$|^x$/, 'X'],
+    [/whatsapp|wa\.me|^wa$/, 'WhatsApp'], [/telegram|(^|\.)t\.me$/, 'Telegram'], [/facebook|(^|\.)fb\.|^fb$/, 'Facebook'], [/google\./, 'Google'], [/bing\./, 'Bing']];
+  const known = h => { for (const [re, n] of M) if (re.test(h)) return n; return ''; };
   function srcOf(ref, utm) {
-    if (utm) return String(utm).replace(/[^\w؀-ۿ .-]/g, '').slice(0, 30);
+    if (utm) return known(String(utm).trim().toLowerCase()) || String(utm).replace(/[^\w؀-ۿ .-]/g, '').slice(0, 30);   // ?utm_source=tiktok → TikTok
     const h = host(ref); if (!h || /q-guide\.online$|localhost|127\.0\.0\.1|workers\.dev$|accounts\.google\.com$/.test(h)) return '';
-    const M = [[/tiktok/, 'TikTok'], [/instagram/, 'Instagram'], [/youtube|youtu\.be/, 'YouTube'], [/snapchat/, 'Snapchat'], [/(^|\.)t\.co$|twitter|(^|\.)x\.com$/, 'X'],
-      [/whatsapp|wa\.me/, 'WhatsApp'], [/telegram|(^|\.)t\.me$/, 'Telegram'], [/facebook|(^|\.)fb\./, 'Facebook'], [/google\./, 'Google'], [/bing\./, 'Bing']];
-    for (const [re, n] of M) if (re.test(h)) return n;
-    return h.slice(0, 30);
+    return known(h) || h.slice(0, 30);
   }
   // أول مصدر جاء منه قبل ما يسجّل (يبقى محفوظ على جهازه)
   try { const u = new URLSearchParams(location.search), s = srcOf(document.referrer, u.get('utm_source')); if (s && !lsGet(SRC, null)) localStorage.setItem(SRC, JSON.stringify({ s, t: Date.now() })); } catch (e) {}
