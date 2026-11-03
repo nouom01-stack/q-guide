@@ -2497,7 +2497,7 @@
         </section>
         <ul class="ar-rules">
           <li><b>20</b><span>سؤال بالتناوب: لفظي ثم كمي</span></li>
-          <li><b>35 <small>ث</small> · 70 <small>ث</small></b><span>وقت السؤال اللفظي ثم الكمي</span></li>
+          <li><b>35 <small>ث</small> · 50 <small>ث</small></b><span>وقت السؤال اللفظي ثم الكمي</span></li>
           <li><b><bdi dir="ltr">+16</bdi></b><span>تقريباً لكل فوز على خصم بنفس مستواك</span></li>
         </ul>
         <div class="ar-cols">
@@ -2597,6 +2597,9 @@
       case 'go': AR.goAt = m.at; return arCount();
       case 'q': return arSeq(() => arOpen1(m.i, m.k).catch(() => {}).then(() => arQ(m)));
       case 'opans': if (m.i === AR.i) { AR.opA = true; arOpStatus(); } return;
+      case 'nudge': return arNudged(m);
+      case 'nudged': AR.ndNext = m.next; return arNudgeBtn();   // وقت الخادم (نفس مقياس arNow)
+      case 'nudgeno': if (m.why === 'wait') AR.ndNext = m.next; else if (m.why === 'answered' && m.i === AR.i) AR.opA = true; else if (m.why === 'gone') AR.opGone = true; return arOpStatus();
       case 'rev': return arSeq(() => arRev(m));
       case 'opleft': AR.opGone = true; arOpStatus(); return;
       case 'opback': AR.opGone = false; arOpStatus(); return;
@@ -2609,7 +2612,7 @@
 
   // ---------- المباراة ----------
   async function arMatch(m) {
-    if (!AR.m || AR.m.m !== m.m) { AR.B = null; AR.items = []; AR.T = null; AR.qc = null; AR.pendQ = null; }   // مباراة جديدة
+    if (!AR.m || AR.m.m !== m.m) { AR.B = null; AR.items = []; AR.T = null; AR.qc = null; AR.pendQ = null; AR.ndNext = 0; }   // مباراة جديدة
     AR.m = m; AR.st = 'vs'; AR.end = null; AR.retry = 0; AR.opGone = false;
     AR.sc = m.sc || [0, 0]; AR.hist = m.hist || m.refs.map(() => null); AR.i = m.resume ? m.i : -1;
     if (location.hash !== '#arena') history.replaceState(null, '', '#arena');
@@ -2632,15 +2635,17 @@
         <div class="ar-sb" id="arsb">
           <div class="ar-pl me">${avatarHtml(me.a || myN.a, myN.n, 44)}<span class="ar-pn"><b>أنت</b><small id="arms">${me.r}</small></span><b class="ar-ps" id="ars0">${AR.sc[0]}</b></div>
           <div class="ar-mid"><span class="ar-qc" id="arqc">${AR.i >= 0 ? AR.i + 1 : '–'}<small>/${m.refs.length}</small></span><span class="ar-tm" id="artm">--</span></div>
-          <div class="ar-pl op"><b class="ar-ps" id="ars1">${AR.sc[1]}</b><span class="ar-pn"><b>${esc(op.n || 'خصمك')}</b><small id="aros">${op.r}</small></span>${avatarHtml(op.a, op.n, 44)}</div>
+          <div class="ar-pl op"><b class="ar-ps" id="ars1">${AR.sc[1]}</b><span class="ar-pn"><b>${esc(op.n || 'خصمك')}</b><span class="ar-os"><small id="aros">${op.r}</small><button type="button" class="ar-nd" id="arnd" hidden aria-label="نبّه خصمك يستعجل">⏰ نبّه</button></span></span>${avatarHtml(op.a, op.n, 44)}</div>
           <div class="ar-dots" aria-hidden="true"><div class="r"><span>أنت</span><div id="ard0">${arDots(0)}</div></div><div class="r"><span>خصمك</span><div id="ard1">${arDots(1)}</div></div></div>
           <div class="ar-bar"><i id="arbar"></i></div>
+          <div class="ar-ndn" id="arndn" role="status" aria-live="assertive" hidden></div>
         </div>
         <div id="arnote" class="ar-note" hidden></div>
         <div id="arq"><div class="ar-vs"><div class="ar-vp me">${avatarHtml(me.a || myN.a, myN.n, 88)}<b>${esc(myN.n)}</b><span>تصنيف ${me.r}</span></div><div class="ar-vx" id="arvx">VS</div><div class="ar-vp op">${avatarHtml(op.a, op.n, 88)}<b>${esc(op.n || 'خصمك')}</b><span>تصنيف ${op.r}</span></div></div>
           <p class="ar-vsm" id="arvm">نحمّل الأسئلة…</p></div>
       </main>`;
     bindCtl();
+    $('#arnd').onclick = arNudge;
     $('#arqt').onclick = async () => { if (!AR.m || !AR_LIVE.includes(AR.st)) return; if (await QGDlg.confirm('تنسحب من المباراة؟ تنحسب لك خسارة.', { ok: 'انسحاب' })) { arSend({ t: 'quit', m: AR.m.m }); } };
     document.onkeydown = e => { if (AR.st !== 'q' || e.ctrlKey || e.metaKey || e.altKey) return; const k = '1234'.indexOf(e.key) >= 0 ? '1234'.indexOf(e.key) : 'abcd'.indexOf(String(e.key).toLowerCase()); if (k >= 0) { e.preventDefault(); arAns(k); } };
     if (AR.st === 'q') arQ({ i: AR.i, dl: AR.dl, lim: AR.lim, mine: AR.mine, opAns: AR.opA });
@@ -2662,6 +2667,29 @@
     s.className = AR.opGone ? 'gone' : AR.opA && AR.st === 'q' ? 'done' : '';
     s.textContent = AR.opGone ? 'انقطع اتصاله…' : AR.st === 'q' ? (AR.opA ? 'جاوب ✓' : 'يفكر…') : AR.m.op.r;
     if (AR.st === 'q' && AR.mine != null) { const st = $('#arst'); if (st) st.innerHTML = AR.opA || AR.opGone ? '<span class="spin sm"></span> نكشف الإجابة…' : '<span class="spin sm"></span> بانتظار خصمك…'; }
+    arNudgeBtn();
+  }
+  // ⏰ «نبّه خصمك»: يطلع وقت ما خصمك يفكر، وينضغط مرة كل 10 ثواني
+  function arNudgeBtn() {
+    const b = $('#arnd'); if (!b) return;
+    const can = !!AR.m && AR.st === 'q' && !AR.opA && !AR.opGone; b.hidden = !can; if (!can) return;
+    const left = Math.ceil(((AR.ndNext || 0) - arNow()) / 1000), wait = left > 0;
+    const txt = !wait ? '⏰ نبّه' : left >= 9 ? '✓ وصل' : '⏰ ' + left;
+    if (b.textContent !== txt) b.textContent = txt;
+    b.disabled = wait; b.classList.toggle('sent', wait && left >= 9);
+    b.title = wait ? `تقدر تنبّهه مرة ثانية بعد ${left} ثواني` : 'نبّه خصمك يستعجل';
+  }
+  function arNudge() {
+    if (!AR.m || AR.st !== 'q' || AR.opA || AR.opGone || (AR.ndNext || 0) > arNow()) return;
+    AR.ndNext = arNow() + 10000; arNudgeBtn();
+    arSend({ t: 'nudge', m: AR.m.m });
+  }
+  function arNudged(m) {   // خصمك نبّهك
+    if (!AR.m || AR.st !== 'q' || m.i !== AR.i || AR.mine != null) return;
+    const n = $('#arndn'); if (n) { n.textContent = `⏰ ${(m.n || AR.m.op.n || 'خصمك').slice(0, 18)} يستعجلك، جاوب بسرعة!`; n.hidden = false; n.classList.remove('in'); void n.offsetWidth; n.classList.add('in');
+      clearTimeout(AR.ndT); AR.ndT = setTimeout(() => { n.hidden = true; }, 3200); }
+    const av = $('.ar-pl.op .av'); if (av && !RM()) { av.classList.remove('ar-shk'); void av.offsetWidth; av.classList.add('ar-shk'); }
+    try { navigator.vibrate && navigator.vibrate([90, 60, 90]); } catch (e) {}
   }
   function arQ(m) {
     if (!AR.m) return;
@@ -2669,7 +2697,7 @@
     AR.pendQ = null;
     AR.st = 'q'; AR.i = m.i; AR.dl = m.dl; AR.lim = m.lim; AR.mine = m.mine != null ? m.mine : null; AR.opA = !!m.opAns;
     if (!$('#arsb')) arView();
-    arBoard(); arNote('');
+    arBoard(); arNote(''); const nn = $('#arndn'); if (nn) nn.hidden = true;
     const it = arItem(m.i), n = AR.m.refs.length;
     if (!it) { $('#arq').innerHTML = '<div class="ar-hold">تعذّر عرض هذا السؤال. ننتقل للي بعده…</div>'; return; }
     const ty = it.type;
@@ -2686,6 +2714,7 @@
     const tick = () => {
       const left = Math.max(0, AR.dl - arNow()), s = Math.ceil(left / 1000);
       if (tm) { tm.textContent = fmtDur(s); tm.classList.toggle('low', s <= 5); }
+      arNudgeBtn();
       if (bar) { bar.style.width = (left / AR.lim * 100).toFixed(1) + '%'; bar.classList.toggle('low', s <= 5); }
       if (left <= 0) { arStop(); const st = $('#arst'); if (st && AR.mine == null) st.textContent = 'انتهى الوقت ⏱'; document.querySelectorAll('#arq .opt').forEach(b => b.disabled = true); }
     };
@@ -2712,7 +2741,7 @@
     const st = $('#arst');
     if (st) st.innerHTML = `<span class="ar-mine ${m.me.ok ? 'ok' : 'bad'}">${m.me.ok ? `صح! <bdi dir="ltr">+${m.me.p}</bdi>` : m.me.c == null ? 'ما جاوبت' : 'إجابتك خطأ'}</span><span class="ar-his">${esc(op.n || 'خصمك')}: ${m.op.ok ? `صح <bdi dir="ltr">+${m.op.p}</bdi>` : m.op.c == null ? 'ما جاوب' : 'خطأ'}</span>`;
     if (m.me.ok) arPop('#ars0', m.me.p); if (m.op.ok) arPop('#ars1', m.op.p);
-    arBoard(); AR.opA = false; arOpStatus();
+    arBoard(); AR.opA = false; arOpStatus(); const nn = $('#arndn'); if (nn) nn.hidden = true;
     const tm = $('#artm'); if (tm) tm.classList.remove('low');
   }
   function arPop(sel, p) {

@@ -1627,3 +1627,22 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 @media (max-width:640px){.vf{grid-template-columns:1fr 64px;row-gap:5px}.vfb{grid-column:1/-1;order:3}.vhd{margin-top:18px}.vti{grid-template-columns:54px 1.5em 1fr}}
 @media (max-width:420px){.vbreak{grid-template-columns:1fr}}
 @media (max-width:640px){.vdet .kv{grid-template-columns:1fr}}
+/* ⏰ الساحة: «نبّه خصمك» — زر تحت اسم الخصم (مرة كل 10 ثواني) + إشعار عند الخصم تحت لوحة النتيجة */
+.ar-os{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.ar-nd{flex:none;border:1.5px solid var(--gold3);background:var(--stampbg);color:var(--stampfg);border-radius:999px;padding:0 9px;font:inherit;font-weight:800;font-size:calc(12px * var(--fs));line-height:1.75;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums;transition:transform .12s,background .15s}
+.ar-nd:hover:not(:disabled){transform:translateY(-1px);background:#FFEFC7}
+.ar-nd:active:not(:disabled){transform:scale(.95)}
+.ar-nd:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
+.ar-nd:disabled{cursor:default;border-color:var(--line);background:var(--dotbg);color:var(--mut)}
+.ar-nd.sent{border-color:var(--mint);background:var(--okbg);color:var(--okt)}
+[data-theme="dark"] .ar-nd:hover:not(:disabled){background:#4A3B16}
+.ar-ndn{position:absolute;top:100%;left:50%;z-index:12;transform:translate(-50%,8px);max-width:min(440px,calc(100% - 16px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  background:var(--stampbg);color:var(--stampfg);border:1.5px solid var(--gold3);border-radius:999px;padding:8px 18px;font-weight:800;font-size:calc(15px * var(--fs));box-shadow:0 10px 26px rgba(14,36,88,.2)}
+.ar-ndn[hidden]{display:none}
+.ar-ndn.in{animation:arndn .5s cubic-bezier(.2,1.35,.4,1)}
+@keyframes arndn{0%{opacity:0;transform:translate(-50%,-8px) scale(.9)}100%{opacity:1;transform:translate(-50%,8px) scale(1)}}
+.ar-shk{animation:arshk .55s}
+@keyframes arshk{15%{transform:rotate(-14deg)}35%{transform:rotate(12deg)}55%{transform:rotate(-8deg)}75%{transform:rotate(5deg)}}
+[data-theme="dark"] .ar-ndn{box-shadow:0 10px 26px rgba(0,0,0,.45)}
+@media (max-width:640px){.ar-nd{padding:0 7px;font-size:calc(11.5px * var(--fs))}.ar-ndn{font-size:calc(14px * var(--fs));padding:7px 14px}}
+@media (prefers-reduced-motion:reduce){.ar-ndn.in,.ar-shk,.ar-nd{animation:none;transition:none}}
