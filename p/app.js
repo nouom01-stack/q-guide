@@ -219,10 +219,12 @@
   const freeRoute = h => h === '' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
+    if (/^sub-t\d{1,2}$/.test(h)) return 'الاختبار المحاكي ' + h.slice(5);
     if (/^board/.test(h)) return 'لوحة الصدارة'; if (h === 'qall' || h === 'vall') return 'الاختبار الشامل'; if (/^t-/.test(h)) return 'التدريب على نقاط ضعفك';
     return { notes: 'دفتري', rules: 'قوانين الكمي', 'rules-v': 'قواعد اللفظي', plan: 'خطة المذاكرة', skills: 'نقاط القوة والضعف', badges: 'الإنجازات', vocab: 'قاموس الكلمات', 'wb-q': 'مذكرة الكمي', 'wb-v': 'مذكرة اللفظي' }[h.replace(/-v\d+$/, '')] || '';
   }
-  function subDlg(what) {
+  function subDlg(what, from) {
+    if (isFree() && window.QGT) QGT.ev('sub', what || from || 'زر الاشتراك');   // 👀 فتح نافذة الاشتراك (وش اللي فتحها)
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
     const ov = document.createElement('div'); ov.className = 'qgdlg subdlg'; ov.setAttribute('dir', 'rtl');
     const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، أبي أشترك في دورة Q-Guide' + (auth && auth.email ? '\nإيميلي في الموقع: ' + auth.email : ''));
@@ -241,9 +243,10 @@
     document.addEventListener('keydown', onK);
     ov.addEventListener('click', e => { if (e.target === ov) close(); });
     ov.querySelector('.sub-x').onclick = close; ov.querySelector('.sub-a a').focus({ preventScroll: true });
+    ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { if (isFree() && window.QGT) { QGT.ev('subgo', a.classList.contains('wa') ? 'واتساب' : 'يوتيوب'); QGT.flush(true); } }));
   }
   // أي زر فيه data-lock أو data-sub يفتح نافذة الاشتراك
-  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); subDlg(b.dataset.lock || ''); }); }
+  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w); }); }
   const lockTool = (i, b, s) => `<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
@@ -264,7 +267,8 @@
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
-    if (isFree() && !freeRoute(h)) { history.replaceState(null, '', location.pathname); renderHome(); return subDlg(lockName(h)); }   // 🔒 للمشتركين
+    if (isFree() && !freeRoute(h)) { const nm = lockName(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? 'الاختبارات المحاكية' : ''); }   // 🔒 للمشتركين
+    if (isFree() && window.QGT) QGT.page(h === '' ? 'home' : /^duel-/.test(h) ? 'duel' : h.replace(/@\d+$/, ''));   // 👀 وش فتح الزائر
     if (h === 'arena') return renderArena();
     if (/^duel-[A-Za-z0-9]{6}$/.test(h)) return renderArena(h.slice(5).toUpperCase());
     if (h === 'board-arena') return renderBoard('arena');
@@ -435,7 +439,7 @@
       if (isFree() && FREE_SETS.indexOf(s.id) < 0) return `<button class="sheet lk" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b><span class="lkb">🔒</span></span><span class="sh-s">${sub}</span><span class="sh-lk">${s.n} سؤال مع الشرح للمشتركين</span></button>`;
       return `<button class="sheet ${st.done ? 'done' : st.ans ? 'doing' : ''}${isFree() ? ' fr' : ''}" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b>${stamp}</span><span class="sh-s">${sub}</span><span class="sh-dots" aria-hidden="true" style="--c:${cols(s.n, 16)};--cm:${cols(s.n, 12)}">${dotsHtml(s.id, s.n, -1)}</span><span class="sh-f">${foot}</span></button>`;
     }).join('');
-    grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { if (b.classList.contains('lk')) return subDlg(SET_NAME(b.dataset.id)); location.hash = b.dataset.id; });
+    grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { if (b.classList.contains('lk')) { if (window.QGT) QGT.ev('lock', SET_NAME(b.dataset.id)); return subDlg(SET_NAME(b.dataset.id)); } location.hash = b.dataset.id; });
     bindSub(app);
     const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast('هدفك اليومي صار ' + nx + ' سؤال'); }; };
     bindGoal();
@@ -763,7 +767,7 @@
     const { it } = P.items[i]; if (P.prog.a[i]) return;
     const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
-    const good = k === it.ans; const sbi = $('#sb') && $('#sb').children[i]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
+    const good = k === it.ans; if (isFree() && window.QGT) QGT.ans(P.id, good); const sbi = $('#sb') && $('#sb').children[i]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
     const gbi = $('#spg') && $('#spg').children[i]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', `سؤال ${i + 1}، إجابتك ${good ? 'صحيحة' : 'خاطئة'}`); }
     P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + ' صح ورا بعض'; rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
     const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast('🎉 حققت هدف اليوم: ' + goal + ' سؤال!'), 700); else badgeCheckSoon();
@@ -1121,6 +1125,7 @@
     if (!$('#fdr')) return;
     const res = fdPubSearch(ix, q, kind, 6), top = res[0], E = ix.P, p = top && E[top.i], sc = top ? top.s : 0, wa = fdWaBtn(q, img, kind);
     const lock = `<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
+    if (window.QGT) QGT.ev('find', full && p && sc >= FDP_HI ? 'لقاه في الدورة' : full && p && sc >= FDP_MID ? 'لقى سؤال قريب' : full ? 'ما لقاه في الدورة' : 'بحث بكلمات', img ? 1 : 0);
     if (full && p && sc >= FDP_HI) {
       const same = res.slice(1).filter(r => r.s >= FDP_HI && sc - r.s < 0.03).map(r => E[r.i]);   // نفس السؤال في مكان ثاني
       R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
@@ -1492,6 +1497,7 @@
     histSet(h);
     const pct = Math.round(ok * 100 / items.length), res = { at: Date.now(), pct, ok, n: items.length, v: [v, vn], q: [q, qn], lvl: lvlOf(pct), topics, secs: Math.round((Date.now() - t0) / 1000), a };
     lsSet(LVL_LS, res); lsDel(LVLRUN_LS); daysGet(); skillsPushSoon(1500); setTimeout(badgeCheck, 1800);
+    if (isFree() && window.QGT) QGT.ev('level', (LEVELS[res.lvl] || {}).t || '', res.pct, res.ok);
     levelResult(set, res, true);
   }
   function levelResult(set, res, fresh) {
@@ -1967,20 +1973,122 @@
     if (location.hash !== '#admin-free') return;
     top(); paintFree();
   }
+  // 👀 وش سووا الزوار: مصادرهم وأجهزتهم ومدنهم، وش فتحوا وكم حلوا، ووش حاولوا يفتحون وهو مقفل
+  const V_SRC = { TikTok: 'تيك توك', Instagram: 'انستقرام', YouTube: 'يوتيوب', Snapchat: 'سناب شات', X: 'إكس', WhatsApp: 'واتساب', Telegram: 'تيليقرام', Facebook: 'فيسبوك', Google: 'قوقل', Bing: 'بينق' };
+  const V_CITY = { Riyadh: 'الرياض', Jeddah: 'جدة', Mecca: 'مكة', Makkah: 'مكة', Medina: 'المدينة', 'Al Madinah': 'المدينة', Dammam: 'الدمام', 'Al Khobar': 'الخبر', Khobar: 'الخبر', Dhahran: 'الظهران',
+    Taif: 'الطائف', "Ta'if": 'الطائف', Tabuk: 'تبوك', Buraydah: 'بريدة', Unaizah: 'عنيزة', "Ha'il": 'حائل', Hail: 'حائل', Abha: 'أبها', 'Khamis Mushait': 'خميس مشيط', Jazan: 'جازان', Jizan: 'جازان',
+    Najran: 'نجران', Jubail: 'الجبيل', 'Al Jubayl': 'الجبيل', Hofuf: 'الهفوف', 'Al Hufuf': 'الهفوف', 'Al Mubarraz': 'المبرز', 'Al Kharj': 'الخرج', Yanbu: 'ينبع', Qatif: 'القطيف', 'Al Qatif': 'القطيف',
+    Sakaka: 'سكاكا', Arar: 'عرعر', 'Al Bahah': 'الباحة', 'Hafar Al-Batin': 'حفر الباطن', "Al Majma'ah": 'المجمعة', 'Az Zulfi': 'الزلفي', 'Ad Dawadimi': 'الدوادمي', 'Ar Rass': 'الرس',
+    'Kuwait City': 'الكويت', Dubai: 'دبي', 'Abu Dhabi': 'أبوظبي', Manama: 'المنامة', Doha: 'الدوحة', Muscat: 'مسقط', Cairo: 'القاهرة', Amman: 'عمّان' };
+  const V_CC = { SA: 'السعودية', KW: 'الكويت', AE: 'الإمارات', BH: 'البحرين', QA: 'قطر', OM: 'عُمان', EG: 'مصر', JO: 'الأردن', IQ: 'العراق', YE: 'اليمن', US: 'أمريكا', GB: 'بريطانيا' };
+  const vSrc = s => !s ? 'مباشر (بدون رابط)' : V_SRC[s] || s;
+  const vCity = x => x.city ? (V_CITY[x.city] || x.city) : x.cc ? (V_CC[x.cc] || x.cc) : '';
+  const vDev = x => x.os || ({ mobile: 'جوال', desktop: 'كمبيوتر', tablet: 'تابلت' }[x.dev] || '');
+  const vDevIc = x => x.dev === 'desktop' ? '💻' : x.dev === 'tablet' ? '📲' : '📱';
+  const vMin = s => s < 60 ? 'أقل من دقيقة' : s < 3600 ? Math.round(s / 60) + ' د' : (s / 3600).toFixed(1).replace(/\.0$/, '') + ' س';
+  const vCnt = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n <= 10 ? n + ' ' + few : n + ' ' + many;
+  const vTest = id => 'الاختبار المحاكي ' + String(id || '').replace(/^t/, '');
+  const vPage = k => ({ home: 'الرئيسية', arena: 'الساحة 1v1', duel: 'تحدي 1v1 برابط', 'board-arena': 'صدارة الساحة', level: 'تحديد المستوى', find: 'صفحة «ابحث عن سؤال»', test: 'صفحة الاختبارات المحاكية' }[k]
+    || (/^test:t\d+$/.test(k) ? vTest(k.slice(5)) : /^[qv]\d+$/.test(k) ? SET_NAME(k) : k));
+  const vTracked = x => !!(x && x.v !== undefined);
+  function visChips(x) {
+    if (!x) return '';
+    const c = [], add = (t, cls) => c.push(`<span class="vc${cls ? ' ' + cls : ''}">${t}</span>`);
+    if (x.dev || x.os) add(`${vDevIc(x)} ${esc(vDev(x))}${vCity(x) ? ' · ' + esc(vCity(x)) : ''}`);
+    if (x.src0 || x.src) add('↗ من ' + esc(vSrc(x.src0 || x.src)));
+    if (x.v) add('🚪 ' + vCnt(x.v, 'زيارة وحدة', 'زيارتين', 'زيارات', 'زيارة'));
+    if (x.s) add('⏱ ' + vMin(x.s));
+    if (x.an) add(`✍️ ${vCnt(x.an, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال')} · ${Math.round(x.ac * 100 / x.an)}% صح`);
+    if (x.lv) add('🧭 مستواه ' + esc(x.lv.k));
+    if (x.ar) add('⚔️ ' + vCnt(x.ar, 'مباراة وحدة', 'مباراتين', 'مباريات', 'مباراة'));
+    if (x.ex && x.ex.att) add('🧪 ' + (x.ex.done ? 'خلّص المحاكي' + (x.ex.best != null ? ' · ' + x.ex.best + '%' : '') : 'بدأ المحاكي وما خلّصه'));
+    if (Object.keys(x.fd || {}).length) add('🔎 بحث عن سؤال');
+    if (x.ai) add('🤖 ' + vCnt(x.ai, 'شرح واحد', 'شرحين', 'شروحات', 'شرح'));
+    const lk = Object.keys(x.lk || {}).length; if (lk) add('🔒 حاول يفتح ' + vCnt(lk, 'شي مقفل', 'شيئين مقفلين', 'أشياء مقفلة', 'شي مقفل'), 'lk');
+    const sg = Object.keys(x.sg || {}); if (sg.length) add('💬 ضغط ' + sg.map(esc).join(' و'), 'hot');
+    else if (Object.keys(x.sb || {}).length) add('⭐ فتح نافذة الاشتراك', 'sb');
+    return c.length ? `<div class="vact">${c.join('')}</div>` : '';
+  }
+  function visInsights(F) {
+    const A = F.act || {}, base = F.rows.filter(r => vTracked(A[r.email])), n = base.length;
+    const since = F.since ? fmtDay(F.since) : '';
+    if (!n) return `<h3 class="sh">وش سووا الزوار</h3><div class="vempty">👀 بدأنا نسجّل نشاط الزوار${since ? ' من ' + esc(since) : ' من اليوم'}. أول ما يدخل زائر يطلع لك هنا من وين جاء، وجهازه ومدينته، ووش فتح، وكم سؤال حل، ووش حاول يفتح وهو مقفل.</div>`;
+    const has = f => base.filter(r => f(A[r.email], r)).length;
+    const F1 = [['✍️', 'حلّوا أسئلة', has(x => x.an > 0)], ['🧭', 'سووا تحديد المستوى', has(x => x.lv)], ['⚔️', 'لعبوا في الساحة 1v1', has(x => x.ar > 0)],
+      ['🧪', 'دخلوا الاختبار المحاكي', has(x => x.ex && x.ex.att > 0)], ['🔎', 'بحثوا عن سؤال', has(x => Object.keys(x.fd).length)], ['🤖', 'استخدموا المساعد الذكي', has(x => x.ai > 0), 1],
+      ['🔒', 'حاولوا يفتحون شي مقفل', has(x => Object.keys(x.lk).length)], ['⭐', 'فتحوا نافذة الاشتراك', has(x => Object.keys(x.sb).length)],
+      ['💬', 'ضغطوا «اشترك» أو «واتساب»', has(x => Object.keys(x.sg).length), 0, 'hot'], ['🎉', 'اشتركوا', has((x, r) => r.conv), 0, 'ok']].filter(r => !r[3] || r[2]);
+    const tally = f => { const m = {}; base.forEach(r => { [].concat(f(A[r.email]) || []).forEach(k => { if (k) m[k] = (m[k] || 0) + 1; }); }); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+    const card = (h, L, empty) => { const mx = Math.max(1, ...L.map(x => x[1])); return `<div class="vbc"><h4>${h}</h4>${L.length ? L.slice(0, 6).map(([k, v]) => `<div class="vbr"><span class="vbl">${esc(k)}</span><span class="vbb"><i style="width:${Math.round(v * 100 / mx)}%"></i></span><b>${v}</b></div>`).join('') : `<p class="mut">${empty}</p>`}</div>`; };
+    return `<div class="vhd"><h3 class="sh">وش سووا الزوار <small>${n}</small></h3><span class="mut">من ${esc(since || 'اليوم')} · أول ما يدخل الزائر يُسجَّل وش سوّى</span></div>
+      <div class="vfun">${F1.map(([ic, t, v, , cls]) => `<div class="vf${cls ? ' ' + cls : ''}"><span class="vfl"><span aria-hidden="true">${ic}</span>${t}</span><span class="vfb"><i style="width:${Math.round(v * 100 / n)}%"></i></span><b>${v} <small>من ${n}</small></b></div>`).join('')}</div>
+      <div class="vbreak">${card('↗ من وين جوا', tally(x => vSrc(x.src0 || x.src)), '—')}${card('📱 أجهزتهم', tally(x => vDev(x)), '—')}${card('📍 مدنهم', tally(x => vCity(x)), 'ما وصلتنا مدن للحين')}${card('🔒 وش حاولوا يفتحون', tally(x => Object.keys(x.lk)), 'ما حاول أحد يفتح شي مقفل')}</div>`;
+  }
   function paintFree() {
-    const W = $('#adm'); if (!W || !ADM.free) return; const F = ADM.free, q = (ADM.fq || '').trim().toLowerCase();
+    const W = $('#adm'); if (!W || !ADM.free) return; const F = ADM.free, A = F.act || {}, q = (ADM.fq || '').trim().toLowerCase();
     const list = F.rows.filter(x => !q || [x.email, x.name].some(v => String(v || '').toLowerCase().includes(q)));
     const leads = F.rows.filter(x => !x.conv);
     W.innerHTML = `<div class="stf">
       <div class="fstats"><div><b>${F.total}</b><span>زائر سجّل دخول</span></div><div><b>${F.today}</b><span>اليوم</span></div><div><b>${F.week}</b><span>آخر 7 أيام</span></div><div class="ok"><b>${F.conv}</b><span>اشتركوا بعدها</span></div></div>
       <div class="facts"><button class="btn" id="fcopy" ${leads.length ? '' : 'disabled'}>📋 نسخ إيميلات الزوار (${leads.length})</button><span class="mut">الإيميلات اللي ما اشتركت للحين، كل إيميل في سطر — جاهزة تلصقها في Mailchimp.</span></div>
+      ${visInsights(F)}
       <h3 class="sh">آخر الزوار <small>${F.rows.length}</small></h3>
       ${F.rows.length > 8 ? `<div class="abar"><input id="fq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.fq || '')}"></div>` : ''}
-      <div class="slist">${list.slice(0, 300).map(x => `<div class="srow"><span class="c-st">${avatarHtml('', x.name || x.email, 40)}<span class="who"><b>${esc(x.name || x.email.split('@')[0])}</b><small class="ltr">${esc(x.email)}</small></span></span>
+      <div class="slist">${list.slice(0, 300).map(x => `<div class="srow vrow"><span class="c-st">${avatarHtml('', x.name || x.email, 40)}<span class="who"><b>${esc(x.name || x.email.split('@')[0])}</b><small class="ltr">${esc(x.email)}</small></span></span>
         <span class="rl">${x.conv ? '<span class="rbdg viewer">✓ اشترك</span>' : '<span class="rbdg wait">زائر</span>'}</span>
-        <span class="meta"><small>أول دخول: ${fmtD(x.created_at)}</small><small>آخر دخول: <b>${fmtD(x.last_at)}</b> (${x.logins} مرة)</small></span></div>`).join('') || `<div class="sempty">${F.rows.length ? 'لا نتائج' : 'ما دخل أي زائر للحين.'}</div>`}</div></div>`;
+        <span class="meta"><small>أول دخول: ${fmtD(x.created_at)}</small><small>آخر دخول: <b>${fmtD(x.last_at)}</b> (${x.logins} مرة)</small></span>
+        <span class="c-act"><button type="button" class="btn sm ghost" data-vd="${esc(x.email)}">وش سوّى؟</button></span>${visChips(A[x.email])}</div>`).join('') || `<div class="sempty">${F.rows.length ? 'لا نتائج' : 'ما دخل أي زائر للحين.'}</div>`}</div></div>`;
     $('#fcopy').onclick = async () => { const em = leads.map(x => x.email).join('\n'); try { await navigator.clipboard.writeText(em); toast('انسخت ' + leads.length + ' إيميل ✓'); } catch (e) { QGDlg.alert(em); } };
     const fq = $('#fq'); if (fq) fq.oninput = e => { ADM.fq = e.target.value; const pos = e.target.selectionStart; paintFree(); const i = $('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
+    W.querySelectorAll('[data-vd]').forEach(b => b.onclick = () => visDetail(b.dataset.vd, b));
+  }
+  // 👀 كل اللي سواه زائر واحد: خط زمني مرتّب بالأيام (الأحدث فوق)
+  function visEvItem(e) {
+    const k = e.k || '', n = e.n || 0;
+    switch (e.t) {
+      case 'visit': return { ic: '🚪', tx: 'دخل الموقع' + (k ? ' من ' + vSrc(k) : ''), cls: 'vis' };
+      case 'page': return k === 'home' ? null : { ic: '👀', tx: 'فتح ' + vPage(k) };
+      case 'lock': return { ic: '🔒', tx: `حاول يفتح «${k}» وهو للمشتركين`, cls: 'lk' };
+      case 'sub': return { ic: '⭐', tx: 'فتح نافذة الاشتراك' + (k && k !== 'زر الاشتراك' ? ` (من ${k})` : ''), cls: 'sb' };
+      case 'subgo': return { ic: k === 'واتساب' ? '💬' : '▶️', tx: k === 'واتساب' ? 'ضغط «راسلنا على واتساب» عشان يشترك' : 'ضغط «اشترك من يوتيوب»', cls: 'hot' };
+      case 'ans': return { ic: '✍️', tx: `حل ${vCnt(n, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال')} في ${/^[qv]\d+$/.test(k) ? SET_NAME(k) : k} (${e.c || 0} صح)`, k, n, c: e.c || 0 };
+      case 'level': return { ic: '🧭', tx: `خلّص تحديد المستوى: ${k} (${n}%)`, cls: 'ok' };
+      case 'find': return { ic: '🔎', tx: ({ 'لقاه في الدورة': 'بحث عن سؤال ولقاه في الدورة', 'لقى سؤال قريب': 'بحث عن سؤال ولقى سؤال قريب منه', 'ما لقاه في الدورة': 'بحث عن سؤال وما لقاه في الدورة', 'بحث بكلمات': 'بحث بكلمات عن أسئلة' }[k] || 'بحث عن سؤال') + (n ? ' (بصورة)' : '') };
+    }
+    return null;
+  }
+  async function visDetail(email, from) {
+    const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = '<div class="m vdet"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div>'; document.body.appendChild(m);
+    const close = () => { m.remove(); document.removeEventListener('keydown', onK); if (from && from.focus) from.focus({ preventScroll: true }); }, onK = e => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onK); m.onclick = e => { if (e.target === m) close(); };
+    let d; try { d = await admCall({ op: 'adm_free_one', email }); } catch (e) { close(); toast(e.message); return; }
+    if (!document.body.contains(m)) return;
+    const u = d.user || {}, mt = d.meta || {}, x = (ADM.free && ADM.free.act || {})[email] || {};
+    // الأحداث (مع دمج الإجابات المتتالية في نفس القسم ونفس الزيارة)
+    const T = [], evs = d.ev.slice().sort((a, b) => b.ts - a.ts);
+    evs.forEach(e => { const it = visEvItem(e); if (!it) return; it.ts = e.ts; it.vid = e.vid; it.t = e.t;
+      const p = T[T.length - 1];
+      if (p && it.t === 'ans' && p.t === 'ans' && p.k === it.k && p.vid === it.vid) { p.n += it.n; p.c += it.c; p.tx = visEvItem({ t: 'ans', k: p.k, n: p.n, c: p.c }).tx; return; }
+      if (p && it.t === 'page' && p.t === 'page' && p.tx === it.tx && p.vid === it.vid) return;
+      T.push(it); });
+    d.logins.forEach(l => T.push({ ts: l.ts, ic: '🔑', tx: 'سجّل دخول' + (l.os || l.dev ? ' من ' + (l.os || { mobile: 'جوال', desktop: 'كمبيوتر', tablet: 'تابلت' }[l.dev] || '') + (l.br && l.br !== l.os ? ' · ' + l.br : '') : '') }));
+    d.exams.forEach(t => { if (t.started_at) T.push({ ts: t.started_at, ic: '🧪', tx: `بدأ ${vTest(t.test)}${t.attempt > 1 ? ' (المحاولة ' + t.attempt + ')' : ''}` });
+      if (t.done && t.finished_at) T.push({ ts: t.finished_at, ic: '🏁', tx: `خلّص ${vTest(t.test)}: ${t.pct}%${t.vpct != null && t.qpct != null ? ` (اللفظي ${t.vpct}% · الكمي ${t.qpct}%)` : ''}`, cls: 'ok' }); });
+    d.arena.forEach(a => T.push({ ts: a.ts, ic: '⚔️', tx: `لعب مباراة 1v1 ضد ${a.op}: ${a.res === 'win' ? 'فاز' : a.res === 'loss' ? 'خسر' : 'تعادل'} (${a.my} مقابل ${a.their})` }));
+    d.ai.forEach(a => T.push({ ts: a.ts, ic: '🤖', tx: (a.turn ? 'سأل المساعد عن ' : 'طلب شرح من المساعد لـ ') + aiRefLabel(a.ref) }));
+    T.sort((a, b) => b.ts - a.ts);
+    const days = []; T.slice(0, 250).forEach(it => { const dk = fmtDay(it.ts); let g = days[days.length - 1]; if (!g || g.k !== dk) days.push(g = { k: dk, L: [] }); g.L.push(it); });
+    const lastAt = Math.max(mt.last_at || 0, u.last_at || 0), pre = !evs.length;
+    m.querySelector('.m').innerHTML = `<h3 class="vdh">${avatarHtml('', u.name || email, 44)}<span>${esc(u.name || email.split('@')[0])}<small class="mut ltr">${esc(email)}</small></span>${u.conv ? '<span class="rbdg viewer">✓ اشترك</span>' : ''}</h3>
+      <div class="kv"><div><span>أول دخول</span><b>${fmtD(u.created_at)}</b></div><div><span>آخر نشاط</span><b>${fmtD(lastAt)}</b></div>
+        <div><span>الزيارات</span><b>${mt.visits || u.logins || 0}</b></div><div><span>الوقت على الموقع</span><b>${mt.secs ? vMin(mt.secs) : '—'}</b></div>
+        <div><span>الجهاز</span><b>${x.dev || x.os ? vDevIc(x) + ' ' + esc(vDev(x)) + (x.br && x.br !== x.os ? ' · ' + esc(x.br) : '') : '—'}</b></div><div><span>المدينة</span><b>${esc(vCity(x)) || '—'}</b></div>
+        <div><span>جاء من</span><b>${x.src0 || x.src || vTracked(x) ? esc(vSrc(x.src0 || x.src)) : '—'}</b></div><div><span>الأسئلة</span><b>${x.an ? `${vCnt(x.an, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال')} · ${Math.round(x.ac * 100 / x.an)}% صح` : '—'}</b></div></div>
+      ${pre ? `<p class="vnote">دخل قبل ما نبدأ نسجّل النشاط، فيطلع لك بس دخوله ومبارياته واختباراته. وأي شي يسويه من الحين يُسجَّل هنا.</p>` : ''}
+      <h4>🕒 وش سوّى</h4>
+      <div class="vtl">${days.length ? days.map(g => `<div class="vday"><div class="vdk">${esc(g.k)}</div>${g.L.map(it => `<div class="vti${it.cls ? ' ' + it.cls : ''}"><span class="vtt">${fmtTime(it.ts)}</span><span class="vtc" aria-hidden="true">${it.ic}</span><span class="vtx">${esc(it.tx)}</span></div>`).join('')}</div>`).join('') : '<p class="mut">ما فيه نشاط مسجّل.</p>'}</div>
+      <div class="acts" style="justify-content:flex-end"><button class="btn sm ghost" id="v_close">إغلاق</button></div>`;
+    m.querySelector('#v_close').onclick = close; m.querySelector('#v_close').focus({ preventScroll: true });
   }
   // ---------- 🤖 المساعد الذكي: للمالك — التشغيل والحدود وآخر الشروحات وبلاغات الطلاب ----------
   const AI_MODE = { off: ['⏸ متوقف', 'ما يظهر زر «اشرح لي» لأحد'], owner: ['🧪 تجربة', 'يظهر لك وللمشرفين بس'], on: ['✅ مفتوح للجميع', 'المشتركين والزوار حسب الحد اليومي'] };
@@ -2655,7 +2763,7 @@
   }
 
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
-  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg(''), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });
+  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });
   applyFs(); applyTheme();
   if (!gsiFromHash()) route();
 })();

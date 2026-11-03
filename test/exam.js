@@ -52,6 +52,7 @@
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
     if (!auth) return renderLogin();
+    if (isFree() && window.QGT) QGT.page('test');   // 👀 الزائر فتح صفحة الاختبارات
     renderLobby();
   }
   function renderLogin(err) {
@@ -110,7 +111,7 @@
   let lobbySeq = 0;
   function paintLobby(stale) {
     const cards = manifest.map(t => {
-      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return `<div class="tcard lk"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}">اشترك وافتحه</a></div></div>`;
+      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return `<div class="tcard lk"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
       const s = state[t.id] || { status: 'none' };
       let body, act;
       if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? `<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = `<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
@@ -134,7 +135,8 @@
   // ---------- flow ----------
   let T = null; // current test data
   async function startFlow(id, retake) {
-    if (isFree() && FREE_TESTS.indexOf(id) < 0) { location.href = SUB_URL; return; }
+    if (isFree() && FREE_TESTS.indexOf(id) < 0) { location.href = SUB_URL + '-' + id; return; }
+    if (isFree() && window.QGT) QGT.page('test:' + id);
     const s = state[id] || { status: 'none' };
     if (s.status === 'done' && !retake) return renderReview(id);
     app.innerHTML = header() + '<div class="page center"><div class="spin" style="margin:30px auto"></div>Loading test…</div>';
