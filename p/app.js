@@ -1163,7 +1163,7 @@
     opts_same: ['mid', '≈', 'نفس السؤال بخيارات مختلفة', 'والإجابة الصحيحة موجودة بين خياراتك. تلقاه هنا:'],
     opts_diff: ['mid', '≈', 'نفس السؤال، بس الخيارات مختلفة', 'وإجابة سؤال الدورة مو من خياراتك، فتأكد من الخيارات. تلقاه هنا:'],
     numbers: ['mid', '≈', 'نفس فكرة السؤال بأرقام مختلفة', 'نفس طريقة الحل، بس الإجابة غالباً غير. تلقاه هنا:'],
-    new: ['no', '✕', 'سؤال جديد، ما هو موجود في الدورة', 'أرسله لنا على واتساب ونتواصل معك.'] };
+    new: ['no', '✕', 'سؤال جديد، ما هو موجود في الدورة', 'بلّغ عنه عشان نراجعه.'] };
   const FS_EV = { exact: 'لقاه في الدورة', reorder: 'لقاه في الدورة', wording: 'لقاه في الدورة', opts_same: 'لقى سؤال قريب', opts_diff: 'لقى سؤال قريب', numbers: 'لقى سؤال قريب', new: 'ما لقاه في الدورة' };
   const fsLoc = r => { let m = String(r).match(/^([qv])(\d+):(\d+)$/); if (m) return { set: m[1] + m[2], i: +m[3], t: `${m[1] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(m[1] + m[2])} · سؤال ${+m[3] + 1}` };
     m = String(r).match(/^t(\d+):(\d+):(\d+)$/); return m ? { test: +m[1], t: `الاختبار المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}` } : { t: esc(r) }; };
@@ -1217,6 +1217,25 @@
     R.querySelectorAll('.fd-pv[data-img]').forEach(async el => { const [sid, i] = (el.dataset.img || '').split(':'); if (!sid || el.classList.contains('has-img')) return;
       try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
   }
+  // 🚩 بلاغ عن سؤال ما لقيناه: زر ← ملاحظة اختيارية ← إرسال (يوصل للمالك مع سؤال الطالب وصورته)
+  const FS_REP = '<div class="fd-acts"><button type="button" class="btn" data-rep>🚩 بلّغ عن السؤال</button></div>';
+  function fsRep(box, lid) {
+    const start = () => {
+      box.innerHTML = `<label class="fd-l" for="fdrn">ملاحظة للمعلم (اختياري)</label><textarea id="fdrn" class="fd-rn" dir="auto" rows="2" maxlength="300" placeholder="مثلاً: جاني في الاختبار، أو لقيته في ملف تجميعات"></textarea>
+        <div class="fd-acts"><button type="button" class="btn" data-send>إرسال البلاغ</button><button type="button" class="btn ghost" data-x>إلغاء</button></div>`;
+      const ta = box.querySelector('textarea'), send = box.querySelector('[data-send]'); ta.focus();
+      box.querySelector('[data-x]').onclick = () => { box.innerHTML = FS_REP; bind(); box.querySelector('[data-rep]').focus(); };
+      send.onclick = async () => {
+        send.disabled = true; send.textContent = 'نرسل البلاغ…';
+        const r = await api({ op: 'find_report', session: auth.session, id: lid, note: ta.value }).catch(() => null);
+        if (r && r.ok) { box.innerHTML = '<p class="fd-repok" role="status">✓ وصلنا بلاغك، وبنراجع السؤال. شكراً لك!</p>'; if (window.QGT) QGT.ev('find', 'بلّغ عن سؤال'); return; }
+        if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
+        toast((r && r.msg) || 'تعذّر إرسال البلاغ، جرّب مرة ثانية.'); send.disabled = false; send.textContent = 'إرسال البلاغ';
+      };
+    };
+    const bind = () => { box.querySelector('[data-rep]').onclick = start; };
+    bind();
+  }
   function fsShow(R, r, q, img, kind) {
     if (!$('#fdr')) return;
     const S = FS[r.status] || FS.new, free = isFree(), it = r.best, wa = fdWaBtn(q, img, (it && it.s) || kind);
@@ -1229,10 +1248,10 @@
       h += `<div class="fd-acts">${fsOpen(it)}</div>`;
       if (r.alts && r.alts.length) h += `<div class="fd-alt"><h4>${r.alts.length > 1 ? 'أو يمكن يكون واحد من هذي:' : 'أو يمكن يكون هذا:'}</h4>${r.alts.map(a => `<div class="fd-ai"><div class="fd-locs">${fsLocs(a.refs)}</div>${free ? '' : fsPreview(a)}<div class="fd-acts">${fsOpen(a, true)}</div></div>`).join('')}</div>`;
       if (S[0] !== 'ok') h += `<div class="fd-acts fd-wa"><span class="fd-or">تبي نتأكد لك؟ أرسله لنا:</span>${wa}</div>`;
-    } else h += `<div class="fd-acts">${wa}</div>`;
+    } else h += r.lid ? `<div class="fd-rep">${FS_REP}</div>` : `<div class="fd-acts">${wa}</div>`;   // 🚩 ما لقيناه: بلاغ يوصل للمالك في سجل البحث (الواتساب بس لو ما عندنا رقم البحث)
     if (r.similar && r.similar.length) h += `<div class="fd-near"><h4>${it ? 'أسئلة قريبة منه في الدورة' : 'أقرب الأسئلة له في الدورة — يمكن تفيدك'}</h4><div class="fd-list">${r.similar.map(fsItem).join('')}</div></div>`;
     R.innerHTML = h + '</div>';
-    bindSub(R); fdImgs(R);
+    bindSub(R); fdImgs(R); const rp = R.querySelector('.fd-rep'); if (rp) fsRep(rp, r.lid);
     R.querySelectorAll('[data-ans]').forEach(b => b.onclick = () => { const p = b.nextElementSibling; p.hidden = !p.hidden; b.setAttribute('aria-expanded', !p.hidden); b.textContent = p.hidden ? '👁️ اعرض الإجابة' : '🙈 اخفِ الإجابة'; });
     R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
   }
@@ -2115,7 +2134,8 @@
         ${Q.k != null && o[Q.k] != null ? `<p class="fl-ans">الإجابة الصحيحة: <b><bdi dir="ltr">${LETTERS[Q.k]}) ${T(o[Q.k])}</bdi></b></p>` : ''}
         ${m ? `<a class="fl-open" href="#${m[1]}@${m[2]}">افتح السؤال في الدورة ←</a>` : ''}`;
     } else crs = `<div class="fl-none">${x.status === 'keywords' ? 'كتب كلمات بس، فما قارناه بسؤال معيّن.' : 'ما لقينا هذا السؤال في الدورة.'}</div>`;
-    return `<article class="fl-row"><div class="fl-h"><span class="fl-st ${S[0]}">${S[1]}</span><span class="fl-src">${FL_SRC[x.src] || FL_SRC.text}</span><small>${arAgo(x.ts)} · ${esc(x.name || x.email)}${x.free ? ' · زائر' : ''}</small></div>
+    if (x.rep && x.rnote) me += `<p class="fl-rnote"><b>ملاحظة الطالب مع البلاغ</b><span dir="auto">${esc(x.rnote)}</span></p>`;
+    return `<article class="fl-row${x.rep ? ' rep' : ''}"><div class="fl-h"><span class="fl-st ${S[0]}">${S[1]}</span>${x.rep ? '<span class="fl-rep">🚩 بلاغ</span>' : ''}<span class="fl-src">${FL_SRC[x.src] || FL_SRC.text}</span><small>${arAgo(x.ts)} · ${esc(x.name || x.email)}${x.free ? ' · زائر' : ''}</small></div>
       <div class="fl-cmp"><section class="fl-col"><h4 class="fl-ttl">سؤال الطالب</h4>${me}</section>
         <section class="fl-col fl-crs"><h4 class="fl-ttl">سؤال الدورة${L && Q ? `<span class="fl-loc">${L.t}</span>` : ''}</h4>${crs}</section></div></article>`;
   }
@@ -2147,8 +2167,8 @@
       const found = (c.exact || 0) + (c.reorder || 0) + (c.wording || 0), near = (c.opts_same || 0) + (c.opts_diff || 0) + (c.numbers || 0);
       const byId = new Map(r.rows.map(x => [x.id, x])), qs = r.qs || {};
       $('#adm').innerHTML = `<div class="fl"><div class="fl-sum"><div><b>${tot}</b><span>بحث في آخر 30 يوم</span></div><div class="ok"><b>${found}</b><span>لقيناها في الدورة</span></div><div class="mid"><b>${near}</b><span>نفسها بأرقام أو خيارات ثانية</span></div><div class="no"><b>${c.new || 0}</b><span>أسئلة جديدة</span></div></div>
-        <div class="seg fl-f" role="tablist"><button type="button" data-o="" class="${only ? '' : 'on'}" aria-selected="${!only}">كل عمليات البحث</button><button type="button" data-o="new" class="${only ? 'on' : ''}" aria-selected="${!!only}">اللي ما لقيناها بالضبط</button></div>
-        ${r.rows.length ? `<p class="fl-help mut">كل بحث فيه سؤال الطالب مثل ما حطه (صورته أو كلامه)، وجنبه سؤال الدورة اللي طلع له عشان تقارن. اضغط أي صورة تكبر.</p><div class="fl-list">${r.rows.map(x => flRow(x, byId, x.ref && qs[x.ref])).join('')}</div>` : `<div class="sum">${only ? 'ما فيه أسئلة جديدة للحين 👌' : 'ما أحد بحث للحين.'}</div>`}</div>`;
+        <div class="seg fl-f" role="tablist">${[['', 'كل عمليات البحث'], ['new', 'اللي ما لقيناها بالضبط'], ['rep', `🚩 البلاغات <small>${r.reps || 0}</small>`]].map(([k, t]) => `<button type="button" data-o="${k}" class="${only === k ? 'on' : ''}" aria-selected="${only === k}">${t}</button>`).join('')}</div>
+        ${r.rows.length ? `<p class="fl-help mut">${only === 'rep' ? 'أسئلة بحث عنها الطلاب وما لقيناها، وبلّغوا عنها. ' : ''}كل بحث فيه سؤال الطالب مثل ما حطه (صورته أو كلامه)، وجنبه سؤال الدورة اللي طلع له عشان تقارن. اضغط أي صورة تكبر.</p><div class="fl-list">${r.rows.map(x => flRow(x, byId, x.ref && qs[x.ref])).join('')}</div>` : `<div class="sum">${only === 'rep' ? 'ما فيه بلاغات للحين 👌' : only ? 'ما فيه أسئلة جديدة للحين 👌' : 'ما أحد بحث للحين.'}</div>`}</div>`;
       $('#adm').querySelectorAll('.fl-f button').forEach(b => b.onclick = () => { only = b.dataset.o; lsSet('qg_fl_only', only); draw(); });
       flLazy($('#adm'));
     };
