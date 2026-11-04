@@ -1955,3 +1955,20 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 [data-theme=dark] .btn.ghost.dang{color:#FF8A8A}[data-theme=dark] .btn.ghost.dang:hover{background:#3A1E22}
 @media (max-width:900px){.sbtiles.n5{grid-template-columns:repeat(2,minmax(0,1fr))}.sbtiles.n5 .sbt.vid{grid-column:1/-1}}
 @media (max-width:760px){.srow.sbrow{grid-template-columns:1fr;grid-template-areas:"st" "seg" "sh" "end"}.sbrow .sbend{grid-area:end;justify-content:stretch}.sbrow .sbend .btn{flex:1}.sbdz .btn{width:100%}}
+
+/* ---------- 🌐 زر اللغة (EN / ع) ---------- */
+.ctl .lng{font-family:"Tajawal","Segoe UI",sans-serif;min-width:38px}
+.ctl .lng span{font-size:13px;letter-spacing:.02em}
+.login .card{position:relative}
+.lgl{position:absolute;top:14px;inset-inline-end:14px;display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:34px;padding:0 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--navy);font-weight:800;font-size:14px}
+.lgl:hover{border-color:var(--navy3)}
+[data-theme="dark"] .lgl{color:#DCE4FF}
+
+/* ---------- 🌐 English: الواجهة يسار ← يمين، والمحتوى العربي (شرح المعلم، ترجمة السؤال، القوانين، المساعد) يبقى يمين ← يسار ---------- */
+html.l-en .set,html.l-en .pcard,html.l-en .sheet,html.l-en .wl,html.l-en .sum.bad,html.l-en .rz-goal,html.l-en .ar-rv,html.l-en .sum.mbox{text-align:left}
+html.l-en .set .num{left:auto;right:-6px}
+html.l-en .sub-x{left:auto;right:10px}
+html.l-en .ar-srch #arel{text-align:left}
+html.l-en .wvi small{text-align:left}
+html.l-en .arc,html.l-en .qt-ar,html.l-en .trq,html.l-en .ru-cols,html.l-en .ru-fb p,html.l-en .fd-ex,html.l-en .tr-ex{direction:rtl;text-align:right}
+html.l-en .arr{direction:rtl;unicode-bidi:isolate}

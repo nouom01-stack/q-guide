@@ -1,15 +1,21 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-title-ar="Q-Guide | دورة القدرات الإنجليزي" data-title-en="Q-Guide | English GAT prep course">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Q-Guide | دورة القدرات الإنجليزي</title>
 <meta name="description" content="Q-Guide — دورة القدرات العامة باللغة الإنجليزية. جرّب مجاناً: القسم 1 كمي، النموذج 1 لفظي، الاختبار المحاكي 1، تحديد المستوى، والساحة 1v1.">
+<script src="/assets/lang.js?v=1"></script>
 <link rel="stylesheet" href="/assets/site.css">
 <style>
+html.l-ar [data-l="en"],html.l-en [data-l="ar"]{display:none!important}
+html.l-en body{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 main.w{padding-top:28px;padding-bottom:48px}
 header .w{flex-wrap:wrap;row-gap:4px}header b{white-space:nowrap}
-@media (max-width:560px){header nav a{margin-inline-start:12px;font-size:14px}}
+header nav{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px}
+.lng{margin-inline-start:16px;display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:30px;padding:0 10px;border-radius:999px;border:1.5px solid rgba(255,255,255,.55);color:#fff;font:inherit;font-weight:700;font-size:14px;text-decoration:none;background:none;cursor:pointer}
+.lng:hover{background:rgba(255,255,255,.14)}
+@media (max-width:560px){header nav a{margin-inline-start:12px;font-size:14px}.lng{margin-inline-start:12px}}
 .card>h2:first-child{margin-top:0}
 .cta{display:flex;gap:10px;flex-wrap:wrap}
 .cta .btn{border:1.5px solid transparent;text-align:center}
@@ -31,30 +37,38 @@ header .w{flex-wrap:wrap;row-gap:4px}header b{white-space:nowrap}
 <script src="/assets/trk.js?v=2" defer></script>
 </head>
 <body>
-<header><div class="w"><b>Q-Guide</b><nav><a href="/p/">منصة التدريب</a><a href="/test/">الاختبارات المحاكية</a><a href="/p/#arena">الساحة 1v1</a></nav></div></header>
+<header><div class="w"><b>Q-Guide</b><nav>
+  <a href="/p/"><span data-l="ar">منصة التدريب</span><span data-l="en">Practice</span></a>
+  <a href="/test/"><span data-l="ar">الاختبارات المحاكية</span><span data-l="en">Mock tests</span></a>
+  <a href="/p/#arena"><span data-l="ar">الساحة 1v1</span><span data-l="en">1v1 Arena</span></a>
+  <button type="button" class="lng" data-qglang="en" data-l="ar" title="English" aria-label="Switch to English">EN</button><button type="button" class="lng" data-qglang="ar" data-l="en" title="العربية" aria-label="التبديل إلى العربية" lang="ar">ع</button>
+</nav></div></header>
 <main class="w">
   <section class="card hero">
     <h1>Q-Guide</h1>
-    <p>دورة القدرات العامة (GAT) باللغة الإنجليزية: شرح كامل للفظي والكمي على قناة <a href="https://www.youtube.com/@Q-guide1" rel="noopener">Q-guide1</a>، مذكرات خاصة لكل طالب، واختبارات محاكية بنفس شكل اختبار قياس المحوسب.</p>
-    <p class="cta"><a class="btn" href="/p/?m=1">دخول المشتركين</a><a class="btn alt" href="/p/">جرّب مجاناً</a><a class="btn ghost" href="/p/#arena">⚔️ العب في الساحة 1v1</a></p>
-    <p class="mut">المشترك يدخل بنفس إيميل Google اللي اشترك فيه وتنفتح له الدورة كاملة، وغير المشترك يجرّب المحتوى المجاني.</p>
+    <p data-l="ar">دورة القدرات العامة (GAT) باللغة الإنجليزية: شرح كامل للفظي والكمي على قناة <a href="https://www.youtube.com/@Q-guide1" rel="noopener">Q-guide1</a>، مذكرات خاصة لكل طالب، واختبارات محاكية بنفس شكل اختبار قياس المحوسب.</p>
+    <p data-l="en">The English GAT prep course: full verbal and quant explanations on the <a href="https://www.youtube.com/@Q-guide1" rel="noopener">Q-guide1</a> channel, a personal workbook for every student, and mock tests that look exactly like the Qiyas computer-based test.</p>
+    <p class="cta"><a class="btn" href="/p/?m=1"><span data-l="ar">دخول المشتركين</span><span data-l="en">Subscriber sign-in</span></a><a class="btn alt" href="/p/"><span data-l="ar">جرّب مجاناً</span><span data-l="en">Try it free</span></a><a class="btn ghost" href="/p/#arena">⚔️ <span data-l="ar">العب في الساحة 1v1</span><span data-l="en">Play in the 1v1 Arena</span></a></p>
+    <p class="mut" data-l="ar">المشترك يدخل بنفس إيميل Google اللي اشترك فيه وتنفتح له الدورة كاملة، وغير المشترك يجرّب المحتوى المجاني.</p>
+    <p class="mut" data-l="en">Subscribers sign in with the same Google email they subscribed with and get the full course. Everyone else can try the free content.</p>
   </section>
   <section class="card">
-    <h2>مجاناً بحساب Google</h2>
+    <h2><span data-l="ar">مجاناً بحساب Google</span><span data-l="en">Free with a Google account</span></h2>
     <ul class="free">
-      <li><b>القسم 1 كمي والنموذج 1 لفظي</b><span>كاملين بالشرح</span></li>
-      <li><b>الاختبار المحاكي 1</b><span>4 أقسام بنفس شكل اختبار قياس المحوسب</span></li>
-      <li><b>تحديد المستوى</b><span>20 سؤال تعرف منها مستواك ونقاط ضعفك</span></li>
-      <li><b>الساحة 1v1</b><span>تحدَّ طالب مباشرة في 20 سؤال، 3 مباريات كل يوم</span></li>
-      <li><b>ابحث عن سؤال</b><span>اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين</span></li>
+      <li><b><span data-l="ar">القسم 1 كمي والنموذج 1 لفظي</span><span data-l="en">Quant Section 1 and Verbal Model 1</span></b><span><span data-l="ar">كاملين بالشرح</span><span data-l="en">Complete, with explanations</span></span></li>
+      <li><b><span data-l="ar">الاختبار المحاكي 1</span><span data-l="en">Mock test 1</span></b><span><span data-l="ar">4 أقسام بنفس شكل اختبار قياس المحوسب</span><span data-l="en">4 sections, just like the Qiyas computer-based test</span></span></li>
+      <li><b><span data-l="ar">تحديد المستوى</span><span data-l="en">Placement test</span></b><span><span data-l="ar">20 سؤال تعرف منها مستواك ونقاط ضعفك</span><span data-l="en">20 questions that show your level and weak spots</span></span></li>
+      <li><b><span data-l="ar">الساحة 1v1</span><span data-l="en">1v1 Arena</span></b><span><span data-l="ar">تحدَّ طالب مباشرة في 20 سؤال، 3 مباريات كل يوم</span><span data-l="en">Challenge another student live in 20 questions, 3 matches a day</span></span></li>
+      <li><b><span data-l="ar">ابحث عن سؤال</span><span data-l="en">Find a question</span></b><span><span data-l="ar">اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين</span><span data-l="en">Type or snap a question and we tell you if it's in the course, and where</span></span></li>
     </ul>
   </section>
   <section class="card">
-    <h2>الدورة كاملة للمشتركين</h2>
-    <p>14 قسم كمي و14 نموذج لفظي بالشرح والفيديو، 17 اختبار محاكي، الساحة بدون حد، مذكرات خاصة لكل طالب، وخطط مذاكرة. الاشتراك 140 ريال من انتساب قناة Q-guide1 في يوتيوب.</p>
-    <p class="cta"><a class="btn gold" href="https://www.youtube.com/@Q-guide1/join" rel="noopener">اشترك من يوتيوب</a><a class="btn ghost" href="https://wa.me/966508003683?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D8%A8%D9%8A%20%D8%A3%D8%B4%D8%AA%D8%B1%D9%83%20%D9%81%D9%8A%20%D8%AF%D9%88%D8%B1%D8%A9%20Q-Guide" rel="noopener">اسألنا على واتساب</a></p>
+    <h2><span data-l="ar">الدورة كاملة للمشتركين</span><span data-l="en">The full course for subscribers</span></h2>
+    <p data-l="ar">14 قسم كمي و14 نموذج لفظي بالشرح والفيديو، 17 اختبار محاكي، الساحة بدون حد، مذكرات خاصة لكل طالب، وخطط مذاكرة. الاشتراك 140 ريال من انتساب قناة Q-guide1 في يوتيوب.</p>
+    <p data-l="en">14 quant sections and 14 verbal models with explanations and videos, 17 mock tests, unlimited Arena matches, a personal workbook for every student, and study plans. The subscription is 140 SAR through a Q-guide1 channel membership on YouTube.</p>
+    <p class="cta"><a class="btn gold" href="https://www.youtube.com/@Q-guide1/join" rel="noopener"><span data-l="ar">اشترك من يوتيوب</span><span data-l="en">Subscribe on YouTube</span></a><a class="btn ghost" data-l="ar" href="https://wa.me/966508003683?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D8%A8%D9%8A%20%D8%A3%D8%B4%D8%AA%D8%B1%D9%83%20%D9%81%D9%8A%20%D8%AF%D9%88%D8%B1%D8%A9%20Q-Guide" rel="noopener">اسألنا على واتساب</a><a class="btn ghost" data-l="en" href="https://wa.me/966508003683?text=Hi%2C%20I%27d%20like%20to%20subscribe%20to%20the%20Q-Guide%20course" rel="noopener">Ask us on WhatsApp</a></p>
   </section>
 </main>
-<footer><div class="w"><a href="/privacy/">سياسة الخصوصية</a><a href="/terms/">الشروط والأحكام</a> © Q-Guide</div></footer>
+<footer><div class="w"><a href="/privacy/"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a><a href="/terms/"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms and conditions</span></a> © Q-Guide</div></footer>
 </body>
 </html>

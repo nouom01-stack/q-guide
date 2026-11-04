@@ -7,7 +7,9 @@
   const app = $('#app');
   const LS = { auth: 'qg_auth', prog: 'qg_prog_', fs: 'qg_fs', tab: 'qg_tab', theme: 'qg_theme' };
   const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
-  const PART_AR = { 1: 'التناظر اللفظي', 2: 'إكمال الجمل', 3: 'الخطأ السياقي', 4: 'استيعاب المقروء' };
+  const EN = !!(window.QGL && QGL.en);   // 🌐 الواجهة بالإنجليزي (p/i18n.js)
+  const enN = (n, one, many) => n + ' ' + (n === 1 ? one : many);   // English: 1 day · 3 days
+  const PART_AR = { 1: _T('التناظر اللفظي'), 2: _T('إكمال الجمل'), 3: _T('الخطأ السياقي'), 4: _T('استيعاب المقروء') };
   let auth = null, manifest = null, cryptoKey = null;
   const cache = {};
   // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
@@ -15,9 +17,9 @@
   const FREE_SETS = ['q1', 'v1', 'placement'], JOIN_URL = 'https://www.youtube.com/@Q-guide1/join', PRICE = 140, FREE_GAMES = 3;
   // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات)
   const YT = {
-    q: { name: 'القسم', rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: 'مقطع قواعد الكمي', d: 'كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام' }, list: 'PLNdATbln9B4k',
+    q: { name: _T('القسم'), rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: _T('مقطع قواعد الكمي'), d: _T('كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام') }, list: 'PLNdATbln9B4k',
       v: ['WBnwPsSTuaU:36:18', 'SLGGlm5YwJU:34:43', 'VoVaWRFbIjg:36:50', 'dwvgSfK6Tfw:34:10', 'eVZsYR0QPq8:35:39', 'd3hX21VfSWo:34:19', 'EMNaSCi0IMk:43:40', 'fQynzmnlZmI:34:15', 'i4ELxBTMUw0:40:51', 'mZdhgMMOWB0:40:01', 'bscPMN6lDPQ:36:29', '6AxdKpQZevk:34:16', 'iVR5LsbBBv4:29:38', 'vf-aOADLlCs:56:06'] },
-    v: { name: 'النموذج', rules: { id: 'vo91Yxx_6vw', dur: '14:18', t: 'مقطع قواعد التناظر اللفظي', d: 'شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج' }, list: 'PLVFHCj9Zxd0E',
+    v: { name: _T('النموذج'), rules: { id: 'vo91Yxx_6vw', dur: '14:18', t: _T('مقطع قواعد التناظر اللفظي'), d: _T('شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج') }, list: 'PLVFHCj9Zxd0E',
       v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'VcaywhqSsVM:21:40', 'mFYiB0Z9G5k:15:17'] } };
   const ytUrl = id => 'https://youtu.be/' + id;
   // 🎬 المشترك المجاني أو بالتحويل: المقاطع تشتغل هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميله · مشترك يوتيوب يكمل على يوتيوب (مقاطع الأعضاء)
@@ -25,7 +27,7 @@
   const vidSub = () => !!(auth && (auth.sub === 'free' || auth.sub === 'bank'));
   const vidHas = k => !!(auth && Array.isArray(auth.vids) && auth.vids.indexOf(k) >= 0);
   const ytAlt = () => auth && auth.yt && vidSub() ? auth.yt : null;
-  const YT_ALT_TIP = 'مقطع خاص لك: افتحه وأنت داخل يوتيوب بنفس إيميل Google اللي تدخل فيه الموقع';
+  const YT_ALT_TIP = _T('مقطع خاص لك: افتحه وأنت داخل يوتيوب بنفس إيميل Google اللي تدخل فيه الموقع');
   const TGT = ' target="_blank" rel="noopener"';
   const vidHash = (k, n) => '#watch-' + k + (n === 'rules' ? '-rules' : n);
   const inSite = (k, n) => vidSub() && vidHas(k + ':' + n) ? { url: vidHash(k, n), tgt: '', site: true } : null;
@@ -36,7 +38,7 @@
     const s = inSite(k, 'rules'); if (s) return Object.assign({}, YT[k].rules, s);
     const A = ytAlt(), alt = A && A[k] && A[k].rules, r = alt ? Object.assign({}, YT[k].rules, { id: alt, alt: true }) : YT[k].rules; return Object.assign({}, r, { url: ytUrl(r.id), tgt: TGT }); };
   const ytList = k => { const A = ytAlt(); return (A && A[k] && A[k].list) || YT[k].list; };
-  const ytTip = (y, t) => y && y.site ? ' title="يشتغل هنا داخل الموقع"' : y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
+  const ytTip = (y, t) => y && y.site ? _T(' title="يشتغل هنا داخل الموقع"') : y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
   const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
   const PLAYSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#2350C4"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
   const vIcon = y => y && y.site ? PLAYSVG : YTSVG;
@@ -60,6 +62,9 @@
     });
   }
   function fmtExp(t) {
+    const h = fmtExp0(t); return EN ? '<div class="arc" dir="rtl" lang="ar">' + h + '</div>' : h;
+  }
+  function fmtExp0(t) {
     return String(t || '').split('\n').filter(l => !/^\s*(📝\s*)?الشرح:?\s*$/.test(l)).map(l => {
       const en = l.match(/^(\s*)(\d+)\)\s*(.*)$/);          // ترقيم الخطوات: 1) ...
       if (en) return en[1] + '<bdi dir="ltr">' + en[2] + ')</bdi> ' + wrapMath(en[3]);
@@ -74,14 +79,15 @@
   function applyFs() { const f = lsGet(LS.fs, 1); document.documentElement.style.setProperty('--fs', f); }
   function applyTheme() { const t = lsGet(LS.theme, 'light'); document.documentElement.dataset.theme = t; document.querySelectorAll('#dm').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙'); }
   function toggleTheme() { lsSet(LS.theme, lsGet(LS.theme, 'light') === 'dark' ? 'light' : 'dark'); applyTheme(); }
-  function waUrl() { const who = auth ? ((auth.display || auth.name || '') + ' · ' + (auth.email || '')) : ''; return 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، أحتاج دعم فني في منصة Q-Guide' + (who ? '\n' + who : '') + '\nالمشكلة: '); }
-  function ctlHtml() { return `<span class="ctl"><button id="fsm" title="تصغير الخط">A-</button><button id="fsp" title="تكبير الخط">A+</button><button id="dm" title="الوضع الداكن/الفاتح">🌙</button><a class="wa" href="${waUrl()}" target="_blank" rel="noopener" title="دعم فني عبر واتساب"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8zm-3.3 4.3c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.5 0 1.7-.7 2-1.4.2-.7.2-1.3.1-1.4l-.5-.3-1.9-.9c-.3-.1-.5-.2-.7.1l-.9 1.1c-.2.2-.3.2-.6.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.4 0-.5l-.9-2.1c-.2-.5-.4-.5-.6-.5h-.4z"/></svg><span>دعم</span></a></span>`; }
+  function waUrl() { const who = auth ? ((auth.display || auth.name || '') + ' · ' + (auth.email || '')) : ''; return 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أحتاج دعم فني في منصة Q-Guide') + (who ? '\n' + who : '') + _T('\nالمشكلة: ')); }
+  function ctlHtml() { return _T`<span class="ctl"><button id="fsm" title="تصغير الخط">A-</button><button id="fsp" title="تكبير الخط">A+</button>${QGL.btn('lng')}<button id="dm" title="الوضع الداكن/الفاتح">🌙</button><a class="wa" href="${waUrl()}" target="_blank" rel="noopener" title="دعم فني عبر واتساب"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8zm-3.3 4.3c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.5 0 1.7-.7 2-1.4.2-.7.2-1.3.1-1.4l-.5-.3-1.9-.9c-.3-.1-.5-.2-.7.1l-.9 1.1c-.2.2-.3.2-.6.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.4 0-.5l-.9-2.1c-.2-.5-.4-.5-.6-.5h-.4z"/></svg><span>دعم</span></a></span>`; }
   function bindCtl() { const a = $('#fsm'), b = $('#fsp'), c = $('#dm'); if (a) a.onclick = () => bumpFs(-.1); if (b) b.onclick = () => bumpFs(.1); if (c) c.onclick = toggleTheme; applyTheme(); }
   function bumpFs(d) { let f = lsGet(LS.fs, 1); f = Math.min(1.4, Math.max(.85, +(f + d).toFixed(2))); lsSet(LS.fs, f); applyFs(); }
   async function api(body) {
     if (!window.QG.API || window.QG.API.indexOf('__') === 0) throw new Error('API not configured');
     const r = await fetch(window.QG.API, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
-    return r.json();
+    const j = await r.json(); if (EN && j && typeof j.msg === 'string') j.msg = _T(j.msg);   // 🌐 رسائل الخادم بالإنجليزي
+    return j;
   }
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
@@ -91,10 +97,10 @@
     if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
     if (id === 'qall' || id === 'vall') {
       const k = id[0]; let got = 0; const el = () => document.getElementById('ldmsg');
-      const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const m = el(); if (m) m.textContent = 'تحميل الأسئلة… ' + got + ' / 14'; return p; })));
+      const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const m = el(); if (m) m.textContent = _T('تحميل الأسئلة… ') + got + ' / 14'; return p; })));
       let obj;
-      if (k === 'q') obj = { kind: 'quant', id: 'qall', title: 'الاختبار الشامل — الكمي', sub: 'All 14 sections', items: [].concat(...parts.map(p => p.items.map((it, j) => Object.assign({}, it, { src: p.id, sidx: j })))) };
-      else obj = { kind: 'verbal', id: 'vall', title: 'الاختبار الشامل — اللفظي', sub: 'All 14 models', groups: [].concat(...parts.map(p => originGroups(p))) };
+      if (k === 'q') obj = { kind: 'quant', id: 'qall', title: _T('الاختبار الشامل — الكمي'), sub: 'All 14 sections', items: [].concat(...parts.map(p => p.items.map((it, j) => Object.assign({}, it, { src: p.id, sidx: j })))) };
+      else obj = { kind: 'verbal', id: 'vall', title: _T('الاختبار الشامل — اللفظي'), sub: 'All 14 models', groups: [].concat(...parts.map(p => originGroups(p))) };
       cache[id] = obj; return obj;
     }
     if (/^t-/.test(id)) return loadTopicSet(id);
@@ -118,8 +124,8 @@
   // أصل كل سؤال (النموذج + ترتيبه فيه) حتى يُسجَّل في سجل المهارات مهما كان الاختبار الذي ظهر فيه
   function originGroups(p) { let j = 0; return p.groups.map(g => Object.assign({}, g, { title: (g.kind === 'part' ? p.title + ' · ' : '') + g.title, src: p.id, items: g.items.map(it => Object.assign({}, it, { src: p.id, sidx: j++ })) })); }
   // ---------- 🎯 المهارات: المواضيع + سجل الإجابات ----------
-  const TOPICS = { ana: { t: 'التناظر اللفظي', k: 'verbal', i: '🔗' }, sen: { t: 'إكمال الجمل', k: 'verbal', i: '✍️' }, err: { t: 'الخطأ السياقي', k: 'verbal', i: '🔍' }, read: { t: 'استيعاب المقروء', k: 'verbal', i: '📄' },
-    arith: { t: 'الحساب والأعداد', k: 'quant', i: '🔢' }, alg: { t: 'الجبر والمعادلات', k: 'quant', i: '𝑥' }, geo: { t: 'الهندسة', k: 'quant', i: '📐' }, stat: { t: 'الإحصاء والاحتمالات', k: 'quant', i: '📊' }, cmp: { t: 'أسئلة المقارنة', k: 'quant', i: '⚖️' } };
+  const TOPICS = { ana: { t: _T('التناظر اللفظي'), k: 'verbal', i: '🔗' }, sen: { t: _T('إكمال الجمل'), k: 'verbal', i: '✍️' }, err: { t: _T('الخطأ السياقي'), k: 'verbal', i: '🔍' }, read: { t: _T('استيعاب المقروء'), k: 'verbal', i: '📄' },
+    arith: { t: _T('الحساب والأعداد'), k: 'quant', i: '🔢' }, alg: { t: _T('الجبر والمعادلات'), k: 'quant', i: '𝑥' }, geo: { t: _T('الهندسة'), k: 'quant', i: '📐' }, stat: { t: _T('الإحصاء والاحتمالات'), k: 'quant', i: '📊' }, cmp: { t: _T('أسئلة المقارنة'), k: 'quant', i: '⚖️' } };
   const TOPIC_ORDER = ['ana', 'sen', 'err', 'read', 'arith', 'alg', 'geo', 'stat', 'cmp'];
   function itemTopics(it) { const t = []; if (it.topic) t.push(it.topic); if (it.cmp) t.push('cmp'); return t; }
   const HIST_LS = 'qg_hist';
@@ -141,7 +147,7 @@
     const ids = []; for (let i = 1; i <= 14; i++) ids.push('q' + i, 'v' + i);
     const any = ids.concat(['qall', 'vall']).some(id => Object.keys(progGet(id).a).length);
     if (any) {
-      let got = 0; for (const id of ids) { try { await loadSet(id); } catch (e) {} got++; if (onmsg) onmsg('قراءة إجاباتك السابقة… ' + got + ' / ' + ids.length); }
+      let got = 0; for (const id of ids) { try { await loadSet(id); } catch (e) {} got++; if (onmsg) onmsg(_T('قراءة إجاباتك السابقة… ') + got + ' / ' + ids.length); }
       const fold = (id) => { const set = cache[id]; if (!set) return; const items = flatItems(set); const pr = progGet(id); items.forEach((x, i) => { const a = pr.a[i]; if (!a) return; const src = x.it.src || id, sidx = x.it.sidx != null ? x.it.sidx : i; histMark(h, src, sidx, !!a.c, itemTopics(x.it)); }); };
       ids.forEach(fold); try { await loadSet('qall'); await loadSet('vall'); fold('qall'); fold('vall'); } catch (e) {}
     }
@@ -202,11 +208,11 @@
     const m = id.match(/^t-(?:(wrong|star)-([qv])|([a-z]+))$/); if (!m) throw new Error('bad set');
     const mode = m[1] || '', topic = m[3], kind = m[2] ? (m[2] === 'q' ? 'quant' : 'verbal') : (TOPICS[topic] || {}).k; if (!kind) throw new Error('bad set');
     const k = kind === 'quant' ? 'q' : 'v'; let got = 0; const el = () => document.getElementById('ldmsg');
-    const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const e = el(); if (e) e.textContent = 'تجهيز الأسئلة… ' + got + ' / 14'; return p; })));
+    const parts = await Promise.all(Array.from({ length: 14 }, (_, i) => loadSet(k + (i + 1)).then(p => { got++; const e = el(); if (e) e.textContent = _T('تجهيز الأسئلة… ') + got + ' / 14'; return p; })));
     const h = histGet();
     const keep = (it, src, sidx) => mode === 'wrong' ? (h.items[src] && h.items[src][sidx] && !h.items[src][sidx][2]) : mode === 'star' ? !!markOf(src, sidx) : itemTopics(it).indexOf(topic) >= 0;
-    const kn = kind === 'quant' ? 'الكمي' : 'اللفظي';
-    const title = mode === 'wrong' ? '🔁 مراجعة أخطائي — ' + kn : mode === 'star' ? '⭐ أسئلة دفتري — ' + kn : (TOPICS[topic].i + ' تدريب: ' + TOPICS[topic].t);
+    const kn = kind === 'quant' ? _T('الكمي') : _T('اللفظي');
+    const title = mode === 'wrong' ? _T('🔁 مراجعة أخطائي — ') + kn : mode === 'star' ? _T('⭐ أسئلة دفتري — ') + kn : (TOPICS[topic].i + _T(' تدريب: ') + TOPICS[topic].t);
     const sub = mode === 'wrong' ? 'My mistakes' : mode === 'star' ? 'My notebook' : 'Topic practice';
     let obj;
     if (kind === 'quant') obj = { kind, id, title, sub, items: [].concat(...parts.map(p => p.items.map((it, j) => Object.assign({}, it, { src: p.id, sidx: j })).filter(it => keep(it, p.id, it.sidx)))) };
@@ -226,8 +232,8 @@
     if (!auth || hbBusy) return; hbBusy = true;
     try {
       const r = await api({ op: 'me', session: auth.session });
-      if (r && !r.ok && r.error === 'upgraded') logout(esc(r.msg || 'تم تفعيل اشتراكك، سجّل دخولك من جديد.'), false, 1);   // 🎉 الزائر اشترك
-      else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || 'انتهت الجلسة، سجّل دخولك من جديد.'));
+      if (r && !r.ok && r.error === 'upgraded') logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1);   // 🎉 الزائر اشترك
+      else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && r.staff && r.staff !== auth.staff) { auth.staff = r.staff; lsSet(LS.auth, auth); }
       if (r && r.ok && auth && auth.role !== 'free' && Array.isArray(r.vids) && JSON.stringify(r.vids) !== JSON.stringify(auth.vids || [])) { auth.vids = r.vids; lsSet(LS.auth, auth); }   // 🎬 مقاطع جديدة انرفعت للموقع
       if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
@@ -240,18 +246,18 @@
   const freeRoute = h => h === '' || h === 'sharh' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
-    if (/^sub-t\d{1,2}$/.test(h)) return 'الاختبار المحاكي ' + h.slice(5);
-    if (/^board/.test(h)) return 'لوحة الصدارة'; if (h === 'qall' || h === 'vall') return 'الاختبار الشامل'; if (/^t-/.test(h)) return 'التدريب على نقاط ضعفك';
-    return { notes: 'دفتري', rules: 'قوانين الكمي', 'rules-v': 'قواعد اللفظي', plan: 'خطة المذاكرة', skills: 'نقاط القوة والضعف', badges: 'الإنجازات', vocab: 'قاموس الكلمات', 'wb-q': 'مذكرة الكمي', 'wb-v': 'مذكرة اللفظي' }[h.replace(/-v\d+$/, '')] || '';
+    if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
+    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (h === 'qall' || h === 'vall') return _T('الاختبار الشامل'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك');
+    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي') }[h.replace(/-v\d+$/, '')] || '';
   }
   function subDlg(what, from) {
     if (isFree() && window.QGT) QGT.ev('sub', what || from || 'زر الاشتراك');   // 👀 فتح نافذة الاشتراك (وش اللي فتحها)
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
-    const ov = document.createElement('div'); ov.className = 'qgdlg subdlg'; ov.setAttribute('dir', 'rtl');
-    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، أبي أشترك في دورة Q-Guide' + (auth && auth.email ? '\nإيميلي في الموقع: ' + auth.email : ''));
-    ov.innerHTML = `<div class="qgdlg-box sub-box" role="dialog" aria-modal="true" aria-labelledby="subh">
+    const ov = document.createElement('div'); ov.className = 'qgdlg subdlg'; ov.setAttribute('dir', EN ? 'ltr' : 'rtl');
+    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أبي أشترك في دورة Q-Guide') + (auth && auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
+    ov.innerHTML = _T`<div class="qgdlg-box sub-box" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
-      ${what ? `<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
+      ${what ? _T`<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
       <h3 id="subh">اشترك في دورة Q-Guide</h3>
       <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>الساحة 1v1 بدون حد، ولوحات الصدارة</li><li>المذكرات وخطة المذاكرة ونقاط ضعفك</li></ul>
       <h4>طريقة الاشتراك</h4>
@@ -268,12 +274,12 @@
   }
   // أي زر فيه data-lock أو data-sub يفتح نافذة الاشتراك
   function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w); }); }
-  const lockTool = (i, b, s) => `<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
+  const lockTool = (i, b, s) => _T`<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
-    return `<section class="fhero" aria-label="الحساب المجاني">
-      <div class="fh-t">${auth.ended ? `<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة كاملة.</p>` : `<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة كاملة.</p>`}</div>
-      <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? 'جدّد اشتراكك' : 'اشترك في الدورة'} <small>${PRICE} ريال</small></button>${lv ? '' : '<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>'}</div>
+    return _T`<section class="fhero" aria-label="الحساب المجاني">
+      <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة كاملة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة كاملة.</p>`}</div>
+      <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${PRICE} ريال</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
     </section>`;
   }
 
@@ -287,8 +293,10 @@
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
+    if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
+      H.dir = adm ? 'rtl' : 'ltr'; H.lang = adm ? 'ar' : 'en'; H.classList.toggle('l-en', !adm); H.classList.toggle('l-ar', adm); }
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
-    if (isFree() && !freeRoute(h)) { const nm = lockName(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? 'الاختبارات المحاكية' : ''); }   // 🔒 للمشتركين
+    if (isFree() && !freeRoute(h)) { const nm = lockName(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? _T('الاختبارات المحاكية') : ''); }   // 🔒 للمشتركين
     if (isFree() && window.QGT) QGT.page(h === '' ? 'home' : /^duel-/.test(h) ? 'duel' : h.replace(/@\d+$/, ''));   // 👀 وش فتح الزائر
     if (h === 'arena') return renderArena();
     if (/^duel-[A-Za-z0-9]{6}$/.test(h)) return renderArena(h.slice(5).toUpperCase());
@@ -319,24 +327,24 @@
 
   // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...)
   function gsiFromHash() {
-    const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.'); return true; } return false; }
+    const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin(_T('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.')); return true; } return false; }
     const cred = decodeURIComponent(m[1]); history.replaceState(null, '', location.pathname);
     renderLogin(); onCredential({ credential: cred }); return true;
   }
   // ---------- login ----------
   function renderLogin(err, good) {
-    document.title = 'تسجيل الدخول | Q-Guide';
+    document.title = _T('تسجيل الدخول | Q-Guide');
     const mem = /[?&]m=1(&|$)/.test(location.search);   // جا من «دخول المشتركين» في الصفحة الرئيسية: صفحة دخول للمشترك بدون «جرّب مجاناً»
-    app.innerHTML = `<div class="login"><div class="card">
+    app.innerHTML = _T`<div class="login"><div class="card">${QGL.btn('lng lgl')}
       <img src="/assets/logo.png" alt="Q-Guide">
-      <h1>${mem ? 'دخول المشتركين' : 'منصة تدريب Q-Guide'}</h1>
-      <p class="sub">${mem ? 'سجّل بنفس إيميل Google اللي اشتركت فيه، وتنفتح لك الدورة كاملة.' : 'أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح'}</p>
+      <h1>${mem ? _T('دخول المشتركين') : _T('منصة تدريب Q-Guide')}</h1>
+      <p class="sub">${mem ? _T('سجّل بنفس إيميل Google اللي اشتركت فيه، وتنفتح لك الدورة كاملة.') : _T('أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح')}</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>
       ${err ? `<div class="${good ? 'okm' : 'err'}">${err}</div>` : ''}
-      ${mem ? '' : '<div class="lg-free"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>'}
-      <p class="note">${mem ? '' : 'مشترك في الدورة؟ سجّل بنفس إيميل Google اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>'}الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
-      ${mem ? '<p class="note" style="margin-top:6px"><a href="/p/">مو مشترك؟ جرّب مجاناً</a></p>' : ''}
-      <p class="note" style="margin-top:10px"><a class="btn sm ghost" style="gap:6px" href="https://wa.me/966508003683?text=${encodeURIComponent('السلام عليكم، أحتاج مساعدة في الدخول لمنصة Q-Guide')}" target="_blank" rel="noopener">💬 دعم فني عبر واتساب</a></p>
+      ${mem ? '' : _T('<div class="lg-free"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>')}
+      <p class="note">${mem ? '' : _T('مشترك في الدورة؟ سجّل بنفس إيميل Google اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>')}الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
+      ${mem ? _T('<p class="note" style="margin-top:6px"><a href="/p/">مو مشترك؟ جرّب مجاناً</a></p>') : ''}
+      <p class="note" style="margin-top:10px"><a class="btn sm ghost" style="gap:6px" href="https://wa.me/966508003683?text=${encodeURIComponent(_T('السلام عليكم، أحتاج مساعدة في الدخول لمنصة Q-Guide'))}" target="_blank" rel="noopener">💬 دعم فني عبر واتساب</a></p>
       <p class="note" style="margin-top:8px"><a href="/privacy/">سياسة الخصوصية</a> · <a href="/terms/">الشروط</a></p>
     </div></div>`;
     mountGoogle();
@@ -344,32 +352,33 @@
   let gTries = 0;
   function mountGoogle() {
     const host = $('#gbtn'); if (!host) return;
-    if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.innerHTML = '<span style="color:var(--bad)">تعذّر تحميل تسجيل الدخول، حدّث الصفحة.</span>'; return; }
+    if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.innerHTML = _T('<span style="color:var(--bad)">تعذّر تحميل تسجيل الدخول، حدّث الصفحة.</span>'); return; }
     try {
       google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi?to=/p/' } : { ux_mode: 'popup' }));
       host.innerHTML = '';
-      google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ar', width: 280 });
+      google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
   async function onCredential(resp) {
-    const host = $('#gbtn'); if (host) host.innerHTML = '<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>';
+    const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
       const r = await api({ op: 'login', idToken: resp.credential, ua: navigator.userAgent.slice(0, 120) });
       if (!r.ok) {
-        const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
-        return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
+        const msg = r.msg || (r.error === 'not_member' ? _T('هذا الحساب غير مسجّل في الدورة.') : _T('تعذّر تسجيل الدخول (') + esc(r.error || '') + ').');
+        return renderLogin(esc(msg) + _T('<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>'));
       }
       auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0 };
       lsSet(LS.auth, auth); location.hash = ''; route();
-    } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
+    } catch (e) { renderLogin(_T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')); }
   }
 
   // ---------- home ----------
   function topbar(inner, left) {
+    if (EN && left) left = left.replace(/>→<\/a>/g, '>←</a>');   // 🌐 زر الرجوع يأشر لليسار بالإنجليزي
     return `<header class="top"><div class="w">${left || `<a class="brand" href="#"><img src="/assets/logo.png" alt="">Q-Guide</a>`}${ctlHtml()}${inner || ''}</div></header>`;
   }
   // ---------- home: ورقة الإجابة ----------
-  const SET_NAME = id => (id[0] === 'q' ? 'القسم ' : 'النموذج ') + id.slice(1);
+  const SET_NAME = id => (id[0] === 'q' ? _T('القسم ') : _T('النموذج ')) + id.slice(1);
   function setState(id, n) { const p = progGet(id); const a = p.a || {}; let ans = 0, ok = 0, last = 0, gap = -1; for (let i = 0; i < n; i++) { const x = a[i]; if (x) { ans++; if (x.c) ok++; if (x.t > last) last = x.t; } else if (gap < 0) gap = i; } return { ans, ok, last, n, gap: gap < 0 ? 0 : gap, done: n > 0 && ans >= n, best: p.best }; }
   function dotsHtml(id, n, cur) { const a = progGet(id).a || {}; let h = ''; for (let i = 0; i < n; i++) { const x = a[i]; h += `<i class="${x ? (x.c ? 'ok' : 'bad') : ''}${i === cur ? ' cur' : ''}"></i>`; } return h; }
   function pickResume() {
@@ -383,37 +392,37 @@
     return { s: best.s, st: best.st, mode: 'alldone' };
   }
   const cols = (n, max) => Math.max(1, Math.ceil(n / Math.ceil(n / max)));   // صفوف متساوية بدون فقاعات يتيمة
-  const dLabel = n => n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';
+  const dLabel = n => EN ? enN(n, 'day', 'days') : n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';   // i18n:skip
   function rzHtml() {
     const first = (auth.display || auth.name || '').trim().split(/\s+/)[0] || '';
     const R = pickResume(), rs = R.s, st = R.st;
     const D = daysGet(), streak = streakOf(D), today = D[dayKey()] || 0, goal = goalGet();
-    const wk = []; for (let k = 6; k >= 0; k--) { const t = new Date(); t.setDate(t.getDate() - k); wk.push({ l: 'حنثرخجس'[t.getDay()], n: D[dayKey(t)] || 0, today: k === 0 }); }
+    const wk = []; for (let k = 6; k >= 0; k--) { const t = new Date(); t.setDate(t.getDate() - k); wk.push({ l: _T('حنثرخجس')[t.getDay()], n: D[dayKey(t)] || 0, today: k === 0 }); }
     const nm = SET_NAME(rs.id) + (rs.id[0] === 'v' ? ` <bdi class="rz-mn">${esc(rs.sub)}</bdi>` : '');
     let kick, title, sub, cta, href = '#' + rs.id, cur = st.gap;
-    if (R.mode === 'cont') { kick = 'كمّل من حيث وقفت'; title = nm; sub = `السؤال ${st.gap + 1} من ${st.n}`; cta = 'كمّل الحل'; }
-    else if (R.mode === 'next') { kick = `خلّصت ${SET_NAME(R.prev.s.id)}${R.prev.st.best != null ? ' بنسبة ' + R.prev.st.best + '%' : ''} 👏`; title = 'التالي: ' + nm; sub = `${st.n} سؤال، وكل سؤال معه شرحه`; cta = 'ابدأ ' + SET_NAME(rs.id); }
-    else if (R.mode === 'new') { kick = 'جاهز تبدأ؟'; title = nm; sub = lsGet(LVL_LS, null) ? `${st.n} سؤال، وكل سؤال معه شرحه` : `${st.n} سؤال، وكل سؤال معه شرحه · أو <a class="rz-alt" href="#level">ابدأ باختبار تحديد المستوى 🧭</a>`; cta = 'ابدأ ' + SET_NAME(rs.id); cur = 0; }
-    else { kick = 'خلّصت كل الأقسام 🎉'; title = 'راجع الأسئلة اللي غلطت فيها'; sub = 'التدريب على أخطائك يثبّت المعلومة قبل الاختبار'; cta = 'مراجعة أخطائي'; href = '#skills'; cur = -1; }
+    if (R.mode === 'cont') { kick = _T('كمّل من حيث وقفت'); title = nm; sub = _T`السؤال ${st.gap + 1} من ${st.n}`; cta = _T('كمّل الحل'); }
+    else if (R.mode === 'next') { kick = _T`خلّصت ${SET_NAME(R.prev.s.id)}${R.prev.st.best != null ? _T(' بنسبة ') + R.prev.st.best + '%' : ''} 👏`; title = _T('التالي: ') + nm; sub = _T`${st.n} سؤال، وكل سؤال معه شرحه`; cta = _T('ابدأ ') + SET_NAME(rs.id); }
+    else if (R.mode === 'new') { kick = _T('جاهز تبدأ؟'); title = nm; sub = lsGet(LVL_LS, null) ? _T`${st.n} سؤال، وكل سؤال معه شرحه` : _T`${st.n} سؤال، وكل سؤال معه شرحه · أو <a class="rz-alt" href="#level">ابدأ باختبار تحديد المستوى 🧭</a>`; cta = _T('ابدأ ') + SET_NAME(rs.id); cur = 0; }
+    else { kick = _T('خلّصت كل الأقسام 🎉'); title = _T('راجع الأسئلة اللي غلطت فيها'); sub = _T('التدريب على أخطائك يثبّت المعلومة قبل الاختبار'); cta = _T('مراجعة أخطائي'); href = '#skills'; cur = -1; }
     const C = 2 * Math.PI * 20, dash = Math.min(1, today / goal) * C, met = today >= goal;
-    return `<section class="rz" aria-label="متابعة المذاكرة">
+    return _T`<section class="rz" aria-label="متابعة المذاكرة">
       <div class="rz-top"><h1 class="rz-hi">أهلاً ${esc(first)} 👋</h1>
-        <div class="rz-streak" title="الأيام اللي حليت فيها أسئلة"><span class="rz-r1"><span class="rz-fire ${streak ? '' : 'off'}">🔥 ${streak ? dLabel(streak) + ' ورا بعض' : 'ابدأ سلسلتك اليوم'}</span><a class="rz-bdg" href="#badges" title="إنجازاتي: الشارات اللي حصلت عليها">🏅 ${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length}<small>/${BADGES.length}</small></a></span>
-          <span class="rz-week">${wk.map(d => `<i class="${d.n ? 'on' : ''}${d.today ? ' t' : ''}" title="${d.n} سؤال"><b>${d.l}</b></i>`).join('')}</span></div></div>
+        <div class="rz-streak" title="الأيام اللي حليت فيها أسئلة"><span class="rz-r1"><span class="rz-fire ${streak ? '' : 'off'}">🔥 ${streak ? dLabel(streak) + _T(' ورا بعض') : _T('ابدأ سلسلتك اليوم')}</span><a class="rz-bdg" href="#badges" title="إنجازاتي: الشارات اللي حصلت عليها">🏅 ${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length}<small>/${BADGES.length}</small></a></span>
+          <span class="rz-week">${wk.map(d => _T`<i class="${d.n ? 'on' : ''}${d.today ? ' t' : ''}" title="${d.n} سؤال"><b>${d.l}</b></i>`).join('')}</span></div></div>
       <div class="rz-body">
         <div class="rz-what"><span class="rz-k">${kick}</span><b class="rz-set">${title}</b><span class="rz-sub">${sub}</span></div>
         <div class="rz-dots" aria-hidden="true" style="--c:${cols(st.n, 30)};--cm:${cols(st.n, 17)}">${R.mode === 'alldone' ? '' : dotsHtml(rs.id, st.n, cur)}</div>
         <div class="rz-act"><a class="rz-go" href="${href}"><span class="pl">▶</span>${cta}</a>
           <button class="rz-goal ${met ? 'met' : ''} ${today ? '' : 'zero'}" id="goal" title="اضغط لتغيير هدفك اليومي"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" class="bg"/><circle cx="24" cy="24" r="20" class="fg" stroke-dasharray="${dash.toFixed(1)} ${C.toFixed(1)}"/></svg>
-            <span class="gt"><b>${met ? '✓ ' : ''}${today}<small> من ${goal}</small></b><small>${met ? 'حققت هدف اليوم' : 'هدف اليوم'}</small></span></button></div>
+            <span class="gt"><b>${met ? '✓ ' : ''}${today}<small> من ${goal}</small></b><small>${met ? _T('حققت هدف اليوم') : _T('هدف اليوم')}</small></span></button></div>
       </div></section>`;
   }
   let homePulled = false;
   async function renderHome() {
-    document.title = 'منصة التدريب | Q-Guide';
-    if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = '<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'; return; } }
+    document.title = _T('منصة التدريب | Q-Guide');
+    if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = _T('<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'); return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
-    const adminLinks = auth.role === 'admin' ? `<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    const adminLinks = auth.role === 'admin' ? _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
     const RR = ytRules(tab === 'quant' ? 'q' : 'v');
     const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
     const megaPct = (id, n) => Math.round(Object.keys(progGet(id).a || {}).length * 100 / n);
@@ -422,51 +431,51 @@
     const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
     const toolA = (href, i, b, s, tag, free) => FR && !free ? lockTool(i, b, s) : `<a class="tool" href="${href}"><span class="ti">${i}</span><span class="tx"><b>${b}${tag || ''}</b><small>${s}</small></span></a>`;
     const toolB = (id, i, b, s) => FR ? lockTool(i, b, s) : `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
-    app.innerHTML = topbar(`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? '<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>' : '<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>'}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
-    `<main class="wrap home">
+    app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
+    _T`<main class="wrap home">
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
-        <span class="sp"></span>${RR ? `<a class="rvid" href="${RR.url}"${RR.tgt} title="${RR.site ? 'يشتغل هنا داخل الموقع' : RR.alt ? YT_ALT_TIP : esc(RR.d)}">${vIcon(RR)}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a>` : ''}<a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : '<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>'}</div>
+        <span class="sp"></span>${RR ? `<a class="rvid" href="${RR.url}"${RR.tgt} title="${RR.site ? _T('يشتغل هنا داخل الموقع') : RR.alt ? YT_ALT_TIP : esc(RR.d)}">${vIcon(RR)}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a>` : ''}<a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
       <div class="sheets" id="grid"></div>
       <h2 class="h2">أدوات المذاكرة</h2>
       <section class="tgroups">
         <div class="tg"><h3>اختبر نفسك</h3>
-          ${toolA('#level', '🧭', 'تحديد المستوى', lv ? `مستواك: ${LEVELS[lv.lvl].t} (${lv.pct}%) · تقدر تعيده` : '20 سؤال تعرف منها مستواك ونقاط ضعفك', FR ? '<span class="frb">مجاني</span>' : '', 1)}
-          ${toolA('#arena', '⚔️', 'الساحة 1v1', FR ? `تحدَّ طالب مباشرة، ${FREE_GAMES} مباريات مجانية كل يوم` : 'تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي', FR ? '<span class="frb">مجاني</span>' : '<span class="beta">جديد</span>', 1)}
-          ${toolA('/test/', '🧪', 'الاختبارات المحاكية', FR ? 'الاختبار المحاكي 1 مجاني، والـ 16 الباقية للمشتركين' : '17 اختبار بنفس شكل قياس المحوسب', FR ? '<span class="frb">1 مجاني</span>' : '', 1)}
-          ${FR ? lockTool('🏁', 'الاختبار الشامل', 'كل الأسئلة في اختبار واحد متواصل') : `<div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div>`}</div>
+          ${toolA('#level', '🧭', _T('تحديد المستوى'), lv ? _T`مستواك: ${LEVELS[lv.lvl].t} (${lv.pct}%) · تقدر تعيده` : _T('20 سؤال تعرف منها مستواك ونقاط ضعفك'), FR ? _T('<span class="frb">مجاني</span>') : '', 1)}
+          ${toolA('#arena', '⚔️', _T('الساحة 1v1'), FR ? _T`تحدَّ طالب مباشرة، ${FREE_GAMES} مباريات مجانية كل يوم` : _T('تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
+          ${toolA('/test/', '🧪', _T('الاختبارات المحاكية'), FR ? _T('الاختبار المحاكي 1 مجاني، والـ 16 الباقية للمشتركين') : _T('17 اختبار بنفس شكل قياس المحوسب'), FR ? _T('<span class="frb">1 مجاني</span>') : '', 1)}
+          ${FR ? lockTool('🏁', _T('الاختبار الشامل'), _T('كل الأسئلة في اختبار واحد متواصل')) : _T`<div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div>`}</div>
         <div class="tg"><h3>تعلّم وراجع</h3>
-          ${toolA('#find', '🔎', 'ابحث عن سؤال', FR ? 'اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين' : 'اكتب السؤال أو صوّره ونقولك وين تلقاه', FR ? '<span class="frb">مجاني</span>' : '<span class="beta">جديد</span>', 1)}
-          ${RULES_ON ? toolA('#rules', '📐', 'قوانين الكمي', 'القوانين اللي تحتاجها أسئلة الدورة، وتنطبع') + toolA('#rules-v', '📘', 'قواعد اللفظي', 'طرق الحل وأنواع الأسئلة في صفحة وحدة', FR ? '' : '<span class="beta">جديد</span>') : ''}
-          ${toolA('#vocab', '📖', 'قاموس الكلمات', 'ترجمة ونطق كل كلمات اللفظي')}
-          ${toolA('#notes', '📒', 'دفتري', nMarks ? `${nMarks} سؤال محفوظ مع ملاحظاتك` : 'الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها')}
-          ${isStaff ? toolA('#cards', '🃏', 'بطاقات الحفظ', 'احفظ كلمات اللفظي بالبطاقات', '<span class="beta">تجريبي</span>') : ''}</div>
+          ${toolA('#find', '🔎', _T('ابحث عن سؤال'), FR ? _T('اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين') : _T('اكتب السؤال أو صوّره ونقولك وين تلقاه'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
+          ${RULES_ON ? toolA('#rules', '📐', _T('قوانين الكمي'), _T('القوانين اللي تحتاجها أسئلة الدورة، وتنطبع')) + toolA('#rules-v', '📘', _T('قواعد اللفظي'), _T('طرق الحل وأنواع الأسئلة في صفحة وحدة'), FR ? '' : _T('<span class="beta">جديد</span>')) : ''}
+          ${toolA('#vocab', '📖', _T('قاموس الكلمات'), _T('ترجمة ونطق كل كلمات اللفظي'))}
+          ${toolA('#notes', '📒', _T('دفتري'), nMarks ? _T`${nMarks} سؤال محفوظ مع ملاحظاتك` : _T('الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها'))}
+          ${isStaff ? toolA('#cards', '🃏', _T('بطاقات الحفظ'), _T('احفظ كلمات اللفظي بالبطاقات'), _T('<span class="beta">تجريبي</span>')) : ''}</div>
         <div class="tg"><h3>تابع تقدّمك</h3>
-          ${toolA('#plan', '📅', 'خطة المذاكرة', pl ? 'أنت على ' + pl.name : 'اختر خطة 7 أو 14 أو 19 أو 28 يوم')}
-          ${toolB('rem', '🔔', 'التذكير اليومي', remLabel())}
-          ${toolA('#skills', '🎯', 'نقاط قوتك وضعفك', 'اعرف وش تغلط فيه وتدرّب عليه')}
-          ${toolA('#badges', '🏅', 'إنجازاتي', `${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length} من ${BADGES.length} شارة`)}
-          ${toolA('#board', '🏆', 'لوحة الصدارة', 'ترتيبك بين طلاب الدورة')}</div>
+          ${toolA('#plan', '📅', _T('خطة المذاكرة'), pl ? _T('أنت على ') + pl.name : _T('اختر خطة 7 أو 14 أو 19 أو 28 يوم'))}
+          ${toolB('rem', '🔔', _T('التذكير اليومي'), remLabel())}
+          ${toolA('#skills', '🎯', _T('نقاط قوتك وضعفك'), _T('اعرف وش تغلط فيه وتدرّب عليه'))}
+          ${toolA('#badges', '🏅', _T('إنجازاتي'), _T`${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length} من ${BADGES.length} شارة`)}
+          ${toolA('#board', '🏆', _T('لوحة الصدارة'), _T('ترتيبك بين طلاب الدورة'))}</div>
       </section>
-      ${auth.member === 'manual' || FR ? '' : `<h2 class="h2" id="wbh">📘 مذكراتك</h2>
+      ${auth.member === 'manual' || FR ? '' : _T`<h2 class="h2" id="wbh">📘 مذكراتك</h2>
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>`}
     </main>`;
-    $('#lo').onclick = async () => { if (await QGDlg.confirm('تسجيل الخروج؟', { ok: 'خروج' })) logout('', true); };
+    $('#lo').onclick = async () => { if (await QGDlg.confirm(_T('تسجيل الخروج؟'), { ok: _T('خروج') })) logout('', true); };
     $('#me').onclick = () => renderProfile();
     bindCtl();
     document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { lsSet(LS.tab, b.dataset.t); renderHome(); });
     const grid = $('#grid');
     grid.innerHTML = manifest[tab].map(s => {
-      const st = setState(s.id, s.n); const sub = tab === 'quant' ? `الأسئلة <bdi dir="ltr">${esc(s.range)}</bdi>` : `<bdi dir="ltr">${esc(s.sub)}</bdi>`;
-      const stamp = st.done ? `<span class="stamp" title="أفضل نتيجة">✓ ${st.best != null ? st.best + '%' : ''}</span>` : st.ans ? `<span class="pill">${st.ans}/${s.n}</span>` : '';
-      const foot = st.done ? (st.best != null ? `أفضل نتيجة ${st.best}%` : 'جاوبت كل الأسئلة') : st.ans ? `أجبت ${st.ans} من ${s.n}، منها ${st.ok} صح` : (st.best != null ? `أفضل نتيجة ${st.best}%` : `${s.n} سؤال`);
-      if (isFree() && FREE_SETS.indexOf(s.id) < 0) return `<button class="sheet lk" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b><span class="lkb">🔒</span></span><span class="sh-s">${sub}</span><span class="sh-lk">${s.n} سؤال مع الشرح للمشتركين</span></button>`;
+      const st = setState(s.id, s.n); const sub = tab === 'quant' ? _T`الأسئلة <bdi dir="ltr">${esc(s.range)}</bdi>` : `<bdi dir="ltr">${esc(s.sub)}</bdi>`;
+      const stamp = st.done ? _T`<span class="stamp" title="أفضل نتيجة">✓ ${st.best != null ? st.best + '%' : ''}</span>` : st.ans ? `<span class="pill">${st.ans}/${s.n}</span>` : '';
+      const foot = st.done ? (st.best != null ? _T`أفضل نتيجة ${st.best}%` : _T('جاوبت كل الأسئلة')) : st.ans ? _T`أجبت ${st.ans} من ${s.n}، منها ${st.ok} صح` : (st.best != null ? _T`أفضل نتيجة ${st.best}%` : _T`${s.n} سؤال`);
+      if (isFree() && FREE_SETS.indexOf(s.id) < 0) return _T`<button class="sheet lk" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b><span class="lkb">🔒</span></span><span class="sh-s">${sub}</span><span class="sh-lk">${s.n} سؤال مع الشرح للمشتركين</span></button>`;
       return `<button class="sheet ${st.done ? 'done' : st.ans ? 'doing' : ''}${isFree() ? ' fr' : ''}" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b>${stamp}</span><span class="sh-s">${sub}</span><span class="sh-dots" aria-hidden="true" style="--c:${cols(s.n, 16)};--cm:${cols(s.n, 12)}">${dotsHtml(s.id, s.n, -1)}</span><span class="sh-f">${foot}</span></button>`;
     }).join('');
     grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { if (b.classList.contains('lk')) { if (window.QGT) QGT.ev('lock', SET_NAME(b.dataset.id)); return subDlg(SET_NAME(b.dataset.id)); } location.hash = b.dataset.id; });
     bindSub(app);
-    const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast('هدفك اليومي صار ' + nx + ' سؤال'); }; };
+    const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast(_T('هدفك اليومي صار ') + nx + _T(' سؤال')); }; };
     bindGoal();
     const rb = $('#rem'); if (rb) rb.onclick = () => remDlg().then(() => { const l = $('#reml'); if (l) l.textContent = remLabel(); });
     if (!isFree()) badgeCheckSoon(); remCtx();
@@ -489,29 +498,29 @@
     if (!auth.files || !auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || auth.phone || ''; auth.member = r.member || ''; lsSet(LS.auth, auth); } } catch (e) {} }
     if (auth.member === 'manual') { ['#wbh', '#wb'].forEach(k => { const x = $(k); if (x) x.remove(); }); return; }   // المذكرة الشخصية تنعمل من الشيت برقم الجوال
     const f = auth.files || {}; if (!$('#wb')) return;
-    const card = (id, title, icon, desc, k) => id ? `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
+    const card = (id, title, icon, desc, k) => id ? _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a><a class="btn sm ghost" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">PDF في Drive</a></div></div>`
-      : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? 'المشرف ليس له مذكرة شخصية' : 'تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً'}</span></div></div>`;
-    el.innerHTML = card(f.quant, 'مذكرة الكمي', '📐', 'نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً', 'q') + card(f.verbal, 'مذكرة اللفظي', '📖', 'نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً', 'v') +
-      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.<br>📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.</p>`;
+      : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? _T('المشرف ليس له مذكرة شخصية') : _T('تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً')}</span></div></div>`;
+    el.innerHTML = card(f.quant, _T('مذكرة الكمي'), '📐', _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') + card(f.verbal, _T('مذكرة اللفظي'), '📖', _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
+      _T`<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.<br>📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.</p>`;
   }
 
   // ---------- interactive workbook viewer (pages + pen) ----------
   let WB = null;
   // solved = 📗 النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته (meta.sp = الصفحات اللي فيها أسئلة، والباقي نفس الأصلية)
   async function renderWorkbook(kind, solved) {
-    const title = (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');
+    const title = (kind === 'q' ? _T('مذكرة الكمي') : _T('مذكرة اللفظي')) + (solved ? _T(' المحلولة') : '');
     document.title = title + ' | Q-Guide';
     if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
-    if (auth.member === 'manual') { toast('المذكرة الشخصية غير متاحة لحسابك'); location.hash = ''; return; }
-    if (auth.role !== 'admin' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق'); location.hash = ''; return; }
-    let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json')).json(); } catch (e) { toast('تعذّر تحميل المذكرة'); location.hash = ''; return; }
+    if (auth.member === 'manual') { toast(_T('المذكرة الشخصية غير متاحة لحسابك')); location.hash = ''; return; }
+    if (auth.role !== 'admin' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast(_T('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق')); location.hash = ''; return; }
+    let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json')).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
     const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, lsGet(lastKey, 1)));
     WB = { kind, meta, page, cache: {}, pen: null, solved: !!solved, sp: new Set(meta.sp || []) };
-    app.innerHTML = topbar(`<span class="ttl wbttl">${title}</span><a class="chip wbsw${solved ? ' on' : ''}" href="#wb-${kind}${solved ? '' : 's'}" title="${solved ? 'ارجع للمذكرة بدون حل' : 'النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته'}" aria-label="${solved ? 'المذكرة بدون حل' : 'النسخة المحلولة'}">${solved ? '📘' : '📗'}<span class="tx"> ${solved ? 'بدون حل' : 'المحلولة'}</span></a><span class="sp"></span>
+    app.innerHTML = topbar(_T`<span class="ttl wbttl">${title}</span><a class="chip wbsw${solved ? ' on' : ''}" href="#wb-${kind}${solved ? '' : 's'}" title="${solved ? _T('ارجع للمذكرة بدون حل') : _T('النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته')}" aria-label="${solved ? _T('المذكرة بدون حل') : _T('النسخة المحلولة')}">${solved ? '📘' : '📗'}<span class="tx"> ${solved ? _T('بدون حل') : _T('المحلولة')}</span></a><span class="sp"></span>
       <button class="ib" id="pgprev" title="الصفحة السابقة">‹</button><span class="chip cnt" dir="ltr"><input id="pgin" type="number" min="1" max="${meta.pages}" value="${page}" style="width:54px;border:0;background:transparent;color:#fff;font-weight:700;text-align:center;font-size:15px"> / ${meta.pages}</span><button class="ib" id="pgnext" title="الصفحة التالية">›</button>`,
-      `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wbmain">${solved ? '<div class="wbwarn" role="note">⚠️ نسخة محلولة للمساعدة: لا تعتمد عليها 100%، ممكن يكون فيها أخطاء. إذا شكّيت في إجابة راجع شرح المقطع.</div>' : ''}<div class="wbwrap" id="wbwrap"><div class="wbpage" id="wbpage"><div class="center" style="padding:60px 0"><div class="spin" style="margin:0 auto"></div></div></div></div>
+      _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<main class="wbmain">${solved ? _T('<div class="wbwarn" role="note">⚠️ نسخة محلولة للمساعدة: لا تعتمد عليها 100%، ممكن يكون فيها أخطاء. إذا شكّيت في إجابة راجع شرح المقطع.</div>') : ''}<div class="wbwrap" id="wbwrap"><div class="wbpage" id="wbpage"><div class="center" style="padding:60px 0"><div class="spin" style="margin:0 auto"></div></div></div></div>
       <div class="wbnav"><button class="btn ghost sm" id="pgprev2">‹ السابقة</button><span class="mut" id="pglabel"></span><button class="btn ghost sm" id="pgnext2">التالية ›</button></div></main>
       <button class="qgpen-fab" id="penfab" title="القلم">✎</button>`;
     bindCtl();
@@ -544,7 +553,7 @@
   }
   async function showPage(n) {
     const { kind, meta } = WB; const el = $('#wbpage'); if (!el) return;
-    $('#pglabel').textContent = 'صفحة ' + n + ' من ' + meta.pages;
+    $('#pglabel').textContent = _T('صفحة ') + n + _T(' من ') + meta.pages;
     try {
       const bmp = await pageBitmap(kind, n); if (!WB || WB.page !== n) return;
       let cv = el.querySelector('canvas'); if (!cv) { el.innerHTML = ''; cv = document.createElement('canvas'); el.appendChild(cv); }
@@ -552,7 +561,7 @@
       WB.pen.setKey('qg_wb_' + kind + '_' + n); WB.pen.resize();
       window.scrollTo({ top: 0 });
       pageBitmap(kind, Math.min(meta.pages, n + 1)).catch(() => {});
-    } catch (e) { if (String(e.message).indexOf('page') < 0) logout(); el.innerHTML = '<div class="center">تعذّر تحميل الصفحة</div>'; }
+    } catch (e) { if (String(e.message).indexOf('page') < 0) logout(); el.innerHTML = _T('<div class="center">تعذّر تحميل الصفحة</div>'); }
   }
 
   // ---------- 🎬 مشغّل المقاطع داخل الموقع (المجاني والتحويل) ----------
@@ -560,7 +569,7 @@
   const VW_LS = 'qg_vw';   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
   let VID = null;
   function vidList(k) {
-    const L = k === 'q' ? [{ key: 'q:rules', h: 'q-rules', n: 'rules', label: 'قواعد الكمي', dur: YT.q.rules.dur }] : [];   // قواعد اللفظي لطلال العنزي (قريباً)
+    const L = k === 'q' ? [{ key: 'q:rules', h: 'q-rules', n: 'rules', label: _T('قواعد الكمي'), dur: YT.q.rules.dur }] : [];   // قواعد اللفظي لطلال العنزي (قريباً)
     YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: YT[k].name + ' ' + (i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
   }
@@ -569,19 +578,19 @@
     vidStop();
     const k = h[0], n = /-rules$/.test(h) ? 'rules' : +h.slice(1), L = vidList(k), cur = L.find(x => x.n === n);
     if (!cur) { location.hash = '#sharh'; return; }
-    document.title = 'شرح ' + cur.label + ' | Q-Guide';
+    document.title = _T('شرح ') + cur.label + ' | Q-Guide';
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
-    const solve = n === 'rules' ? `<a class="btn sm ghost" href="#${k === 'q' ? 'rules' : 'rules-v'}">${k === 'q' ? '📐 ملخص القوانين' : '📘 ملخص القواعد'}</a>` : `<a class="btn sm" href="#${k}${n}">✍️ حل ${YT[k].name} ${n}</a>`;
-    app.innerHTML = topbar(`<span class="ttl">🎬 شرح ${esc(cur.label)}</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap watch">
+    const solve = n === 'rules' ? `<a class="btn sm ghost" href="#${k === 'q' ? 'rules' : 'rules-v'}">${k === 'q' ? _T('📐 ملخص القوانين') : _T('📘 ملخص القواعد')}</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${YT[k].name} ${n}</a>`;
+    app.innerHTML = topbar(_T`<span class="ttl">🎬 شرح ${esc(cur.label)}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<main class="wrap watch">
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
           <div class="wvwm" id="wvwm" aria-hidden="true"></div><div class="wvmsg" id="wvmsg"><div class="spin"></div></div>
           <button type="button" class="wvfs" id="wvfs" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
         <div class="wvbar"><div class="wvt"><b>شرح ${esc(cur.label)}</b><span class="mut"><span class="wvteach">👨‍🏫 ${TEACHERS[0].name}</span> · <bdi dir="ltr">${esc(cur.dur || '')}</bdi></span></div>
-          <div class="wvact">${solve}${prev ? `<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? `<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
+          <div class="wvact">${solve}${prev ? _T`<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? _T`<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
-        <div class="wvhead"><h2 class="h2">${k === 'q' ? '📐 مقاطع الكمي' : '📖 مقاطع اللفظي'}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? '📖 مقاطع اللفظي' : '📐 مقاطع الكمي'}</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span></div>
-        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${esc(x.label)}</b><small>${w ? '✓ شاهدته' : esc(x.dur || '')}</small></a>`; }).join('')}</div>
+        <div class="wvhead"><h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span></div>
+        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : esc(x.dur || '')}</small></a>`; }).join('')}</div>
       </main>`;
     bindCtl(); window.scrollTo({ top: 0 });
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
@@ -589,8 +598,8 @@
     // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب
     const toYT = t => { const A = ytAlt(), alt = A && A[k] && (n === 'rules' ? A[k].rules : A[k].v && A[k].v[n - 1]);
       const raw = n === 'rules' ? YT[k].rules.id : YT[k].v[n - 1].split(':')[0];
-      say(t, `<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
-    if (!(vidSub() || auth.role === 'admin')) { toYT('مقاطع الشرح عندك تفتح في يوتيوب (عضوية القناة).'); return; }
+      say(t, _T`<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
+    if (!(vidSub() || auth.role === 'admin')) { toYT(_T('مقاطع الشرح عندك تفتح في يوتيوب (عضوية القناة).')); return; }
     VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
     box.oncontextmenu = e => { e.preventDefault(); return false; };
     // 💧 العلامة: إيميله ورقمه، تتنقّل كل شوي بين أماكن ما تغطي أزرار المشغّل
@@ -610,16 +619,16 @@
     const st = () => { const A = lsGet(VW_LS, {}); return A[cur.key] || {}; };
     const put = o => { const A = lsGet(VW_LS, {}); A[cur.key] = Object.assign(A[cur.key] || {}, o); lsSet(VW_LS, A); };
     const saveT = () => { if (!v.duration || !isFinite(v.duration)) return; const t = v.currentTime, done = t / v.duration > .9; put(Object.assign({ t: done ? 0 : Math.floor(t) }, done ? { w: 1 } : {}));
-      if (done) { const a = document.querySelector('.wvi.on'); if (a && !a.classList.contains('ok')) { a.classList.add('ok'); a.querySelector('small').textContent = '✓ شاهدته'; } } };
+      if (done) { const a = document.querySelector('.wvi.on'); if (a && !a.classList.contains('ok')) { a.classList.add('ok'); a.querySelector('small').textContent = _T('✓ شاهدته'); } } };
     VID.sv = setInterval(saveT, 5000); v.onpause = saveT; v.onended = saveT;
     let want = st().t || 0;
     v.onloadedmetadata = () => { msg.hidden = true; if (want > 10 && want < v.duration - 5) v.currentTime = want; want = 0; };
-    v.onerror = () => { if (!VID || VID.v !== v) return; if (VID.tries < 2) { VID.tries++; want = Math.floor(v.currentTime || want); load(); } else say('تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.'); };
+    v.onerror = () => { if (!VID || VID.v !== v) return; if (VID.tries < 2) { VID.tries++; want = Math.floor(v.currentTime || want); load(); } else say(_T('تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.')); };
     const load = async () => {
       let r; try { r = await api({ op: 'vid_url', session: auth.session, v: cur.key }); } catch (e) { r = null; }
       if (!VID || VID.v !== v) return;
-      if (r && r.error === 'missing') { toYT('المقطع هذا ما انرفع للموقع للحين.'); return; }
-      if (!r || !r.ok) { say(esc((r && r.msg) || 'تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.')); return; }
+      if (r && r.error === 'missing') { toYT(_T('المقطع هذا ما انرفع للموقع للحين.')); return; }
+      if (!r || !r.ok) { say(esc((r && r.msg) || _T('تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.'))); return; }
       v.src = r.url; v.load();
     };
     load();
@@ -627,23 +636,23 @@
 
   // ---------- 👨‍🏫 الشرح والمدرسين: الشرح مقسّم بين أكثر من مدرس (المتاح الحين سلمان الفرج) ----------
   const TEACHERS = [
-    { id: 'salman', name: 'سلمان الفرج', s: ['q', 'v'], on: 1 },
-    { id: 'abdullah', name: 'عبدالله الشمراني', s: ['v'], on: 0 },
-    { id: 'talal', name: 'طلال العنزي', s: ['q', 'v'], on: 0 },
+    { id: 'salman', name: _T('سلمان الفرج'), s: ['q', 'v'], on: 1 },
+    { id: 'abdullah', name: _T('عبدالله الشمراني'), s: ['v'], on: 0 },
+    { id: 'talal', name: _T('طلال العنزي'), s: ['q', 'v'], on: 0 },
   ];
-  const SUBJ = { q: 'الكمي', v: 'اللفظي' };
+  const SUBJ = { q: _T('الكمي'), v: _T('اللفظي') };
   function renderSharh() {
-    document.title = 'الشرح والمدرسين | Q-Guide';
+    document.title = _T('الشرح والمدرسين | Q-Guide');
     const W = lsGet(VW_LS, {});
     // كل مقطع: داخل الموقع (المجاني والتحويل لو انرفع) أو يوتيوب (مشترك يوتيوب، أو مقطع ما انرفع للحين)
     const item = (k, n) => { const y = n === 'rules' ? ytRules(k) : ytFor(k + n); if (!y) return '';
-      const label = n === 'rules' ? 'قواعد الكمي' : YT[k].name + ' ' + n, dur = n === 'rules' ? YT[k].rules.dur : y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
-      return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${label}</span></b><small>${w ? '✓ شاهدته' : `<bdi dir="ltr">${esc(dur || '')}</bdi>`}</small></a>`; };
+      const label = n === 'rules' ? _T('قواعد الكمي') : YT[k].name + ' ' + n, dur = n === 'rules' ? YT[k].rules.dur : y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
+      return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${label}</span></b><small>${w ? _T('✓ شاهدته') : `<bdi dir="ltr">${esc(dur || '')}</bdi>`}</small></a>`; };
     const tcard = t => `<div class="tch${t.on ? ' on' : ' soon'}"><span class="tav" aria-hidden="true">${t.name[0]}</span>
-      <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? 'الكمي واللفظي' : SUBJ[t.s[0]] + ' فقط'}</span></span><span class="tst">${t.on ? '✓ موجود' : '⏳ قريباً'}</span></div>`;
+      <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? _T('الكمي واللفظي') : SUBJ[t.s[0]] + _T(' فقط')}</span></span><span class="tst">${t.on ? _T('✓ موجود') : _T('⏳ قريباً')}</span></div>`;
     const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
-    app.innerHTML = topbar(`<span class="ttl">👨‍🏫 الشرح والمدرسين</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap sharh">
+    app.innerHTML = topbar(_T`<span class="ttl">👨‍🏫 الشرح والمدرسين</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<main class="wrap sharh">
         <div class="hero"><div><h1>الشرح والمدرسين</h1><p>الشرح مقسّم بين أكثر من مدرس. الموجود الحين شرح سلمان الفرج للكمي واللفظي، والباقين ينزل شرحهم قريباً.</p></div></div>
         <div class="tchs">${TEACHERS.map(tcard).join('')}</div>
         <section class="tsec" aria-labelledby="tsh"><h2 class="h2" id="tsh">شرح ${TEACHERS[0].name}</h2>
@@ -675,26 +684,26 @@
   document.addEventListener('visibilitychange', () => { if (!P) return; if (document.hidden) P.hidAt = Date.now(); else if (P.hidAt) { P.lastAct += Date.now() - P.hidAt; P.hidAt = 0; } });
   let P = null; // player state
   async function renderPlayer(id, start) {
-    app.innerHTML = topbar(`<span class="ttl">جارٍ التحميل…</span>`, `<a class="ib" href="#" title="رجوع">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>';
-    let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + '<div class="center">تعذّر فتح الأسئلة (' + esc(e.message) + '). <a href="#">رجوع</a></div>'; return; }
+    app.innerHTML = topbar(_T`<span class="ttl">جارٍ التحميل…</span>`, _T`<a class="ib" href="#" title="رجوع">→</a>`) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>');
+    let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + _T('<div class="center">تعذّر فتح الأسئلة (') + esc(e.message) + _T('). <a href="#">رجوع</a></div>'); return; }
     if (set.kind === 'verbal') await loadVocab();
     const items = flatItems(set); const prog = progGet(id);
-    if (!items.length) { const star = /^t-star-/.test(id); app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, `<a class="ib" href="${star ? '#notes' : '#skills'}" title="رجوع">→</a>`) + (star ? `<div class="center"><div style="font-size:40px">⭐</div><p>ما حفظت أسئلة في هذا القسم من دفترك.<br><span class="mut">اضغط ⭐ على أي سؤال وأنت تحل عشان ينحفظ هنا وتتدرّب عليه.</span></p><a class="btn" href="#notes">📒 دفتري</a></div>` : `<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`); bindCtl(); return; }
+    if (!items.length) { const star = /^t-star-/.test(id); app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, _T`<a class="ib" href="${star ? '#notes' : '#skills'}" title="رجوع">→</a>`) + (star ? _T`<div class="center"><div style="font-size:40px">⭐</div><p>ما حفظت أسئلة في هذا القسم من دفترك.<br><span class="mut">اضغط ⭐ على أي سؤال وأنت تحل عشان ينحفظ هنا وتتدرّب عليه.</span></p><a class="btn" href="#notes">📒 دفتري</a></div>` : _T`<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`); bindCtl(); return; }
     if (!prog.started) prog.started = Date.now();
     let cur = items.findIndex((x, i) => !prog.a[i]); if (cur < 0) cur = Math.min(prog.last || 0, items.length - 1);   // أول سؤال بدون إجابة
     if (start != null && start >= 0 && start < items.length) cur = start;   // فتح سؤال محدد (من الدفتر)
     P = { id, set, items, prog, cur, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
-    app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}"${ytFor(id).tgt}${ytTip(ytFor(id), 'شرح ' + ytFor(id).label + ' على يوتيوب')}>${vIcon(ytFor(id))}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span></button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${items.map((x, i) => `<i class="${prog.a[i] ? (prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('')}</div><main class="wrap" id="pm"></main>
+    app.innerHTML = topbar(_T`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
+      ${ytFor(id) ? _T`<a class="ytb" href="${ytFor(id).url}"${ytFor(id).tgt}${ytTip(ytFor(id), _T('شرح ') + ytFor(id).label + _T(' على يوتيوب'))}>${vIcon(ytFor(id))}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span></button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${items.map((x, i) => `<i class="${prog.a[i] ? (prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('')}</div><main class="wrap" id="pm"></main>
       <aside class="sheetp" aria-label="ورقة الإجابة"><div class="sp-h"><b>ورقة الإجابة</b><span id="spn"></span></div><div class="qgrid" id="spg"></div></aside>
       <div class="nav" id="nav" role="dialog" aria-modal="true" aria-label="كل الأسئلة"><div class="bg"></div><div class="sh"><div class="nvh"><b>كل الأسئلة</b><span class="nlg"><span><i class="ok"></i>صحيحة</span><span><i class="bad"></i>خاطئة</span><span><i></i>ما جاوبتها</span></span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة من البداية</button></div><div class="qgrid big" id="ng"></div></div></div>`;
     $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); const c = $('#ng .cur'); if (c) c.focus({ preventScroll: true }); };
     bindCtl();
     $('#nav .bg').onclick = () => $('#nav').classList.remove('open');
     const spg = $('#spg'); spg.innerHTML = sheetBtns(); spg.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) showQ(+b.dataset.i); };
-    $('#reset').onclick = async () => { if (await QGDlg.confirm('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟', { ok: 'ابدأ من جديد', danger: true })) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
+    $('#reset').onclick = async () => { if (await QGDlg.confirm(_T('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟'), { ok: _T('ابدأ من جديد'), danger: true })) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
     showQ(cur);
     document.onkeydown = onKey;
   }
@@ -711,10 +720,10 @@
     const n = P.items.length, ans = Object.keys(P.prog.a).length; $('#cnt').textContent = (P.cur + 1) + ' / ' + n;
     const sb = $('#sb'); if (sb) { const o = sb.querySelector('i.cur'); if (o) o.classList.remove('cur'); const c = sb.children[P.cur]; if (c) c.classList.add('cur'); }
     const g = $('#spg'); if (g) { const o = g.querySelector('.cur'); if (o) o.classList.remove('cur'); const c = g.children[P.cur]; if (c) { c.classList.add('cur'); if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight) g.scrollTop = c.offsetTop - g.clientHeight / 2; } }
-    const sn = $('#spn'); if (sn) sn.textContent = `أجبت ${ans} من ${n}`;
+    const sn = $('#spn'); if (sn) sn.textContent = _T`أجبت ${ans} من ${n}`;
   }
   // أزرار ورقة الإجابة (اللوحة الجانبية + نافذة كل الأسئلة): كل سؤال متاح بضغطة
-  function sheetBtns() { return P.items.map((x, i) => { const a = P.prog.a[i]; return `<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${i + 1}${a ? (a.c ? '، إجابتك صحيحة' : '، إجابتك خاطئة') : ''}">${i + 1}</button>`; }).join(''); }
+  function sheetBtns() { return P.items.map((x, i) => { const a = P.prog.a[i]; return _T`<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${i + 1}${a ? (a.c ? _T('، إجابتك صحيحة') : _T('، إجابتك خاطئة')) : ''}">${i + 1}</button>`; }).join(''); }
   // أقرب سؤال بدون إجابة بعد i (ويرجع من البداية)، أو -1
   function nextOpen(i) { const n = P.items.length; for (let k = 1; k < n; k++) { const j = (i + k) % n; if (!P.prog.a[j]) return j; } return -1; }
   function showQ(i) {
@@ -727,12 +736,12 @@
       if (g.kind === 'part') html += `<div class="ghd">${esc(g.title)} <small>— ${esc(g.ar || '')}</small></div>`;
       else {
         const open = P.passOpen[gi] != null ? P.passOpen[gi] : true;
-        html += `<div class="ghd">Passage ${g.num}: ${esc(g.title)} <small>— استيعاب المقروء</small></div>
-        <div class="pass ${open ? '' : 'closed'}" id="pass"><div class="ph" id="ph"><span>📄 القطعة <span class="ar">اضغط للإخفاء/الإظهار</span></span><span id="pch">${open ? '▲' : '▼'}</span></div><div class="pread"><button type="button" class="sayb" data-say-sel="#pass .pb" data-lang="en" aria-label="استمع للقطعة">${SAYSVG}<span>استمع للقطعة</span></button></div><div class="pb">${wordsHtml(g.passage)}</div>${vocabChips(g.passage, 120) ? `<details class="tr vocab pw"><summary>📖 كلمات القطعة <small>(اضغط على أي كلمة في القطعة لترجمتها)</small></summary><div class="vcs">${vocabChips(g.passage, 120)}</div></details>` : ''}</div>`;
+        html += _T`<div class="ghd">Passage ${g.num}: ${esc(g.title)} <small>— استيعاب المقروء</small></div>
+        <div class="pass ${open ? '' : 'closed'}" id="pass"><div class="ph" id="ph"><span>📄 القطعة <span class="ar">اضغط للإخفاء/الإظهار</span></span><span id="pch">${open ? '▲' : '▼'}</span></div><div class="pread"><button type="button" class="sayb" data-say-sel="#pass .pb" data-lang="en" aria-label="استمع للقطعة">${SAYSVG}<span>استمع للقطعة</span></button></div><div class="pb">${wordsHtml(g.passage)}</div>${vocabChips(g.passage, 120) ? _T`<details class="tr vocab pw"><summary>📖 كلمات القطعة <small>(اضغط على أي كلمة في القطعة لترجمتها)</small></summary><div class="vcs">${vocabChips(g.passage, 120)}</div></details>` : ''}</div>`;
       }
     }
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
-    html += `<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${items.length}</small></span><span class="hd-r">${set.kind === 'verbal' ? sayBtn(it.q, 'en') : ''}<button type="button" class="mk st ${mk && mk.s ? 'on' : ''}" id="mkS" aria-pressed="${!!(mk && mk.s)}" title="احفظ السؤال في دفتري" aria-label="احفظ السؤال في دفتري">${STARSVG}</button><button type="button" class="mk nt ${mk && mk.n ? 'on' : ''}" id="mkN" title="اكتب ملاحظتك على السؤال" aria-label="ملاحظتي">${NOTESVG}</button><span class="tag ltr">${tag}</span></span></div>`;
+    html += _T`<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${items.length}</small></span><span class="hd-r">${set.kind === 'verbal' ? sayBtn(it.q, 'en') : ''}<button type="button" class="mk st ${mk && mk.s ? 'on' : ''}" id="mkS" aria-pressed="${!!(mk && mk.s)}" title="احفظ السؤال في دفتري" aria-label="احفظ السؤال في دفتري">${STARSVG}</button><button type="button" class="mk nt ${mk && mk.n ? 'on' : ''}" id="mkN" title="اكتب ملاحظتك على السؤال" aria-label="ملاحظتي">${NOTESVG}</button><span class="tag ltr">${tag}</span></span></div>`;
     if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">` + qtrHtml(it);
     else html += `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
     const two = set.kind === 'quant' || it.opts.every(o => o.length <= 28);
@@ -741,15 +750,15 @@
       let cls = ''; if (a) { if (k === it.ans) cls = 'ok'; else if (k === a.s) cls = 'bad'; }
       return `<button class="opt ${cls}" data-k="${k}" ${a ? 'disabled' : ''}><span class="L">${LETTERS[k]}</span><span>${esc(lab)}</span></button>`;
     }).join('') + '</div>';
-    html += `<div id="fb">${a ? feedback(it, a) : ''}</div>
+    html += _T`<div id="fb">${a ? feedback(it, a) : ''}</div>
       <div class="note ${mk && mk.n ? 'open' : ''}" id="nt"><label for="ntx">${NOTESVG}<b>ملاحظتي</b><small>تنحفظ تلقائياً في دفتري</small></label><textarea id="ntx" dir="auto" maxlength="600" rows="2" placeholder="مثلاً: وش القاعدة؟ وليش غلطت؟">${esc(mk ? mk.n || '' : '')}</textarea></div>
       <div class="acts"><button class="btn ghost sm" id="prev" ${i === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span>
-      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? 'التالي ←' : nextOpen(i) < 0 ? 'النتيجة 🏁' : 'التالي ←'}</button>` : `${nextOpen(i) >= 0 ? '<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>' : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
-      <div class="kbd" style="margin-top:8px">${a ? 'Enter للتالي' : 'اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد'}</div></div>`;
+      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? _T('التالي ←') : nextOpen(i) < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>` : _T`${nextOpen(i) >= 0 ? _T('<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>') : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
+      <div class="kbd" style="margin-top:8px">${a ? _T('Enter للتالي') : _T('اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد')}</div></div>`;
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' }); if (window.QGAI) QGAI.fill($('#pm'));
     bindWords();
     const qd = $('#qtr'); if (qd) qd.addEventListener('toggle', () => lsSet(QTR_LS, qd.open ? 1 : 0));
-    $('#mkS').onclick = e => { const b = e.currentTarget, c = markOf(mkSrc, mkI), on = !(c && c.s); markSet(mkSrc, mkI, { s: on ? 1 : 0 }); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); toast(on ? '⭐ انحفظ السؤال في دفتري' : 'انشال السؤال من دفتري'); badgeCheckSoon(); };
+    $('#mkS').onclick = e => { const b = e.currentTarget, c = markOf(mkSrc, mkI), on = !(c && c.s); markSet(mkSrc, mkI, { s: on ? 1 : 0 }); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); toast(on ? _T('⭐ انحفظ السؤال في دفتري') : _T('انشال السؤال من دفتري')); badgeCheckSoon(); };
     $('#mkN').onclick = () => { const n = $('#nt'); n.classList.toggle('open'); if (n.classList.contains('open')) { const t = $('#ntx'); t.focus(); n.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } };
     let ntT = 0; $('#ntx').oninput = () => { clearTimeout(ntT); ntT = setTimeout(() => { const v = $('#ntx').value.trim(); markSet(mkSrc, mkI, { n: v }); const b = $('#mkN'); if (b) b.classList.toggle('on', !!v); badgeCheckSoon(); }, 500); };
     const ph = $('#ph'); if (ph) ph.onclick = () => { const p = $('#pass'); p.classList.toggle('closed'); P.passOpen[gi] = !p.classList.contains('closed'); $('#pch').textContent = P.passOpen[gi] ? '▲' : '▼'; };
@@ -761,10 +770,10 @@
   }
   function feedback(it, a) {
     const ok = a.s === it.ans; const corr = it.opts[it.ans];
-    const OKS = ['✅ إجابة صحيحة، أحسنت!', '✅ صح! كفو عليك', '✅ ممتاز، إجابة صحيحة', '✅ صح عليك 👏', '✅ برافو، إجابة صحيحة'];
+    const OKS = [_T('✅ إجابة صحيحة، أحسنت!'), _T('✅ صح! كفو عليك'), _T('✅ ممتاز، إجابة صحيحة'), _T('✅ صح عليك 👏'), _T('✅ برافو، إجابة صحيحة')];
     // الشرح المكتوب انشال: الشرح صار من المساعد الذكي بس (زر «اشرح لي أكثر»)
-    return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? OKS[(it.n || 0) % OKS.length] : '❌ إجابة خاطئة'}</div>
-      ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
+    return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? OKS[(it.n || 0) % OKS.length] : _T('❌ إجابة خاطئة')}</div>
+      ${ok ? '' : _T`<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
       ${aiSlot(it, a)}
       ${ok ? '' : ytLink(it)}
       ${P && P.set.kind === 'verbal' ? trHtml(it, ok) : ''}</div>`;
@@ -774,11 +783,11 @@
     if (!window.QGAI || !P || !a) return ''; const src = it.src || P.id, idx = it.sidx != null ? it.sidx : P.cur;
     if (!/^[qv]\d{1,2}$/.test(src)) return '';
     const wrong = a.s !== it.ans;
-    return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: `سؤال ${P.cur + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? ` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
+    return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: _T`سؤال ${P.cur + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? _T` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
   }
   function ytLink(it) {
     const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';
-    return `<a class="ytx" href="${yt.url}"${yt.tgt}${ytTip(yt)}>${vIcon(yt)}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو${yt.site ? '' : ' على يوتيوب'}</span><span class="go">←</span></a>`;
+    return _T`<a class="ytx" href="${yt.url}"${yt.tgt}${ytTip(yt)}>${vIcon(yt)}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو${yt.site ? '' : _T(' على يوتيوب')}</span><span class="go">${EN ? '→' : '←'}</span></a>`;
   }
   // 🇸🇦 ترجمة أسئلة الكمي: تظهر قبل الإجابة (الترجمة ما تكشف الحل) ونتذكّر إذا الطالب يفضّلها مفتوحة
   const QTR_LS = 'qg_qtr', QNAMES = new Set(['ahmed', 'khalid', 'khaled', 'mohamed', 'mohammed', 'muhammad', 'sara', 'sarah', 'nora', 'ali', 'saad']);   // أسماء الأشخاص ما تحتاج ترجمة
@@ -881,14 +890,14 @@
   function qtrHtml(it) {
     const ar = it.ar; if (!ar || !ar.q) return ''; const w = (it.wd || []).filter(x => !QNAMES.has(x[0]));
     const ot = (ar.o || []).some(Boolean) ? `<ol class="qt-o">${it.opts.map((o, k) => ar.o[k] ? `<li><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o.replace(/^[A-D]\)\s*/, ''))}</span><span class="arr">${arMath(ar.o[k])}</span></li>` : '').join('')}</ol>` : '';
-    return `<details class="qtr" id="qtr" ${lsGet(QTR_LS, 0) ? 'open' : ''}><summary><span class="qt-f" aria-hidden="true">🇸🇦</span>ترجمة السؤال <small>ومعاني الكلمات</small></summary><div class="qt-b"><p class="qt-ar">${arMath(ar.q)}</p><div class="says">${it.en ? sayBtn(it.en, 'en', 'اسمع السؤال بالإنجليزي') : ''}${hasAr() ? sayBtn(ar.q, 'ar', 'اسمع الترجمة') : ''}</div>${ot}${w.length ? `<div class="vcs">${w.map(x => vcChip(x[0], x[1])).join('')}</div>` : ''}</div></details>`;
+    return _T`<details class="qtr" id="qtr" ${lsGet(QTR_LS, 0) ? 'open' : ''}><summary><span class="qt-f" aria-hidden="true">🇸🇦</span>ترجمة السؤال <small>ومعاني الكلمات</small></summary><div class="qt-b"><p class="qt-ar">${arMath(ar.q)}</p><div class="says">${it.en ? sayBtn(it.en, 'en', _T('اسمع السؤال بالإنجليزي')) : ''}${hasAr() ? sayBtn(ar.q, 'ar', _T('اسمع الترجمة')) : ''}</div>${ot}${w.length ? `<div class="vcs">${w.map(x => vcChip(x[0], x[1])).join('')}</div>` : ''}</div></details>`;
   }
   // 🇸🇦 ترجمة السؤال والخيارات + كلمات السؤال
   function trHtml(it, shut) {   // shut: مقفولة (بعد الإجابة الصحيحة) — الطالب يفتحها لو احتاجها
     const ar = it.ar, op = shut ? '' : ' open'; let h = '';
-    if (ar && ar.q) h += `<details class="tr"${op}><summary>🇸🇦 ترجمة السؤال</summary><div class="trq">${esc(ar.q)}</div><div class="says">${sayBtn(it.q, 'en', 'اسمع السؤال')}${hasAr() ? sayBtn(ar.q, 'ar', 'اسمع الترجمة') : ''}</div><ol class="tro">${it.opts.map((o, k) => `<li class="${k === it.ans ? 'ok' : ''}"><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o)} ${sayBtn(o, 'en', '', 'sm')}</span><span class="arr">${esc((ar.o || [])[k] || '')}</span></li>`).join('')}</ol></details>`;
+    if (ar && ar.q) h += _T`<details class="tr"${op}><summary>🇸🇦 ترجمة السؤال</summary><div class="trq">${esc(ar.q)}</div><div class="says">${sayBtn(it.q, 'en', _T('اسمع السؤال'))}${hasAr() ? sayBtn(ar.q, 'ar', _T('اسمع الترجمة')) : ''}</div><ol class="tro">${it.opts.map((o, k) => `<li class="${k === it.ans ? 'ok' : ''}"><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o)} ${sayBtn(o, 'en', '', 'sm')}</span><span class="arr">${esc((ar.o || [])[k] || '')}</span></li>`).join('')}</ol></details>`;
     const chips = vocabChips(it.q + ' ' + it.opts.join(' '), 40);
-    if (chips) h += `<details class="tr vocab"${op}><summary>📖 كلمات السؤال <small>(اضغط على أي كلمة في السؤال لترجمتها)</small></summary><div class="vcs">${chips}</div></details>`;
+    if (chips) h += _T`<details class="tr vocab"${op}><summary>📖 كلمات السؤال <small>(اضغط على أي كلمة في السؤال لترجمتها)</small></summary><div class="vcs">${chips}</div></details>`;
     return h;
   }
   function answer(i, k) {
@@ -896,17 +905,17 @@
     const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
     const good = k === it.ans; if (isFree() && window.QGT) QGT.ans(P.id, good); const sbi = $('#sb') && $('#sb').children[i]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
-    const gbi = $('#spg') && $('#spg').children[i]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', `سؤال ${i + 1}، إجابتك ${good ? 'صحيحة' : 'خاطئة'}`); }
-    P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + ' صح ورا بعض'; rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
-    const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast('🎉 حققت هدف اليوم: ' + goal + ' سؤال!'), 700); else badgeCheckSoon();
+    const gbi = $('#spg') && $('#spg').children[i]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', _T`سؤال ${i + 1}، إجابتك ${good ? _T('صحيحة') : _T('خاطئة')}`); }
+    P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + _T(' صح ورا بعض'); rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
+    const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast(_T('🎉 حققت هدف اليوم: ') + goal + _T(' سؤال!')), 700); else badgeCheckSoon();
     try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
     document.querySelectorAll('.opt').forEach(b => { b.disabled = true; b.classList.remove('sel'); const kk = +b.dataset.k; if (kk === it.ans) b.classList.add('ok'); else if (kk === k) b.classList.add('bad'); });
     if (!RM()) { const btn = document.querySelector(`.opt[data-k="${k}"]`); if (btn) { if (good) burst(btn.querySelector('.L') || btn); else btn.classList.add('shake'); } }
     $('#fb').innerHTML = feedback(it, P.prog.a[i]); if (window.QGAI) QGAI.fill($('#fb'));
     const sk = $('#skip'); if (sk) sk.remove();
     const nxo = nextOpen(i);   // بعد الإجابة: التالي = أقرب سؤال ما جاوبته، والنتيجة لما تخلص كل الأسئلة
-    const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${nxo < 0 ? 'النتيجة 🏁' : 'التالي ←'}</button>`; $('#next').onclick = () => { if (nxo >= 0) showQ(nxo); else finish(); }; }
-    const kb = $('.kbd'); if (kb) kb.textContent = 'Enter للتالي';
+    const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${nxo < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>`; $('#next').onclick = () => { if (nxo >= 0) showQ(nxo); else finish(); }; }
+    const kb = $('.kbd'); if (kb) kb.textContent = _T('Enter للتالي');
     updateCounter();
     const fbEl = $('#fb'); if (fbEl) setTimeout(() => fbEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   }
@@ -916,7 +925,7 @@
   }
   async function finish() {
     const { items, prog, set } = P; const n = items.length; const answered = Object.keys(prog.a).length;
-    if (answered < n) { toast('باقي ' + (n - answered) + ' سؤال بدون إجابة'); const f = items.findIndex((x, i) => !prog.a[i]); return showQ(f); }
+    if (answered < n) { toast(EN ? enN(n - answered, 'question', 'questions') + ' still unanswered' : 'باقي ' + (n - answered) + ' سؤال بدون إجابة'); const f = items.findIndex((x, i) => !prog.a[i]); return showQ(f); }   // i18n:skip
     const correct = Object.values(prog.a).filter(a => a.c).length; const pct = Math.round(correct * 100 / n);
     const secs = activeSecs(prog);
     const wrong = items.map((x, i) => i).filter(i => prog.a[i] && !prog.a[i].c);
@@ -924,13 +933,13 @@
     if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; progSet(P.id, prog); setTimeout(badgeCheck, 2200); remCtx();
     document.onkeydown = null;
     const nm = /^([qv])(\d{1,2})$/.exec(set.id), nx = nm && +nm[2] < 14 ? nm[1] + (+nm[2] + 1) : null;
-    $('#pm').innerHTML = `<div class="sum"><div class="ring" id="ring" style="--p:0"><b><span id="rp">0</span><small>%</small></b></div>
-      <h2>${pct >= 85 ? 'ممتاز! 🌟' : pct >= 70 ? 'جيد جداً 👏' : pct >= 50 ? 'جيد، كمّل تدريب 💪' : 'راجع الشرح وأعد المحاولة 📘'}</h2>
+    $('#pm').innerHTML = _T`<div class="sum"><div class="ring" id="ring" style="--p:0"><b><span id="rp">0</span><small>%</small></b></div>
+      <h2>${pct >= 85 ? _T('ممتاز! 🌟') : pct >= 70 ? _T('جيد جداً 👏') : pct >= 50 ? _T('جيد، كمّل تدريب 💪') : _T('راجع الشرح وأعد المحاولة 📘')}</h2>
       <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
-      <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? `<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : `<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? `<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
-      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? 'القسم' : 'النموذج') : 'الاختبار'}</button>${nm && !isFree() ? `<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? `<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
-      ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
+      <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? _T`<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : _T`<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? _T`<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? _T`<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
+      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
+      ${wrong.length ? _T`<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
     bindSub($('#pm'));
@@ -940,7 +949,7 @@
     (function count() { const ring = $('#ring'), rp = $('#rp'); if (!ring) return; if (RM()) { ring.style.setProperty('--p', pct); rp.textContent = pct; return; } const t0 = performance.now(), D = 900; (function f(t) { const e = Math.min(1, (t - t0) / D), v = Math.round(pct * (1 - Math.pow(1 - e, 3))); ring.style.setProperty('--p', v); rp.textContent = v; if (e < 1) requestAnimationFrame(f); })(t0); })();
     if (pct >= 85) setTimeout(confetti, 350);
     skillsPushSoon(1500);
-    if (set.topicSet) { $('#saved').textContent = 'تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'; return; }
+    if (set.topicSet) { $('#saved').textContent = _T('تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'); return; }
     try {
       if (set.id === 'qall' || set.id === 'vall') {   // نتائج كل قسم/نموذج على حدة (للوحة الصدارة) + ملخص
         const per = {}; items.forEach((x, i) => { const k = x.it.src || set.id; const o = per[k] || (per[k] = { n: 0, c: 0 }); o.n++; if (prog.a[i] && prog.a[i].c) o.c++; });
@@ -948,8 +957,8 @@
         for (const k of Object.keys(per)) { try { await api({ op: 'result', session: auth.session, set: k, kind: set.kind + '-all', n: per[k].n, correct: per[k].c, secs: Math.round(share * per[k].n), wrong: '' }); } catch (e) {} }
       }
       const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
-      $('#saved').textContent = r.ok ? (r.admin ? 'وضع المشرف: النتيجة لا تُسجّل' : r.free ? 'نتيجتك محفوظة على جهازك ✓' : 'تم حفظ نتيجتك ✓') : '';
-      if (!r.ok && r.error === 'session') { toast('انتهت الجلسة، سجّل دخولك من جديد'); }
+      $('#saved').textContent = r.ok ? (r.admin ? _T('وضع المشرف: النتيجة لا تُسجّل') : r.free ? _T('نتيجتك محفوظة على جهازك ✓') : _T('تم حفظ نتيجتك ✓')) : '';
+      if (!r.ok && r.error === 'session') { toast(_T('انتهت الجلسة، سجّل دخولك من جديد')); }
     } catch (e) { $('#saved').textContent = ''; }
   }
 
@@ -972,7 +981,7 @@
     if (!VOC) return esc(text);
     return (text || '').split(/([A-Za-z][A-Za-z'’]*)/).map((w, i) => { if (!(i % 2)) return esc(w); if (STOP.has(w.toLowerCase())) return esc(w); const ar = vocLook(w.replace(/’/g, "'")); return ar ? `<span class="vw" data-ar="${esc(ar)}">${esc(w)}</span>` : esc(w); }).join('');
   }
-  const vcChip = (w, ar) => `<button type="button" class="vc" data-say="${esc(w)}" data-lang="en" title="اضغط لسماع النطق"><b>${esc(w)}</b><span>${esc(ar)}</span>${SAYSVG}</button>`;
+  const vcChip = (w, ar) => _T`<button type="button" class="vc" data-say="${esc(w)}" data-lang="en" title="اضغط لسماع النطق"><b>${esc(w)}</b><span>${esc(ar)}</span>${SAYSVG}</button>`;
   function vocabChips(text, max) {
     if (!VOC) return ''; const seen = new Set(); const out = [];
     for (const m of (text || '').matchAll(/[A-Za-z][A-Za-z'’]*/g)) { const w = m[0].toLowerCase().replace(/’/g, "'").replace(/'s$/, ''); if (seen.has(w) || STOP.has(w) || w.length < 3) continue; const ar = vocLook(w); if (!ar) continue; seen.add(w); out.push(vcChip(w, ar)); if (out.length >= (max || 40)) break; }
@@ -1001,10 +1010,10 @@
   function sayChunks(t) { const out = []; let cur = ''; (t.match(/[^.!?؟\n]+[.!?؟]*\s*/g) || [t]).forEach(s => { if ((cur + s).length > 190 && cur) { out.push(cur); cur = ''; } cur += s; }); if (cur.trim()) out.push(cur); return out; }
   function sayStop() { if (!TTS.ok) return; TTS.q = []; try { speechSynthesis.cancel(); } catch (e) {} if (TTS.btn) TTS.btn.classList.remove('on'); TTS.btn = null; }
   function say(text, lang, btn) {
-    if (!TTS.ok) { toast('متصفحك ما يدعم النطق الصوتي'); return; }
+    if (!TTS.ok) { toast(_T('متصفحك ما يدعم النطق الصوتي')); return; }
     if (btn && TTS.btn === btn) { sayStop(); return; }   // ضغطة ثانية = إيقاف
     sayStop(); lang = lang === 'ar' ? 'ar' : 'en';
-    const v = ttsVoice(lang); if (lang === 'ar' && !v) { toast('ما فيه صوت عربي على جهازك. تقدر تضيفه من إعدادات اللغة والكلام في الجهاز'); return; }
+    const v = ttsVoice(lang); if (lang === 'ar' && !v) { toast(_T('ما فيه صوت عربي على جهازك. تقدر تضيفه من إعدادات اللغة والكلام في الجهاز')); return; }
     const txt = lang === 'en' ? sayPrep(text) : String(text || ''); if (!txt) return;
     TTS.q = sayChunks(txt); TTS.btn = btn || null; if (btn) btn.classList.add('on');
     const short = txt.length < 30;
@@ -1014,7 +1023,7 @@
     next();
   }
   // زر نطق: data-say = النص، data-lang = en/ar، أو data-say-sel = عنصر نقرأ نصه (مثل القطعة)
-  const sayBtn = (text, lang, label, cls) => `<button type="button" class="${label ? 'sayb' : 'say'} ${cls || ''}" data-say="${esc(text)}" data-lang="${lang || 'en'}" title="${lang === 'ar' ? 'استمع للترجمة' : 'استمع للنطق'}" aria-label="${label || (lang === 'ar' ? 'استمع للترجمة' : 'استمع للنطق')}">${SAYSVG}${label ? `<span>${label}</span>` : ''}</button>`;
+  const sayBtn = (text, lang, label, cls) => `<button type="button" class="${label ? 'sayb' : 'say'} ${cls || ''}" data-say="${esc(text)}" data-lang="${lang || 'en'}" title="${lang === 'ar' ? _T('استمع للترجمة') : _T('استمع للنطق')}" aria-label="${label || (lang === 'ar' ? _T('استمع للترجمة') : _T('استمع للنطق'))}">${SAYSVG}${label ? `<span>${label}</span>` : ''}</button>`;
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-say],[data-say-sel]'); if (!b) return;
     e.preventDefault(); e.stopPropagation();
@@ -1039,10 +1048,10 @@
   // ---------- 🔎 ابحث عن سؤال: الطالب يكتب السؤال أو يصوّره ونقول له وين يلقاه في الدورة ----------
   // 🔎 محرك البحث عن سؤال (نفس الكود ينحط في app.js): TF-IDF + تطابق الأرقام، بالإنجليزي أو العربي
   const FD_STOP = new Set('the of a an is are to in on and or if find what which following value then that its it be by for with from as at this these those than how many much will was were has have had does do not shape figure above below given evaluate calculate determine choose word option options answer question best correct each one'.split(' '));
-  const FD_STOP_AR = new Set('من في على الى عن مع ثم او هو هي ما ماذا كم اي اذا التي الذي الذين هذا هذه ذلك تلك كان كانت قيمه اوجد احسب العدد عدد فان لكل كل بين عند'.split(' '));
+  const FD_STOP_AR = new Set('من في على الى عن مع ثم او هو هي ما ماذا كم اي اذا التي الذي الذين هذا هذه ذلك تلك كان كانت قيمه اوجد احسب العدد عدد فان لكل كل بين عند'.split(' '));   // i18n:skip
   function fdNorm(s) {
     return String(s || '').normalize('NFKC').toLowerCase().replace(/[−–—]/g, '-').replace(/×/g, '*').replace(/÷/g, '/')
-      .replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+      .replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');   // i18n:skip
   }
   const FD_SYN = { chance: 'probability', likelihood: 'probability', withdrawn: 'draw', drawn: 'draw', picked: 'draw', chosen: 'draw', selected: 'draw', select: 'draw', pick: 'draw', choose: 'draw', percentage: 'percent', mean: 'average', avg: 'average', total: 'sum', kilometer: 'km', kilometre: 'km', hr: 'hour', hrs: 'hour', min: 'minute', sec: 'second', marble: 'ball', equivalent: 'equal', equation: 'equation' };
   function fdToks(s) {
@@ -1201,9 +1210,9 @@
   }
   const fdLoc = e => {   // مواقع السؤال: القسم/النموذج + الاختبارات المحاكية
     const L = [];
-    if (e[1]) L.push(e[0] === 'p' ? `القطعة في ${SET_NAME(e[1])}${e[6] ? ' · ' + esc(e[6]) : ''}` : `${e[0] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(e[1])} · سؤال ${e[2] + 1}${e[6] ? ' · قطعة ' + `<bdi dir="ltr">${esc(e[6])}</bdi>` : ''}`);
-    e[7].slice(0, 3).forEach(t => L.push(`الاختبار المحاكي ${t[0]} · القسم ${t[1]} · سؤال ${t[2]}`));
-    if (e[7].length > 3) L.push(`+ ${e[7].length - 3} اختبارات محاكية ثانية`);
+    if (e[1]) L.push(e[0] === 'p' ? _T`القطعة في ${SET_NAME(e[1])}${e[6] ? ' · ' + esc(e[6]) : ''}` : _T`${e[0] === 'q' ? _T('الكمي') : _T('اللفظي')} · ${SET_NAME(e[1])} · سؤال ${e[2] + 1}${e[6] ? _T(' · قطعة ') + `<bdi dir="ltr">${esc(e[6])}</bdi>` : ''}`);
+    e[7].slice(0, 3).forEach(t => L.push(_T`الاختبار المحاكي ${t[0]} · القسم ${t[1]} · سؤال ${t[2]}`));
+    if (e[7].length > 3) L.push(_T`+ ${e[7].length - 3} اختبارات محاكية ثانية`);
     return L.map((t, i) => `<span class="fd-loc${i ? '' : ' main'}">${t}</span>`).join('');
   };
   function fdPreview(e) {
@@ -1211,12 +1220,12 @@
     const opts = e[4].length ? `<ol class="fd-o">${e[4].map((o, j) => `<li><span class="L">${LETTERS[j]}</span><span>${e[0] === 'q' ? mx(o) : esc(o)}</span></li>`).join('')}</ol>` : '';
     return `<div class="fd-pv ltr" data-img="${e[0] === 'q' && e[1] ? e[1] + ':' + e[2] : ''}"><p>${e[0] === 'q' ? mx(e[3]) : esc(e[3])}</p>${opts}</div>`;
   }
-  const fdOpen = e => e[1] ? `<a class="btn" href="#${e[1]}@${e[2]}">افتح السؤال</a>` : '';
-  const fdQn = n => n === 1 ? 'سؤال واحد' : n === 2 ? 'سؤالين' : n <= 10 ? n + ' أسئلة' : n + ' سؤالاً';
-  const fdTests = n => n === 1 ? 'اختبار محاكي' : n === 2 ? 'اختبارين محاكيين' : n <= 10 ? n + ' اختبارات محاكية' : n + ' اختباراً محاكياً';
+  const fdOpen = e => e[1] ? _T`<a class="btn" href="#${e[1]}@${e[2]}">افتح السؤال</a>` : '';
+  const fdQn = n => EN ? enN(n, 'question', 'questions') : n === 1 ? 'سؤال واحد' : n === 2 ? 'سؤالين' : n <= 10 ? n + ' أسئلة' : n + ' سؤالاً';   // i18n:skip
+  const fdTests = n => EN ? (n === 1 ? 'a mock test' : n + ' mock tests') : n === 1 ? 'اختبار محاكي' : n === 2 ? 'اختبارين محاكيين' : n <= 10 ? n + ' اختبارات محاكية' : n + ' اختباراً محاكياً';   // i18n:skip
   function fdItem(e, exact) {   // سطر مختصر في قائمة «أسئلة مشابهة»: الموقع + بداية السؤال + الخيارات، ويفتح السؤال بضغطة
-    const main = e[0] === 'p' ? `القطعة في ${SET_NAME(e[1])}` : `${e[0] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(e[1])} · سؤال ${e[2] + 1}`;
-    const head = `<span class="fd-it-h"><span class="fd-loc${e[1] ? ' main' : ''}">${e[1] ? main : 'الاختبار المحاكي ' + (e[7][0] || [])[0]}</span>${e[7].length && e[1] ? `<small>وفي ${fdTests(e[7].length)}</small>` : ''}${e[6] ? `<small class="ltr">${esc(e[6])}</small>` : ''}${exact ? '<span class="fd-ex">✓ مطابق لكلامك</span>' : ''}</span>`;
+    const main = e[0] === 'p' ? _T`القطعة في ${SET_NAME(e[1])}` : _T`${e[0] === 'q' ? _T('الكمي') : _T('اللفظي')} · ${SET_NAME(e[1])} · سؤال ${e[2] + 1}`;
+    const head = `<span class="fd-it-h"><span class="fd-loc${e[1] ? ' main' : ''}">${e[1] ? main : _T('الاختبار المحاكي ') + (e[7][0] || [])[0]}</span>${e[7].length && e[1] ? _T`<small>وفي ${fdTests(e[7].length)}</small>` : ''}${e[6] ? `<small class="ltr">${esc(e[6])}</small>` : ''}${exact ? _T('<span class="fd-ex">✓ مطابق لكلامك</span>') : ''}</span>`;
     const txt = e[0] === 'p' ? esc(e[3].slice(0, 220)) : e[0] === 'q' ? mx(e[3]) : esc(e[3]);
     const body = `${head}<span class="fd-it-q ltr">${txt}</span>${e[4].length ? `<span class="fd-it-o ltr">${e[4].map((o, j) => `<b>${LETTERS[j]}</b> ${e[0] === 'q' ? mx(o) : esc(o)}`).join('<i>·</i>')}</span>` : ''}`;
     return e[1] ? `<a class="fd-it" href="#${e[1]}@${e[2]}">${body}</a>` : `<div class="fd-it">${body}</div>`;
@@ -1233,44 +1242,44 @@
     FDP = fdPubBuild(JSON.parse(txt).e); return FDP;
   }
   const fdIsFreeP = p => p[1] === 'q1' || p[1] === 'v1';
-  const fdMainP = p => p[1] ? (p[0] === 'p' ? `القطعة في ${SET_NAME(p[1])}` : `${p[0] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(p[1])} · سؤال ${p[2] + 1}`) : `الاختبار المحاكي ${(p[3][0] || [])[0]} · القسم ${(p[3][0] || [])[1]} · سؤال ${(p[3][0] || [])[2]}`;
+  const fdMainP = p => p[1] ? (p[0] === 'p' ? _T`القطعة في ${SET_NAME(p[1])}` : _T`${p[0] === 'q' ? _T('الكمي') : _T('اللفظي')} · ${SET_NAME(p[1])} · سؤال ${p[2] + 1}`) : _T`الاختبار المحاكي ${(p[3][0] || [])[0]} · القسم ${(p[3][0] || [])[1]} · سؤال ${(p[3][0] || [])[2]}`;
   const fdLocP = p => {
     const L = []; if (p[1]) L.push(fdMainP(p));
-    p[3].slice(0, 3).forEach(t => L.push(`الاختبار المحاكي ${t[0]} · القسم ${t[1]} · سؤال ${t[2]}`));
-    if (p[3].length > 3) L.push(`+ ${p[3].length - 3} اختبارات محاكية ثانية`);
+    p[3].slice(0, 3).forEach(t => L.push(_T`الاختبار المحاكي ${t[0]} · القسم ${t[1]} · سؤال ${t[2]}`));
+    if (p[3].length > 3) L.push(_T`+ ${p[3].length - 3} اختبارات محاكية ثانية`);
     return L.map((t, i) => `<span class="fd-loc${i ? '' : ' main'}">${t}</span>`).join('');
   };
-  const fdActP = p => fdIsFreeP(p) ? `<a class="btn" href="#${p[1]}@${p[2]}">افتح السؤال (مجاني)</a>` : p[3].some(t => t[0] === 1) ? `<a class="btn" href="/test/">افتح الاختبار المحاكي 1 (مجاني)</a>` : `<button type="button" class="btn gold" data-sub>🔒 اشترك عشان تحله وتشوف الشرح</button>`;
+  const fdActP = p => fdIsFreeP(p) ? _T`<a class="btn" href="#${p[1]}@${p[2]}">افتح السؤال (مجاني)</a>` : p[3].some(t => t[0] === 1) ? _T`<a class="btn" href="/test/">افتح الاختبار المحاكي 1 (مجاني)</a>` : _T`<button type="button" class="btn gold" data-sub>🔒 اشترك عشان تحله وتشوف الشرح</button>`;
   function fdItemP(p, exact) {
     const free = fdIsFreeP(p);
-    const body = `<span class="fd-it-h"><span class="fd-loc main">${fdMainP(p)}</span>${p[3].length && p[1] ? `<small>وفي ${fdTests(p[3].length)}</small>` : ''}${exact ? '<span class="fd-ex">✓ مطابق لكلامك</span>' : ''}<span class="fd-lk${free ? ' fr' : ''}">${free ? 'مجاني' : '🔒 للمشتركين'}</span></span>`;
+    const body = `<span class="fd-it-h"><span class="fd-loc main">${fdMainP(p)}</span>${p[3].length && p[1] ? _T`<small>وفي ${fdTests(p[3].length)}</small>` : ''}${exact ? _T('<span class="fd-ex">✓ مطابق لكلامك</span>') : ''}<span class="fd-lk${free ? ' fr' : ''}">${free ? _T('مجاني') : _T('🔒 للمشتركين')}</span></span>`;
     return free ? `<a class="fd-it" href="#${p[1]}@${p[2]}">${body}</a>` : `<button type="button" class="fd-it" data-sub>${body}</button>`;
   }
   async function fdRunPub(R, q, kind, full, img) {
-    let ix; try { ix = await fdLoadPub(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
+    let ix; try { ix = await fdLoadPub(); } catch (e) { R.innerHTML = _T`<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
     if (!$('#fdr')) return;
     const res = fdPubSearch(ix, q, kind, 6), top = res[0], E = ix.P, p = top && E[top.i], sc = top ? top.s : 0;
-    const lock = `<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
+    const lock = _T`<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
     if (window.QGT) QGT.ev('find', full && p && sc >= FDP_HI ? 'لقاه في الدورة' : full && p && sc >= FDP_MID ? 'لقى سؤال قريب' : full ? 'ما لقاه في الدورة' : 'بحث بكلمات', img ? 1 : 0);
     if (full && p && sc >= FDP_HI) {
       const same = res.slice(1).filter(r => r.s >= FDP_HI && sc - r.s < 0.03).map(r => E[r.i]);   // نفس السؤال في مكان ثاني
-      R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
+      R.innerHTML = _T`<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
         <div class="fd-locs">${fdLocP(p)}${same.map(fdLocP).join('')}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div></div>`;
     } else if (full && p && sc >= FDP_MID) {
-      R.innerHTML = `<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>يمكن يكون نفسه بأرقام أو خيارات ثانية:</small></div></div>
-        <div class="fd-locs">${fdLocP(p)}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div>${fsRepBox('تبي نتأكد لك؟ بلّغنا عنه:', 0, 1)}</div>`;
+      R.innerHTML = _T`<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>يمكن يكون نفسه بأرقام أو خيارات ثانية:</small></div></div>
+        <div class="fd-locs">${fdLocP(p)}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div>${fsRepBox(_T('تبي نتأكد لك؟ بلّغنا عنه:'), 0, 1)}</div>`;
     } else if (full) {
       const near = res.filter(r => r.s >= 0.5).map(r => E[r.i]).slice(0, 5);
-      R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>بلّغ عنه عشان نراجعه.</small></div></div>
-        ${fsRepBox('')}${near.length ? `<div class="fd-near"><h4>أسئلة قريبة منه في الدورة</h4><div class="fd-list">${near.map(x => fdItemP(x)).join('')}</div></div>` : ''}</div>`;
+      R.innerHTML = _T`<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>بلّغ عنه عشان نراجعه.</small></div></div>
+        ${fsRepBox('')}${near.length ? _T`<div class="fd-near"><h4>أسئلة قريبة منه في الدورة</h4><div class="fd-list">${near.map(x => fdItemP(x)).join('')}</div></div>` : ''}</div>`;
     } else {
       const seen = new Set(), list = [], exact = new Set(res.filter(r => r.s >= FDP_HI).map(r => r.i));
       res.filter(r => r.s >= FDP_MID).concat(fdPubKeyword(ix, q, kind, 40)).forEach(r => { if (!seen.has(r.i)) { seen.add(r.i); list.push(r.i); } });
       let shown = 10; const show = () => { const box = $('#fdl'); if (!box) return; box.innerHTML = list.slice(0, shown).map(i => fdItemP(E[i], exact.has(i))).join(''); bindSub(box); const mb = $('#fdmore'); if (mb) mb.hidden = shown >= list.length; };
-      R.innerHTML = list.length ? `<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة في الدورة فيها كلامك</b><small>لقينا ${list.length >= 40 ? 'أكثر من 40 سؤالاً' : fdQn(list.length)}${list.length > 10 ? '، هذي أقربها' : ''}. نص الأسئلة وحلها للمشتركين، وهنا تشوف وين تلقاها.</small></div></div>
+      R.innerHTML = list.length ? _T`<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة في الدورة فيها كلامك</b><small>لقينا ${list.length >= 40 ? _T('أكثر من 40 سؤالاً') : fdQn(list.length)}${list.length > 10 ? _T('، هذي أقربها') : ''}. نص الأسئلة وحلها للمشتركين، وهنا تشوف وين تلقاها.</small></div></div>
           <div class="fd-list" id="fdl"></div><button type="button" class="btn ghost fd-more" id="fdmore">عرض أسئلة أكثر</button>
-          ${fsRepBox('ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو بلّغنا عنه:', 1)}</div>`
-        : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو بلّغ عنه.</small></div></div>${fsRepBox('', 1)}</div>`;
+          ${fsRepBox(_T('ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو بلّغنا عنه:'), 1)}</div>`
+        : _T`<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو بلّغ عنه.</small></div></div>${fsRepBox('', 1)}</div>`;
       show(); const mb = $('#fdmore'); if (mb) mb.onclick = () => { shown += 10; show(); };
     }
     bindSub(R); fsRep(R, { text: q });
@@ -1279,41 +1288,41 @@
   // ---------- 🔎 البحث الذكي على الخادم: يقارن سؤالك بكل أسئلة الدورة (والصورة تنقرى هناك) ----------
   // يقول وين السؤال بالضبط، أو إنه نفسه بصياغة/ترتيب/خيارات/أرقام مختلفة، أو سؤال جديد. لو الخادم ما رد نرجع للبحث المحلي.
   const FS = {
-    exact: ['ok', '✓', 'السؤال موجود في الدورة بالضبط', 'تلقاه هنا:'],
-    reorder: ['ok', '✓', 'السؤال موجود في الدورة', 'نفس السؤال، بس ترتيب الخيارات مختلف. تلقاه هنا:'],
-    wording: ['ok', '✓', 'السؤال موجود في الدورة', 'نفس الأرقام والخيارات بصياغة مختلفة شوي. تلقاه هنا:'],
-    opts_same: ['mid', '≈', 'نفس السؤال بخيارات مختلفة', 'والإجابة الصحيحة موجودة بين خياراتك. تلقاه هنا:'],
-    opts_diff: ['mid', '≈', 'نفس السؤال، بس الخيارات مختلفة', 'وإجابة سؤال الدورة مو من خياراتك، فتأكد من الخيارات. تلقاه هنا:'],
-    numbers: ['mid', '≈', 'نفس فكرة السؤال بأرقام مختلفة', 'نفس طريقة الحل، بس الإجابة غالباً غير. تلقاه هنا:'],
-    new: ['no', '✕', 'سؤال جديد، ما هو موجود في الدورة', 'بلّغ عنه عشان نراجعه.'] };
-  const FS_EV = { exact: 'لقاه في الدورة', reorder: 'لقاه في الدورة', wording: 'لقاه في الدورة', opts_same: 'لقى سؤال قريب', opts_diff: 'لقى سؤال قريب', numbers: 'لقى سؤال قريب', new: 'ما لقاه في الدورة' };
-  const fsLoc = r => { let m = String(r).match(/^([qv])(\d+):(\d+)$/); if (m) return { set: m[1] + m[2], i: +m[3], t: `${m[1] === 'q' ? 'الكمي' : 'اللفظي'} · ${SET_NAME(m[1] + m[2])} · سؤال ${+m[3] + 1}` };
-    m = String(r).match(/^t(\d+):(\d+):(\d+)$/); return m ? { test: +m[1], t: `الاختبار المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}` } : { t: esc(r) }; };
-  const fsLocs = refs => { const L = refs.map(fsLoc); return L.slice(0, 4).map((l, i) => `<span class="fd-loc${i ? '' : ' main'}">${l.t}</span>`).join('') + (L.length > 4 ? `<span class="fd-loc">+ ${L.length - 4} ${L.length - 4 === 1 ? 'مكان ثاني' : 'أماكن ثانية'}</span>` : ''); };
-  const fsMore = n => n === 1 ? 'وفي مكان ثاني' : n === 2 ? 'وفي مكانين ثانيين' : n <= 10 ? `وفي ${n} أماكن ثانية` : `وفي ${n} مكاناً ثانياً`;
+    exact: ['ok', '✓', _T('السؤال موجود في الدورة بالضبط'), _T('تلقاه هنا:')],
+    reorder: ['ok', '✓', _T('السؤال موجود في الدورة'), _T('نفس السؤال، بس ترتيب الخيارات مختلف. تلقاه هنا:')],
+    wording: ['ok', '✓', _T('السؤال موجود في الدورة'), _T('نفس الأرقام والخيارات بصياغة مختلفة شوي. تلقاه هنا:')],
+    opts_same: ['mid', '≈', _T('نفس السؤال بخيارات مختلفة'), _T('والإجابة الصحيحة موجودة بين خياراتك. تلقاه هنا:')],
+    opts_diff: ['mid', '≈', _T('نفس السؤال، بس الخيارات مختلفة'), _T('وإجابة سؤال الدورة مو من خياراتك، فتأكد من الخيارات. تلقاه هنا:')],
+    numbers: ['mid', '≈', _T('نفس فكرة السؤال بأرقام مختلفة'), _T('نفس طريقة الحل، بس الإجابة غالباً غير. تلقاه هنا:')],
+    new: ['no', '✕', _T('سؤال جديد، ما هو موجود في الدورة'), _T('بلّغ عنه عشان نراجعه.')] };
+  const FS_EV = { exact: 'لقاه في الدورة', reorder: 'لقاه في الدورة', wording: 'لقاه في الدورة', opts_same: 'لقى سؤال قريب', opts_diff: 'لقى سؤال قريب', numbers: 'لقى سؤال قريب', new: 'ما لقاه في الدورة' };   // i18n:skip (إحصائيات المالك بالعربي)
+  const fsLoc = r => { let m = String(r).match(/^([qv])(\d+):(\d+)$/); if (m) return { set: m[1] + m[2], i: +m[3], t: _T`${m[1] === 'q' ? _T('الكمي') : _T('اللفظي')} · ${SET_NAME(m[1] + m[2])} · سؤال ${+m[3] + 1}` };
+    m = String(r).match(/^t(\d+):(\d+):(\d+)$/); return m ? { test: +m[1], t: _T`الاختبار المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}` } : { t: esc(r) }; };
+  const fsLocs = refs => { const L = refs.map(fsLoc); return L.slice(0, 4).map((l, i) => `<span class="fd-loc${i ? '' : ' main'}">${l.t}</span>`).join('') + (L.length > 4 ? `<span class="fd-loc">+ ${L.length - 4} ${EN ? (L.length - 4 === 1 ? 'more place' : 'more places') : L.length - 4 === 1 ? 'مكان ثاني' : 'أماكن ثانية'}</span>` : ''); };   // i18n:skip
+  const fsMore = n => EN ? (n === 1 ? 'and 1 other place' : `and ${n} other places`) : n === 1 ? 'وفي مكان ثاني' : n === 2 ? 'وفي مكانين ثانيين' : n <= 10 ? `وفي ${n} أماكن ثانية` : `وفي ${n} مكاناً ثانياً`;   // i18n:skip
   const fsFreeLoc = it => it.refs.map(fsLoc).find(x => x.set && FREE_SETS.indexOf(x.set) >= 0);
   const fsTxt = (it, s) => it.s === 'q' ? mx(s) : esc(s);
   function fsOpen(it, ghost) {
     const c = ghost ? 'btn ghost' : 'btn', L = it.refs.map(fsLoc);
     if (isFree()) {
-      const f = fsFreeLoc(it); if (f) return `<a class="${c}" href="#${f.set}@${f.i}">افتح السؤال (مجاني)</a>`;
-      if (it.refs.some(r => /^t1:/.test(r))) return `<a class="${c}" href="/test/">افتح الاختبار المحاكي 1 (مجاني)</a>`;
-      return `<button type="button" class="btn gold" data-sub>🔒 اشترك عشان تحله وتشوف الشرح</button>`;
+      const f = fsFreeLoc(it); if (f) return _T`<a class="${c}" href="#${f.set}@${f.i}">افتح السؤال (مجاني)</a>`;
+      if (it.refs.some(r => /^t1:/.test(r))) return _T`<a class="${c}" href="/test/">افتح الاختبار المحاكي 1 (مجاني)</a>`;
+      return _T`<button type="button" class="btn gold" data-sub>🔒 اشترك عشان تحله وتشوف الشرح</button>`;
     }
-    const l = L.find(x => x.set); if (l) return `<a class="${c}" href="#${l.set}@${l.i}">افتح السؤال</a>`;
-    const t = L.find(x => x.test); return t ? `<a class="${c}" href="/test/">افتح الاختبار المحاكي ${t.test}</a>` : '';
+    const l = L.find(x => x.set); if (l) return _T`<a class="${c}" href="#${l.set}@${l.i}">افتح السؤال</a>`;
+    const t = L.find(x => x.test); return t ? _T`<a class="${c}" href="/test/">افتح الاختبار المحاكي ${t.test}</a>` : '';
   }
   function fsPreview(it) { const l = it.refs.map(fsLoc).find(x => x.set); return fdPreview([it.s, l ? l.set : '', l ? l.i : -1, it.e || it.a || '', it.o || []]); }
   function fsDiff(r, it) {   // وش الفرق بين سؤالك وسؤال الدورة
-    const d = it.d || {}, q = r.q, rows = [], nums = a => a.map(x => `<bdi dir="ltr">${esc(x)}</bdi>`).join('، ');
+    const d = it.d || {}, q = r.q, rows = [], nums = a => a.map(x => `<bdi dir="ltr">${esc(x)}</bdi>`).join(_T('، '));
     if (r.status === 'numbers') {
-      if (d.extra && d.miss) rows.push(['🔢', `في سؤالك <b>${nums(d.extra)}</b>، وفي سؤال الدورة <b>${nums(d.miss)}</b>`]);
-      else if (d.extra) rows.push(['🔢', `في سؤالك أرقام مو موجودة في سؤال الدورة: <b>${nums(d.extra)}</b>`]);
-      else if (d.miss) rows.push(['🔢', `سؤال الدورة فيه أرقام مو موجودة في سؤالك: <b>${nums(d.miss)}</b>`]);
-      if (d.ops) rows.push(['➗', 'فيه إشارة أو عملية مختلفة في المعادلة (مثل + بدل ×، أو سالب بدل موجب)']);
-    } else if (d.miss && !d.extra) rows.push(['🖼️', `سؤال الدورة فيه أرقام ما ذكرتها: <b>${nums(d.miss)}</b> (غالباً في الرسم)`]);
-    if (d.swap) rows.push(['⇄', 'القيمة A والقيمة B مبدّلة بين سؤالك وسؤال الدورة، فانتبه للإجابة']);
-    if (d.qx && d.qx.length && /^opts_/.test(r.status)) rows.push(['🔤', `${d.qx.length === 1 ? 'خيار في سؤالك مو موجود' : 'خيارات في سؤالك مو موجودة'} في سؤال الدورة: ${d.qx.map(i => `<b><bdi dir="ltr">${LETTERS[i]}) ${fsTxt(it, q.opts[i] || '')}</bdi></b>`).join('، ')}`]);
+      if (d.extra && d.miss) rows.push(['🔢', _T`في سؤالك <b>${nums(d.extra)}</b>، وفي سؤال الدورة <b>${nums(d.miss)}</b>`]);
+      else if (d.extra) rows.push(['🔢', _T`في سؤالك أرقام مو موجودة في سؤال الدورة: <b>${nums(d.extra)}</b>`]);
+      else if (d.miss) rows.push(['🔢', _T`سؤال الدورة فيه أرقام مو موجودة في سؤالك: <b>${nums(d.miss)}</b>`]);
+      if (d.ops) rows.push(['➗', _T('فيه إشارة أو عملية مختلفة في المعادلة (مثل + بدل ×، أو سالب بدل موجب)')]);
+    } else if (d.miss && !d.extra) rows.push(['🖼️', _T`سؤال الدورة فيه أرقام ما ذكرتها: <b>${nums(d.miss)}</b> (غالباً في الرسم)`]);
+    if (d.swap) rows.push(['⇄', _T('القيمة A والقيمة B مبدّلة بين سؤالك وسؤال الدورة، فانتبه للإجابة')]);
+    if (d.qx && d.qx.length && /^opts_/.test(r.status)) rows.push(['🔤', _T`${d.qx.length === 1 ? _T('خيار في سؤالك مو موجود') : _T('خيارات في سؤالك مو موجودة')} في سؤال الدورة: ${d.qx.map(i => `<b><bdi dir="ltr">${LETTERS[i]}) ${fsTxt(it, q.opts[i] || '')}</bdi></b>`).join(_T('، '))}`]);
     return rows.length ? `<ul class="fd-diff">${rows.map(x => `<li><span aria-hidden="true">${x[0]}</span><p>${x[1]}</p></li>`).join('')}</ul>` : '';
   }
   function fsAns(r, it) {   // الإجابة (مخفية لين يضغط) — بحرف سؤاله هو لو نقدر
@@ -1322,14 +1331,14 @@
     let a;
     if (same && d.ansAt >= 0 && (q.opts[d.ansAt] || it.o[d.ansAt]) != null) {
       const o = q.opts[d.ansAt] && !/^\s*[a-d]\s*$/i.test(q.opts[d.ansAt]) ? q.opts[d.ansAt] : it.o[d.ansAt];   // خيارات المقارنة المختصرة (A / B) نعرضها بنص الدورة
-      a = `الإجابة الصحيحة في سؤالك: <b><bdi dir="ltr">${LETTERS[d.ansAt]}) ${fsTxt(it, o)}</bdi></b>${d.ansAt !== it.k && !d.swap ? ` <small>(في الدورة حرفها ${LETTERS[it.k]})</small>` : ''}`;
-    } else a = `${r.status === 'numbers' ? 'إجابة سؤال الدورة (بأرقامه هو)' : 'إجابة سؤال الدورة'}: <b><bdi dir="ltr">${LETTERS[it.k]}) ${fsTxt(it, it.o[it.k])}</bdi></b>${r.status === 'opts_diff' ? ' — ومو موجودة بين خياراتك' : ''}`;
-    return `<div class="fd-ans"><button type="button" class="btn ghost sm" data-ans aria-expanded="false">👁️ اعرض الإجابة</button><p hidden>${a}</p></div>`;
+      a = _T`الإجابة الصحيحة في سؤالك: <b><bdi dir="ltr">${LETTERS[d.ansAt]}) ${fsTxt(it, o)}</bdi></b>${d.ansAt !== it.k && !d.swap ? _T` <small>(في الدورة حرفها ${LETTERS[it.k]})</small>` : ''}`;
+    } else a = `${r.status === 'numbers' ? _T('إجابة سؤال الدورة (بأرقامه هو)') : _T('إجابة سؤال الدورة')}: <b><bdi dir="ltr">${LETTERS[it.k]}) ${fsTxt(it, it.o[it.k])}</bdi></b>${r.status === 'opts_diff' ? _T(' — ومو موجودة بين خياراتك') : ''}`;
+    return _T`<div class="fd-ans"><button type="button" class="btn ghost sm" data-ans aria-expanded="false">👁️ اعرض الإجابة</button><p hidden>${a}</p></div>`;
   }
   function fsItem(it) {   // سطر في «أسئلة قريبة»
     const L = it.refs.map(fsLoc), l = L.find(x => x.set), more = it.refs.length > 1 ? `<small>${fsMore(it.refs.length - 1)}</small>` : '';
     if (isFree()) {
-      const f = fsFreeLoc(it), body = `<span class="fd-it-h"><span class="fd-loc main">${L[0].t}</span>${more}<span class="fd-lk${f ? ' fr' : ''}">${f ? 'مجاني' : '🔒 للمشتركين'}</span></span>`;
+      const f = fsFreeLoc(it), body = `<span class="fd-it-h"><span class="fd-loc main">${L[0].t}</span>${more}<span class="fd-lk${f ? ' fr' : ''}">${f ? _T('مجاني') : _T('🔒 للمشتركين')}</span></span>`;
       return f ? `<a class="fd-it" href="#${f.set}@${f.i}">${body}</a>` : `<button type="button" class="fd-it" data-sub>${body}</button>`;
     }
     const body = `<span class="fd-it-h"><span class="fd-loc main">${L[0].t}</span>${more}</span><span class="fd-it-q ltr">${fsTxt(it, it.e || it.a || '')}</span>${(it.o || []).length ? `<span class="fd-it-o ltr">${it.o.map((o, j) => `<b>${LETTERS[j]}</b> ${fsTxt(it, o)}`).join('<i>·</i>')}</span>` : ''}`;
@@ -1337,28 +1346,28 @@
   }
   function fdImgs(R) {   // صورة سؤال الكمي من ملف القسم (نفس الصورة اللي يشوفها في الدورة)
     R.querySelectorAll('.fd-pv[data-img]').forEach(async el => { const [sid, i] = (el.dataset.img || '').split(':'); if (!sid || el.classList.contains('has-img')) return;
-      try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
+      try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', _T`<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
   }
   // 🚩 بلاغ بدل الواتساب في كل نتائج البحث: زر ← ملاحظة للمعلم (اختياري) ← إرسال — يوصل للمالك في سجل البحث مع سؤال الطالب (وصورته)
   // base = { id: رقم البحث في الخادم }، أو { text: نص الطالب } لما البحث صار على جهازه (كلمات، أو الخادم ما رد)
   let fdRepCtx = () => ({});   // صفحة البحث تحدده: نوع السؤال، وإن النص من صورة، وصورته لو ما وصلت الخادم
-  const fsRepBtn = (lead, gh) => `<div class="fd-acts">${lead ? `<span class="fd-or">${lead}</span>` : ''}<button type="button" class="btn${gh ? ' ghost' : ''}" data-rep>🚩 بلّغ عن السؤال</button></div>`;
+  const fsRepBtn = (lead, gh) => _T`<div class="fd-acts">${lead ? `<span class="fd-or">${lead}</span>` : ''}<button type="button" class="btn${gh ? ' ghost' : ''}" data-rep>🚩 بلّغ عن السؤال</button></div>`;
   const fsRepBox = (lead, kw, gh) => `<div class="fd-rep${lead ? ' fd-wa' : ''}" data-lead="${esc(lead || '')}"${kw ? ' data-kw="1"' : ''}${gh ? ' data-gh="1"' : ''}>${fsRepBtn(lead, gh)}</div>`;   // gh = زر ثانوي (لما فيه «افتح السؤال»)
   function fsRep(R, base) {
     R.querySelectorAll('.fd-rep').forEach(box => {
-      const lead = box.dataset.lead || '', ph = box.dataset.kw ? 'مثلاً: اكتب السؤال كامل، أو وين شفته' : 'مثلاً: جاني في الاختبار، أو لقيته في ملف تجميعات';
+      const lead = box.dataset.lead || '', ph = box.dataset.kw ? _T('مثلاً: اكتب السؤال كامل، أو وين شفته') : _T('مثلاً: جاني في الاختبار، أو لقيته في ملف تجميعات');
       const bind = () => { box.querySelector('[data-rep]').onclick = start; };
       const start = () => {
-        box.innerHTML = `<label class="fd-l" for="fdrn">ملاحظة للمعلم (اختياري)</label><textarea id="fdrn" class="fd-rn" dir="auto" rows="2" maxlength="300" placeholder="${ph}"></textarea>
+        box.innerHTML = _T`<label class="fd-l" for="fdrn">ملاحظة للمعلم (اختياري)</label><textarea id="fdrn" class="fd-rn" dir="auto" rows="2" maxlength="300" placeholder="${ph}"></textarea>
           <div class="fd-acts"><button type="button" class="btn" data-send>إرسال البلاغ</button><button type="button" class="btn ghost" data-x>إلغاء</button></div>`;
         const ta = box.querySelector('textarea'), send = box.querySelector('[data-send]'); ta.focus();
         box.querySelector('[data-x]').onclick = () => { box.innerHTML = fsRepBtn(lead, box.dataset.gh); bind(); box.querySelector('[data-rep]').focus(); };
         send.onclick = async () => {
-          send.disabled = true; send.textContent = 'نرسل البلاغ…';
+          send.disabled = true; send.textContent = _T('نرسل البلاغ…');
           const r = await api(Object.assign({ op: 'find_report', session: auth.session, note: ta.value }, fdRepCtx(), base)).catch(() => null);
-          if (r && r.ok) { box.innerHTML = '<p class="fd-repok" role="status">✓ وصلنا بلاغك، وبنراجع السؤال. شكراً لك!</p>'; if (window.QGT) QGT.ev('find', 'بلّغ عن سؤال'); return; }
+          if (r && r.ok) { box.innerHTML = _T('<p class="fd-repok" role="status">✓ وصلنا بلاغك، وبنراجع السؤال. شكراً لك!</p>'); if (window.QGT) QGT.ev('find', 'بلّغ عن سؤال'); return; }
           if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
-          toast((r && r.msg) || 'تعذّر إرسال البلاغ، جرّب مرة ثانية.'); send.disabled = false; send.textContent = 'إرسال البلاغ';
+          toast((r && r.msg) || _T('تعذّر إرسال البلاغ، جرّب مرة ثانية.')); send.disabled = false; send.textContent = _T('إرسال البلاغ');
         };
       };
       bind();
@@ -1371,16 +1380,16 @@
     let h = `<div class="fd-res ${S[0]}"><div class="fd-h"><span class="ic" aria-hidden="true">${S[1]}</span><div><b>${S[2]}</b><small>${S[3]}</small></div></div>`;
     if (it) {
       h += `<div class="fd-locs">${fsLocs(it.refs)}</div>${fsDiff(r, it)}`;
-      if (free) h += fsFreeLoc(it) ? '' : `<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
+      if (free) h += fsFreeLoc(it) ? '' : _T`<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
       else h += fsPreview(it) + fsAns(r, it);
       h += `<div class="fd-acts">${fsOpen(it)}</div>`;
-      if (r.alts && r.alts.length) h += `<div class="fd-alt"><h4>${r.alts.length > 1 ? 'أو يمكن يكون واحد من هذي:' : 'أو يمكن يكون هذا:'}</h4>${r.alts.map(a => `<div class="fd-ai"><div class="fd-locs">${fsLocs(a.refs)}</div>${free ? '' : fsPreview(a)}<div class="fd-acts">${fsOpen(a, true)}</div></div>`).join('')}</div>`;
-      if (S[0] !== 'ok') h += fsRepBox('تبي نتأكد لك؟ بلّغنا عنه:', 0, 1);
+      if (r.alts && r.alts.length) h += `<div class="fd-alt"><h4>${r.alts.length > 1 ? _T('أو يمكن يكون واحد من هذي:') : _T('أو يمكن يكون هذا:')}</h4>${r.alts.map(a => `<div class="fd-ai"><div class="fd-locs">${fsLocs(a.refs)}</div>${free ? '' : fsPreview(a)}<div class="fd-acts">${fsOpen(a, true)}</div></div>`).join('')}</div>`;
+      if (S[0] !== 'ok') h += fsRepBox(_T('تبي نتأكد لك؟ بلّغنا عنه:'), 0, 1);
     } else h += fsRepBox('');   // 🚩 ما لقيناه: بلاغ يوصل للمالك في سجل البحث
-    if (r.similar && r.similar.length) h += `<div class="fd-near"><h4>${it ? 'أسئلة قريبة منه في الدورة' : 'أقرب الأسئلة له في الدورة — يمكن تفيدك'}</h4><div class="fd-list">${r.similar.map(fsItem).join('')}</div></div>`;
+    if (r.similar && r.similar.length) h += `<div class="fd-near"><h4>${it ? _T('أسئلة قريبة منه في الدورة') : _T('أقرب الأسئلة له في الدورة — يمكن تفيدك')}</h4><div class="fd-list">${r.similar.map(fsItem).join('')}</div></div>`;
     R.innerHTML = h + '</div>';
     bindSub(R); fdImgs(R); fsRep(R, r.lid ? { id: r.lid } : { text: q });
-    R.querySelectorAll('[data-ans]').forEach(b => b.onclick = () => { const p = b.nextElementSibling; p.hidden = !p.hidden; b.setAttribute('aria-expanded', !p.hidden); b.textContent = p.hidden ? '👁️ اعرض الإجابة' : '🙈 اخفِ الإجابة'; });
+    R.querySelectorAll('[data-ans]').forEach(b => b.onclick = () => { const p = b.nextElementSibling; p.hidden = !p.hidden; b.setAttribute('aria-expanded', !p.hidden); b.textContent = p.hidden ? _T('👁️ اعرض الإجابة') : _T('🙈 اخفِ الإجابة'); });
     R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
   }
   async function fsImgData(file) {   // نصغّر الصورة (أطول ضلع 1600) ونرسلها JPEG
@@ -1391,11 +1400,11 @@
     return c.toDataURL('image/jpeg', 0.86);
   }
   async function renderFind() {
-    document.title = 'ابحث عن سؤال | Q-Guide';
+    document.title = _T('ابحث عن سؤال | Q-Guide');
     let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '', imgData = '', imgLid = 0;   // imgLid = رقم بحث الصورة في الخادم (صورته محفوظة هناك)
     fdRepCtx = () => ({ kind, ocr: usedImg ? 1 : undefined, fr: usedImg && imgLid ? imgLid : undefined, img: usedImg && !imgLid && imgData ? imgData : undefined });
-    app.innerHTML = topbar(`<span class="ttl">🔎 ابحث عن سؤال</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap fd">
-      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك وين تلقاه بالضبط، أو إذا هو نفسه بأرقام أو خيارات مختلفة، أو سؤال جديد.${isFree() ? ' حله وشرحه للمشتركين.' : ''}</p></div>
+    app.innerHTML = topbar(_T`<span class="ttl">🔎 ابحث عن سؤال</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap fd">
+      <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك وين تلقاه بالضبط، أو إذا هو نفسه بأرقام أو خيارات مختلفة، أو سؤال جديد.${isFree() ? _T(' حله وشرحه للمشتركين.') : ''}</p></div>
       <div class="fd-box">
         <div class="seg" id="fdk" role="tablist" aria-label="نوع السؤال"><button type="button" role="tab" data-k="q" class="${kind === 'q' ? 'on' : ''}" aria-selected="${kind === 'q'}">📐 الكمي</button><button type="button" role="tab" data-k="v" class="${kind === 'v' ? 'on' : ''}" aria-selected="${kind === 'v'}">📖 اللفظي</button></div>
         <label class="fd-l" for="fdq">نص السؤال</label>
@@ -1416,63 +1425,63 @@
     $('#fdx').onclick = () => { pv.hidden = true; usedImg = false; ocrTxt = ''; imgData = ''; imgLid = 0; inp.value = ''; };
     async function localOcr(f) {   // احتياط: قراءة الصورة على جهاز الطالب لو الخادم ما قدر
       if (!fdCanOcr()) return '';
-      st.innerHTML = '<span class="spin sm"></span> ' + (lsGet('qg_ocr_ok', 0) ? 'نقرأ الصورة على جهازك…' : 'نجهّز قارئ الصور على جهازك (حوالي 5 ميجا) ثم نقرأ الصورة…');
+      st.innerHTML = '<span class="spin sm"></span> ' + (lsGet('qg_ocr_ok', 0) ? _T('نقرأ الصورة على جهازك…') : _T('نجهّز قارئ الصور على جهازك (حوالي 5 ميجا) ثم نقرأ الصورة…'));
       try { const t = (await fdOcrRun(await fdPrep(f))).replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim(); if (t.replace(/[^A-Za-z0-9ء-ي]/g, '').length >= 12) { lsSet('qg_ocr_ok', 1); return t; } } catch (e) {}
       return '';
     }
     inp.onchange = async () => {
       const f = inp.files && inp.files[0]; if (!f) return;
       usedImg = true; pv.hidden = false; pv.className = 'fd-img busy'; $('#fdth').src = URL.createObjectURL(f); go.disabled = true;
-      st.innerHTML = '<span class="spin sm"></span> نقرأ السؤال من الصورة…';
-      R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقرأ الصورة ونقارنها بكل أسئلة الدورة…</div>`;
+      st.innerHTML = _T('<span class="spin sm"></span> نقرأ السؤال من الصورة…');
+      R.innerHTML = _T`<div class="fd-res wait"><span class="spin sm"></span> نقرأ الصورة ونقارنها بكل أسئلة الدورة…</div>`;
       try {
         let data = null; try { data = await fsImgData(f); } catch (e) {}
         imgData = data || ''; imgLid = 0;
         const r = data ? await call({ img: data }) : null;
-        if (r && r.ok) { imgLid = r.lid || 0; ta.value = ocrTxt = r.text || ''; pv.className = 'fd-img ok'; st.textContent = '✓ قرينا السؤال من الصورة — لو فيه خطأ صحّحه فوق واضغط ابحث'; fsShow(R, r, ocrTxt, true, kind); return; }
+        if (r && r.ok) { imgLid = r.lid || 0; ta.value = ocrTxt = r.text || ''; pv.className = 'fd-img ok'; st.textContent = _T('✓ قرينا السؤال من الصورة — لو فيه خطأ صحّحه فوق واضغط ابحث'); fsShow(R, r, ocrTxt, true, kind); return; }
         if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
         if (r && r.error === 'noq') { pv.className = 'fd-img bad'; st.textContent = r.msg; R.innerHTML = ''; return; }
         const why = r && r.error === 'limit' ? r.msg : '';
         const t = await localOcr(f);
-        if (!t) { pv.className = 'fd-img bad'; st.textContent = why || 'تعذّرت قراءة الصورة الحين. جرّب صورة أوضح أو اكتب السؤال.'; R.innerHTML = ''; return; }
-        ta.value = ocrTxt = t; pv.className = 'fd-img ok'; st.textContent = (why ? why + ' ' : '') + '✓ قرينا النص على جهازك — صحّحه فوق إذا فيه خطأ'; run(true);
+        if (!t) { pv.className = 'fd-img bad'; st.textContent = why || _T('تعذّرت قراءة الصورة الحين. جرّب صورة أوضح أو اكتب السؤال.'); R.innerHTML = ''; return; }
+        ta.value = ocrTxt = t; pv.className = 'fd-img ok'; st.textContent = (why ? why + ' ' : '') + _T('✓ قرينا النص على جهازك — صحّحه فوق إذا فيه خطأ'); run(true);
       } finally { go.disabled = false; inp.value = ''; }
     };
     async function run(fromImg) {
       const q = ta.value.trim(), T = fdToks(q), words = T.en.filter(w => w[0] !== '_').length + T.ar.length, full = words >= 6 || q.length >= 60;
-      if (!words && T.nu.length < 2) { R.innerHTML = `<div class="fd-res tip"><p>اكتب كلمة أو أكثر من السؤال (مثل <bdi dir="ltr">probability</bdi> أو <bdi dir="ltr">circle area</bdi>)، أو السؤال كامل.</p></div>`; ta.focus(); return; }
-      R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقارن سؤالك بكل أسئلة الدورة…</div>`;
+      if (!words && T.nu.length < 2) { R.innerHTML = _T`<div class="fd-res tip"><p>اكتب كلمة أو أكثر من السؤال (مثل <bdi dir="ltr">probability</bdi> أو <bdi dir="ltr">circle area</bdi>)، أو السؤال كامل.</p></div>`; ta.focus(); return; }
+      R.innerHTML = _T`<div class="fd-res wait"><span class="spin sm"></span> نقارن سؤالك بكل أسئلة الدورة…</div>`;
       if (full) {   // سؤال كامل: محرك المقارنة على الخادم (ocr = النص من صورته، عشان المالك يشوف الصورة معه في السجل)
         const r = await call({ text: q, ocr: usedImg ? 1 : undefined, fr: usedImg && imgLid ? imgLid : undefined });
         if (r && r.ok) return fsShow(R, r, q, usedImg || fromImg, kind);
         if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
       }
       if (isFree()) return fdRunPub(R, q, kind, full, usedImg);   // 🆓 الزائر: المكان فقط
-      let ix; try { ix = await fdLoad(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
+      let ix; try { ix = await fdLoad(); } catch (e) { R.innerHTML = _T`<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
       if (!$('#fdr')) return;
       const res = fdSearch(ix, q, kind, 4), top = res[0], E = ix.entries;
       const e = top && E[top.i], sc = top ? top.s : 0;
       const same = e ? res.filter(r => r.s >= FD_HI && E[r.i] !== e && E[r.i][3] === e[3]).map(r => E[r.i]) : [];   // نفس السؤال مكرر في قسم ثاني
       const alts = e ? res.slice(1).filter(r => r.s >= Math.max(FD_MID, sc - 0.06) && E[r.i][3] !== e[3]).map(r => E[r.i]).slice(0, 2) : [];   // أسئلة متقاربة جداً بنفس الدرجة
-      const altHtml = alts.length ? `<div class="fd-alt"><h4>أو يمكن يكون ${alts.length > 1 ? 'واحد من هذي' : 'هذا'}:</h4>${alts.map(x => `<div class="fd-ai"><div class="fd-locs">${fdLoc(x)}</div>${fdPreview(x)}<div class="fd-acts">${fdOpen(x).replace('class="btn"', 'class="btn ghost"')}</div></div>`).join('')}</div>` : '';
+      const altHtml = alts.length ? _T`<div class="fd-alt"><h4>أو يمكن يكون ${alts.length > 1 ? _T('واحد من هذي') : _T('هذا')}:</h4>${alts.map(x => `<div class="fd-ai"><div class="fd-locs">${fdLoc(x)}</div>${fdPreview(x)}<div class="fd-acts">${fdOpen(x).replace('class="btn"', 'class="btn ghost"')}</div></div>`).join('')}</div>` : '';
       if (full && e && sc >= FD_HI) {
-        R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
+        R.innerHTML = _T`<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
           <div class="fd-locs">${fdLoc(e)}${same.map(fdLoc).join('')}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}</div>`;
       } else if (full && e && sc >= FD_MID) {
-        R.innerHTML = `<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>قارنه بسؤالك وتأكد إنه نفسه:</small></div></div>
-          <div class="fd-locs">${fdLoc(e)}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}${fsRepBox('مو نفسه؟ بلّغنا عنه:', 0, 1)}</div>`;
+        R.innerHTML = _T`<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>قارنه بسؤالك وتأكد إنه نفسه:</small></div></div>
+          <div class="fd-locs">${fdLoc(e)}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}${fsRepBox(_T('مو نفسه؟ بلّغنا عنه:'), 0, 1)}</div>`;
       } else if (full) {   // سؤال كامل ما لقيناه: واتساب + أقرب الأسئلة عندنا
         const near = fdSearch(ix, q, kind, 6).filter(r => r.s >= 0.5).map(r => E[r.i]).slice(0, 5);
-        R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>بلّغ عنه عشان نراجعه.</small></div></div>
-          ${fsRepBox('')}${near.length ? `<div class="fd-near"><h4>أسئلة مشابهة عندنا — يمكن تفيدك</h4><div class="fd-list">${near.map(fdItem).join('')}</div></div>` : ''}</div>`;
+        R.innerHTML = _T`<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>بلّغ عنه عشان نراجعه.</small></div></div>
+          ${fsRepBox('')}${near.length ? _T`<div class="fd-near"><h4>أسئلة مشابهة عندنا — يمكن تفيدك</h4><div class="fd-list">${near.map(fdItem).join('')}</div></div>` : ''}</div>`;
       } else {   // كلام بسيط: أسئلة فيها نفس الكلمات (والمطابق تماماً أولها)
         const seen = new Set(), list = [], exact = new Set(res.filter(r => r.s >= FD_HI).map(r => r.i));
         res.filter(r => r.s >= FD_MID).concat(fdKeyword(ix, q, kind, 40)).forEach(r => { if (!seen.has(r.i)) { seen.add(r.i); list.push(r.i); } });
         let shown = 10; const show = () => { const box = $('#fdl'); if (!box) return; box.innerHTML = list.slice(0, shown).map(i => fdItem(E[i], exact.has(i))).join(''); const mb = $('#fdmore'); if (mb) mb.hidden = shown >= list.length; };
-        R.innerHTML = list.length ? `<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة مشابهة لكلامك</b><small>لقينا ${list.length >= 40 ? 'أكثر من 40 سؤالاً' : fdQn(list.length)}${list.length > 10 ? '، هذي أقربها' : ''} — ${list.length === 1 ? 'اضغط عليه تفتحه' : 'اضغط أي سؤال تفتحه'}</small></div></div>
+        R.innerHTML = list.length ? _T`<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة مشابهة لكلامك</b><small>لقينا ${list.length >= 40 ? _T('أكثر من 40 سؤالاً') : fdQn(list.length)}${list.length > 10 ? _T('، هذي أقربها') : ''} — ${list.length === 1 ? _T('اضغط عليه تفتحه') : _T('اضغط أي سؤال تفتحه')}</small></div></div>
             <div class="fd-list" id="fdl"></div><button type="button" class="btn ghost fd-more" id="fdmore">عرض أسئلة أكثر</button>
-            ${fsRepBox('ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو بلّغنا عنه:', 1)}</div>`
-          : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو بلّغ عنه.</small></div></div>${fsRepBox('', 1)}</div>`;
+            ${fsRepBox(_T('ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو بلّغنا عنه:'), 1)}</div>`
+          : _T`<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو بلّغ عنه.</small></div></div>${fsRepBox('', 1)}</div>`;
         show(); const mb = $('#fdmore'); if (mb) mb.onclick = () => { shown += 10; show(); };
       }
       fdImgs(R); fsRep(R, { text: q });
@@ -1483,28 +1492,28 @@
   // ---------- 📐 قوانين الكمي · 📘 قواعد اللفظي (من أسئلة الدورة) ----------
   const RULES_V = 4, RULES_ON = true, RU_DATA = {};
   const RU_CFG = {
-    q: { hash: '#rules', ttl: '📐 قوانين الكمي', h1: 'قوانين الكمي', file: 'rules.json?v=' + RULES_V, yt: () => ytRules('q'),
-      ph: 'ابحث عن قانون: مساحة، نسبة، زاوية، area…', none: 'ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.',
-      intro: n => `${n} قانون وقاعدة تحتاجها أسئلة الدورة، مرتبة حسب الموضوع. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.` },
-    v: { hash: '#rules-v', ttl: '📘 قواعد اللفظي', h1: 'قواعد اللفظي', file: 'rules_v.json?v=1', yt: () => ytRules('v'),
-      ph: 'ابحث: سبب ونتيجة، although، main idea…', none: 'ما لقينا قاعدة بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.',
-      intro: () => 'طريقة الحل في كل نوع من أسئلة اللفظي، وأنواع العلاقات والقرائن والأسئلة اللي تكررت في أسئلة الدورة. تحت كل نوع مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.' } };
+    q: { hash: '#rules', ttl: _T('📐 قوانين الكمي'), h1: _T('قوانين الكمي'), file: 'rules.json?v=' + RULES_V, yt: () => ytRules('q'),
+      ph: _T('ابحث عن قانون: مساحة، نسبة، زاوية، area…'), none: _T('ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.'),
+      intro: n => _T`${n} قانون وقاعدة تحتاجها أسئلة الدورة، مرتبة حسب الموضوع. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.` },
+    v: { hash: '#rules-v', ttl: _T('📘 قواعد اللفظي'), h1: _T('قواعد اللفظي'), file: 'rules_v.json?v=1', yt: () => ytRules('v'),
+      ph: _T('ابحث: سبب ونتيجة، although، main idea…'), none: _T('ما لقينا قاعدة بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.'),
+      intro: () => _T('طريقة الحل في كل نوع من أسئلة اللفظي، وأنواع العلاقات والقرائن والأسئلة اللي تكررت في أسئلة الدورة. تحت كل نوع مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.') } };
   async function renderRules(kind) {
     kind = kind === 'v' ? 'v' : 'q'; const C = RU_CFG[kind], VB = kind === 'v';
     document.title = C.h1 + ' | Q-Guide';
-    const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;
+    const back = _T`<a class="ib" href="#" title="الرئيسية">→</a>`;
     if (!RU_DATA[kind]) { app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl();
-      try { RU_DATA[kind] = await (await fetch('/p/data/' + C.file)).json(); } catch (e) { app.innerHTML = topbar('', back) + '<div class="center">تعذّر التحميل. <a href="#">رجوع</a></div>'; return; } }
+      try { RU_DATA[kind] = await (await fetch('/p/data/' + C.file)).json(); } catch (e) { app.innerHTML = topbar('', back) + _T('<div class="center">تعذّر التحميل. <a href="#">رجوع</a></div>'); return; } }
     if (location.hash !== C.hash) return;
     const D = RU_DATA[kind], R = C.yt(), nItems = D.reduce((a, s) => a + s.items.length, 0);
     const tx = VB ? esc : mx;   // اللفظي نص إنجليزي عادي، والكمي نرسم كسوره وأسسه
-    app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + `<main class="wrap rules${VB ? ' rules-v' : ''}">
+    app.innerHTML = topbar(_T`<span class="ttl">${C.ttl}</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + _T`<main class="wrap rules${VB ? ' rules-v' : ''}">
       <div class="ru-top"><div><h1>${C.h1}</h1><p>${C.intro(nItems)}</p></div>
         ${R ? `<a class="rvid" href="${R.url}"${R.tgt}>${vIcon(R)}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a>` : ''}</div>
       <div class="ru-bar"><input id="ruq" type="search" placeholder="${C.ph}" autocomplete="off"><span class="mut" id="run"></span></div>
       <nav class="ru-nav" aria-label="المواضيع">${D.map(s => `<a href="${C.hash}" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
-      <div class="ru-cols" id="ruc">${D.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2>${s.how ? `<div class="ru-how"><h3>طريقة الحل</h3><ol>${s.how.map(t => `<li>${arFx(t)}</li>`).join('')}</ol></div>` : ''}${s.sub ? `<h3 class="ru-sub">${esc(s.sub)}</h3>` : ''}<div class="ru-g">
-        ${s.items.map((x, ii) => `<div class="ru-i" data-s="${si}" data-i="${ii}" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + (VB ? (x.x || '') + ' ' : '') + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f${VB ? ' v' : ''}" dir="ltr">${tx(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span class="eg">e.g.</span> ${tx(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${arFx(x.n)}</div>` : ''}${x.q ? `<div class="ru-qb"><button type="button" class="ru-b" data-m="ex" aria-expanded="false">مثال محلول</button><button type="button" class="ru-b" data-m="pr" aria-expanded="false">سؤال تدريبي</button></div><div class="ru-p" hidden></div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
+      <div class="ru-cols" id="ruc">${D.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2>${s.how ? _T`<div class="ru-how"><h3>طريقة الحل</h3><ol>${s.how.map(t => `<li>${arFx(t)}</li>`).join('')}</ol></div>` : ''}${s.sub ? `<h3 class="ru-sub">${esc(s.sub)}</h3>` : ''}<div class="ru-g">
+        ${s.items.map((x, ii) => `<div class="ru-i" data-s="${si}" data-i="${ii}" data-k="${esc((x.a + ' ' + x.f + ' ' + (x.en || '') + ' ' + (x.n || '') + ' ' + (VB ? (x.x || '') + ' ' : '') + s.t + ' ' + (s.en || '')).toLowerCase())}"><div class="ru-a">${esc(x.a)}${x.en ? `<small dir="ltr">${esc(x.en)}</small>` : ''}</div><div class="ru-f${VB ? ' v' : ''}" dir="ltr">${tx(x.f)}</div>${x.x ? `<div class="ru-x" dir="ltr"><span class="eg">e.g.</span> ${tx(x.x)}</div>` : ''}${x.n ? `<div class="ru-n">${arFx(x.n)}</div>` : ''}${x.q ? _T`<div class="ru-qb"><button type="button" class="ru-b" data-m="ex" aria-expanded="false">مثال محلول</button><button type="button" class="ru-b" data-m="pr" aria-expanded="false">سؤال تدريبي</button></div><div class="ru-p" hidden></div>` : ''}</div>`).join('')}</div></section>`).join('')}</div>
       <p class="mut ru-empty" id="rue" hidden>${C.none}</p></main>`;
     bindCtl();
     $('#prn').onclick = () => window.print();
@@ -1516,7 +1525,7 @@
       if (!A || !B) return `<div class="ru-qq" dir="ltr">${mx(t)}</div>`;
       const rest = L.filter(x => x !== A && x !== B).join('\n').trim(), v = x => mx(x.replace(/^Quantity [AB]:\s*/, ''));
       return `${rest ? `<div class="ru-qq" dir="ltr">${mx(rest)}</div>` : ''}<div class="ru-cmp" dir="ltr"><div><small>A</small><span>${v(A)}</span></div><div><small>B</small><span>${v(B)}</span></div></div>`; };
-    const ruEx = e => `${ruQ(e.q)}<div class="ru-h">الحل</div><ol class="ru-st${e.s.length < 2 ? ' one' : ''}">${e.s.map(t => `<li>${arFx(t)}</li>`).join('')}</ol><div class="ru-ans"><span>الجواب</span><b dir="ltr">${tx(e.a)}</b></div>`;
+    const ruEx = e => _T`${ruQ(e.q)}<div class="ru-h">الحل</div><ol class="ru-st${e.s.length < 2 ? ' one' : ''}">${e.s.map(t => `<li>${arFx(t)}</li>`).join('')}</ol><div class="ru-ans"><span>الجواب</span><b dir="ltr">${tx(e.a)}</b></div>`;
     const ruPr = p => `${ruQ(p.q)}<div class="opts ${p.o.every(o => o.length <= 14) ? 'two' : ''}">${p.o.map((o, k) => `<button type="button" class="opt" data-k="${k}"><span class="L">${LETTERS[k]}</span><span${VB ? ' dir="ltr"' : ''}>${tx(o)}</span></button>`).join('')}</div><div class="ru-fb" aria-live="polite"></div>`;
     $('#ruc').onclick = e => {
       const b = e.target.closest('.ru-b'), o = e.target.closest('.ru-p .opt');
@@ -1533,13 +1542,14 @@
         const card = o.closest('.ru-i'), pr = D[+card.dataset.s].items[+card.dataset.i].q.pr, k = +o.dataset.k, ok = k === pr.k;
         card.querySelectorAll('.ru-p .opt').forEach(x => { x.disabled = true; const j = +x.dataset.k; if (j === pr.k) x.classList.add('ok'); else if (j === k) x.classList.add('bad'); });
         const fb = card.querySelector('.ru-fb'); fb.className = 'ru-fb ' + (ok ? 'ok' : 'bad');
-        fb.innerHTML = `<b>${ok ? '✓ إجابة صحيحة' : `✗ الإجابة الصحيحة ${LETTERS[pr.k]}`}</b><p>${arFx(pr.e)}</p>`;
+        fb.innerHTML = `<b>${ok ? _T('✓ إجابة صحيحة') : _T`✗ الإجابة الصحيحة ${LETTERS[pr.k]}`}</b><p>${arFx(pr.e)}</p>`;
       }
     };
     const q = $('#ruq'), cnt = $('#run'), paint = () => { const v = q.value.trim().toLowerCase(); let n = 0;
       document.querySelectorAll('.ru-s').forEach(s => { let k = 0; s.querySelectorAll('.ru-i').forEach(i => { const on = !v || i.dataset.k.indexOf(v) >= 0; i.hidden = !on; if (on) k++; }); s.hidden = !k; n += k;
         s.querySelectorAll('.ru-how,.ru-sub').forEach(x => x.hidden = !!v); });   // وقت البحث نعرض النتائج بس
-      cnt.textContent = v ? n + ' نتيجة' : ''; $('#rue').hidden = n > 0; };
+      cnt.textContent = v ? (EN ? enN(n, 'result', 'results') : n + ' نتيجة') : '';   // i18n:skip
+       $('#rue').hidden = n > 0; };
     q.oninput = paint;
   }
 
@@ -1550,7 +1560,7 @@
   const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
   const remGet = () => lsGet(REM_LS, null);
   const fmtMins = m => fmtTime(new Date(2000, 0, 1, Math.floor(m / 60), m % 60).getTime());
-  function remLabel() { const r = remGet(); return r && r.on ? `مفعّل كل يوم الساعة ${fmtMins(r.mins)}` : 'تنبيه يومي على جوالك بوقت مذاكرتك'; }
+  function remLabel() { const r = remGet(); return r && r.on ? _T`مفعّل كل يوم الساعة ${fmtMins(r.mins)}` : _T('تنبيه يومي على جوالك بوقت مذاكرتك'); }
   const b64uToU8 = s => { const b = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
   async function remSubscribe(mins) {
     const reg = await navigator.serviceWorker.ready;
@@ -1568,9 +1578,9 @@
     const r = remGet(); if (!force && !(r && r.on)) return; if (!('caches' in window)) return;
     try {
       const D = daysGet(), keys = Object.keys(D).filter(k => D[k] > 0).sort(), ex = examGet(), st = planState(), plan = PLANS.find(p => p.id === st.id);
-      let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? 'يوم راحة' : 'مراجعة أخطائك'))].join(' و'); }
+      let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(_T(' و')); }
       let next = ''; try { if (manifest) next = SET_NAME(pickResume().s.id); } catch (e) {}
-      const c = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], streak: streakOf(D), last: keys[keys.length - 1] || '', exam: ex ? examAt(ex) : 0, task, next, at: Date.now() };
+      const c = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], streak: streakOf(D), last: keys[keys.length - 1] || '', exam: ex ? examAt(ex) : 0, task, next, at: Date.now(), lang: EN ? 'en' : 'ar' };
       caches.open('qg-meta').then(cc => cc.put('/__rem', new Response(JSON.stringify(c), { headers: { 'content-type': 'application/json' } }))).catch(() => {});
     } catch (e) {}
   }
@@ -1583,28 +1593,29 @@
       const draw = () => {
         const r = remGet(), on = !!(r && r.on), mins = r && r.mins != null ? r.mins : 20 * 60, perm = 'Notification' in window ? Notification.permission : 'default';
         let body;
-        if (!remSupported() && isIOS() && !isStandalone()) body = `<p>على الآيفون، التنبيهات تشتغل لما تضيف المنصة للشاشة الرئيسية:</p>
+        if (!remSupported() && isIOS() && !isStandalone()) body = _T`<p>على الآيفون، التنبيهات تشتغل لما تضيف المنصة للشاشة الرئيسية:</p>
           <ol class="rem-ios"><li>افتح المنصة من متصفح <b>Safari</b></li><li>اضغط زر المشاركة <span class="ios-share" aria-hidden="true">⬆︎</span> تحت</li><li>اختر <b>«إضافة إلى الشاشة الرئيسية»</b></li><li>افتح Q-Guide من الأيقونة الجديدة، وسجّل دخولك، ثم فعّل التذكير من هنا</li></ol><p class="mut">يحتاج iOS 16.4 أو أحدث.</p>`;
-        else if (!remSupported()) body = `<p>متصفحك الحالي ما يدعم التنبيهات. جرّب من Google Chrome على الجوال أو الكمبيوتر.</p>`;
-        else if (perm === 'denied') body = `<p>التنبيهات مقفلة لهذا الموقع في متصفحك. افتح إعدادات الموقع (🔒 جنب الرابط فوق) ← <b>الإشعارات</b> ← <b>السماح</b>، ثم ارجع هنا وفعّل التذكير.</p>`;
-        else body = `<p>نرسل لك تنبيه كل يوم بالوقت اللي تختاره، فيه مهمتك من الخطة وكم باقي على اختبارك. <b>وإذا ذاكرت قبل الموعد ما نزعجك.</b></p>
-          <div class="exf rem-f"><label><span>وقت التذكير</span><input type="time" id="remt" value="${p2(Math.floor(mins / 60))}:${p2(mins % 60)}" dir="ltr" step="300"></label><div class="rem-st ${on ? 'on' : ''}">${on ? '🔔 مفعّل' : '🔕 غير مفعّل'}</div></div>
-          <div class="acts"><button class="btn" id="remon">${on ? 'حفظ الوقت' : 'فعّل التذكير'}</button>${on ? '<button class="btn ghost" id="remtest">أرسل تنبيه تجريبي</button><span class="sp"></span><button class="lnk" id="remoff">إيقاف التذكير</button>' : '<button class="btn ghost" id="remno">إلغاء</button>'}</div>`;
-        box.innerHTML = `<div class="m exm rem" role="dialog" aria-modal="true" aria-labelledby="remh"><h3 id="remh">🔔 التذكير اليومي</h3>${body}${body.indexOf('id="remon"') < 0 ? '<div class="acts"><button class="btn" id="remno">تمام</button></div>' : ''}</div>`;
+        else if (!remSupported()) body = _T`<p>متصفحك الحالي ما يدعم التنبيهات. جرّب من Google Chrome على الجوال أو الكمبيوتر.</p>`;
+        else if (perm === 'denied') body = _T`<p>التنبيهات مقفلة لهذا الموقع في متصفحك. افتح إعدادات الموقع (🔒 جنب الرابط فوق) ← <b>الإشعارات</b> ← <b>السماح</b>، ثم ارجع هنا وفعّل التذكير.</p>`;
+        else body = _T`<p>نرسل لك تنبيه كل يوم بالوقت اللي تختاره، فيه مهمتك من الخطة وكم باقي على اختبارك. <b>وإذا ذاكرت قبل الموعد ما نزعجك.</b></p>
+          <div class="exf rem-f"><label><span>وقت التذكير</span><input type="time" id="remt" value="${p2(Math.floor(mins / 60))}:${p2(mins % 60)}" dir="ltr" step="300"></label><div class="rem-st ${on ? 'on' : ''}">${on ? _T('🔔 مفعّل') : _T('🔕 غير مفعّل')}</div></div>
+          <div class="acts"><button class="btn" id="remon">${on ? _T('حفظ الوقت') : _T('فعّل التذكير')}</button>${on ? _T('<button class="btn ghost" id="remtest">أرسل تنبيه تجريبي</button><span class="sp"></span><button class="lnk" id="remoff">إيقاف التذكير</button>') : _T('<button class="btn ghost" id="remno">إلغاء</button>')}</div>`;
+        box.innerHTML = _T`<div class="m exm rem" role="dialog" aria-modal="true" aria-labelledby="remh"><h3 id="remh">🔔 التذكير اليومي</h3>${body}${body.indexOf('id="remon"') < 0 ? _T('<div class="acts"><button class="btn" id="remno">تمام</button></div>') : ''}</div>`;
         const no = $('#remno'); if (no) no.onclick = close;
         const ob = $('#remon'); if (ob) ob.onclick = async () => {
           const v = ($('#remt').value || '20:00').split(':'), m = (+v[0] || 0) * 60 + (+v[1] || 0);
-          ob.disabled = true; ob.textContent = 'جارٍ التفعيل…';
-          try { await remSubscribe(m); toast(`🔔 تم! بنذكّرك كل يوم الساعة ${fmtMins(m)}`); draw(); }
-          catch (e) { ob.disabled = false; ob.textContent = 'فعّل التذكير'; toast(e.message === 'denied' ? 'رفضت التنبيهات من المتصفح' : e.message === 'dismissed' ? 'لازم توافق على التنبيهات عشان يشتغل التذكير' : 'تعذّر التفعيل، حاول مرة ثانية'); if (e.message === 'denied') draw(); }
+          ob.disabled = true; ob.textContent = _T('جارٍ التفعيل…');
+          try { await remSubscribe(m); toast(_T`🔔 تم! بنذكّرك كل يوم الساعة ${fmtMins(m)}`); draw(); }
+          catch (e) { ob.disabled = false; ob.textContent = _T('فعّل التذكير'); toast(e.message === 'denied' ? _T('رفضت التنبيهات من المتصفح') : e.message === 'dismissed' ? _T('لازم توافق على التنبيهات عشان يشتغل التذكير') : _T('تعذّر التفعيل، حاول مرة ثانية')); if (e.message === 'denied') draw(); }
         };
-        const tb = $('#remtest'); if (tb) tb.onclick = async () => { tb.disabled = true; remCtx(true); try { const r2 = await api({ op: 'push_test', session: auth.session, endpoint: (remGet() || {}).ep }); toast(r2.ok ? 'أرسلنا تنبيه تجريبي، بيوصلك خلال ثواني' : (r2.msg || 'تعذّر الإرسال')); if (r2.error === 'gone' || r2.error === 'not subscribed') { lsSet(REM_LS, { on: 0, mins: (remGet() || {}).mins || 1200 }); draw(); } } catch (e) { toast('تعذّر الإرسال'); } tb.disabled = false; };
-        const fb = $('#remoff'); if (fb) fb.onclick = async () => { await remOff(); toast('أوقفنا التذكير اليومي'); draw(); };
+        const tb = $('#remtest'); if (tb) tb.onclick = async () => { tb.disabled = true; remCtx(true); try { const r2 = await api({ op: 'push_test', session: auth.session, endpoint: (remGet() || {}).ep }); toast(r2.ok ? _T('أرسلنا تنبيه تجريبي، بيوصلك خلال ثواني') : (r2.msg || _T('تعذّر الإرسال'))); if (r2.error === 'gone' || r2.error === 'not subscribed') { lsSet(REM_LS, { on: 0, mins: (remGet() || {}).mins || 1200 }); draw(); } } catch (e) { toast(_T('تعذّر الإرسال')); } tb.disabled = false; };
+        const fb = $('#remoff'); if (fb) fb.onclick = async () => { await remOff(); toast(_T('أوقفنا التذكير اليومي')); draw(); };
       };
       draw();
     });
   }
 
+  // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 🃏 بطاقات الحفظ (نموذج أولي للمشرفين) ----------
   const FC_LS = 'qg_fc', FC_DAYS = [0, 1, 2, 4, 7, 14];
   function fcGet() { return lsGet(FC_LS, { v: 1, w: {}, mode: 'en' }); }
@@ -1685,18 +1696,19 @@
     const a = $('#fcagain'); if (a) a.onclick = () => fcRun(uniqNo, S.title);
   }
 
+  // i18n:on
   // ---------- 🧭 اختبار تحديد المستوى ----------
   const LVL_LS = 'qg_level', LVLRUN_LS = 'qg_level_run';
-  const LEVELS = { 1: { t: 'مبتدئ', d: 'تحتاج تبني الأساس: ابدأ بمقاطع القواعد وخطة طويلة، وخذ الأقسام بالترتيب بدون استعجال.' }, 2: { t: 'متوسط', d: 'عندك أساس كويس، والتدريب المنتظم على نقاط ضعفك يرفع مستواك بسرعة.' }, 3: { t: 'جيد', d: 'مستواك جيد! ركّز على أخطائك والأسئلة اللي تاخذ وقت عشان توصل للتسعين.' }, 4: { t: 'متقدم', d: 'ممتاز! حافظ على مستواك بالاختبارات المحاكية ومراجعة أخطائك أول بأول.' } };
+  const LEVELS = { 1: { t: _T('مبتدئ'), d: _T('تحتاج تبني الأساس: ابدأ بمقاطع القواعد وخطة طويلة، وخذ الأقسام بالترتيب بدون استعجال.') }, 2: { t: _T('متوسط'), d: _T('عندك أساس كويس، والتدريب المنتظم على نقاط ضعفك يرفع مستواك بسرعة.') }, 3: { t: _T('جيد'), d: _T('مستواك جيد! ركّز على أخطائك والأسئلة اللي تاخذ وقت عشان توصل للتسعين.') }, 4: { t: _T('متقدم'), d: _T('ممتاز! حافظ على مستواك بالاختبارات المحاكية ومراجعة أخطائك أول بأول.') } };
   const lvlOf = p => p >= 85 ? 4 : p >= 65 ? 3 : p >= 45 ? 2 : 1;
   const LVPLAN = { 1: 'relaxed', 2: 'balanced', 3: 'intense', 4: 'strong' };
   let LV = null;   // حالة الاختبار الجاري
   async function renderLevel(mode) {
-    document.title = 'تحديد المستوى | Q-Guide'; document.onkeydown = null;
-    const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;
-    app.innerHTML = topbar(`<span class="ttl">🧭 تحديد المستوى</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span>تجهيز الأسئلة…</span></div>';
+    document.title = _T('تحديد المستوى | Q-Guide'); document.onkeydown = null;
+    const back = _T`<a class="ib" href="#" title="الرئيسية">→</a>`;
+    app.innerHTML = topbar(_T`<span class="ttl">🧭 تحديد المستوى</span>`, back) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span>تجهيز الأسئلة…</span></div>');
     bindCtl();
-    let set; try { set = await loadSet('placement'); } catch (e) { app.innerHTML = topbar('', back) + '<div class="center">تعذّر تحميل الاختبار. <a href="#">رجوع</a></div>'; return; }
+    let set; try { set = await loadSet('placement'); } catch (e) { app.innerHTML = topbar('', back) + _T('<div class="center">تعذّر تحميل الاختبار. <a href="#">رجوع</a></div>'); return; }
     if (location.hash !== '#level') return;
     if (!skillsPulled) await skillsPull();
     const res = lsGet(LVL_LS, null), run = lsGet(LVLRUN_LS, null);
@@ -1708,12 +1720,12 @@
   }
   function levelIntro(set, res) {
     const nv = set.items.filter(x => x.k === 'v').length, nq = set.items.length - nv;
-    app.innerHTML = topbar(`<span class="ttl">🧭 تحديد المستوى</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap lvl">
+    app.innerHTML = topbar(_T`<span class="ttl">🧭 تحديد المستوى</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap lvl">
       <div class="lv-in"><span class="lv-ic" aria-hidden="true">🧭</span><h1>اعرف مستواك قبل لا تبدأ</h1>
         <p>${set.items.length} سؤال من نفس أسئلة الدورة (${nv} لفظي + ${nq} كمي) تغطي كل المهارات. بعدها نعطيك مستواك، ونقاط قوتك وضعفك، والخطة اللي تناسبك.</p>
         <ul class="lv-f"><li><b>⏱ حوالي 20 دقيقة</b><span>خذ وقتك، ما فيه مؤقت يقفل عليك</span></li><li><b>🙈 بدون شرح أثناء الحل</b><span>الإجابات والشرح تطلع لك بعد ما تخلص</span></li><li><b>↺ تقدر تعيده</b><span>بعد ما تذاكر، عشان تشوف كم تحسّنت</span></li></ul>
-        <button class="btn gold lv-go" id="lvgo">${res ? 'أعد الاختبار' : 'ابدأ الاختبار'}</button>
-        ${res ? `<p class="lv-prev">نتيجتك السابقة: <b>${res.pct}%</b> (${LEVELS[res.lvl].t}) · ${fmtDay(res.at)} · <a href="#" id="lvres">شوف التفاصيل</a></p>` : ''}</div></main>`;
+        <button class="btn gold lv-go" id="lvgo">${res ? _T('أعد الاختبار') : _T('ابدأ الاختبار')}</button>
+        ${res ? _T`<p class="lv-prev">نتيجتك السابقة: <b>${res.pct}%</b> (${LEVELS[res.lvl].t}) · ${fmtDay(res.at)} · <a href="#" id="lvres">شوف التفاصيل</a></p>` : ''}</div></main>`;
     bindCtl();
     $('#lvgo').onclick = () => { lsSet(LVLRUN_LS, { a: {}, t0: Date.now(), cur: 0 }); renderLevel('run'); };
     const r = $('#lvres'); if (r) r.onclick = e => { e.preventDefault(); levelResult(set, res); };
@@ -1721,26 +1733,26 @@
   function levelQ(i) {
     const { set } = LV, items = set.items, it = items[i], n = items.length; LV.cur = i;
     lsSet(LVLRUN_LS, { a: LV.a, t0: LV.t0, cur: i });
-    const sec = it.k === 'q' ? 'الكمي' : 'اللفظي · ' + (TOPICS[it.topic] || {}).t;
+    const sec = it.k === 'q' ? _T('الكمي') : _T('اللفظي · ') + (TOPICS[it.topic] || {}).t;
     const sel = LV.a[i];
     let body = '';
-    if (it.type === 'read') body += `<details class="lv-pass" ${i === 0 || items[i - 1].type !== 'read' ? 'open' : ''}><summary>📄 القطعة: ${esc(it.ptitle || '')}</summary><div class="pb ltr">${esc(it.passage)}</div></details>`;
-    body += it.k === 'q' ? `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${i + 1}">` : `<p class="txt ltr">${esc(it.q)}</p>`;
+    if (it.type === 'read') body += _T`<details class="lv-pass" ${i === 0 || items[i - 1].type !== 'read' ? 'open' : ''}><summary>📄 القطعة: ${esc(it.ptitle || '')}</summary><div class="pb ltr">${esc(it.passage)}</div></details>`;
+    body += it.k === 'q' ? _T`<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${i + 1}">` : `<p class="txt ltr">${esc(it.q)}</p>`;
     const two = it.k === 'q' || it.opts.every(o => o.length <= 28);
     body += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => `<button class="opt ${sel === k ? 'sel' : ''}" data-k="${k}"><span class="L">${LETTERS[k]}</span><span>${esc(it.k === 'q' ? o.replace(/^[A-D]\)\s*/, '') : o)}</span></button>`).join('') + '</div>';
     const done = Object.keys(LV.a).length;
-    app.innerHTML = topbar(`<span class="ttl">🧭 تحديد المستوى</span><span class="sp"></span><span class="chip lv-t" id="lvt" dir="ltr">0:00</span><span class="chip cnt" dir="ltr">${i + 1} / ${n}</span>`, `<a class="ib" href="#" title="خروج (يتحفظ وين وقفت)">→</a>`) +
-      `<div class="sbar" style="--n:${n}" aria-hidden="true">${items.map((x, k) => `<i class="${LV.a[k] != null ? 'ans' : ''}${k === i ? ' cur' : ''}"></i>`).join('')}</div>
+    app.innerHTML = topbar(_T`<span class="ttl">🧭 تحديد المستوى</span><span class="sp"></span><span class="chip lv-t" id="lvt" dir="ltr">0:00</span><span class="chip cnt" dir="ltr">${i + 1} / ${n}</span>`, _T`<a class="ib" href="#" title="خروج (يتحفظ وين وقفت)">→</a>`) +
+      _T`<div class="sbar" style="--n:${n}" aria-hidden="true">${items.map((x, k) => `<i class="${LV.a[k] != null ? 'ans' : ''}${k === i ? ' cur' : ''}"></i>`).join('')}</div>
       <main class="wrap lvl"><div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${n}</small></span><span class="tag">${sec}</span></div>${body}
         <div class="acts"><button class="btn ghost sm" id="lvp" ${i === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span><span class="mut lv-c">جاوبت ${done} من ${n}</span>
-          ${i + 1 < n ? `<button class="btn" id="lvn">${sel != null ? 'التالي ←' : 'تخطَّ ←'}</button>` : `<button class="btn gold" id="lvf">إنهاء الاختبار ✓</button>`}</div></div></main>`;
+          ${i + 1 < n ? `<button class="btn" id="lvn">${sel != null ? _T('التالي ←') : _T('تخطَّ ←')}</button>` : _T`<button class="btn gold" id="lvf">إنهاء الاختبار ✓</button>`}</div></div></main>`;
     bindCtl(); window.scrollTo({ top: 0 });
     const tick = () => { const el = $('#lvt'); if (!el) return; el.textContent = fmtDur(Math.round((Date.now() - LV.t0) / 1000)); };
     tick(); clearInterval(LV.tm); LV.tm = setInterval(tick, 1000);
-    document.querySelectorAll('.lvl .opt').forEach(b => b.onclick = () => { LV.a[i] = +b.dataset.k; lsSet(LVLRUN_LS, { a: LV.a, t0: LV.t0, cur: i }); document.querySelectorAll('.lvl .opt').forEach(x => x.classList.toggle('sel', x === b)); const nb = $('#lvn'); if (nb) nb.textContent = 'التالي ←'; const c = $('.lv-c'); if (c) c.textContent = `جاوبت ${Object.keys(LV.a).length} من ${n}`; const s = $('.sbar') && $('.sbar').children[i]; if (s) s.classList.add('ans'); });
+    document.querySelectorAll('.lvl .opt').forEach(b => b.onclick = () => { LV.a[i] = +b.dataset.k; lsSet(LVLRUN_LS, { a: LV.a, t0: LV.t0, cur: i }); document.querySelectorAll('.lvl .opt').forEach(x => x.classList.toggle('sel', x === b)); const nb = $('#lvn'); if (nb) nb.textContent = _T('التالي ←'); const c = $('.lv-c'); if (c) c.textContent = _T`جاوبت ${Object.keys(LV.a).length} من ${n}`; const s = $('.sbar') && $('.sbar').children[i]; if (s) s.classList.add('ans'); });
     $('#lvp').onclick = () => levelQ(i - 1);
     const nb = $('#lvn'); if (nb) nb.onclick = () => levelQ(i + 1);
-    const fb = $('#lvf'); if (fb) fb.onclick = async () => { const un = n - Object.keys(LV.a).length; if (un && !await QGDlg.confirm(`باقي ${un} سؤال بدون إجابة وتنحسب خطأ. تنهي الاختبار؟`, { ok: 'إنهاء' })) return; levelFinish(); };
+    const fb = $('#lvf'); if (fb) fb.onclick = async () => { const un = n - Object.keys(LV.a).length; if (un && !await QGDlg.confirm(_T`باقي ${un} سؤال بدون إجابة وتنحسب خطأ. تنهي الاختبار؟`, { ok: _T('إنهاء') })) return; levelFinish(); };
     document.onkeydown = e => { if (e.ctrlKey || e.metaKey || e.altKey) return; const k = e.key.toLowerCase(), idx = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : '1234'.indexOf(k); if (idx >= 0) { const b = document.querySelectorAll('.lvl .opt')[idx]; if (b) b.click(); } else if (k === 'enter' || k === 'arrowleft') { const b = $('#lvn') || $('#lvf'); if (b) b.click(); } else if (k === 'arrowright') { const b = $('#lvp'); if (b && !b.disabled) b.click(); } };
   }
   function levelFinish() {
@@ -1762,19 +1774,19 @@
     if (exT > Date.now()) { const fits = PLANS.filter(p => dayDiff(addDays(day0(), p.days - 1), exT) >= 1); rec = fits.length ? fits.reduce((x, y) => y.days > x.days ? y : x) : PLANS[0]; }
     const tp = TOPIC_ORDER.filter(t => res.topics[t]).map(t => ({ t, ok: res.topics[t][0], n: res.topics[t][1] }));
     const weak = tp.filter(x => x.ok < x.n).sort((x, y) => x.ok / x.n - y.ok / y.n).slice(0, 3);
-    app.innerHTML = topbar(`<span class="ttl">🧭 نتيجة تحديد المستوى</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap lvl">
+    app.innerHTML = topbar(_T`<span class="ttl">🧭 نتيجة تحديد المستوى</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap lvl">
       <div class="sum lv-res"><div class="ring" id="ring" style="--p:${fresh ? 0 : res.pct}"><b><span id="rp">${fresh ? 0 : res.pct}</span><small>%</small></b></div>
         <span class="lv-badge l${res.lvl}">مستواك: ${L.t}</span><p class="lv-d">${L.d}</p>
         <div class="lv-split"><div><span>📖 اللفظي</span><b>${res.v[0]}<small>/${res.v[1]}</small></b><div class="bar"><i style="width:${Math.round(res.v[0] * 100 / res.v[1])}%"></i></div></div><div><span>📐 الكمي</span><b>${res.q[0]}<small>/${res.q[1]}</small></b><div class="bar"><i style="width:${Math.round(res.q[0] * 100 / res.q[1])}%"></i></div></div><div><span>⏱ الوقت</span><b class="ltr">${fmtDur(res.secs)}</b></div></div></div>
       <div class="lv-grid">
         <section class="lv-card"><h3>المهارات</h3>${tp.map(x => `<div class="lv-tp ${x.ok === x.n ? 'ok' : x.ok === 0 ? 'bad' : 'mid'}"><span>${TOPICS[x.t].i} ${TOPICS[x.t].t}</span><b>${x.ok}/${x.n}</b></div>`).join('')}</section>
-        ${isFree() ? `<section class="lv-card lv-sub"><h3>ابدأ من هنا</h3>
-          ${weak.length ? `<p>أضعف مهاراتك: <b>${weak.map(x => TOPICS[x.t].t).join('، ')}</b>.</p>` : '<p>جاوبت كل المهارات صح 👏</p>'}
+        ${isFree() ? _T`<section class="lv-card lv-sub"><h3>ابدأ من هنا</h3>
+          ${weak.length ? _T`<p>أضعف مهاراتك: <b>${weak.map(x => TOPICS[x.t].t).join(_T('، '))}</b>.</p>` : _T('<p>جاوبت كل المهارات صح 👏</p>')}
           <p class="mut">في الدورة تتدرب على كل مهارة بأسئلة من الأقسام كلها، وتمشي على ${rec.name} (${rec.days} يوماً) اللي تناسب مستواك.</p>
-          <button class="btn gold" data-sub>اشترك وابدأ خطتك</button></section>` : `<section class="lv-card"><h3>ابدأ من هنا</h3>
-          ${weak.length ? `<p class="mut">أضعف مهاراتك في هذا الاختبار، تدرّب عليها بأسئلة من كل الأقسام:</p><div class="lv-tr">${weak.map(x => `<a class="btn sm ghost" href="#t-${x.t}">${TOPICS[x.t].i} ${TOPICS[x.t].t}</a>`).join('')}</div>` : '<p class="mut">جاوبت كل المهارات صح 👏 كمّل على الاختبارات المحاكية.</p>'}
-          <div class="lv-plan"><span>الخطة المقترحة${exT > Date.now() ? ' لموعد اختبارك' : ' لمستواك'}:</span><b>${rec.name} <small>(${rec.days} يوماً · ${rec.daily})</small></b>
-            ${cur ? (cur.id === rec.id ? '<span class="fit ok">✓ هي نفس خطتك الحالية</span>' : `<span class="mut">خطتك الحالية: ${cur.name}</span> <a href="#plan">غيّرها من صفحة الخطة</a>`) : `<button class="btn gold sm" id="lvplan">ابدأ ${rec.name}</button>`}</div></section>`}</div>
+          <button class="btn gold" data-sub>اشترك وابدأ خطتك</button></section>` : _T`<section class="lv-card"><h3>ابدأ من هنا</h3>
+          ${weak.length ? _T`<p class="mut">أضعف مهاراتك في هذا الاختبار، تدرّب عليها بأسئلة من كل الأقسام:</p><div class="lv-tr">${weak.map(x => `<a class="btn sm ghost" href="#t-${x.t}">${TOPICS[x.t].i} ${TOPICS[x.t].t}</a>`).join('')}</div>` : _T('<p class="mut">جاوبت كل المهارات صح 👏 كمّل على الاختبارات المحاكية.</p>')}
+          <div class="lv-plan"><span>الخطة المقترحة${exT > Date.now() ? _T(' لموعد اختبارك') : _T(' لمستواك')}:</span><b>${rec.name} <small>(${rec.days} يوماً · ${rec.daily})</small></b>
+            ${cur ? (cur.id === rec.id ? _T('<span class="fit ok">✓ هي نفس خطتك الحالية</span>') : _T`<span class="mut">خطتك الحالية: ${cur.name}</span> <a href="#plan">غيّرها من صفحة الخطة</a>`) : _T`<button class="btn gold sm" id="lvplan">ابدأ ${rec.name}</button>`}</div></section>`}</div>
       <div class="acts lv-acts"><button class="btn" id="lvrev">مراجعة إجاباتك مع الشرح</button><a class="btn ghost" href="#">الرئيسية</a><button class="lnk2" id="lvagain">↻ أعد الاختبار</button></div></main>`;
     bindCtl(); window.scrollTo({ top: 0 });
     if (fresh) { const rp = $('#rp'), ring = $('#ring'); if (RM()) { rp.textContent = res.pct; ring.style.setProperty('--p', res.pct); } else { const t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / 900), v = Math.round(res.pct * (1 - Math.pow(1 - k, 3))); rp.textContent = v; ring.style.setProperty('--p', v); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); } if (res.pct >= 85 && !RM()) setTimeout(confetti, 600); }
@@ -1783,13 +1795,13 @@
     $('#lvagain').onclick = () => { lsSet(LVLRUN_LS, { a: {}, t0: Date.now(), cur: 0 }); renderLevel('run'); };
   }
   function levelReview(set, res) {
-    app.innerHTML = topbar(`<span class="ttl">🧭 مراجعة إجاباتك</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap lvl lv-rv">
+    app.innerHTML = topbar(_T`<span class="ttl">🧭 مراجعة إجاباتك</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap lvl lv-rv">
       <p class="mut">الأخضر الإجابة الصحيحة، والأحمر إجابتك لو كانت خطأ. كل سؤال معه شرحه.</p>
-      ${set.items.map((it, i) => { const a = res.a[i], ok = a === it.ans; return `<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>${it.k === 'q' ? 'الكمي' : (TOPICS[it.topic] || {}).t}</small></span><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? '✓ صح' : a == null ? '— ما جاوبت' : '✗ خطأ'}</span></div>
-        ${it.type === 'read' ? `<details class="lv-pass"><summary>📄 القطعة: ${esc(it.ptitle || '')}</summary><div class="pb ltr">${esc(it.passage)}</div></details>` : ''}
+      ${set.items.map((it, i) => { const a = res.a[i], ok = a === it.ans; return _T`<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>${it.k === 'q' ? _T('الكمي') : (TOPICS[it.topic] || {}).t}</small></span><span class="tag ${ok ? 'ok' : 'bad'}">${ok ? _T('✓ صح') : a == null ? _T('— ما جاوبت') : _T('✗ خطأ')}</span></div>
+        ${it.type === 'read' ? _T`<details class="lv-pass"><summary>📄 القطعة: ${esc(it.ptitle || '')}</summary><div class="pb ltr">${esc(it.passage)}</div></details>` : ''}
         ${it.k === 'q' ? `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="">` : `<p class="txt ltr">${esc(it.q)}</p>`}
         <div class="opts ${it.k === 'q' || it.opts.every(o => o.length <= 28) ? 'two' : ''}">${it.opts.map((o, k) => `<div class="opt ${k === it.ans ? 'ok' : k === a ? 'bad' : ''}"><span class="L">${LETTERS[k]}</span><span>${esc(it.k === 'q' ? o.replace(/^[A-D]\)\s*/, '') : o)}</span></div>`).join('')}</div>
-        ${it.exp ? `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div></div>` : ''}</div>`; }).join('')}
+        ${it.exp ? _T`<div class="fb ${ok ? 'ok' : 'bad'}"><div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div></div>` : ''}</div>`; }).join('')}
       <div class="acts lv-acts"><a class="btn" href="#">الرئيسية</a><button class="btn ghost" id="lvback">↩ النتيجة</button></div></main>`;
     bindCtl(); window.scrollTo({ top: 0 });
     $('#lvback').onclick = () => levelResult(set, res);
@@ -1798,26 +1810,26 @@
   // ---------- 🏅 الشارات (تنحسب من نشاط الطالب على جهازه وتتزامن مع حسابه) ----------
   const BADGE_LS = 'qg_badges';
   const BADGES = [
-    { id: 'first', i: '✏️', t: 'البداية', d: 'جاوبت أول سؤال', v: S => S.total, n: 1, u: 'سؤال' },
-    { id: 'q100', i: '💯', t: '100 سؤال', d: 'حليت 100 سؤال', v: S => S.total, n: 100, u: 'سؤال' },
-    { id: 'q500', i: '🚀', t: '500 سؤال', d: 'حليت 500 سؤال', v: S => S.total, n: 500, u: 'سؤال' },
-    { id: 'q1000', i: '🏔️', t: '1000 سؤال', d: 'حليت 1000 سؤال', v: S => S.total, n: 1000, u: 'سؤال' },
-    { id: 'sheet1', i: '📄', t: 'أول ورقة', d: 'خلّصت أول قسم أو نموذج كامل', v: S => S.sheets, n: 1, u: 'ورقة' },
-    { id: 'sheet5', i: '📚', t: '5 أوراق', d: 'خلّصت 5 أقسام أو نماذج', v: S => S.sheets, n: 5, u: 'ورقة' },
-    { id: 'allq', i: '📐', t: 'بطل الكمي', d: 'خلّصت أقسام الكمي الـ14 كلها', v: S => S.qdone, n: 14, u: 'قسم' },
-    { id: 'allv', i: '📖', t: 'بطل اللفظي', d: 'خلّصت نماذج اللفظي الـ14 كلها', v: S => S.vdone, n: 14, u: 'نموذج' },
-    { id: 'p90', i: '🎯', t: 'فوق الـ90', d: 'خلّصت قسم بنسبة 90% أو أكثر', v: S => S.best, n: 90, pct: 1 },
-    { id: 'p100', i: '👑', t: 'العلامة الكاملة', d: 'جبت 100% في قسم كامل', v: S => S.best, n: 100, pct: 1 },
-    { id: 'st3', i: '🔥', t: '3 أيام ورا بعض', d: 'ذاكرت 3 أيام متتالية', v: S => S.streakMax, n: 3, u: 'يوم' },
-    { id: 'st7', i: '⚡', t: 'أسبوع كامل', d: 'ذاكرت 7 أيام متتالية', v: S => S.streakMax, n: 7, u: 'يوم' },
-    { id: 'st30', i: '🌙', t: 'شهر كامل', d: 'ذاكرت 30 يوم متتالي', v: S => S.streakMax, n: 30, u: 'يوم' },
-    { id: 'goal1', i: '⭕', t: 'هدف اليوم', d: 'حققت هدفك اليومي أول مرة', v: S => S.goalDays, n: 1, u: 'يوم' },
-    { id: 'goal7', i: '🎖️', t: 'ملتزم', d: 'حققت هدفك اليومي في 7 أيام', v: S => S.goalDays, n: 7, u: 'يوم' },
-    { id: 'fix20', i: '🩹', t: 'صياد الأخطاء', d: 'صحّحت 20 سؤال كنت غلطان فيها', v: S => S.fixed, n: 20, u: 'سؤال' },
-    { id: 'note10', i: '📒', t: 'صاحب الدفتر', d: 'حفظت 10 أسئلة في دفترك', v: S => S.marks, n: 10, u: 'سؤال' },
-    { id: 'level', i: '🧭', t: 'عرفت مستواك', d: 'سويت اختبار تحديد المستوى', v: S => S.level, n: 1 },
-    { id: 'mock1', i: '🧪', t: 'أول محاكي', d: 'خلّصت أول اختبار محاكي', v: S => S.mocks, n: 1, u: 'اختبار' },
-    { id: 'plan', i: '🏁', t: 'الخطة كاملة', d: 'خلّصت خطة المذاكرة كاملة', v: S => S.planDone, n: 1 },
+    { id: 'first', i: '✏️', t: _T('البداية'), d: _T('جاوبت أول سؤال'), v: S => S.total, n: 1, u: _T('سؤال') },
+    { id: 'q100', i: '💯', t: _T('100 سؤال'), d: _T('حليت 100 سؤال'), v: S => S.total, n: 100, u: _T('سؤال') },
+    { id: 'q500', i: '🚀', t: _T('500 سؤال'), d: _T('حليت 500 سؤال'), v: S => S.total, n: 500, u: _T('سؤال') },
+    { id: 'q1000', i: '🏔️', t: _T('1000 سؤال'), d: _T('حليت 1000 سؤال'), v: S => S.total, n: 1000, u: _T('سؤال') },
+    { id: 'sheet1', i: '📄', t: _T('أول ورقة'), d: _T('خلّصت أول قسم أو نموذج كامل'), v: S => S.sheets, n: 1, u: _T('ورقة') },
+    { id: 'sheet5', i: '📚', t: _T('5 أوراق'), d: _T('خلّصت 5 أقسام أو نماذج'), v: S => S.sheets, n: 5, u: _T('ورقة') },
+    { id: 'allq', i: '📐', t: _T('بطل الكمي'), d: _T('خلّصت أقسام الكمي الـ14 كلها'), v: S => S.qdone, n: 14, u: _T('قسم') },
+    { id: 'allv', i: '📖', t: _T('بطل اللفظي'), d: _T('خلّصت نماذج اللفظي الـ14 كلها'), v: S => S.vdone, n: 14, u: _T('نموذج') },
+    { id: 'p90', i: '🎯', t: _T('فوق الـ90'), d: _T('خلّصت قسم بنسبة 90% أو أكثر'), v: S => S.best, n: 90, pct: 1 },
+    { id: 'p100', i: '👑', t: _T('العلامة الكاملة'), d: _T('جبت 100% في قسم كامل'), v: S => S.best, n: 100, pct: 1 },
+    { id: 'st3', i: '🔥', t: _T('3 أيام ورا بعض'), d: _T('ذاكرت 3 أيام متتالية'), v: S => S.streakMax, n: 3, u: _T('يوم') },
+    { id: 'st7', i: '⚡', t: _T('أسبوع كامل'), d: _T('ذاكرت 7 أيام متتالية'), v: S => S.streakMax, n: 7, u: _T('يوم') },
+    { id: 'st30', i: '🌙', t: _T('شهر كامل'), d: _T('ذاكرت 30 يوم متتالي'), v: S => S.streakMax, n: 30, u: _T('يوم') },
+    { id: 'goal1', i: '⭕', t: _T('هدف اليوم'), d: _T('حققت هدفك اليومي أول مرة'), v: S => S.goalDays, n: 1, u: _T('يوم') },
+    { id: 'goal7', i: '🎖️', t: _T('ملتزم'), d: _T('حققت هدفك اليومي في 7 أيام'), v: S => S.goalDays, n: 7, u: _T('يوم') },
+    { id: 'fix20', i: '🩹', t: _T('صياد الأخطاء'), d: _T('صحّحت 20 سؤال كنت غلطان فيها'), v: S => S.fixed, n: 20, u: _T('سؤال') },
+    { id: 'note10', i: '📒', t: _T('صاحب الدفتر'), d: _T('حفظت 10 أسئلة في دفترك'), v: S => S.marks, n: 10, u: _T('سؤال') },
+    { id: 'level', i: '🧭', t: _T('عرفت مستواك'), d: _T('سويت اختبار تحديد المستوى'), v: S => S.level, n: 1 },
+    { id: 'mock1', i: '🧪', t: _T('أول محاكي'), d: _T('خلّصت أول اختبار محاكي'), v: S => S.mocks, n: 1, u: _T('اختبار') },
+    { id: 'plan', i: '🏁', t: _T('الخطة كاملة'), d: _T('خلّصت خطة المذاكرة كاملة'), v: S => S.planDone, n: 1 },
   ];
   function badgeStats() {
     const D = daysGet(), goal = goalGet(); let total = 0, goalDays = 0, best = 0, run = 0, prev = null;
@@ -1836,17 +1848,17 @@
     const B = lsGet(BADGE_LS, {}), first = !Object.keys(B).length, got = [];
     BADGES.forEach(b => { if (!B[b.id] && b.v(S) >= b.n) { B[b.id] = Date.now(); got.push(b); } });
     if (got.length) { lsSet(BADGE_LS, B); skillsPushSoon(5000);
-      setTimeout(() => toast(got.length > 1 ? `🏅 حصلت على ${got.length} شارات${first ? '' : ' جديدة'}! شوفها في «إنجازاتي»` : `🏅 شارة جديدة: ${got[0].t}`), 900); }
+      setTimeout(() => toast(got.length > 1 ? _T`🏅 حصلت على ${got.length} شارات${first ? '' : _T(' جديدة')}! شوفها في «إنجازاتي»` : _T`🏅 شارة جديدة: ${got[0].t}`), 900); }
     return got;
   }
   let badgeT = 0; function badgeCheckSoon() { clearTimeout(badgeT); badgeT = setTimeout(badgeCheck, 1200); }
   async function renderBadges() {
-    document.title = 'إنجازاتي | Q-Guide';
-    if (!skillsPulled) { app.innerHTML = topbar(`<span class="ttl">🏅 إنجازاتي</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl(); await skillsPull(); if (location.hash !== '#badges') return; }
+    document.title = _T('إنجازاتي | Q-Guide');
+    if (!skillsPulled) { app.innerHTML = topbar(_T`<span class="ttl">🏅 إنجازاتي</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl(); await skillsPull(); if (location.hash !== '#badges') return; }
     badgeCheck();
     const S = badgeStats(), B = lsGet(BADGE_LS, {}), n = BADGES.filter(b => B[b.id]).length;
-    const left = b => { const v = Math.max(0, b.v(S)); if (b.pct) return `أفضل نتيجة لك ${v}%`; if (b.n === 1) return 'ما حصلت عليها بعد'; return `باقي ${b.n - Math.min(v, b.n)} ${b.u || ''}`; };
-    app.innerHTML = topbar(`<span class="ttl">🏅 إنجازاتي</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap badges">
+    const left = b => { const v = Math.max(0, b.v(S)); if (b.pct) return _T`أفضل نتيجة لك ${v}%`; if (b.n === 1) return _T('ما حصلت عليها بعد'); return _T`باقي ${b.n - Math.min(v, b.n)} ${b.u || ''}`; };
+    app.innerHTML = topbar(_T`<span class="ttl">🏅 إنجازاتي</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap badges">
       <div class="bd-top"><h1>إنجازاتي</h1><p>كل شارة تنختم لك تلقائياً لما توصل لها. <b>حصلت على ${n} من ${BADGES.length}</b></p><div class="bd-bar"><i style="width:${Math.round(n * 100 / BADGES.length)}%"></i></div></div>
       <div class="bds">${BADGES.map(b => { const on = !!B[b.id], v = Math.max(0, Math.min(b.v(S), b.n)), p = Math.round(v * 100 / b.n);
         return `<div class="bd ${on ? 'on' : ''}"><span class="bd-st" aria-hidden="true"><span>${b.i}</span></span><b>${b.t}</b><small>${b.d}</small>${on ? `<em>✓ ${fmtDay(B[b.id])}</em>` : `<span class="bd-p"><i style="width:${p}%"></i></span><em class="lk">${left(b)}</em>`}</div>`; }).join('')}</div></main>`;
@@ -1864,9 +1876,9 @@
   function marksMerge(rem) { if (!rem || !rem.items) return; const M = marksGet(); let ch = false; for (const src in rem.items) { const m = M.items[src] || (M.items[src] = {}); for (const i in rem.items[src]) { const r = rem.items[src][i], l = m[i]; if (r && (!l || (r.t || 0) > (l.t || 0))) { m[i] = r; ch = true; } } } if (ch) lsSet(MARK_LS, M); }
   const setOrder = id => (id[0] === 'q' ? 0 : 100) + (+id.slice(1) || 0);
   async function renderNotes() {
-    document.title = 'دفتري | Q-Guide';
-    const back = `<a class="ib" href="#" title="الرئيسية">→</a>`;
-    app.innerHTML = topbar(`<span class="ttl">📒 دفتري</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل دفترك…</span></div>';
+    document.title = _T('دفتري | Q-Guide');
+    const back = _T`<a class="ib" href="#" title="الرئيسية">→</a>`;
+    app.innerHTML = topbar(_T`<span class="ttl">📒 دفتري</span>`, back) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل دفترك…</span></div>');
     bindCtl();
     if (!skillsPulled) await skillsPull();   // دفترك من جهازك الثاني
     const L = marksList().sort((a, b) => setOrder(a.src) - setOrder(b.src) || a.sidx - b.sidx);
@@ -1876,32 +1888,32 @@
     const rows = L.map(x => { const set = cache[x.src]; if (!set) return null; const f = flatItems(set)[x.sidx]; return f ? Object.assign(x, { it: f.it, kind: set.kind, g: set.kind === 'verbal' ? set.groups[f.gi] : null }) : null; }).filter(Boolean);
     const nq = rows.filter(r => r.kind === 'quant').length, nv = rows.length - nq;
     const show = rows.filter(r => tab === 'all' || (tab === 'q') === (r.kind === 'quant'));
-    const stat = r => { const e = h.items[r.src] && h.items[r.src][r.sidx]; return !e ? '<span class="nb-s">ما حليته بعد</span>' : e[2] ? '<span class="nb-s ok">✓ آخر مرة صح</span>' : '<span class="nb-s bad">✗ آخر مرة غلط</span>'; };
-    app.innerHTML = topbar(`<span class="ttl">📒 دفتري</span>`, back) + `<main class="wrap notes">
+    const stat = r => { const e = h.items[r.src] && h.items[r.src][r.sidx]; return !e ? _T('<span class="nb-s">ما حليته بعد</span>') : e[2] ? _T('<span class="nb-s ok">✓ آخر مرة صح</span>') : _T('<span class="nb-s bad">✗ آخر مرة غلط</span>'); };
+    app.innerHTML = topbar(_T`<span class="ttl">📒 دفتري</span>`, back) + _T`<main class="wrap notes">
       <div class="nb-top"><div><h1>دفتري</h1><p>الأسئلة اللي حفظتها ⭐ وملاحظاتك عليها. ارجع لها قبل الاختبار، أو تدرّب عليها كأنها قسم.</p></div>
-        <div class="nb-go">${nq ? `<a class="btn sm" href="#t-star-q">🎯 تدرّب على أسئلة الكمي <small>${nq}</small></a>` : ''}${nv ? `<a class="btn sm" href="#t-star-v">🎯 تدرّب على أسئلة اللفظي <small>${nv}</small></a>` : ''}</div></div>
-      ${rows.length ? `<div class="tabs nb-tabs" role="tablist"><button data-t="all" class="${tab === 'all' ? 'on' : ''}">الكل <small>${rows.length}</small></button><button data-t="q" class="${tab === 'q' ? 'on' : ''}">الكمي <small>${nq}</small></button><button data-t="v" class="${tab === 'v' ? 'on' : ''}">اللفظي <small>${nv}</small></button></div>` : ''}
-      <div class="nbs">${show.length ? show.map(r => `<article class="nb ${r.kind}">
-        <div class="nb-h"><b>${SET_NAME(r.src)}</b><span class="mut">سؤال ${r.sidx + 1}</span>${stat(r)}<span class="sp"></span><button type="button" class="mk st ${r.e.s ? 'on' : ''}" data-star="${r.src}:${r.sidx}" title="${r.e.s ? 'شيله من الدفتر' : 'احفظه في الدفتر'}" aria-label="نجمة">${STARSVG}</button></div>
-        <div class="nb-q">${r.kind === 'quant' ? `<img src="${r.it.img}" alt="سؤال ${r.sidx + 1}" loading="lazy">` : `${r.g && r.g.kind === 'passage' ? `<div class="mut nb-pt">📄 ${esc(r.g.title)}</div>` : ''}<p class="ltr">${esc(r.it.q)}</p>`}</div>
+        <div class="nb-go">${nq ? _T`<a class="btn sm" href="#t-star-q">🎯 تدرّب على أسئلة الكمي <small>${nq}</small></a>` : ''}${nv ? _T`<a class="btn sm" href="#t-star-v">🎯 تدرّب على أسئلة اللفظي <small>${nv}</small></a>` : ''}</div></div>
+      ${rows.length ? _T`<div class="tabs nb-tabs" role="tablist"><button data-t="all" class="${tab === 'all' ? 'on' : ''}">الكل <small>${rows.length}</small></button><button data-t="q" class="${tab === 'q' ? 'on' : ''}">الكمي <small>${nq}</small></button><button data-t="v" class="${tab === 'v' ? 'on' : ''}">اللفظي <small>${nv}</small></button></div>` : ''}
+      <div class="nbs">${show.length ? show.map(r => _T`<article class="nb ${r.kind}">
+        <div class="nb-h"><b>${SET_NAME(r.src)}</b><span class="mut">سؤال ${r.sidx + 1}</span>${stat(r)}<span class="sp"></span><button type="button" class="mk st ${r.e.s ? 'on' : ''}" data-star="${r.src}:${r.sidx}" title="${r.e.s ? _T('شيله من الدفتر') : _T('احفظه في الدفتر')}" aria-label="نجمة">${STARSVG}</button></div>
+        <div class="nb-q">${r.kind === 'quant' ? _T`<img src="${r.it.img}" alt="سؤال ${r.sidx + 1}" loading="lazy">` : `${r.g && r.g.kind === 'passage' ? `<div class="mut nb-pt">📄 ${esc(r.g.title)}</div>` : ''}<p class="ltr">${esc(r.it.q)}</p>`}</div>
         <textarea class="nb-n" dir="auto" data-src="${r.src}" data-i="${r.sidx}" maxlength="600" rows="2" placeholder="أضف ملاحظة على السؤال…">${esc(r.e.n || '')}</textarea>
-        <a class="nb-open" href="#${r.src}@${r.sidx}">افتح السؤال مع الشرح ←</a></article>`).join('') : `<div class="sum nb-empty"><div style="font-size:42px">📒</div><h2>دفترك فاضي</h2><p class="mut">وأنت تحل، اضغط ⭐ على أي سؤال تبي ترجع له، أو اكتب ملاحظتك عليه من زر 📝. كل شي ينحفظ هنا تلقائياً.</p><a class="btn gold" href="#">ابدأ الحل</a></div>`}</div></main>`;
+        <a class="nb-open" href="#${r.src}@${r.sidx}">افتح السؤال مع الشرح ←</a></article>`).join('') : _T`<div class="sum nb-empty"><div style="font-size:42px">📒</div><h2>دفترك فاضي</h2><p class="mut">وأنت تحل، اضغط ⭐ على أي سؤال تبي ترجع له، أو اكتب ملاحظتك عليه من زر 📝. كل شي ينحفظ هنا تلقائياً.</p><a class="btn gold" href="#">ابدأ الحل</a></div>`}</div></main>`;
     bindCtl();
     document.querySelectorAll('.nb-tabs button').forEach(b => b.onclick = () => { lsSet('qg_ntab', b.dataset.t); renderNotes(); });
-    document.querySelectorAll('[data-star]').forEach(b => b.onclick = () => { const [src, i] = b.dataset.star.split(':'); const c = markOf(src, +i); const on = !(c && c.s); markSet(src, +i, { s: on ? 1 : 0 }); b.classList.toggle('on', on); toast(on ? '⭐ رجع للدفتر' : 'انشالت النجمة' + (c && c.n ? ' (الملاحظة باقية)' : '')); });
+    document.querySelectorAll('[data-star]').forEach(b => b.onclick = () => { const [src, i] = b.dataset.star.split(':'); const c = markOf(src, +i); const on = !(c && c.s); markSet(src, +i, { s: on ? 1 : 0 }); b.classList.toggle('on', on); toast(on ? _T('⭐ رجع للدفتر') : _T('انشالت النجمة') + (c && c.n ? _T(' (الملاحظة باقية)') : '')); });
     document.querySelectorAll('.nb-n').forEach(t => { let tm = 0; t.oninput = () => { clearTimeout(tm); tm = setTimeout(() => markSet(t.dataset.src, +t.dataset.i, { n: t.value.trim() }), 500); }; });
   }
 
   // ---------- 🎯 صفحة نقاط القوة والضعف ----------
-  function lvl(p, n) { if (n < 3) return { c: 'na', t: 'بحاجة لمزيد من الأسئلة' }; if (p >= 80) return { c: 'ok', t: 'قوي 💪' }; if (p >= 60) return { c: 'mid', t: 'متوسط' }; return { c: 'bad', t: 'يحتاج تركيز 🎯' }; }
+  function lvl(p, n) { if (n < 3) return { c: 'na', t: _T('بحاجة لمزيد من الأسئلة') }; if (p >= 80) return { c: 'ok', t: _T('قوي 💪') }; if (p >= 60) return { c: 'mid', t: _T('متوسط') }; return { c: 'bad', t: _T('يحتاج تركيز 🎯') }; }
   function skillsBarsHtml(agg, compact) {
-    if (!agg) return compact ? '<h4>🎯 المهارات</h4><div class="mut" style="margin-bottom:8px">لا يوجد سجل بعد</div>' : '';
-    const rows = TOPIC_ORDER.filter(t => agg[t] && (agg[t].w + agg[t].r)).map(t => { const a = agg[t], n = a.w + a.r, p = Math.round(a.r * 100 / n), L = lvl(p, n); return `<div class="skrow ${L.c}"><span class="ic">${TOPICS[t].i}</span><span class="nm">${TOPICS[t].t}<small>${TOPICS[t].k === 'quant' ? 'الكمي' : 'اللفظي'} · ${n} إجابة · ${a.wrongNow} خطأ حالي</small></span><span class="bar"><i style="width:${p}%"></i></span><b class="pct">${p}%</b><span class="lv">${L.t}</span>${compact ? '' : `<a class="btn sm ${L.c === 'bad' ? 'gold' : 'ghost'}" href="#t-${t}">تدرّب</a>`}</div>`; }).join('');
-    return (compact ? '<h4>🎯 المهارات (من سجل الطالب)</h4>' : '') + (rows ? `<div class="sk">${rows}</div>` : `<div class="mut">${compact ? 'لا يوجد سجل بعد' : ''}</div>`);
+    if (!agg) return compact ? _T('<h4>🎯 المهارات</h4><div class="mut" style="margin-bottom:8px">لا يوجد سجل بعد</div>') : '';
+    const rows = TOPIC_ORDER.filter(t => agg[t] && (agg[t].w + agg[t].r)).map(t => { const a = agg[t], n = a.w + a.r, p = Math.round(a.r * 100 / n), L = lvl(p, n); return _T`<div class="skrow ${L.c}"><span class="ic">${TOPICS[t].i}</span><span class="nm">${TOPICS[t].t}<small>${TOPICS[t].k === 'quant' ? _T('الكمي') : _T('اللفظي')} · ${n} إجابة · ${a.wrongNow} خطأ حالي</small></span><span class="bar"><i style="width:${p}%"></i></span><b class="pct">${p}%</b><span class="lv">${L.t}</span>${compact ? '' : _T`<a class="btn sm ${L.c === 'bad' ? 'gold' : 'ghost'}" href="#t-${t}">تدرّب</a>`}</div>`; }).join('');
+    return (compact ? _T('<h4>🎯 المهارات (من سجل الطالب)</h4>') : '') + (rows ? `<div class="sk">${rows}</div>` : `<div class="mut">${compact ? _T('لا يوجد سجل بعد') : ''}</div>`);
   }
   async function renderSkills() {
-    document.title = 'نقاط القوة والضعف | Q-Guide';
-    app.innerHTML = topbar(`<span class="ttl">🎯 نقاط القوة والضعف</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحليل إجاباتك…</span></div>';
+    document.title = _T('نقاط القوة والضعف | Q-Guide');
+    app.innerHTML = topbar(_T`<span class="ttl">🎯 نقاط القوة والضعف</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحليل إجاباتك…</span></div>');
     bindCtl();
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) {} }
     let h = await histMigrate(m => { const e = $('#ldmsg'); if (e) e.textContent = m; });
@@ -1913,17 +1925,17 @@
     const wrongQ = Object.keys(h.items).filter(k => k[0] === 'q').reduce((a, k) => a + Object.values(h.items[k]).filter(e => !e[2]).length, 0);
     const wrongV = Object.keys(h.items).filter(k => k[0] === 'v').reduce((a, k) => a + Object.values(h.items[k]).filter(e => !e[2]).length, 0);
     const total = done.reduce((a, t) => a + agg[t].w + agg[t].r, 0);
-    const card = (t) => `<a class="tcard ${TOPICS[t].k}" href="#t-${t}"><span class="ic">${TOPICS[t].i}</span><b>${TOPICS[t].t}</b><small>${tot[t] || '—'} سؤال · ${TOPICS[t].k === 'quant' ? 'الكمي' : 'اللفظي'}</small>${agg[t].w + agg[t].r ? `<span class="mini ${lvl(Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)), agg[t].w + agg[t].r).c}">${Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r))}%</span>` : ''}</a>`;
-    app.innerHTML = topbar(`<span class="ttl">🎯 نقاط القوة والضعف</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap skills">
-      <div class="hero sk"><div><h1>تحليل مهاراتك</h1><p>${total ? `حلّلنا <b>${total}</b> إجابة من كل اختباراتك (الأقسام، الشامل، التدريب الموجّه). كل ما حليت أكثر صار التحليل أدق.` : 'ابدأ بحل أي قسم من الكمي أو اللفظي، وبعدها تظهر لك هنا المواضيع اللي تقوى فيها واللي تحتاج تركيز.'}</p></div></div>
-      ${weak.length ? `<h2 class="h2">🎯 ركّز على هذي المواضيع</h2><div class="focus">${weak.map(x => `<a class="fc bad" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة · ${agg[x.t].wrongNow} سؤال خطأ حالياً</small></span><span class="btn sm gold">تدرّب الآن</span></a>`).join('')}</div>` : ''}
-      ${strong.length ? `<h2 class="h2">💪 نقاط قوتك</h2><div class="focus">${strong.map(x => `<a class="fc ok" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة</small></span><span class="btn sm ghost">حافظ عليها</span></a>`).join('')}</div>` : ''}
+    const card = (t) => _T`<a class="tcard ${TOPICS[t].k}" href="#t-${t}"><span class="ic">${TOPICS[t].i}</span><b>${TOPICS[t].t}</b><small>${tot[t] || '—'} سؤال · ${TOPICS[t].k === 'quant' ? _T('الكمي') : _T('اللفظي')}</small>${agg[t].w + agg[t].r ? `<span class="mini ${lvl(Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)), agg[t].w + agg[t].r).c}">${Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r))}%</span>` : ''}</a>`;
+    app.innerHTML = topbar(_T`<span class="ttl">🎯 نقاط القوة والضعف</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap skills">
+      <div class="hero sk"><div><h1>تحليل مهاراتك</h1><p>${total ? _T`حلّلنا <b>${total}</b> إجابة من كل اختباراتك (الأقسام، الشامل، التدريب الموجّه). كل ما حليت أكثر صار التحليل أدق.` : _T('ابدأ بحل أي قسم من الكمي أو اللفظي، وبعدها تظهر لك هنا المواضيع اللي تقوى فيها واللي تحتاج تركيز.')}</p></div></div>
+      ${weak.length ? _T`<h2 class="h2">🎯 ركّز على هذي المواضيع</h2><div class="focus">${weak.map(x => _T`<a class="fc bad" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة · ${agg[x.t].wrongNow} سؤال خطأ حالياً</small></span><span class="btn sm gold">تدرّب الآن</span></a>`).join('')}</div>` : ''}
+      ${strong.length ? _T`<h2 class="h2">💪 نقاط قوتك</h2><div class="focus">${strong.map(x => _T`<a class="fc ok" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة</small></span><span class="btn sm ghost">حافظ عليها</span></a>`).join('')}</div>` : ''}
       <h2 class="h2">🔁 مراجعة أخطائي</h2>
       <div class="wb two">
-        <a class="mock ${wrongQ ? '' : 'dim'}" href="#t-wrong-q"><span><b>📐 أخطائي في الكمي</b><br><span class="mut">${wrongQ ? wrongQ + ' سؤال آخر إجابة لك فيه كانت خطأ — حلّها من جديد مع الشرح' : 'ما فيه أخطاء محفوظة حالياً'}</span></span><span class="btn">${wrongQ || 0} ←</span></a>
-        <a class="mock ${wrongV ? '' : 'dim'}" href="#t-wrong-v"><span><b>📖 أخطائي في اللفظي</b><br><span class="mut">${wrongV ? wrongV + ' سؤال آخر إجابة لك فيه كانت خطأ — حلّها من جديد مع الترجمة والشرح' : 'ما فيه أخطاء محفوظة حالياً'}</span></span><span class="btn">${wrongV || 0} ←</span></a>
+        <a class="mock ${wrongQ ? '' : 'dim'}" href="#t-wrong-q"><span><b>📐 أخطائي في الكمي</b><br><span class="mut">${wrongQ ? (EN ? enN(wrongQ, 'question', 'questions') : wrongQ + ' سؤال') + _T(' آخر إجابة لك فيه كانت خطأ — حلّها من جديد مع الشرح') : _T('ما فيه أخطاء محفوظة حالياً')}</span></span><span class="btn">${wrongQ || 0} ${EN ? '→' : '←'}</span></a>
+        <a class="mock ${wrongV ? '' : 'dim'}" href="#t-wrong-v"><span><b>📖 أخطائي في اللفظي</b><br><span class="mut">${wrongV ? (EN ? enN(wrongV, 'question', 'questions') : wrongV + ' سؤال') + _T(' آخر إجابة لك فيه كانت خطأ — حلّها من جديد مع الترجمة والشرح') : _T('ما فيه أخطاء محفوظة حالياً')}</span></span><span class="btn">${wrongV || 0} ${EN ? '→' : '←'}</span></a>
       </div>
-      ${done.length ? `<h2 class="h2">📊 كل المواضيع</h2>${skillsBarsHtml(agg, false)}` : ''}
+      ${done.length ? _T`<h2 class="h2">📊 كل المواضيع</h2>${skillsBarsHtml(agg, false)}` : ''}
       <h2 class="h2">📚 تدريب حسب الموضوع</h2>
       <p class="mut" style="margin:-4px 0 10px">اختبارات تحتوي على نوع واحد فقط من الأسئلة، مجمّعة من كل النماذج الـ14:</p>
       <div class="tgrid">${TOPIC_ORDER.filter(t => TOPICS[t].k === 'verbal').map(card).join('')}</div>
@@ -1934,18 +1946,18 @@
   }
   // ---------- 📖 قاموس الكلمات ----------
   async function renderVocab(model) {
-    document.title = 'قاموس الكلمات | Q-Guide';
-    app.innerHTML = topbar(`<span class="ttl">📖 قاموس الكلمات</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل القاموس…</span></div>';
+    document.title = _T('قاموس الكلمات | Q-Guide');
+    app.innerHTML = topbar(_T`<span class="ttl">📖 قاموس الكلمات</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل القاموس…</span></div>');
     bindCtl(); await loadVocab();
     let rows = [], title = '';
     if (model) {
-      let set; try { set = await loadSet(model); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#vocab">→</a>`) + '<div class="center">تعذّر فتح النموذج. <a href="#vocab">رجوع</a></div>'; return; }
+      let set; try { set = await loadSet(model); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#vocab">→</a>`) + _T('<div class="center">تعذّر فتح النموذج. <a href="#vocab">رجوع</a></div>'); return; }
       title = set.title + ' · ' + set.sub.split(' · ').pop();
       const seen = new Set(); const add = (txt, where) => { for (const m of (txt || '').matchAll(/[A-Za-z][A-Za-z'’]*/g)) { const w = m[0].toLowerCase().replace(/’/g, "'").replace(/'s$/, ''); if (seen.has(w) || STOP.has(w) || w.length < 3) continue; const ar = vocLook(w); if (!ar) continue; seen.add(w); rows.push([w, ar, where]); } };
-      set.groups.forEach(g => { const where = g.kind === 'passage' ? 'قطعة: ' + g.title : (g.ar || g.title); if (g.kind === 'passage') add(g.passage, where); g.items.forEach(it => add(it.q + ' ' + it.opts.join(' '), where)); });
-    } else { rows = Object.keys(VOC).filter(w => !STOP.has(w) && w.length > 2).sort().map(w => [w, VOC[w], '']); title = 'كل الكلمات (' + rows.length + ')'; }
-    const tabs = `<div class="vtabs"><a class="${model ? '' : 'on'}" href="#vocab">الكل</a>${Array.from({ length: 14 }, (_, i) => `<a class="${model === 'v' + (i + 1) ? 'on' : ''}" href="#vocab-v${i + 1}">نموذج ${i + 1}</a>`).join('')}</div>`;
-    app.innerHTML = topbar(`<span class="ttl">📖 قاموس الكلمات</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap vocab">
+      set.groups.forEach(g => { const where = g.kind === 'passage' ? _T('قطعة: ') + g.title : (g.ar || g.title); if (g.kind === 'passage') add(g.passage, where); g.items.forEach(it => add(it.q + ' ' + it.opts.join(' '), where)); });
+    } else { rows = Object.keys(VOC).filter(w => !STOP.has(w) && w.length > 2).sort().map(w => [w, VOC[w], '']); title = _T('كل الكلمات (') + rows.length + ')'; }
+    const tabs = _T`<div class="vtabs"><a class="${model ? '' : 'on'}" href="#vocab">الكل</a>${Array.from({ length: 14 }, (_, i) => _T`<a class="${model === 'v' + (i + 1) ? 'on' : ''}" href="#vocab-v${i + 1}">نموذج ${i + 1}</a>`).join('')}</div>`;
+    app.innerHTML = topbar(_T`<span class="ttl">📖 قاموس الكلمات</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap vocab">
       <div class="hero sk"><div><h1>قاموس الكلمات</h1><p>ترجمة كل كلمة جديدة تمرّ عليك في النماذج اللفظية (${Object.keys(VOC).length} كلمة). اختر نموذجاً لتظهر كلماته بترتيب ورودها، أو ابحث عن أي كلمة. تقدر تطبع القائمة أو تحفظها PDF من زر 🖨️.</p></div></div>
       ${tabs}
       <div class="vsearch"><input id="vq" class="ltr" placeholder="ابحث عن كلمة… search" autocomplete="off"><span class="mut" id="vn"></span></div>
@@ -1953,12 +1965,14 @@
       <div class="vlist" id="vl"></div></main>`;
     bindCtl();
     const vl = $('#vl'), vn = $('#vn'), vq = $('#vq'); let lastWhere = '';
-    const paint = () => { const q = vq.value.trim().toLowerCase(); const list = q ? rows.filter(r => r[0].indexOf(q) >= 0 || r[1].indexOf(q) >= 0) : rows; vn.textContent = list.length + ' كلمة'; lastWhere = '';
-      vl.innerHTML = list.slice(0, 1500).map(r => { let hd = ''; if (model && r[2] !== lastWhere) { lastWhere = r[2]; hd = `<div class="vh">${esc(r[2])}</div>`; } return hd + `<div class="vr"><b class="ltr">${esc(r[0])}</b><span>${esc(r[1])}</span>${sayBtn(r[0], 'en', '', 'sm')}</div>`; }).join('') + (list.length > 1500 ? `<div class="mut" style="padding:10px">… ابحث لعرض المزيد (${list.length - 1500} كلمة أخرى)</div>` : ''); };
+    const paint = () => { const q = vq.value.trim().toLowerCase(); const list = q ? rows.filter(r => r[0].indexOf(q) >= 0 || r[1].indexOf(q) >= 0) : rows; vn.textContent = EN ? enN(list.length, 'word', 'words') : list.length + ' كلمة';   // i18n:skip
+     lastWhere = '';
+      vl.innerHTML = list.slice(0, 1500).map(r => { let hd = ''; if (model && r[2] !== lastWhere) { lastWhere = r[2]; hd = `<div class="vh">${esc(r[2])}</div>`; } return hd + `<div class="vr"><b class="ltr">${esc(r[0])}</b><span>${esc(r[1])}</span>${sayBtn(r[0], 'en', '', 'sm')}</div>`; }).join('') + (list.length > 1500 ? _T`<div class="mut" style="padding:10px">… ابحث لعرض المزيد (${list.length - 1500} كلمة أخرى)</div>` : ''); };
     vq.oninput = paint; paint();
     $('#prn').onclick = () => window.print();
   }
 
+  // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 🎬 استوديو تيك توك (للمشرفين) ----------
   const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', posted: null, pen: null, reveal: false, panel: true, ui: true };
   const STL = ['a', 'b', 'c', 'd'];
@@ -2047,6 +2061,7 @@
       else if (kk === 'r') reveal(); else if (kk === 'z') ST.pen.undo(); else if (kk === 'c') clear(); else if (kk === 'h') setUI(!ST.ui); else if (kk === 'escape') setUI(true); };
     document.addEventListener('keydown', window.__stKey);
   }
+  // i18n:on
   // ---------- avatar / profile ----------
   const PRESETS = ['adventurer', 'adventurer-neutral', 'avataaars', 'bottts-neutral', 'fun-emoji', 'thumbs', 'lorelei', 'notionists'];
   function avatarHtml(url, name, size) {
@@ -2063,26 +2078,26 @@
     try { const r = await api({ op: 'profile', session: auth.session }); if (r.ok) prof = { name: r.name, avatar: r.avatar, yt: r.yt, handle: r.handle }; } catch (e) {}
     const seed = auth.email; let chosen = prof.avatar || '';
     const draw = () => {
-      box.innerHTML = `<div class="m"><h3>ملفي الشخصي</h3>
+      box.innerHTML = _T`<div class="m"><h3>ملفي الشخصي</h3>
         <div class="pf-top">${avatarHtml(chosen, prof.name, 72)}<div><label class="lbl">الاسم المعروض في لوحة الصدارة</label><input id="pf-name" maxlength="30" value="${esc(prof.name || '')}"></div></div>
         <label class="lbl">الصورة</label>
         <div class="pf-av">
-          ${prof.yt ? `<button class="pf-opt ${chosen === prof.yt ? 'on' : ''}" data-u="${esc(prof.yt)}" title="صورة قناتك في يوتيوب">${avatarHtml(prof.yt, 'Y', 48)}<small>يوتيوب</small></button>` : ''}
+          ${prof.yt ? _T`<button class="pf-opt ${chosen === prof.yt ? 'on' : ''}" data-u="${esc(prof.yt)}" title="صورة قناتك في يوتيوب">${avatarHtml(prof.yt, 'Y', 48)}<small>يوتيوب</small></button>` : ''}
           ${PRESETS.map(st => { const u = presetUrl(st, seed); return `<button class="pf-opt ${chosen === u ? 'on' : ''}" data-u="${esc(u)}">${avatarHtml(u, '?', 48)}</button>`; }).join('')}
           <label class="pf-opt up" title="رفع صورة من جهازك">📷<small>رفع صورة</small><input type="file" id="pf-file" accept="image/*" hidden></label>
           <button class="pf-opt ${chosen === '' ? 'on' : ''}" data-u="" title="بدون صورة"><span class="av ini" style="width:48px;height:48px">${esc((prof.name || '?').charAt(0))}</span><small>بدون</small></button>
         </div>
-        <p class="mut" style="font-size:12.5px">${prof.yt ? '' : (prof.handle ? 'ما قدرنا نجيب صورة قناتك (' + esc(prof.handle) + ') — اختر صورة من هنا.' : '')} الاسم والصورة يظهران للطلاب الآخرين في لوحة الصدارة فقط.</p>
+        <p class="mut" style="font-size:12.5px">${prof.yt ? '' : (prof.handle ? _T('ما قدرنا نجيب صورة قناتك (') + esc(prof.handle) + _T(') — اختر صورة من هنا.') : '')} الاسم والصورة يظهران للطلاب الآخرين في لوحة الصدارة فقط.</p>
         <div class="acts"><button class="btn ghost" id="pf-x">إلغاء</button><span class="sp"></span><button class="btn" id="pf-save">حفظ</button></div></div>`;
       box.querySelectorAll('.pf-opt[data-u]').forEach(b => b.onclick = () => { chosen = b.dataset.u; photo = null; draw(); });
       $('#pf-x').onclick = () => box.remove();
       $('#pf-file').onchange = async e => { const f = e.target.files[0]; if (!f) return; photo = await shrinkImage(f, 160); chosen = photo; draw(); };
       $('#pf-save').onclick = async () => {
-        const name = $('#pf-name').value.trim(); if (name.length < 2) return toast('اكتب اسماً أطول');
+        const name = $('#pf-name').value.trim(); if (name.length < 2) return toast(_T('اكتب اسماً أطول'));
         $('#pf-save').disabled = true;
         const body = { op: 'profile_set', session: auth.session, name }; if (photo) body.photo = photo; else body.avatar = chosen;
-        try { const r = await api(body); if (!r.ok) { toast(r.msg || 'تعذّر الحفظ'); $('#pf-save').disabled = false; return; }
-          auth.display = r.name; auth.avatar = r.avatar; lsSet(LS.auth, auth); box.remove(); toast('تم الحفظ ✓'); renderHome(); } catch (e) { toast('تعذّر الاتصال'); $('#pf-save').disabled = false; }
+        try { const r = await api(body); if (!r.ok) { toast(r.msg || _T('تعذّر الحفظ')); $('#pf-save').disabled = false; return; }
+          auth.display = r.name; auth.avatar = r.avatar; lsSet(LS.auth, auth); box.remove(); toast(_T('تم الحفظ ✓')); renderHome(); } catch (e) { toast(_T('تعذّر الاتصال')); $('#pf-save').disabled = false; }
       };
     };
     let photo = null; draw();
@@ -2092,6 +2107,7 @@
   }
 
   // ---------- leaderboard ----------
+  // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 👑 لوحة المشرف ----------
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI';
   const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
@@ -2762,6 +2778,7 @@
     W.querySelectorAll('[data-mrm]').forEach(b => b.onclick = async () => { if (await admMemberRemove(b.dataset.mrm)) { ADM.list = null; renderMembers(); } });
   }
 
+  // i18n:on
   // ---------- ⏳ موعد الاختبار + العدّادات ----------
   const EXAM_LS = 'qg_exam', TRIPX_LS = 'qg_trip_x', DAYMS = 864e5;
   function examGet() { const e = lsGet(EXAM_LS, null); return e && /^\d{4}-\d{2}-\d{2}$/.test(e.d || '') ? e : null; }
@@ -2769,55 +2786,55 @@
   const day0 = t => { const d = new Date(t || Date.now()); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayDiff = (a, b) => Math.round((day0(b) - day0(a)) / DAYMS);   // كم يوم تقويمي من a إلى b
   const addDays = (t, n) => { const d = new Date(day0(t)); d.setDate(d.getDate() + n); return d.getTime(); };
-  const fmtDay = t => new Date(t).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
-  const fmtTime = t => new Date(t).toLocaleTimeString('ar-SA-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
-  const byDays = n => n === 1 ? 'بيوم' : n === 2 ? 'بيومين' : `بـ${n} ${n <= 10 ? 'أيام' : 'يوم'}`;
+  const fmtDay = t => new Date(t).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fmtTime = t => new Date(t).toLocaleTimeString(EN ? 'en-US' : 'ar-SA-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+  const byDays = n => EN ? 'by ' + enN(n, 'day', 'days') : n === 1 ? 'بيوم' : n === 2 ? 'بيومين' : `بـ${n} ${n <= 10 ? 'أيام' : 'يوم'}`;   // i18n:skip
   const p2 = n => String(n).padStart(2, '0');
   function cdParts(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 }; }
   // عدّاد كبير (مربعات) أو صغير (أيام + ساعات:دقائق:ثواني) — يتحدّث كل ثانية
   function cdHtml(at, small) {
     const p = cdParts(at - Date.now());
-    if (small) return `<span class="cds" data-cd="${at}"><b data-u="d">${p.d}</b><small>يوم</small><span class="hms" dir="ltr" data-u="hms">${p2(p.h)}:${p2(p.m)}:${p2(p.s)}</span></span>`;
-    return `<div class="cd" data-cd="${at}" role="timer" aria-label="باقي ${p.d} يوم على اختبارك"><span class="cdu"><b data-u="d">${p.d}</b><small>يوم</small></span><span class="cdu"><b data-u="h">${p2(p.h)}</b><small>ساعة</small></span><span class="cdu"><b data-u="m">${p2(p.m)}</b><small>دقيقة</small></span><span class="cdu sec"><b data-u="s">${p2(p.s)}</b><small>ثانية</small></span></div>`;
+    if (small) return _T`<span class="cds" data-cd="${at}"><b data-u="d">${p.d}</b><small>يوم</small><span class="hms" dir="ltr" data-u="hms">${p2(p.h)}:${p2(p.m)}:${p2(p.s)}</span></span>`;
+    return _T`<div class="cd" data-cd="${at}" role="timer" aria-label="باقي ${p.d} يوم على اختبارك"><span class="cdu"><b data-u="d">${p.d}</b><small>يوم</small></span><span class="cdu"><b data-u="h">${p2(p.h)}</b><small>ساعة</small></span><span class="cdu"><b data-u="m">${p2(p.m)}</b><small>دقيقة</small></span><span class="cdu sec"><b data-u="s">${p2(p.s)}</b><small>ثانية</small></span></div>`;
   }
   setInterval(() => {
     const els = document.querySelectorAll('[data-cd]'); if (!els.length) return; const now = Date.now();
     els.forEach(el => { const p = cdParts(+el.dataset.cd - now); el.querySelectorAll('[data-u]').forEach(b => { const u = b.dataset.u; const v = u === 'd' ? String(p.d) : u === 'hms' ? `${p2(p.h)}:${p2(p.m)}:${p2(p.s)}` : p2(p[u]); if (b.textContent !== v) b.textContent = v; }); });
   }, 1000);
   function examMsg(dl) {   // dl = أيام تقويمية حتى يوم الاختبار
-    if (dl < 0) return 'إن شاء الله أبدعت في اختبارك 🎉 حدّث الموعد إذا عندك اختبار جديد';
-    if (dl === 0) return 'اليوم اختبارك! ثق في تدريبك، وبالتوفيق 🤲';
-    if (dl === 1) return 'بكرة اختبارك: راجع أخطاءك بهدوء ونم بدري';
-    if (dl <= 7) return 'الأسبوع الأخير: ركّز على أخطائك والاختبارات المحاكية';
-    if (dl <= 21) return 'المرحلة المهمة: كل يوم تذاكر فيه يفرق في درجتك';
-    return 'وقتك يكفي إذا مشيت على خطة. الاستمرار أهم من الكمية';
+    if (dl < 0) return _T('إن شاء الله أبدعت في اختبارك 🎉 حدّث الموعد إذا عندك اختبار جديد');
+    if (dl === 0) return _T('اليوم اختبارك! ثق في تدريبك، وبالتوفيق 🤲');
+    if (dl === 1) return _T('بكرة اختبارك: راجع أخطاءك بهدوء ونم بدري');
+    if (dl <= 7) return _T('الأسبوع الأخير: ركّز على أخطائك والاختبارات المحاكية');
+    if (dl <= 21) return _T('المرحلة المهمة: كل يوم تذاكر فيه يفرق في درجتك');
+    return _T('وقتك يكفي إذا مشيت على خطة. الاستمرار أهم من الكمية');
   }
   function fitInfo(end, exT) {   // نهاية الخطة مقابل يوم الاختبار
     const gap = dayDiff(end, exT);
-    if (gap >= 1) return { c: 'ok', gap, t: `تخلص قبل اختبارك ${byDays(gap)}`, s: `✓ قبل اختبارك ${byDays(gap)}` };
-    if (gap === 0) return { c: 'warn', gap, t: 'تخلص يوم اختبارك نفسه', s: '⚠ تخلص يوم اختبارك' };
-    return { c: 'bad', gap, t: `تخلص بعد اختبارك ${byDays(-gap)}`, s: `⚠ بعد اختبارك ${byDays(-gap)}` };
+    if (gap >= 1) return { c: 'ok', gap, t: _T`تخلص قبل اختبارك ${byDays(gap)}`, s: _T`✓ قبل اختبارك ${byDays(gap)}` };
+    if (gap === 0) return { c: 'warn', gap, t: _T('تخلص يوم اختبارك نفسه'), s: _T('⚠ تخلص يوم اختبارك') };
+    return { c: 'bad', gap, t: _T`تخلص بعد اختبارك ${byDays(-gap)}`, s: _T`⚠ بعد اختبارك ${byDays(-gap)}` };
   }
   // نافذة تحديد موعد الاختبار
   function examDlg() {
     return new Promise(res => {
       const ex = examGet(); const box = document.createElement('div'); box.className = 'modal';
-      box.innerHTML = `<div class="m exm" role="dialog" aria-modal="true" aria-labelledby="exh"><h3 id="exh">🎯 موعد اختبارك</h3>
+      box.innerHTML = _T`<div class="m exm" role="dialog" aria-modal="true" aria-labelledby="exh"><h3 id="exh">🎯 موعد اختبارك</h3>
         <p class="mut">حدّد موعد اختبار القدرات، ونعرض لك عدّاد تنازلي في الصفحة الرئيسية ونعلّم لك الخطة اللي تلحق قبله.</p>
         <div class="exf"><label><span>التاريخ</span><input type="date" id="exd" min="${dayKey()}" value="${ex ? ex.d : ''}" dir="ltr"></label><label><span>الوقت <small>(اختياري)</small></span><input type="time" id="ext" value="${ex ? ex.t || '08:00' : '08:00'}" dir="ltr"></label></div>
-        <div class="acts"><button class="btn" id="exok">حفظ الموعد</button><button class="btn ghost" id="exno">إلغاء</button>${ex ? '<span class="sp"></span><button class="lnk" id="exdel">حذف الموعد</button>' : ''}</div></div>`;
+        <div class="acts"><button class="btn" id="exok">حفظ الموعد</button><button class="btn ghost" id="exno">إلغاء</button>${ex ? _T('<span class="sp"></span><button class="lnk" id="exdel">حذف الموعد</button>') : ''}</div></div>`;
       document.body.appendChild(box);
       const close = v => { box.remove(); document.removeEventListener('keydown', onK); res(v); };
       const onK = e => { if (e.key === 'Escape') close(false); };
       document.addEventListener('keydown', onK);
       box.addEventListener('click', e => { if (e.target === box) close(false); });
       $('#exno').onclick = () => close(false);
-      const del = $('#exdel'); if (del) del.onclick = () => { lsSet(EXAM_LS, { d: '', up: Date.now() }); skillsPushSoon(1500); toast('تم حذف موعد الاختبار'); close(true); };
+      const del = $('#exdel'); if (del) del.onclick = () => { lsSet(EXAM_LS, { d: '', up: Date.now() }); skillsPushSoon(1500); toast(_T('تم حذف موعد الاختبار')); close(true); };
       $('#exok').onclick = () => {
         const d = $('#exd').value, t = $('#ext').value || '08:00';
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('اختر تاريخ الاختبار'); $('#exd').focus(); return; }
-        const at = examAt({ d, t }); if (at < Date.now() - DAYMS) { toast('التاريخ اللي اخترته مضى'); return; }
-        lsSet(EXAM_LS, { d, t, up: Date.now() }); lsDel(TRIPX_LS); skillsPushSoon(1500); toast('تم حفظ موعد اختبارك ✓'); close(true);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast(_T('اختر تاريخ الاختبار')); $('#exd').focus(); return; }
+        const at = examAt({ d, t }); if (at < Date.now() - DAYMS) { toast(_T('التاريخ اللي اخترته مضى')); return; }
+        lsSet(EXAM_LS, { d, t, up: Date.now() }); lsDel(TRIPX_LS); skillsPushSoon(1500); toast(_T('تم حفظ موعد اختبارك ✓')); close(true);
       };
       setTimeout(() => { const i = $('#exd'); if (i) i.focus(); }, 60);
     });
@@ -2826,43 +2843,45 @@
 
   // ---------- 📅 خطة المذاكرة ----------
   // كل مهمة = شاهد مقطع الشرح ثم حل نفس القسم هنا في المنصة (حل القسم هو نفسه اختبار المقطع)
-  const pq = i => ({ k: 'q', set: 'q' + i, t: `كمي Section ${i}: شاهد المقطع ثم حل القسم ${i}` });
-  const pv = i => ({ k: 'v', set: 'v' + i, t: `لفظي Model ${i}: شاهد المقطع ثم حل النموذج ${i}` });
-  const WQ = ['#t-wrong-q', 'أخطائي في الكمي'], WV = ['#t-wrong-v', 'أخطائي في اللفظي'], RULESL = ['#rules', 'قوانين الكمي'];
+  const pq = i => ({ k: 'q', set: 'q' + i, t: _T`كمي Section ${i}: شاهد المقطع ثم حل القسم ${i}` });
+  const pv = i => ({ k: 'v', set: 'v' + i, t: _T`لفظي Model ${i}: شاهد المقطع ثم حل النموذج ${i}` });
+  const WQ = ['#t-wrong-q', _T('أخطائي في الكمي')], WV = ['#t-wrong-v', _T('أخطائي في اللفظي')], RULESL = ['#rules', _T('قوانين الكمي')];
   const pr = (t, links, m) => ({ k: 'r', t, links: links || [], m: m || 60 });
   // 🔁 آخر الأيام مراجعة على الـ14 قسم كمي والـ14 نموذج لفظي (الخطط ما فيها اختبارات محاكية)
   const rng = (a, b) => `<bdi dir="ltr">${a}–${b}</bdi>`;
-  const RQ = (a, b, m) => pr(`مراجعة الكمي، الأقسام ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها وراجع القوانين`, [WQ, RULESL], m);
-  const RV = (a, b, m) => pr(`مراجعة اللفظي، النماذج ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها`, [WV], m);
+  const RQ = (a, b, m) => pr(_T`مراجعة الكمي، الأقسام ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها وراجع القوانين`, [WQ, RULESL], m);
+  const RV = (a, b, m) => pr(_T`مراجعة اللفظي، النماذج ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها`, [WV], m);
   const FINAL = m => [[RQ(1, 7, m), RV(1, 7, m)], [RQ(8, 14, m), RV(8, 14, m)]];   // آخر يومين
   const taskMin = t => t.k === 'q' || t.k === 'v' ? 60 : t.k === 'r' ? t.m : 0;
-  const durLabel = m => { const h = Math.round(m / 30) / 2, w = Math.floor(h), half = h % 1 ? ' ونص' : ''; return !h ? 'راحة' : !w ? '≈ 30 دقيقة' : '≈ ' + (w === 1 ? 'ساعة' : w === 2 ? 'ساعتين' : w + (w <= 10 ? ' ساعات' : ' ساعة')) + half; };
+  const durLabel = m => { const h = Math.round(m / 30) / 2, w = Math.floor(h), half = h % 1 ? ' ونص' : '';   // i18n:skip
+    if (EN) return !h ? 'Rest' : !w ? '≈ 30 min' : '≈ ' + (h % 1 ? h + ' hours' : enN(w, 'hour', 'hours'));
+    return !h ? 'راحة' : !w ? '≈ 30 دقيقة' : '≈ ' + (w === 1 ? 'ساعة' : w === 2 ? 'ساعتين' : w + (w <= 10 ? ' ساعات' : ' ساعة')) + half; };   // i18n:skip
   const timed = d => { d.forEach(x => { if (x.tasks[0].k !== 'rest') x.time = durLabel(x.tasks.reduce((s, t) => s + taskMin(t), 0)); }); return d; };
   // أيام مذاكرة متتالية: [كم قسم كمي، كم نموذج لفظي] لكل يوم، بالترتيب ومتداخلة (كمي، لفظي، كمي…)
   function studyDays(counts) { const d = []; let q = 1, v = 1;
     counts.forEach(([nq, nv], j) => { const t = []; for (let i = 0; i < Math.max(nq, nv); i++) { if (i < nq) t.push(pq(q++)); if (i < nv) t.push(pv(v++)); } d.push({ n: j + 1, tasks: t }); });
     return d; }
-  const PCONT = '14 مقطع كمي · 14 مقطع لفظي · مراجعة للأقسام كلها آخر الخطة';
+  const PCONT = _T('14 مقطع كمي · 14 مقطع لفظي · مراجعة للأقسام كلها آخر الخطة');
   const PLANS = [
-    { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 4 إلى 5 ساعات يومياً', fit: 'للي اختباره بعد أسبوع', content: PCONT, rev: 1,
+    { id: 'strong', name: _T('الخطة القوية'), days: 7, daily: _T('حوالي 4 إلى 5 ساعات يومياً'), fit: _T('للي اختباره بعد أسبوع'), content: PCONT, rev: 1,
       build() { const d = studyDays([[3, 2], [2, 3], [3, 2], [2, 3], [2, 2], [2, 2]]);
         d.push({ n: 7, tasks: [RQ(1, 14, 90), RV(1, 14, 90)] }); return timed(d); } },
-    { id: 'intense', name: 'الخطة المكثفة', days: 14, daily: 'حوالي ساعتين إلى 3 ساعات يومياً', fit: 'للي اختباره قريب', content: PCONT, rev: 2,
+    { id: 'intense', name: _T('الخطة المكثفة'), days: 14, daily: _T('حوالي ساعتين إلى 3 ساعات يومياً'), fit: _T('للي اختباره قريب'), content: PCONT, rev: 2,
       build() { const d = studyDays([[2, 1], [1, 1], [1, 1], [1, 2], [1, 1], [1, 1], [2, 1], [1, 1], [1, 1], [1, 2], [1, 1], [1, 1]]);
         FINAL(90).forEach((t, j) => d.push({ n: 13 + j, tasks: t })); return timed(d); } },
-    { id: 'balanced', name: 'الخطة المتوازنة', days: 19, daily: 'حوالي ساعتين يومياً · يوم راحة كل أسبوع', fit: 'الأنسب لأغلب الطلاب', content: PCONT, star: true, rev: 2,
+    { id: 'balanced', name: _T('الخطة المتوازنة'), days: 19, daily: _T('حوالي ساعتين يومياً · يوم راحة كل أسبوع'), fit: _T('الأنسب لأغلب الطلاب'), content: PCONT, star: true, rev: 2,
       build() { const d = [], W = n => Math.ceil(n / 7); let k = 1;
-        const study = n => { d.push({ n, tasks: [pq(k), pv(k)], w: W(n) }); k++; }, rest = n => d.push({ n, time: 'راحة', tasks: [{ k: 'rest', t: 'يوم راحة: استرجع نشاطك' }], w: W(n) });
+        const study = n => { d.push({ n, tasks: [pq(k), pv(k)], w: W(n) }); k++; }, rest = n => d.push({ n, time: _T('راحة'), tasks: [{ k: 'rest', t: _T('يوم راحة: استرجع نشاطك') }], w: W(n) });
         for (let n = 1; n <= 5; n++) study(n);
-        d.push({ n: 6, tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع', [WQ, WV])], w: 1 }); rest(7);
+        d.push({ n: 6, tasks: [pr(_T('مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع'), [WQ, WV])], w: 1 }); rest(7);
         for (let n = 8; n <= 13; n++) study(n); rest(14);
         for (let n = 15; n <= 17; n++) study(n);
         FINAL(60).forEach((t, j) => d.push({ n: 18 + j, tasks: t, w: 3 })); return timed(d); } },
-    { id: 'relaxed', name: 'الخطة المريحة', days: 28, daily: 'حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة', fit: 'للي عنده دوام أو مدرسة', content: PCONT, rev: 2,
+    { id: 'relaxed', name: _T('الخطة المريحة'), days: 28, daily: _T('حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة'), fit: _T('للي عنده دوام أو مدرسة'), content: PCONT, rev: 2,
       build() { const d = [], W = n => Math.ceil(n / 7);
         for (let k = 1; k <= 12; k++) { const n = 2 * k - 1;
           d.push({ n, tasks: [pq(k), pv(k)], w: W(n) });
-          d.push({ n: n + 1, tasks: [pr('مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك', [WQ, WV], 30)], w: W(n + 1) }); }
+          d.push({ n: n + 1, tasks: [pr(_T('مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك'), [WQ, WV], 30)], w: W(n + 1) }); }
         d.push({ n: 25, tasks: [pq(13), pv(13)], w: 4 }, { n: 26, tasks: [pq(14), pv(14)], w: 4 });
         FINAL(60).forEach((t, j) => d.push({ n: 27 + j, tasks: t, w: 4 })); return timed(d); } },
   ];
@@ -2913,46 +2932,46 @@
     if (t.set) {
       const p = progGet(t.set), ans = Object.keys(p.a || {}).length, nm = SET_NAME(t.set);
       const tot = manifest ? ((manifest[t.k === 'q' ? 'quant' : 'verbal'] || []).find(s => s.id === t.set) || {}).n : 0;
-      const lab = p.done ? `✓ ${nm}${p.best != null ? ` <small>${p.best}%</small>` : ''}` : ans ? `كمّل ${nm} <small>${ans}${tot ? '/' + tot : ''}</small>` : `حل ${nm}`;
+      const lab = p.done ? `✓ ${nm}${p.best != null ? ` <small>${p.best}%</small>` : ''}` : ans ? _T`كمّل ${nm} <small>${ans}${tot ? '/' + tot : ''}</small>` : _T`حل ${nm}`;
       return `<a class="${cls} ${p.done ? 'ok' : ''}" href="#${t.set}">${lab}</a>`;
     }
     return (t.links || []).map(l => `<a class="${cls}" href="${l[0]}">${l[1]}</a>`).join('');
   }
   function taskLinks(t) {
     const y = t.set ? ytFor(t.set) : null;
-    return (y ? `<a class="go yt" href="${y.url}"${y.tgt}${ytTip(y, 'مقطع شرح ' + y.label + ' على يوتيوب')}>${vIcon(y)}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
+    return (y ? _T`<a class="go yt" href="${y.url}"${y.tgt}${ytTip(y, _T('مقطع شرح ') + y.label + _T(' على يوتيوب'))}>${vIcon(y)}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
   }
   // بطاقة «رحلتك للاختبار» في الرئيسية: عدّاد الاختبار + مهمة اليوم من الخطة
   function tripHtml() {
     const ex = examGet(), exT = ex ? examAt(ex) : 0, now = Date.now();
     const st = planState(), plan = PLANS.find(p => p.id === st.id) || null;
-    if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : `<div class="trip invite"><span class="tr-i" aria-hidden="true">⏳</span><span class="tr-t"><b>متى اختبارك؟</b> حدّد الموعد ونعرض لك عدّاد تنازلي، ونقترح لك خطة مذاكرة تلحق قبله.</span><span class="tr-b"><button class="btn sm" data-exam>حدّد الموعد</button><a class="btn sm ghost" href="#plan">خطط المذاكرة</a></span><button class="tr-x" id="trx" title="إخفاء" aria-label="إخفاء">✕</button></div>`;
-    let h = '<section class="trip" aria-label="موعد اختبارك وخطتك">';
+    if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class="trip invite"><span class="tr-i" aria-hidden="true">⏳</span><span class="tr-t"><b>متى اختبارك؟</b> حدّد الموعد ونعرض لك عدّاد تنازلي، ونقترح لك خطة مذاكرة تلحق قبله.</span><span class="tr-b"><button class="btn sm" data-exam>حدّد الموعد</button><a class="btn sm ghost" href="#plan">خطط المذاكرة</a></span><button class="tr-x" id="trx" title="إخفاء" aria-label="إخفاء">✕</button></div>`;
+    let h = _T('<section class="trip" aria-label="موعد اختبارك وخطتك">');
     if (ex) {
       const dl = dayDiff(now, exT), live = exT > now;
-      h += `<div class="tr-ex"><div class="tr-l"><span class="tr-k">${live ? (dl === 0 ? '⏳ اختبارك اليوم بعد' : '⏳ باقي على اختبارك') : dl === 0 ? '🤲 اليوم اختبارك' : '🎓 كان اختبارك'}</span><span class="tr-d">${fmtDay(exT)}، الساعة ${fmtTime(exT)} <button class="lnk" data-exam>تعديل</button></span><span class="tr-m">${examMsg(dl)}</span></div>${live ? cdHtml(exT) : ''}</div>`;
+      h += _T`<div class="tr-ex"><div class="tr-l"><span class="tr-k">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 اليوم اختبارك') : _T('🎓 كان اختبارك')}</span><span class="tr-d">${fmtDay(exT)}، الساعة ${fmtTime(exT)} <button class="lnk" data-exam>تعديل</button></span><span class="tr-m">${examMsg(dl)}</span></div>${live ? cdHtml(exT) : ''}</div>`;
     }
     if (plan) {
       const I = planInfo(plan, st);
-      if (!I.cur) h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">🎉</span><div class="tr-pt"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now ? '. الحين راجع أخطاءك لين يجي اختبارك' : ''}.</span></div><a class="tr-go" href="#plan">الخطة</a></div>`;
+      if (!I.cur) h += _T`<div class="tr-pl"><span class="tr-pi" aria-hidden="true">🎉</span><div class="tr-pt"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now ? _T('. الحين راجع أخطاءك لين يجي اختبارك') : ''}.</span></div><a class="tr-go" href="#plan">الخطة</a></div>`;
       else {
-        const links = I.cur.tasks.map(t => t.k === 'rest' ? '<span class="tchip rest">😴 يوم راحة</span>' : taskSolve(t, 'tchip')).join('');
+        const links = I.cur.tasks.map(t => t.k === 'rest' ? _T('<span class="tchip rest">😴 يوم راحة</span>') : taskSolve(t, 'tchip')).join('');
         const fit = ex && exT > now ? fitInfo(I.end, exT) : null;
-        const tags = `<span>${I.left >= 0 ? 'تخلص' : 'كانت تخلص'} ${fmtDay(I.end)}</span>` + (fit ? `<span class="fit ${fit.c}">${fit.s}</span>` : I.left > 0 ? `<span>باقي ${dLabel(I.left)}</span>` : '') + (I.lag > 0 ? `<span class="fit warn">متأخر ${I.lag === 1 ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : '') + (ex ? '' : '<button class="lnk" data-exam>حدّد موعد اختبارك</button>');
+        const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class="fit ${fit.c}">${fit.s}</span>` : I.left > 0 ? _T`<span>باقي ${dLabel(I.left)}</span>` : '') + (I.lag > 0 ? _T`<span class="fit warn">متأخر ${I.lag === 1 && !EN ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : '') + (ex ? '' : _T('<button class="lnk" data-exam>حدّد موعد اختبارك</button>'));
         const ahead = I.cur.n > I.tn;   // خلّص مهام اليوم، وهذي مهام الأيام الجاية
-        h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span>${ahead ? `<b>خلّصت مهام اليوم ✓</b> <span class="mut">(الجاي: اليوم ${I.cur.n} من ${plan.days})</span>` : `<b>خطتك اليوم</b> <span class="mut">(اليوم ${I.cur.n} من ${plan.days})</span>`}</span><span class="tr-lk">${links}</span><small class="tr-end">${tags}</small></div><a class="tr-go" href="#plan">افتح الخطة</a></div>`;
+        h += _T`<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class="mut">(الجاي: اليوم ${I.cur.n} من ${plan.days})</span>` : _T`<b>خطتك اليوم</b> <span class="mut">(اليوم ${I.cur.n} من ${plan.days})</span>`}</span><span class="tr-lk">${links}</span><small class="tr-end">${tags}</small></div><a class="tr-go" href="#plan">افتح الخطة</a></div>`;
       }
-    } else h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span>ما اخترت خطة مذاكرة. <a href="#plan">اختر خطة تلحق قبل اختبارك</a></span></div></div>`;
+    } else h += _T`<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span>ما اخترت خطة مذاكرة. <a href="#plan">اختر خطة تلحق قبل اختبارك</a></span></div></div>`;
     return h + '</section>';
   }
   let planPctShown = null, planArrive = [], planTok = 0;
   const planCalm = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   function renderPlan(o) {
     o = o || {};
-    document.title = 'خطة المذاكرة | Q-Guide';
+    document.title = _T('خطة المذاكرة | Q-Guide');
     if (!manifest) fetch('/p/data/manifest.json').then(r => r.json()).then(m => { if (!manifest) { manifest = m; if (location.hash === '#plan') renderPlan({ keep: 1 }); } }).catch(() => {});
     const st = planState(); const plan = PLANS.find(p => p.id === st.id) || null;
-    app.innerHTML = topbar(`<span class="ttl">📅 خطة المذاكرة</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap" id="planwrap"></main>`;
+    app.innerHTML = topbar(_T`<span class="ttl">📅 خطة المذاكرة</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap" id="planwrap"></main>`;
     bindCtl();
     const W = $('#planwrap'), now = Date.now();
     const ex = examGet(), exT = ex ? examAt(ex) : 0, live = exT > now;
@@ -2961,11 +2980,11 @@
       let rec = null;
       if (live) { const fits = PLANS.filter(p => dayDiff(endOf(p), exT) >= 1); rec = fits.length ? fits.reduce((a, b) => b.days > a.days ? b : a) : PLANS[0]; }
       const dl = live ? dayDiff(now, exT) : 0;
-      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة، وآخر أيامها مراجعة على الأقسام والنماذج كلها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
-        <div class="exrow"><span class="exi" aria-hidden="true">🎯</span><div class="ext">${ex ? `<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? `باقي ${dLabel(dl)}. علّمنا لك بالنجمة ⭐ الخطة اللي تلحق قبله` : 'اختبارك اليوم! بالتوفيق') : 'الموعد المحفوظ مضى. حدّثه إذا عندك اختبار جديد'}</span>` : `<b>متى اختبارك؟</b><span>حدّد الموعد ونعلّم لك الخطة اللي تلحق قبله، ونعرض لك عدّاد تنازلي</span>`}</div><button class="btn sm ${ex ? 'ghost' : ''}" data-exam>${ex ? 'تعديل الموعد' : 'حدّد الموعد'}</button></div>
+      W.innerHTML = _T`<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة، وآخر أيامها مراجعة على الأقسام والنماذج كلها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
+        <div class="exrow"><span class="exi" aria-hidden="true">🎯</span><div class="ext">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl)}. علّمنا لك بالنجمة ⭐ الخطة اللي تلحق قبله` : _T('اختبارك اليوم! بالتوفيق')) : _T('الموعد المحفوظ مضى. حدّثه إذا عندك اختبار جديد')}</span>` : _T`<b>متى اختبارك؟</b><span>حدّد الموعد ونعلّم لك الخطة اللي تلحق قبله، ونعرض لك عدّاد تنازلي</span>`}</div><button class="btn sm ${ex ? 'ghost' : ''}" data-exam>${ex ? _T('تعديل الموعد') : _T('حدّد الموعد')}</button></div>
         <div class="plans">${PLANS.map(p => { const star = rec ? p === rec : !live && p.star; const end = endOf(p); const f = live ? fitInfo(end, exT) : null;
-          return `<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? 'الأنسب لموعد اختبارك' : 'الأنسب لأغلب الطلاب'}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🔁 ${p.rev === 1 ? 'آخر يوم' : 'آخر يومين'} مراجعة للـ14 قسم والـ14 نموذج</span><span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
-        ${rec && dayDiff(endOf(rec), exT) < 1 ? `<div class="pverd bad">⚠ باقي على اختبارك ${dl ? dLabel(dl) : 'أقل من يوم'} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.</div>` : ''}
+          return _T`<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? _T('الأنسب لموعد اختبارك') : _T('الأنسب لأغلب الطلاب')}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🔁 ${p.rev === 1 ? _T('آخر يوم') : _T('آخر يومين')} مراجعة للـ14 قسم والـ14 نموذج</span><span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
+        ${rec && dayDiff(endOf(rec), exT) < 1 ? _T`<div class="pverd bad">⚠ باقي على اختبارك ${dl ? dLabel(dl) : _T('أقل من يوم')} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.</div>` : ''}
         <div class="sum" style="margin-top:16px;text-align:right"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
       W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { planStart(b.dataset.p); renderPlan(); });
       bindExam(W, () => renderPlan({ keep: 1 }));
@@ -2978,54 +2997,54 @@
     SN.n = SN.n.filter(n => days.some(d => d.n === n && I.dayDone(d)));
     const newly = days.filter(d => I.dayDone(d) && SN.n.indexOf(d.n) < 0).map(d => d.n);
     const fresh = calm ? [] : newly;
-    if (calm && newly.length) { SN.n = SN.n.concat(newly); if (o.tick) toast(newly.length === 1 ? `🎉 خلّصت اليوم ${newly[0]}، ونزل تحت في «إنجازك»` : `🎉 خلّصت ${dLabel(newly.length)}، ونزلت تحت في «إنجازك»`); }
+    if (calm && newly.length) { SN.n = SN.n.concat(newly); if (o.tick) toast(newly.length === 1 ? _T`🎉 خلّصت اليوم ${newly[0]}، ونزل تحت في «إنجازك»` : _T`🎉 خلّصت ${dLabel(newly.length)}، ونزلت تحت في «إنجازك»`); }
     lsSet(PSEEN_LS, SN);
     const act = days.filter(d => !I.dayDone(d) || fresh.indexOf(d.n) >= 0), fin = days.filter(d => I.dayDone(d) && fresh.indexOf(d.n) < 0).reverse();   // «إنجازك»: الأحدث فوق (يطلع تحت الأيام الباقية مباشرة)
     const pct = I.pct, from = planPctShown != null && planPctShown !== pct && !calm ? planPctShown : pct; planPctShown = pct;
     const icon = { q: '🔵', v: '🟢', r: '🟠', rest: '😴' };
-    const autoTip = { q: 'انعلّمت لحالها لأنك حليت القسم', v: 'انعلّمت لحالها لأنك حليت النموذج', rest: 'يوم الراحة ينحسب لحاله لما يجي تاريخه' };
+    const autoTip = { q: _T('انعلّمت لحالها لأنك حليت القسم'), v: _T('انعلّمت لحالها لأنك حليت النموذج'), rest: _T('يوم الراحة ينحسب لحاله لما يجي تاريخه') };
     const fit = live ? fitInfo(I.end, exT) : null;
-    const lagT = !cur ? 'خلّصت كل الأيام 🎉' : I.lag > 0 ? `<span class="fit warn">متأخر ${I.lag === 1 ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : I.lag < 0 ? `<span class="fit ok">متقدم ${-I.lag === 1 ? 'يوم' : dLabel(-I.lag)} عن الجدول 👏</span>` : cur.n === I.exp + 1 ? '<span class="fit ok">خلّصت مهام اليوم ✓</span>' : '<span class="fit ok">ماشي على الجدول ✓</span>';
-    const leftT = I.left > 0 ? `باقي ${dLabel(I.left)}` : I.left === 0 ? 'اليوم آخر يوم في الخطة' : `كان المفروض تخلص قبل ${dLabel(-I.left)}`;
+    const lagT = !cur ? _T('خلّصت كل الأيام 🎉') : I.lag > 0 ? _T`<span class="fit warn">متأخر ${I.lag === 1 && !EN ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : I.lag < 0 ? _T`<span class="fit ok">متقدم ${-I.lag === 1 && !EN ? 'يوم' : dLabel(-I.lag)} عن الجدول 👏</span>` : cur.n === I.exp + 1 ? _T('<span class="fit ok">خلّصت مهام اليوم ✓</span>') : _T('<span class="fit ok">ماشي على الجدول ✓</span>');
+    const leftT = I.left > 0 ? _T`باقي ${dLabel(I.left)}` : I.left === 0 ? _T('اليوم آخر يوم في الخطة') : _T`كان المفروض تخلص قبل ${dLabel(-I.left)}`;
     let verd = '';
-    if (fit) verd = fit.c === 'ok' ? `✓ خطتك ${fit.t}${fit.gap >= 3 ? '. استغل الأيام الزيادة في مراجعة أخطائك' : '. التزم بالجدول عشان تلحق'}.`
-      : fit.c === 'warn' ? '⚠ خطتك تخلص يوم اختبارك نفسه. حاول تسبق الجدول بيوم أو يومين.'
-      : (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return `⚠ خطتك ${fit.t}. ${sh ? `بدّل لـ«${sh.name}» (${dLabel(sh.days)})، أو ضاعف` : 'حاول تضاعف'} بعض الأيام عشان تلحق.`; })();
+    if (fit) verd = fit.c === 'ok' ? _T`✓ خطتك ${fit.t}${fit.gap >= 3 ? _T('. استغل الأيام الزيادة في مراجعة أخطائك') : _T('. التزم بالجدول عشان تلحق')}.`
+      : fit.c === 'warn' ? _T('⚠ خطتك تخلص يوم اختبارك نفسه. حاول تسبق الجدول بيوم أو يومين.')
+      : (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return _T`⚠ خطتك ${fit.t}. ${sh ? _T`بدّل لـ«${sh.name}» (${dLabel(sh.days)})، أو ضاعف` : _T('حاول تضاعف')} بعض الأيام عشان تلحق.`; })();
     let lastW = 0;
-    const dayHtml = d => { const wk = plan.days > 14 && d.w !== lastW ? `<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW;
+    const dayHtml = d => { const wk = plan.days > 14 && d.w !== lastW ? _T`<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW;
       const fr = fresh.indexOf(d.n) >= 0, isCur = cur && cur.n === d.n, isTod = d.n === I.tn;
       // «اليوم» = تاريخ اليوم فعلاً · «كمّل من هنا» = أول يوم ما خلّصته (لو مو هو نفس اليوم) · «✓ خلّصته» = لحظة قبل لا ينزل
-      const tag = fr ? '<span class="now ok">✓ خلّصته</span>' : isTod ? `<span class="now${isCur ? '' : ' td'}" title="تاريخ اليوم">اليوم</span>` : isCur ? '<span class="now" title="أول يوم في خطتك ما خلّصته">كمّل من هنا</span>' : '';
-      return wk + `<section class="day ${fr ? 'fin' : ''} ${isCur ? 'cur' : ''} ${isTod ? 'tod' : ''}" id="day${d.n}"${isTod ? ' aria-current="date"' : ''}><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${fr ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time} · ${fmtDay(addDays(I.start, d.n - 1))}</span>${tag}</header>
+      const tag = fr ? _T('<span class="now ok">✓ خلّصته</span>') : isTod ? _T`<span class="now${isCur ? '' : ' td'}" title="تاريخ اليوم">اليوم</span>` : isCur ? _T('<span class="now" title="أول يوم في خطتك ما خلّصته">كمّل من هنا</span>') : '';
+      return wk + _T`<section class="day ${fr ? 'fin' : ''} ${isCur ? 'cur' : ''} ${isTod ? 'tod' : ''}" id="day${d.n}"${isTod ? ' aria-current="date"' : ''}><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${fr ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time} · ${fmtDay(addDays(I.start, d.n - 1))}</span>${tag}</header>
           <ul>${d.tasks.map((t, i) => { const a = I.auto(d, t), ok = I.tDone(d, i); return `<li class="${ok ? 'ok' : ''} k${t.k}"><label${a ? ` title="${autoTip[t.k] || ''}"` : ''}><input type="checkbox" data-day="${d.n}" data-i="${i}" ${ok ? 'checked' : ''}${a ? ' disabled' : ''}><span class="ic" aria-hidden="true">${icon[t.k] || ''}</span><span class="tt">${t.t}</span></label><span class="tl">${taskLinks(t)}</span></li>`; }).join('')}</ul></section>`; };
     const dnChip = (d, t, i) => {   // في «إنجازك» كل مهمة ✓
-      if (t.k === 'rest') return '<span class="tchip rest">😴 راحة</span>';
+      if (t.k === 'rest') return _T('<span class="tchip rest">😴 راحة</span>');
       if (!I.tDone(d, i)) return taskSolve(t, 'tchip');
       if (t.set) { const g = progGet(t.set); return `<a class="tchip ok" href="#${t.set}">✓ ${SET_NAME(t.set)}${g.done && g.best != null ? ` <small>${g.best}%</small>` : ''}</a>`; }
-      return '<span class="tchip ok">✓ مراجعة</span>'; };
-    const finHtml = d => `<div class="dn ${planArrive.indexOf(d.n) >= 0 ? 'arrive' : ''}" id="dn${d.n}"><label class="dchk" title="شيل العلامة لو علّمته بالغلط"><input type="checkbox" data-day="${d.n}" checked><span>اليوم ${d.n}</span></label><span class="mut">${fmtDay(addDays(I.start, d.n - 1))}${d.n === I.tn ? ' · <b class="dtod">اليوم</b>' : ''}</span><span class="dnl">${d.tasks.map((t, i) => dnChip(d, t, i)).join('')}</span></div>`;
-    const doneTxt = I.nDone ? `خلّصت ${dLabel(I.nDone)} من ${days.length}` : `ما خلّصت أي يوم من ${days.length} للحين`;
-    W.innerHTML = `<div class="hero"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>
+      return _T('<span class="tchip ok">✓ مراجعة</span>'); };
+    const finHtml = d => _T`<div class="dn ${planArrive.indexOf(d.n) >= 0 ? 'arrive' : ''}" id="dn${d.n}"><label class="dchk" title="شيل العلامة لو علّمته بالغلط"><input type="checkbox" data-day="${d.n}" checked><span>اليوم ${d.n}</span></label><span class="mut">${fmtDay(addDays(I.start, d.n - 1))}${d.n === I.tn ? _T(' · <b class="dtod">اليوم</b>') : ''}</span><span class="dnl">${d.tasks.map((t, i) => dnChip(d, t, i)).join('')}</span></div>`;
+    const doneTxt = I.nDone ? _T`خلّصت ${dLabel(I.nDone)} من ${days.length}` : _T`ما خلّصت أي يوم من ${days.length} للحين`;
+    W.innerHTML = _T`<div class="hero"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>
         <div class="pctl"><button class="btn sm ghost" id="chg">تغيير الخطة</button><button class="btn sm ghost" id="rst" title="يمسح علاماتك ويبدأ الخطة من اليوم">إعادة البدء</button></div></div>
       <div class="pstats">
         <div class="pst pg"><span class="pk">✅ نسبة الإنجاز</span><b class="pgv"><span data-pct>${from}</span>%</b><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="نسبة إنجازك في الخطة"><i style="width:${from}%"></i></div><span class="ps">${doneTxt}</span><span class="ps2">${lagT}</span></div>
         <div class="pst"><span class="pk">🏁 نهاية الخطة</span><b>${fmtDay(I.end)}</b><span class="ps">${leftT}</span></div>
-        <div class="pst ex">${ex ? `<span class="pk">🎯 ${live ? 'باقي على اختبارك' : 'موعد اختبارك'}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>`}<span class="ps">${live ? fmtDay(exT) + '، ' + fmtTime(exT) + ' · ' : ''}<button class="lnk" data-exam>تعديل</button></span>` : `<span class="pk">🎯 موعد اختبارك</span><b class="none">ما حدّدته</b><span class="ps"><button class="btn sm" data-exam>حدّد الموعد</button></span>`}</div>
+        <div class="pst ex">${ex ? _T`<span class="pk">🎯 ${live ? _T('باقي على اختبارك') : _T('موعد اختبارك')}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>`}<span class="ps">${live ? fmtDay(exT) + _T('، ') + fmtTime(exT) + ' · ' : ''}<button class="lnk" data-exam>تعديل</button></span>` : _T`<span class="pk">🎯 موعد اختبارك</span><b class="none">ما حدّدته</b><span class="ps"><button class="btn sm" data-exam>حدّد الموعد</button></span>`}</div>
       </div>
       ${verd ? `<div class="pverd ${fit.c}">${verd}</div>` : ''}
-      <div class="days">${act.length ? act.map(dayHtml).join('') : '<div class="pall">🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد حل الأقسام اللي درجتك فيها أقل.</div>'}</div>
-      <section class="pdone" aria-labelledby="pdh"><header><h2 id="pdh">✅ إنجازك في الخطة</h2><span class="pdp">${fin.length ? `خلّصت ${dLabel(fin.length)} · ` : ''}<b><bdi>${pct}%</bdi></b></span></header>
-        ${fin.length ? `<div class="pdl">${fin.map(finHtml).join('')}</div>` : '<p class="pde">أول ما تخلّص كل مهام يوم، يتلاشى من فوق وينزل هنا ✓</p>'}</section>
+      <div class="days">${act.length ? act.map(dayHtml).join('') : _T('<div class="pall">🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد حل الأقسام اللي درجتك فيها أقل.</div>')}</div>
+      <section class="pdone" aria-labelledby="pdh"><header><h2 id="pdh">✅ إنجازك في الخطة</h2><span class="pdp">${fin.length ? _T`خلّصت ${dLabel(fin.length)} · ` : ''}<b><bdi>${pct}%</bdi></b></span></header>
+        ${fin.length ? `<div class="pdl">${fin.map(finHtml).join('')}</div>` : _T('<p class="pde">أول ما تخلّص كل مهام يوم، يتلاشى من فوق وينزل هنا ✓</p>')}</section>
       <div class="sum" style="margin-top:16px;text-align:right">🔵 كمي · 🟢 لفظي · 🟠 مراجعة. المهام تنعلّم ✓ لحالها لما تحل القسم، والمراجعة علّمها أنت. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.</div>`;
     planArrive = [];
     const save = () => planSave(Object.assign(st, { done }));
     const re = () => renderPlan({ keep: 1, tick: 1 });
     W.querySelectorAll('input[data-i]').forEach(c => c.onchange = () => { done[c.dataset.day] = done[c.dataset.day] || {}; if (c.checked) done[c.dataset.day][c.dataset.i] = 1; else delete done[c.dataset.day][c.dataset.i]; save(); re(); });
     W.querySelectorAll('input[data-day]:not([data-i])').forEach(c => c.onchange = () => { const d = days.find(x => x.n == c.dataset.day); done[d.n] = {}; if (c.checked) d.tasks.forEach((t, i) => done[d.n][i] = 1); save();
-      if (!c.checked) { const J = planInfo(plan, st); if (J.dayDone(J.days.find(x => x.n === d.n))) toast('هذا اليوم محسوب لك لأنك حليت أقسامه ✓'); }
+      if (!c.checked) { const J = planInfo(plan, st); if (J.dayDone(J.days.find(x => x.n === d.n))) toast(_T('هذا اليوم محسوب لك لأنك حليت أقسامه ✓')); }
       re(); });
-    $('#chg').onclick = async () => { if (await QGDlg.confirm('تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)', { ok: 'تغيير' })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = { done, lg: [], mv: 1, sv: PLAN_SV }; lsSet('qg_plan_all', all); planSave({ id: '', done: {} }); renderPlan(); } };
-    $('#rst').onclick = async () => { if (await QGDlg.confirm('مسح علاماتك والبدء من اليوم 1؟ (الأقسام اللي حليتها تبقى محسوبة)', { ok: 'إعادة البدء', danger: true })) { planSave({ id: plan.id, done: {}, started: Date.now(), mv: 1, lg: [], sv: PLAN_SV }); renderPlan(); } };
+    $('#chg').onclick = async () => { if (await QGDlg.confirm(_T('تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)'), { ok: _T('تغيير') })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = { done, lg: [], mv: 1, sv: PLAN_SV }; lsSet('qg_plan_all', all); planSave({ id: '', done: {} }); renderPlan(); } };
+    $('#rst').onclick = async () => { if (await QGDlg.confirm(_T('مسح علاماتك والبدء من اليوم 1؟ (الأقسام اللي حليتها تبقى محسوبة)'), { ok: _T('إعادة البدء'), danger: true })) { planSave({ id: plan.id, done: {}, started: Date.now(), mv: 1, lg: [], sv: PLAN_SV }); renderPlan(); } };
     bindExam(W, () => renderPlan({ keep: 1 }));
     // نسبة الإنجاز تعدّ لين توصل الرقم الجديد
     if (from !== pct) { const pe = W.querySelector('[data-pct]'), bar = W.querySelector('.pst.pg .bar i'), t0 = performance.now();
@@ -3044,57 +3063,57 @@
       const S = lsGet(PSEEN_LS, null); if (!S || !Array.isArray(S.n)) return;
       ns.forEach(n => { if (S.n.indexOf(n) < 0) S.n.push(n); }); lsSet(PSEEN_LS, S);
       planArrive = ns.slice(); renderPlan({ keep: 1 });
-      toast(ns.length === 1 ? `🎉 خلّصت اليوم ${ns[0]}، ونزل تحت في «إنجازك»` : `🎉 خلّصت ${dLabel(ns.length)}، ونزلت تحت في «إنجازك»`);
+      toast(ns.length === 1 ? _T`🎉 خلّصت اليوم ${ns[0]}، ونزل تحت في «إنجازك»` : _T`🎉 خلّصت ${dLabel(ns.length)}، ونزلت تحت في «إنجازك»`);
     }, 600);
   }
 
   // ---------- 🏆 لوحة الصدارة ----------
   async function renderBoard(kind) {
-    document.title = 'لوحة الصدارة | Q-Guide';
+    document.title = _T('لوحة الصدارة | Q-Guide');
     const isSet = kind.startsWith('set:'); const setId = isSet ? kind.slice(4) : (lsGet('qg_lb_set', 'q1'));
     if (isSet) lsSet('qg_lb_set', setId);
     const tabK = isSet ? 'set' : kind;
-    const setTitle = id => (id[0] === 'q' ? 'القسم ' : 'النموذج ') + id.slice(1) + (id[0] === 'q' ? ' (كمي)' : ' (لفظي)');
+    const setTitle = id => (id[0] === 'q' ? _T('القسم ') : _T('النموذج ')) + id.slice(1) + (id[0] === 'q' ? _T(' (كمي)') : _T(' (لفظي)'));
     const opts = [...Array.from({ length: 14 }, (_, i) => 'q' + (i + 1)), ...Array.from({ length: 14 }, (_, i) => 'v' + (i + 1))];
-    app.innerHTML = topbar(`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span><button class="ib" id="lbref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button><button data-k="arena" class="${tabK === 'arena' ? 'on' : ''}">⚔️ الساحة</button></div>
-      ${isSet ? `<div class="setpick"><label>اختر القسم:</label><select id="lbset">${opts.map(o => `<option value="${o}" ${o === setId ? 'selected' : ''}>${setTitle(o)}</option>`).join('')}</select></div>` : ''}
-      <p class="mut lbnote">${kind === 'arena' ? 'ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أكثر.' : kind === 'exam' ? 'الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.'
-        : isSet ? `ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`
-        : kind === 'month' ? 'أفضل 100 طالب <b>هذا الشهر</b>: مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الشهر، وعند التساوي الأسرع وقتاً.'
-        : 'الترتيب العام: مجموع الإجابات الصحيحة في <b>أول محاولة</b> لكل قسم ونموذج، وعند التساوي الأسرع وقتاً. إعادة القسم للتدريب لا تغيّر ترتيبك.'}</p>
+    app.innerHTML = topbar(_T`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span><button class="ib" id="lbref" title="تحديث">⟳</button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button><button data-k="arena" class="${tabK === 'arena' ? 'on' : ''}">⚔️ الساحة</button></div>
+      ${isSet ? _T`<div class="setpick"><label>اختر القسم:</label><select id="lbset">${opts.map(o => `<option value="${o}" ${o === setId ? 'selected' : ''}>${setTitle(o)}</option>`).join('')}</select></div>` : ''}
+      <p class="mut lbnote">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أكثر.') : kind === 'exam' ? _T('الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.')
+        : isSet ? _T`ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`
+        : kind === 'month' ? _T('أفضل 100 طالب <b>هذا الشهر</b>: مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الشهر، وعند التساوي الأسرع وقتاً.')
+        : _T('الترتيب العام: مجموع الإجابات الصحيحة في <b>أول محاولة</b> لكل قسم ونموذج، وعند التساوي الأسرع وقتاً. إعادة القسم للتدريب لا تغيّر ترتيبك.')}</p>
       <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
     bindCtl(); $('#lbref').onclick = () => renderBoard(kind);
     document.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { const k = b.dataset.k; location.hash = k === 'practice' ? 'board' : k === 'set' ? 'board-set-' + lsGet('qg_lb_set', 'q1') : 'board-' + k; });
     const sel = $('#lbset'); if (sel) sel.onchange = () => { location.hash = 'board-set-' + sel.value; };
     let r; try { r = await api({ op: 'leaderboard', session: auth.session, kind }); } catch (e) { r = null; }
     const el = $('#lb'); if (!el) return;
-    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = '<div class="center">تعذّر تحميل اللوحة</div>'; return; }
-    const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h} س ${m % 60} د` : m ? `${m} د` : `${s} ث`; };
+    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = _T('<div class="center">تعذّر تحميل اللوحة</div>'); return; }
+    const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? _T`${h} س ${m % 60} د` : m ? _T`${m} د` : _T`${s} ث`; };
     const pct = x => x.q ? Math.round(x.correct * 100 / x.q) : 0;
-    const unit = kind === 'exam' ? 'اختبار' : 'قسم', isAr = kind === 'arena';
+    const unit = kind === 'exam' ? _T('اختبار') : _T('قسم'), isAr = kind === 'arena';
     // عرض الدرجة: المحاكي والقسم = نسبة مئوية؛ العام والشهر = إجابات صحيحة (+ النسبة)
     const scoreHtml = x => isAr ? `<b>${x.r}</b>` : kind === 'exam' ? `<b>${Math.round(x.score)}%</b>` : isSet ? `<b>${Math.round(x.score)}%</b> <small>${x.correct}/${x.q}</small>` : `<b>${x.score}</b> ✓`;
-    const subHtml = x => isAr ? `${x.w} فوز من ${x.g} ${x.g === 1 ? 'مباراة' : 'مباريات'}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? 'اختبار' : 'اختبارات'} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : `${pct(x)}% دقة · ${fmt(x.secs)}`;
-    const mine = isAr ? (r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me.r} · ${r.me.w} فوز و${r.me.l} خسارة${r.me.d ? ' و' + r.me.d + ' تعادل' : ''}</span></div><a class="btn sm" href="#arena">العب مباراة</a></div>` : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>العب مباراة وحدة في الساحة وتظهر هنا.</span></div><a class="btn sm" href="#arena">ادخل الساحة</a></div>`)
-      : r.me ? `<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r.me.score) + '% متوسط · ' + r.me.done + ' ' + unit : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + ' إجابة صحيحة · ' + r.me.done + ' ' + unit} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">اختبار جديد</a>' : isSet ? `<a class="btn sm" href="#${setId}">افتح القسم</a>` : '<a class="btn sm" href="#">تدرّب</a>'}</div>`
-      : `<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? 'أنهِ اختباراً محاكياً واحداً وتظهر هنا.' : isSet ? 'حل هذا القسم مرة واحدة وتظهر هنا.' : kind === 'month' ? 'حل قسماً هذا الشهر وتظهر هنا.' : 'حل قسماً أو نموذجاً واحداً وتظهر هنا.'}</span></div>${kind === 'exam' ? '<a class="btn sm" href="/test/">ابدأ اختباراً</a>' : isSet ? `<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : '<a class="btn sm" href="#">ابدأ قسماً</a>'}</div>`;
-    if (!r.top.length) { el.innerHTML = mine + `<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
+    const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : _T('اختبارات')} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : _T`${pct(x)}% دقة · ${fmt(x.secs)}`;
+    const mine = isAr ? (r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me.r} · ${r.me.w} فوز و${r.me.l} خسارة${r.me.d ? _T(' و') + r.me.d + _T(' تعادل') : ''}</span></div><a class="btn sm" href="#arena">العب مباراة</a></div>` : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>العب مباراة وحدة في الساحة وتظهر هنا.</span></div><a class="btn sm" href="#arena">ادخل الساحة</a></div>`)
+      : r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r.me.score) + _T('% متوسط · ') + r.me.done + ' ' + unit : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + _T(' إجابة صحيحة · ') + r.me.done + ' ' + unit} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">اختبار جديد</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">افتح القسم</a>` : _T('<a class="btn sm" href="#">تدرّب</a>')}</div>`
+      : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذا القسم مرة واحدة وتظهر هنا.') : kind === 'month' ? _T('حل قسماً هذا الشهر وتظهر هنا.') : _T('حل قسماً أو نموذجاً واحداً وتظهر هنا.')}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">ابدأ اختباراً</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : _T('<a class="btn sm" href="#">ابدأ قسماً</a>')}</div>`;
+    if (!r.top.length) { el.innerHTML = mine + _T`<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
     const medal = k => ['🥇', '🥈', '🥉'][k - 1] || '';
     const top3 = r.top.slice(0, 3), rest = r.top.slice(3);
     const podium = top3.length >= 3 ? `<div class="podium">${[1, 0, 2].map(i => { const x = top3[i]; return `<div class="pd p${x.rank} ${x.me ? 'me' : ''}">${avatarHtml(x.a, x.n, x.rank === 1 ? 72 : 60)}<div class="pr">${medal(x.rank)}</div><b title="${esc(x.n)}">${esc(x.n)}</b><span class="pscore">${scoreHtml(x)}</span><span>${subHtml(x)}</span></div>`; }).join('')}</div>` : '';
     const list = top3.length >= 3 ? rest : r.top;
-    const cols = isAr ? ['التصنيف', 'الفوز', 'المباريات'] : kind === 'exam' ? ['النسبة', 'الاختبارات', 'الوقت'] : isSet ? ['النسبة', 'الصحيحة', 'الوقت'] : ['الصحيحة', 'الدقة', 'الوقت'];
+    const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T('الصحيحة'), _T('الوقت')] : [_T('الصحيحة'), _T('الدقة'), _T('الوقت')];
     const cells = x => isAr ? [`<b>${x.r}</b>`, x.w, x.g] : kind === 'exam' ? [`<b>${Math.round(x.score)}%</b>`, x.done, fmt(x.secs)] : isSet ? [`<b>${Math.round(x.score)}%</b>`, `${x.correct}/${x.q}`, fmt(x.secs)] : [`<b>${x.score}</b> ✓`, pct(x) + '%', fmt(x.secs)];
-    el.innerHTML = mine + podium + `<div class="lbl-list">
-      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">${cols[0]}</span><span class="ac">${cols[1]}</span><span class="tm">${cols[2]}</span>${!isSet && kind !== 'exam' && !isAr ? `<span class="dn">الأقسام</span>` : ''}</div>
-      ${list.map(x => { const c = cells(x); return `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? '<span class="you">أنت</span>' : ''}<span class="sc">${c[0]}</span><span class="ac">${c[1]}</span><span class="tm">${c[2]}</span>${!isSet && kind !== 'exam' && !isAr ? `<span class="dn">${x.done}</span>` : ''}</div>`; }).join('')}</div>
+    el.innerHTML = mine + podium + _T`<div class="lbl-list">
+      <div class="lbr head"><span class="rk">#</span><span class="nm">الطالب</span><span class="sc">${cols[0]}</span><span class="ac">${cols[1]}</span><span class="tm">${cols[2]}</span>${!isSet && kind !== 'exam' && !isAr ? _T`<span class="dn">الأقسام</span>` : ''}</div>
+      ${list.map(x => { const c = cells(x); return `<div class="lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}"><span class="rk">${x.rank <= 3 ? medal(x.rank) : x.rank}</span>${avatarHtml(x.a, x.n, 38)}<span class="nm">${esc(x.n)}</span>${x.me ? _T('<span class="you">أنت</span>') : ''}<span class="sc">${c[0]}</span><span class="ac">${c[1]}</span><span class="tm">${c[2]}</span>${!isSet && kind !== 'exam' && !isAr ? `<span class="dn">${x.done}</span>` : ''}</div>`; }).join('')}</div>
       <p class="mut" style="font-size:12.5px;margin-top:10px">يُعرض أفضل 100 طالب، واللوحة تتحدث كل دقيقة. تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية.</p>`;
   }
 
   // ---------- ⚔️ الساحة 1v1: مباراة مباشرة بين طالبين (WebSocket مع الخادم) ----------
   const AR = { ws: null, st: 'lobby', info: null, m: null, T: null, B: null, items: [], left: null, qc: null, off: 0, tm: 0, stm: 0, since: 0, code: '', join: '', end: null, hist: [], sc: [0, 0], i: -1, dl: 0, lim: 0, mine: null, opA: false, opGone: false, goAt: 0, wantClose: false, retry: 0, err: '' };
-  const AR_T = { ana: 'تناظر لفظي', sen: 'إكمال جمل', err: 'خطأ سياقي', quant: 'كمي' };
+  const AR_T = { ana: _T('تناظر لفظي'), sen: _T('إكمال جمل'), err: _T('خطأ سياقي'), quant: _T('كمي') };
   const AR_IN = { ana: 'Choose the pair of words that best expresses a relationship similar to that in the original pair.', sen: 'Choose the word(s) that best complete(s) the sentence.', err: 'Choose the word that is used incorrectly in the context of the sentence.' };
   const AR_LIVE = ['vs', 'q', 'rev'];
   const arNow = () => Date.now() + AR.off;
@@ -3108,7 +3127,7 @@
       let ws; try { ws = new WebSocket(arWsUrl()); } catch (e) { return rej(e); }
       AR.ws = ws; AR.wantClose = false; let ok = false;
       const to = setTimeout(() => { if (!ok) { try { ws.close(); } catch (e) {} } }, 12000);
-      ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (m.t === 'hi' && !ok) { ok = true; clearTimeout(to); AR.retry = 0; res(m); } arMsg(m); };
+      ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (EN && m && typeof m.msg === 'string') m.msg = _T(m.msg); if (m.t === 'hi' && !ok) { ok = true; clearTimeout(to); AR.retry = 0; res(m); } arMsg(m); };
       ws.onclose = () => { clearTimeout(to); if (AR.ws !== ws) return; AR.ws = null; if (!ok) return rej(new Error('closed')); arDropped(); };
     });
   }
@@ -3124,12 +3143,12 @@
   function arDropped() {
     if (AR.wantClose) return;
     if (AR.m && AR_LIVE.includes(AR.st)) {
-      if (AR.retry >= 6) { AR.st = 'lobby'; AR.m = null; AR.err = 'انقطع اتصالك بالساحة، فما قدرنا نكمل المباراة.'; window.onbeforeunload = null; return renderArena(); }
-      AR.retry++; arNote('انقطع الاتصال… نحاول نرجعك للمباراة', 'warn');
+      if (AR.retry >= 6) { AR.st = 'lobby'; AR.m = null; AR.err = _T('انقطع اتصالك بالساحة، فما قدرنا نكمل المباراة.'); window.onbeforeunload = null; return renderArena(); }
+      AR.retry++; arNote(_T('انقطع الاتصال… نحاول نرجعك للمباراة'), 'warn');
       setTimeout(() => { if (AR.wantClose || !AR.m) return; arOpen().then(() => arNote('')).catch(() => {}); }, 1200 + AR.retry * 600);
       return;
     }
-    if (['search', 'room', 'joining', 'connecting'].includes(AR.st)) { AR.st = 'lobby'; AR.err = 'انقطع الاتصال بالساحة. حاول مرة ثانية.'; arPanel(); }
+    if (['search', 'room', 'joining', 'connecting'].includes(AR.st)) { AR.st = 'lobby'; AR.err = _T('انقطع الاتصال بالساحة. حاول مرة ثانية.'); arPanel(); }
   }
   async function arTest(id) {
     if (cache['ar:' + id]) return cache['ar:' + id];
@@ -3155,19 +3174,19 @@
   const arOpenAll = ks => Promise.all((ks || []).map((k, i) => k ? arOpen1(i, k).catch(() => {}) : null));
   const arSeq = f => { AR.qc = (AR.qc || Promise.resolve()).then(f).catch(() => {}); };   // رسائل المباراة بالترتيب (فك السؤال قبل عرضه)
   const arItem = i => AR.items[i];
-  const arAgo = t => { const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return 'الحين'; const m = Math.floor(s / 60); if (m < 60) return 'قبل ' + m + ' د'; const h = Math.floor(m / 60); if (h < 24) return 'قبل ' + h + ' س'; const d = Math.floor(h / 24); return d === 1 ? 'أمس' : 'قبل ' + d + ' أيام'; };
-  const arRes = { win: ['فوز', 'win'], loss: ['خسارة', 'loss'], draw: ['تعادل', 'draw'] };
-  const arStu = n => n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n <= 10 ? n + ' طلاب' : n + ' طالباً';
+  const arAgo = t => { const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return EN ? 'just now' : 'الحين'; const m = Math.floor(s / 60); if (m < 60) return EN ? m + 'm ago' : 'قبل ' + m + ' د'; const h = Math.floor(m / 60); if (h < 24) return EN ? h + 'h ago' : 'قبل ' + h + ' س'; const d = Math.floor(h / 24); return d === 1 ? (EN ? 'yesterday' : 'أمس') : EN ? d + ' days ago' : 'قبل ' + d + ' أيام'; };   // i18n:skip
+  const arRes = { win: [_T('فوز'), 'win'], loss: [_T('خسارة'), 'loss'], draw: [_T('تعادل'), 'draw'] };
+  const arStu = n => EN ? enN(n, 'student', 'students') : n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n <= 10 ? n + ' طلاب' : n + ' طالباً';   // i18n:skip
 
   // ---------- صفحة الساحة ----------
   async function renderArena(join) {
-    document.title = 'الساحة 1v1 | Q-Guide';
+    document.title = _T('الساحة 1v1 | Q-Guide');
     if (join) AR.join = join;
     if (AR.m && AR_LIVE.includes(AR.st)) return arView();
     if (AR.st === 'end') { AR.st = 'lobby'; arClose(); }
     const me = arMe(), I = AR.info;
-    app.innerHTML = topbar(`<span class="ttl">⚔️ الساحة 1v1</span><span class="sp"></span><nav class="tnav"><a class="tn" href="#board-arena" title="لوحة ترتيب الساحة"><span class="i">🏆</span><span class="l">الترتيب</span></a></nav>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap arena">
+    app.innerHTML = topbar(_T`<span class="ttl">⚔️ الساحة 1v1</span><span class="sp"></span><nav class="tnav"><a class="tn" href="#board-arena" title="لوحة ترتيب الساحة"><span class="i">🏆</span><span class="l">الترتيب</span></a></nav>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<main class="wrap arena">
         <section class="ar-hero">
           <div class="ar-hl"><h1>الساحة <span dir="ltr">1v1</span></h1>
             <p>تحدَّ طالب من الدورة مباشرة في 20 سؤال: 10 لفظي و10 كمي. الإجابة الصحيحة تجيب 10 نقاط، وكل ما كنت أسرع تزيد لين 20.</p>
@@ -3189,55 +3208,55 @@
     let r; try { r = await api({ op: 'arena_me', session: auth.session }); } catch (e) { r = null; }
     if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
     if (r && r.ok) { AR.info = r; if (r.free) AR.left = r.free.left; const a = $('#arme'), h = $('#arhist'); if (a) a.innerHTML = arMeCard(me, r); if (h) h.innerHTML = arHistHtml(r); if (AR.st === 'lobby') arPanel(); }
-    api({ op: 'leaderboard', kind: 'arena', session: auth.session }).then(b => { const el = $('#artop'); if (!el) return; el.innerHTML = b && b.ok ? arTopHtml(b) : '<p class="mut">تعذّر تحميل الترتيب.</p>'; }).catch(() => {});
+    api({ op: 'leaderboard', kind: 'arena', session: auth.session }).then(b => { const el = $('#artop'); if (!el) return; el.innerHTML = b && b.ok ? arTopHtml(b) : _T('<p class="mut">تعذّر تحميل الترتيب.</p>'); }).catch(() => {});
   }
   function arMeCard(me, I) {
     const g = I ? I.g : 0;
     return `<div class="ar-mh">${avatarHtml(me.a, me.n, 46)}<b>${esc(me.n)}</b></div>
-      <div class="ar-rt"><b>${I ? I.r : 1000}</b><span>${g ? 'تصنيفك' : 'تصنيف البداية'}</span></div>
-      ${g ? `<div class="ar-wl"><span class="w">${I.w} فوز</span><span class="l">${I.l} خسارة</span>${I.d ? `<span>${I.d} تعادل</span>` : ''}</div>
-      <p class="ar-rk">${I.rank ? `ترتيبك <b>#${I.rank}</b> من ${arStu(I.total)}` : 'ما تظهر في الترتيب'}${I.best > 1 ? ` · أطول سلسلة فوز ${I.best}` : ''}</p>`
-      : `<p class="ar-rk">العب أول مباراة ويطلع لك تصنيف وترتيب بين الطلاب.</p>`}`;
+      <div class="ar-rt"><b>${I ? I.r : 1000}</b><span>${g ? _T('تصنيفك') : _T('تصنيف البداية')}</span></div>
+      ${g ? _T`<div class="ar-wl"><span class="w">${I.w} فوز</span><span class="l">${I.l} خسارة</span>${I.d ? _T`<span>${I.d} تعادل</span>` : ''}</div>
+      <p class="ar-rk">${I.rank ? _T`ترتيبك <b>#${I.rank}</b> من ${arStu(I.total)}` : _T('ما تظهر في الترتيب')}${I.best > 1 ? _T` · أطول سلسلة فوز ${I.best}` : ''}</p>`
+      : _T`<p class="ar-rk">العب أول مباراة ويطلع لك تصنيف وترتيب بين الطلاب.</p>`}`;
   }
   function arHistHtml(I) {
     if (!I) return '<div class="center"><div class="spin" style="margin:0 auto"></div></div>';
-    if (!I.hist || !I.hist.length) return '<p class="ar-empty">ما لعبت أي مباراة للحين. أول مباراة تبدأ من زر «ابحث عن خصم».</p>';
-    return `<ol class="ar-list">${I.hist.map(h => `<li class="ar-hr"><span class="ar-chip ${arRes[h.res][1]}">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n, 32)}<span class="ar-hn"><b>${esc(h.op.n || 'طالب')}</b><small>${h.kind === 'friend' ? 'تحدي صديق' : 'خصم عشوائي'}${h.why === 'quit' ? ' · انسحاب' : h.why === 'left' ? ' · انقطاع' : ''} · ${arAgo(h.ts)}</small></span><span class="ar-hs" title="نقاطك – نقاط خصمك">${h.sc[0]} – ${h.sc[1]}</span>${h.rated ? `<em class="${h.d >= 0 ? 'up' : 'dn'}" dir="ltr">${h.d >= 0 ? '+' : ''}${h.d}</em>` : '<em class="nr">بدون تصنيف</em>'}</li>`).join('')}</ol>`;
+    if (!I.hist || !I.hist.length) return _T('<p class="ar-empty">ما لعبت أي مباراة للحين. أول مباراة تبدأ من زر «ابحث عن خصم».</p>');
+    return `<ol class="ar-list">${I.hist.map(h => _T`<li class="ar-hr"><span class="ar-chip ${arRes[h.res][1]}">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n, 32)}<span class="ar-hn"><b>${esc(h.op.n || _T('طالب'))}</b><small>${h.kind === 'friend' ? _T('تحدي صديق') : _T('خصم عشوائي')}${h.why === 'quit' ? _T(' · انسحاب') : h.why === 'left' ? _T(' · انقطاع') : ''} · ${arAgo(h.ts)}</small></span><span class="ar-hs" title="نقاطك – نقاط خصمك">${h.sc[0]} – ${h.sc[1]}</span>${h.rated ? `<em class="${h.d >= 0 ? 'up' : 'dn'}" dir="ltr">${h.d >= 0 ? '+' : ''}${h.d}</em>` : _T('<em class="nr">بدون تصنيف</em>')}</li>`).join('')}</ol>`;
   }
   function arTopHtml(b) {
-    if (!b.top.length) return '<p class="ar-empty">الترتيب فاضي. أول من يفوز يتصدر!</p>';
+    if (!b.top.length) return _T('<p class="ar-empty">الترتيب فاضي. أول من يفوز يتصدر!</p>');
     const rows = b.top.slice(0, 5); const meIn = rows.some(x => x.me);
-    const row = x => `<li class="ar-tr ${x.me ? 'me' : ''}"><span class="rk">${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span>${avatarHtml(x.a, x.n, 32)}<span class="ar-hn"><b>${esc(x.n)}</b><small>${x.w} فوز من ${x.g}</small></span><b class="ar-tv">${x.r}</b></li>`;
+    const row = x => _T`<li class="ar-tr ${x.me ? 'me' : ''}"><span class="rk">${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span>${avatarHtml(x.a, x.n, 32)}<span class="ar-hn"><b>${esc(x.n)}</b><small>${x.w} فوز من ${x.g}</small></span><b class="ar-tv">${x.r}</b></li>`;
     return `<ol class="ar-list">${rows.map(row).join('')}${!meIn && b.me ? `<li class="ar-gap" aria-hidden="true">⋯</li>${row(b.me)}` : ''}</ol>`;
   }
   // لوحة الأزرار حسب الحالة: جاهز · يدور · غرفة صديق · ما فيه أحد
   function arPanel() {
     const el = $('#arp'); if (!el) return; clearInterval(AR.stm);
     const live = AR.info && AR.info.live;
-    const liveTxt = live && live.online ? `<p class="ar-live"><i></i>${live.waiting ? 'فيه طالب يدور خصم الحين' : `${live.online} في الساحة الحين`}</p>` : '';
+    const liveTxt = live && live.online ? `<p class="ar-live"><i></i>${live.waiting ? _T('فيه طالب يدور خصم الحين') : _T`${live.online} في الساحة الحين`}</p>` : '';
     const err = AR.err ? `<p class="ar-err" role="alert">${esc(AR.err)}</p>` : '';
     if (AR.st === 'search') {
-      el.innerHTML = `<div class="ar-srch"><div class="ar-radar" aria-hidden="true"><i></i><i></i>${avatarHtml(arMe().a, arMe().n, 54)}</div><div><b>ندوّر لك على خصم…</b><span id="arel">0:00</span><small>أول طالب يضغط «ابحث عن خصم» يدخل معك مباشرة.</small></div></div>
+      el.innerHTML = _T`<div class="ar-srch"><div class="ar-radar" aria-hidden="true"><i></i><i></i>${avatarHtml(arMe().a, arMe().n, 54)}</div><div><b>ندوّر لك على خصم…</b><span id="arel">0:00</span><small>أول طالب يضغط «ابحث عن خصم» يدخل معك مباشرة.</small></div></div>
         <div class="ar-acts"><button class="ar-gh" id="arcx">إلغاء</button><button class="ar-lk" id="arrm">أو تحدَّ صديقك برابط</button></div>`;
       const tick = () => { const e = $('#arel'); if (e) e.textContent = fmtDur((arNow() - AR.since) / 1000); }; tick(); AR.stm = setInterval(tick, 1000);
     } else if (AR.st === 'room') {
       const link = location.origin + '/p/#duel-' + AR.code;
-      const msg = `تحداك ${arMe().n} في ساحة Q-Guide ⚔️ 20 سؤال قدرات مباشر. ادخل من الرابط: ${link}`;
-      el.innerHTML = `<div class="ar-room"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>
+      const msg = _T`تحداك ${arMe().n} في ساحة Q-Guide ⚔️ 20 سؤال قدرات مباشر. ادخل من الرابط: ${link}`;
+      el.innerHTML = _T`<div class="ar-room"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>
         <div class="ar-link"><input id="arlk" readonly value="${esc(link)}" dir="ltr" aria-label="رابط التحدي"><button class="ar-cp" id="arcp">نسخ</button></div>
-        <div class="ar-acts">${navigator.share ? '<button class="rz-go" id="arsh">مشاركة الرابط</button>' : ''}<a class="ar-gh" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">واتساب</a><button class="ar-gh" id="arcx">إلغاء</button></div>
+        <div class="ar-acts">${navigator.share ? _T('<button class="rz-go" id="arsh">مشاركة الرابط</button>') : ''}<a class="ar-gh" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">واتساب</a><button class="ar-gh" id="arcx">إلغاء</button></div>
         <p class="ar-wait"><span class="ar-dotsl" aria-hidden="true"><i></i><i></i><i></i></span>بانتظار صاحبك… الرمز <b dir="ltr">${esc(AR.code)}</b></p></div>`;
-      $('#arcp').onclick = async () => { const i = $('#arlk'); try { await navigator.clipboard.writeText(i.value); toast('انسخ الرابط ✓'); } catch (e) { i.select(); toast('حدد الرابط وانسخه'); } };
-      const sh = $('#arsh'); if (sh) sh.onclick = () => navigator.share({ title: 'تحدي Q-Guide', text: msg }).catch(() => {});
+      $('#arcp').onclick = async () => { const i = $('#arlk'); try { await navigator.clipboard.writeText(i.value); toast(_T('انسخ الرابط ✓')); } catch (e) { i.select(); toast(_T('حدد الرابط وانسخه')); } };
+      const sh = $('#arsh'); if (sh) sh.onclick = () => navigator.share({ title: _T('تحدي Q-Guide'), text: msg }).catch(() => {});
     } else if (AR.st === 'connecting' || AR.st === 'joining') {
-      el.innerHTML = `<div class="ar-srch"><div class="spin"></div><div><b>${AR.st === 'joining' ? 'ندخلك لتحدي صاحبك…' : 'نتصل بالساحة…'}</b></div></div>`;
+      el.innerHTML = `<div class="ar-srch"><div class="spin"></div><div><b>${AR.st === 'joining' ? _T('ندخلك لتحدي صاحبك…') : _T('نتصل بالساحة…')}</b></div></div>`;
     } else if (isFree() && AR.left === 0) {   // 🆓 خلصت مبارياته المجانية اليوم
-      el.innerHTML = `<div class="ar-cap"><b>خلصت مبارياتك المجانية اليوم</b><span>ترجع لك ${FREE_GAMES} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاختبارات المحاكية.</span>
+      el.innerHTML = _T`<div class="ar-cap"><b>خلصت مبارياتك المجانية اليوم</b><span>ترجع لك ${FREE_GAMES} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاختبارات المحاكية.</span>
         <div class="ar-acts"><button class="rz-go" data-sub>⭐ اشترك والعب بدون حد</button></div></div>`;
       bindSub(el);
     } else {
-      el.innerHTML = `${err}${AR.st === 'noone' ? '<p class="ar-err">ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.</p>' : ''}
-        <div class="ar-acts"><button class="rz-go" id="arfd">⚔️ ${AR.st === 'noone' ? 'دوّر مرة ثانية' : 'ابحث عن خصم'}</button><button class="ar-gh" id="arrm">🔗 تحدَّ صديقك</button></div>${liveTxt}${isFree() && AR.left != null ? `<p class="ar-free">باقي لك <b>${AR.left}</b> من ${FREE_GAMES} مباريات مجانية اليوم</p>` : ''}`;
+      el.innerHTML = _T`${err}${AR.st === 'noone' ? _T('<p class="ar-err">ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.</p>') : ''}
+        <div class="ar-acts"><button class="rz-go" id="arfd">⚔️ ${AR.st === 'noone' ? _T('دوّر مرة ثانية') : _T('ابحث عن خصم')}</button><button class="ar-gh" id="arrm">🔗 تحدَّ صديقك</button></div>${liveTxt}${isFree() && AR.left != null ? _T`<p class="ar-free">باقي لك <b>${AR.left}</b> من ${FREE_GAMES} مباريات مجانية اليوم</p>` : ''}`;
     }
     const f = $('#arfd'); if (f) f.onclick = arFind;
     const rm = $('#arrm'); if (rm) rm.onclick = arRoom;
@@ -3245,12 +3264,12 @@
   }
   async function arGo(first) {
     AR.err = ''; AR.st = 'connecting'; arPanel();
-    try { await arOpen(); } catch (e) { AR.st = 'lobby'; AR.err = 'تعذّر الاتصال بالساحة. تأكد من الإنترنت وحاول مرة ثانية.'; arPanel(); return false; }
+    try { await arOpen(); } catch (e) { AR.st = 'lobby'; AR.err = _T('تعذّر الاتصال بالساحة. تأكد من الإنترنت وحاول مرة ثانية.'); arPanel(); return false; }
     return first();
   }
   function arFind() { return arGo(() => arSend({ t: 'find' })); }
   function arRoom() { return arGo(() => arSend({ t: 'room' })); }
-  function arJoin(code) { AR.err = ''; AR.st = 'joining'; arPanel(); arOpen().then(() => arSend({ t: 'join', code })).catch(() => { AR.st = 'lobby'; AR.err = 'تعذّر الاتصال بالساحة. افتح الرابط مرة ثانية.'; arPanel(); }); }
+  function arJoin(code) { AR.err = ''; AR.st = 'joining'; arPanel(); arOpen().then(() => arSend({ t: 'join', code })).catch(() => { AR.st = 'lobby'; AR.err = _T('تعذّر الاتصال بالساحة. افتح الرابط مرة ثانية.'); arPanel(); }); }
   function arCancel() { arSend({ t: 'cancel' }); AR.st = 'lobby'; arPanel(); setTimeout(arClose, 150); }
 
   function arMsg(m) {
@@ -3260,7 +3279,7 @@
       case 'wait': AR.st = 'search'; AR.since = m.since; return arPanel();
       case 'noone': AR.st = 'noone'; arPanel(); return setTimeout(arClose, 100);
       case 'room': AR.st = 'room'; AR.code = m.code; return arPanel();
-      case 'roomexp': AR.st = 'lobby'; AR.err = 'انتهت صلاحية رابط التحدي. سوّ رابط جديد.'; arPanel(); return arClose();
+      case 'roomexp': AR.st = 'lobby'; AR.err = _T('انتهت صلاحية رابط التحدي. سوّ رابط جديد.'); arPanel(); return arClose();
       case 'idle': return;
       case 'err':
         if (m.code === 'limit') {   // 🆓 خلصت مبارياته المجانية (بحث، رابط تحدي، أو إعادة)
@@ -3271,7 +3290,7 @@
         if (AR.st === 'end') { const n = $('#aragn'); if (n) n.textContent = m.msg; return; }
         if (AR.m && AR_LIVE.includes(AR.st)) return toast(m.msg);
         AR.st = 'lobby'; AR.err = m.msg; arPanel(); return arClose();
-      case 'replaced': AR.wantClose = true; AR.st = 'lobby'; AR.m = null; AR.err = 'فتحت الساحة في نافذة أو جهاز ثاني، فوقفناها هنا.'; window.onbeforeunload = null; return location.hash === '#arena' ? renderArena() : (location.hash = 'arena');
+      case 'replaced': AR.wantClose = true; AR.st = 'lobby'; AR.m = null; AR.err = _T('فتحت الساحة في نافذة أو جهاز ثاني، فوقفناها هنا.'); window.onbeforeunload = null; return location.hash === '#arena' ? renderArena() : (location.hash = 'arena');
       case 'match': return arMatch(m);
       case 'go': AR.goAt = m.at; return arCount();
       case 'q': return arSeq(() => arOpen1(m.i, m.k).catch(() => {}).then(() => arQ(m)));
@@ -3283,9 +3302,9 @@
       case 'opleft': AR.opGone = true; arOpStatus(); return;
       case 'opback': AR.opGone = false; arOpStatus(); return;
       case 'end': if (m.left != null) AR.left = m.left; return arSeq(() => arOpenAll(m.ks).then(() => arEnd(m)));
-      case 'void': { if (m.left != null) AR.left = m.left; AR.st = 'lobby'; AR.m = null; AR.err = m.msg || 'انلغت المباراة.'; window.onbeforeunload = null; arStop(); arClose(); return location.hash === '#arena' ? renderArena() : (location.hash = 'arena'); }
-      case 'againwait': { const n = $('#aragn'); if (n) n.textContent = 'طلبت إعادة المباراة… بانتظار موافقة خصمك.'; const b = $('#arag'); if (b) b.disabled = true; return; }
-      case 'againask': { const n = $('#aragn'); if (n) { n.textContent = 'خصمك يبي إعادة المباراة! اضغط «إعادة المباراة» لو تبي.'; n.classList.add('hot'); } const b = $('#arag'); if (b) b.classList.add('pulse'); return; }
+      case 'void': { if (m.left != null) AR.left = m.left; AR.st = 'lobby'; AR.m = null; AR.err = m.msg || _T('انلغت المباراة.'); window.onbeforeunload = null; arStop(); arClose(); return location.hash === '#arena' ? renderArena() : (location.hash = 'arena'); }
+      case 'againwait': { const n = $('#aragn'); if (n) n.textContent = _T('طلبت إعادة المباراة… بانتظار موافقة خصمك.'); const b = $('#arag'); if (b) b.disabled = true; return; }
+      case 'againask': { const n = $('#aragn'); if (n) { n.textContent = _T('خصمك يبي إعادة المباراة! اضغط «إعادة المباراة» لو تبي.'); n.classList.add('hot'); } const b = $('#arag'); if (b) b.classList.add('pulse'); return; }
     }
   }
 
@@ -3298,34 +3317,34 @@
     window.onbeforeunload = e => { if (AR.m && AR_LIVE.includes(AR.st)) { e.preventDefault(); e.returnValue = ''; } };
     arView();
     try { AR.B = await arBlob(m.test); await arOpenAll(m.ks); }
-    catch (e) { const v = $('#arvm'); if (v) v.innerHTML = 'تعذّر تحميل الأسئلة. <button class="ar-lk" id="arrl">حاول مرة ثانية</button>'; const b = $('#arrl'); if (b) b.onclick = () => arMatch(m); return; }
+    catch (e) { const v = $('#arvm'); if (v) v.innerHTML = _T('تعذّر تحميل الأسئلة. <button class="ar-lk" id="arrl">حاول مرة ثانية</button>'); const b = $('#arrl'); if (b) b.onclick = () => arMatch(m); return; }
     if (AR.m !== m) return;
     if (AR.pendQ) { const q = AR.pendQ; await arOpen1(q.i, q.k).catch(() => {}); return arQ(q); }
-    if (!m.resume || m.phase === 'prep') { arSend({ t: 'ready', m: m.m }); const v = $('#arvm'); if (v) v.textContent = 'بانتظار خصمك…'; }
+    if (!m.resume || m.phase === 'prep') { arSend({ t: 'ready', m: m.m }); const v = $('#arvm'); if (v) v.textContent = _T('بانتظار خصمك…'); }
     else if (m.phase === 'count') { AR.goAt = m.at; arCount(); }
     else if (m.phase === 'q') arQ({ i: m.i, dl: m.dl, lim: m.qt[m.refs[m.i][2]] * 1000, mine: m.mine, opAns: m.opAns });
-    else if (m.phase === 'rev') { arBoard(); const q = $('#arq'); if (q) q.innerHTML = '<div class="ar-hold"><div class="spin"></div>السؤال الجاي…</div>'; }
+    else if (m.phase === 'rev') { arBoard(); const q = $('#arq'); if (q) q.innerHTML = _T('<div class="ar-hold"><div class="spin"></div>السؤال الجاي…</div>'); }
   }
-  function arDots(who) { return AR.m.refs.map((r, j) => { const h = AR.hist[j]; const c = h ? (who === 0 ? (h.mo ? 'ok' : h.my == null ? 'na' : 'bad') : (h.oo ? 'ok' : h.op == null ? 'na' : 'bad')) : ''; return `<i class="${c}${j === AR.i ? ' cur' : ''}" title="${r[2] === 'v' ? 'لفظي' : 'كمي'}"></i>`; }).join(''); }
+  function arDots(who) { return AR.m.refs.map((r, j) => { const h = AR.hist[j]; const c = h ? (who === 0 ? (h.mo ? 'ok' : h.my == null ? 'na' : 'bad') : (h.oo ? 'ok' : h.op == null ? 'na' : 'bad')) : ''; return `<i class="${c}${j === AR.i ? ' cur' : ''}" title="${r[2] === 'v' ? _T('لفظي') : _T('كمي')}"></i>`; }).join(''); }
   function arView() {
     const m = AR.m, me = m.me, op = m.op, myN = arMe();
-    app.innerHTML = topbar(`<span class="ttl">⚔️ ${m.kind === 'friend' ? 'تحدي صديق' : 'مباراة الساحة'}</span><span class="sp"></span><button class="ar-quit" id="arqt">انسحاب</button>`, `<span class="brand"><img src="/assets/logo.png" alt="">Q-Guide</span>`) +
-      `<main class="wrap arena arm">
+    app.innerHTML = topbar(_T`<span class="ttl">⚔️ ${m.kind === 'friend' ? _T('تحدي صديق') : _T('مباراة الساحة')}</span><span class="sp"></span><button class="ar-quit" id="arqt">انسحاب</button>`, `<span class="brand"><img src="/assets/logo.png" alt="">Q-Guide</span>`) +
+      _T`<main class="wrap arena arm">
         <div class="ar-sb" id="arsb">
           <div class="ar-pl me">${avatarHtml(me.a || myN.a, myN.n, 44)}<span class="ar-pn"><b>أنت</b><small id="arms">${me.r}</small></span><b class="ar-ps" id="ars0">${AR.sc[0]}</b></div>
           <div class="ar-mid"><span class="ar-qc" id="arqc">${AR.i >= 0 ? AR.i + 1 : '–'}<small>/${m.refs.length}</small></span><span class="ar-tm" id="artm">--</span></div>
-          <div class="ar-pl op"><b class="ar-ps" id="ars1">${AR.sc[1]}</b><span class="ar-pn"><b>${esc(op.n || 'خصمك')}</b><span class="ar-os"><small id="aros">${op.r}</small><button type="button" class="ar-nd" id="arnd" hidden aria-label="نبّه خصمك يستعجل">⏰ نبّه</button></span></span>${avatarHtml(op.a, op.n, 44)}</div>
+          <div class="ar-pl op"><b class="ar-ps" id="ars1">${AR.sc[1]}</b><span class="ar-pn"><b>${esc(op.n || _T('خصمك'))}</b><span class="ar-os"><small id="aros">${op.r}</small><button type="button" class="ar-nd" id="arnd" hidden aria-label="نبّه خصمك يستعجل">⏰ نبّه</button></span></span>${avatarHtml(op.a, op.n, 44)}</div>
           <div class="ar-dots" aria-hidden="true"><div class="r"><span>أنت</span><div id="ard0">${arDots(0)}</div></div><div class="r"><span>خصمك</span><div id="ard1">${arDots(1)}</div></div></div>
           <div class="ar-bar"><i id="arbar"></i></div>
           <div class="ar-ndn" id="arndn" role="status" aria-live="assertive" hidden></div>
         </div>
         <div id="arnote" class="ar-note" hidden></div>
-        <div id="arq"><div class="ar-vs"><div class="ar-vp me">${avatarHtml(me.a || myN.a, myN.n, 88)}<b>${esc(myN.n)}</b><span>تصنيف ${me.r}</span></div><div class="ar-vx" id="arvx">VS</div><div class="ar-vp op">${avatarHtml(op.a, op.n, 88)}<b>${esc(op.n || 'خصمك')}</b><span>تصنيف ${op.r}</span></div></div>
+        <div id="arq"><div class="ar-vs"><div class="ar-vp me">${avatarHtml(me.a || myN.a, myN.n, 88)}<b>${esc(myN.n)}</b><span>تصنيف ${me.r}</span></div><div class="ar-vx" id="arvx">VS</div><div class="ar-vp op">${avatarHtml(op.a, op.n, 88)}<b>${esc(op.n || _T('خصمك'))}</b><span>تصنيف ${op.r}</span></div></div>
           <p class="ar-vsm" id="arvm">نحمّل الأسئلة…</p></div>
       </main>`;
     bindCtl();
     $('#arnd').onclick = arNudge;
-    $('#arqt').onclick = async () => { if (!AR.m || !AR_LIVE.includes(AR.st)) return; if (await QGDlg.confirm('تنسحب من المباراة؟ تنحسب لك خسارة.', { ok: 'انسحاب' })) { arSend({ t: 'quit', m: AR.m.m }); } };
+    $('#arqt').onclick = async () => { if (!AR.m || !AR_LIVE.includes(AR.st)) return; if (await QGDlg.confirm(_T('تنسحب من المباراة؟ تنحسب لك خسارة.'), { ok: _T('انسحاب') })) { arSend({ t: 'quit', m: AR.m.m }); } };
     document.onkeydown = e => { if (AR.st !== 'q' || e.ctrlKey || e.metaKey || e.altKey) return; const k = '1234'.indexOf(e.key) >= 0 ? '1234'.indexOf(e.key) : 'abcd'.indexOf(String(e.key).toLowerCase()); if (k >= 0) { e.preventDefault(); arAns(k); } };
     if (AR.st === 'q') arQ({ i: AR.i, dl: AR.dl, lim: AR.lim, mine: AR.mine, opAns: AR.opA });
   }
@@ -3333,7 +3352,7 @@
   function arCount() {
     AR.st = 'vs'; arStop(); if (!$('#arvx')) arView();
     const v = $('#arvm'), x = $('#arvx');
-    const run = () => { const s = Math.ceil((AR.goAt - arNow()) / 1000); if (s <= 0) { arStop(); return; } if (x) { x.textContent = s; x.classList.add('n'); } if (v) v.textContent = 'المباراة تبدأ بعد'; };
+    const run = () => { const s = Math.ceil((AR.goAt - arNow()) / 1000); if (s <= 0) { arStop(); return; } if (x) { x.textContent = s; x.classList.add('n'); } if (v) v.textContent = _T('المباراة تبدأ بعد'); };
     run(); AR.tm = setInterval(run, 200);
   }
   function arBoard() {
@@ -3344,8 +3363,8 @@
   function arOpStatus() {
     const s = $('#aros'); if (!s || !AR.m) return;
     s.className = AR.opGone ? 'gone' : AR.opA && AR.st === 'q' ? 'done' : '';
-    s.textContent = AR.opGone ? 'انقطع اتصاله…' : AR.st === 'q' ? (AR.opA ? 'جاوب ✓' : 'يفكر…') : AR.m.op.r;
-    if (AR.st === 'q' && AR.mine != null) { const st = $('#arst'); if (st) st.innerHTML = AR.opA || AR.opGone ? '<span class="spin sm"></span> نكشف الإجابة…' : '<span class="spin sm"></span> بانتظار خصمك…'; }
+    s.textContent = AR.opGone ? _T('انقطع اتصاله…') : AR.st === 'q' ? (AR.opA ? _T('جاوب ✓') : _T('يفكر…')) : AR.m.op.r;
+    if (AR.st === 'q' && AR.mine != null) { const st = $('#arst'); if (st) st.innerHTML = AR.opA || AR.opGone ? _T('<span class="spin sm"></span> نكشف الإجابة…') : _T('<span class="spin sm"></span> بانتظار خصمك…'); }
     arNudgeBtn();
   }
   // ⏰ «نبّه خصمك»: يطلع وقت ما خصمك يفكر، وينضغط مرة كل 10 ثواني
@@ -3353,10 +3372,10 @@
     const b = $('#arnd'); if (!b) return;
     const can = !!AR.m && AR.st === 'q' && !AR.opA && !AR.opGone; b.hidden = !can; if (!can) return;
     const left = Math.ceil(((AR.ndNext || 0) - arNow()) / 1000), wait = left > 0;
-    const txt = !wait ? '⏰ نبّه' : left >= 9 ? '✓ وصل' : '⏰ ' + left;
+    const txt = !wait ? _T('⏰ نبّه') : left >= 9 ? _T('✓ وصل') : '⏰ ' + left;
     if (b.textContent !== txt) b.textContent = txt;
     b.disabled = wait; b.classList.toggle('sent', wait && left >= 9);
-    b.title = wait ? `تقدر تنبّهه مرة ثانية بعد ${left} ثواني` : 'نبّه خصمك يستعجل';
+    b.title = wait ? _T`تقدر تنبّهه مرة ثانية بعد ${left} ثواني` : _T('نبّه خصمك يستعجل');
   }
   function arNudge() {
     if (!AR.m || AR.st !== 'q' || AR.opA || AR.opGone || (AR.ndNext || 0) > arNow()) return;
@@ -3365,7 +3384,7 @@
   }
   function arNudged(m) {   // خصمك نبّهك
     if (!AR.m || AR.st !== 'q' || m.i !== AR.i || AR.mine != null) return;
-    const n = $('#arndn'); if (n) { n.textContent = `⏰ ${(m.n || AR.m.op.n || 'خصمك').slice(0, 18)} يستعجلك، جاوب بسرعة!`; n.hidden = false; n.classList.remove('in'); void n.offsetWidth; n.classList.add('in');
+    const n = $('#arndn'); if (n) { n.textContent = _T`⏰ ${(m.n || AR.m.op.n || _T('خصمك')).slice(0, 18)} يستعجلك، جاوب بسرعة!`; n.hidden = false; n.classList.remove('in'); void n.offsetWidth; n.classList.add('in');
       clearTimeout(AR.ndT); AR.ndT = setTimeout(() => { n.hidden = true; }, 3200); }
     const av = $('.ar-pl.op .av'); if (av && !RM()) { av.classList.remove('ar-shk'); void av.offsetWidth; av.classList.add('ar-shk'); }
     try { navigator.vibrate && navigator.vibrate([90, 60, 90]); } catch (e) {}
@@ -3378,14 +3397,14 @@
     if (!$('#arsb')) arView();
     arBoard(); arNote(''); const nn = $('#arndn'); if (nn) nn.hidden = true;
     const it = arItem(m.i), n = AR.m.refs.length;
-    if (!it) { $('#arq').innerHTML = '<div class="ar-hold">تعذّر عرض هذا السؤال. ننتقل للي بعده…</div>'; return; }
+    if (!it) { $('#arq').innerHTML = _T('<div class="ar-hold">تعذّر عرض هذا السؤال. ننتقل للي بعده…</div>'); return; }
     const ty = it.type;
-    let h = `<div class="q ar-q"><div class="hd"><span class="n">سؤال ${m.i + 1}<small>من ${n}</small></span><span class="tag">${AR_T[ty] || ''}</span></div>`;
-    if (ty === 'quant') h += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${m.i + 1}">`;
+    let h = _T`<div class="q ar-q"><div class="hd"><span class="n">سؤال ${m.i + 1}<small>من ${n}</small></span><span class="tag">${AR_T[ty] || ''}</span></div>`;
+    if (ty === 'quant') h += _T`<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${m.i + 1}">`;
     else h += `<p class="ar-in ltr">${AR_IN[ty] || ''}</p><p class="txt ltr">${ty === 'ana' ? '<b>' + esc(it.q) + '</b>' : esc(it.q)}</p>`;
     const two = ty === 'quant' || it.opts.every(o => o.length <= 28);
     h += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => `<button type="button" class="opt${AR.mine === k ? ' sel' : ''}" data-k="${k}" ${AR.mine != null ? 'disabled' : ''}><span class="L">${LETTERS[k]}</span><span class="ot">${esc(ty === 'quant' ? o.replace(/^[A-D]\)\s*/, '') : o)}</span></button>`).join('') + '</div>';
-    h += `<div class="ar-st" id="arst">${AR.mine != null ? '' : 'اختر إجابتك بسرعة<span class="kb">، أو اضغط 1 إلى 4 من الكيبورد</span>'}</div></div>`;
+    h += `<div class="ar-st" id="arst">${AR.mine != null ? '' : _T('اختر إجابتك بسرعة<span class="kb">، أو اضغط 1 إلى 4 من الكيبورد</span>')}</div></div>`;
     $('#arq').innerHTML = h;
     document.querySelectorAll('#arq .opt').forEach(b => b.onclick = () => arAns(+b.dataset.k));
     arOpStatus();
@@ -3395,7 +3414,7 @@
       if (tm) { tm.textContent = fmtDur(s); tm.classList.toggle('low', s <= 5); }
       arNudgeBtn();
       if (bar) { bar.style.width = (left / AR.lim * 100).toFixed(1) + '%'; bar.classList.toggle('low', s <= 5); }
-      if (left <= 0) { arStop(); const st = $('#arst'); if (st && AR.mine == null) st.textContent = 'انتهى الوقت ⏱'; document.querySelectorAll('#arq .opt').forEach(b => b.disabled = true); }
+      if (left <= 0) { arStop(); const st = $('#arst'); if (st && AR.mine == null) st.textContent = _T('انتهى الوقت ⏱'); document.querySelectorAll('#arq .opt').forEach(b => b.disabled = true); }
     };
     arStop(); tick(); AR.tm = setInterval(tick, 200);
     window.scrollTo({ top: 0, behavior: RM() ? 'auto' : 'smooth' });
@@ -3415,10 +3434,10 @@
     document.querySelectorAll('#arq .opt').forEach(b => {
       const k = +b.dataset.k; b.disabled = true; b.classList.remove('sel');
       if (k === m.k) b.classList.add('ok'); else if (k === m.me.c) b.classList.add('bad');
-      if (k === m.op.c) b.insertAdjacentHTML('beforeend', `<span class="ar-om" title="اختيار خصمك">${avatarHtml(op.a, op.n, 24)}</span>`);
+      if (k === m.op.c) b.insertAdjacentHTML('beforeend', _T`<span class="ar-om" title="اختيار خصمك">${avatarHtml(op.a, op.n, 24)}</span>`);
     });
     const st = $('#arst');
-    if (st) st.innerHTML = `<span class="ar-mine ${m.me.ok ? 'ok' : 'bad'}">${m.me.ok ? `صح! <bdi dir="ltr">+${m.me.p}</bdi>` : m.me.c == null ? 'ما جاوبت' : 'إجابتك خطأ'}</span><span class="ar-his">${esc(op.n || 'خصمك')}: ${m.op.ok ? `صح <bdi dir="ltr">+${m.op.p}</bdi>` : m.op.c == null ? 'ما جاوب' : 'خطأ'}</span>`;
+    if (st) st.innerHTML = `<span class="ar-mine ${m.me.ok ? 'ok' : 'bad'}">${m.me.ok ? _T`صح! <bdi dir="ltr">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : _T('إجابتك خطأ')}</span><span class="ar-his">${esc(op.n || _T('خصمك'))}: ${m.op.ok ? _T`صح <bdi dir="ltr">+${m.op.p}</bdi>` : m.op.c == null ? _T('ما جاوب') : _T('خطأ')}</span>`;
     if (m.me.ok) arPop('#ars0', m.me.p); if (m.op.ok) arPop('#ars1', m.op.p);
     arBoard(); AR.opA = false; arOpStatus(); const nn = $('#arndn'); if (nn) nn.hidden = true;
     const tm = $('#artm'); if (tm) tm.classList.remove('low');
@@ -3431,21 +3450,21 @@
     if (!AR.m) return;
     AR.st = 'end'; AR.end = m; arStop(); window.onbeforeunload = null; AR.sc = m.sc;
     AR.done = m.done; m.keys.forEach((k, j) => { if (j < m.done && !AR.hist[j]) AR.hist[j] = { k, my: m.my[j], mo: m.my[j] === k, op: m.op[j], oo: m.op[j] === k, mp: m.pts[0][j], opp: m.pts[1][j] }; });
-    AR.i = -1; arBoard(); arOpStatus(); const qc = $('#arqc'); if (qc) qc.innerHTML = `${m.done}<small>/${AR.m.refs.length}</small>`; const tm = $('#artm'); if (tm) tm.textContent = 'انتهت'; const bar = $('#arbar'); if (bar) bar.style.width = '0%';
+    AR.i = -1; arBoard(); arOpStatus(); const qc = $('#arqc'); if (qc) qc.innerHTML = `${m.done}<small>/${AR.m.refs.length}</small>`; const tm = $('#artm'); if (tm) tm.textContent = _T('انتهت'); const bar = $('#arbar'); if (bar) bar.style.width = '0%';
     const qt = $('#arqt'); if (qt) qt.remove();
     const op = AR.m.op, win = m.res === 'win', why = m.why;
-    const head = { win: 'فزت!', loss: 'خسرت هالمرة', draw: 'تعادل' }[m.res];
-    const sub = why === 'quit' ? (win ? 'خصمك انسحب من المباراة.' : 'انسحبت من المباراة.') : why === 'left' ? (win ? 'انقطع اتصال خصمك وما رجع.' : 'انقطع اتصالك وما رجعت في الوقت.')
-      : win ? `جاوبت ${m.cor[0]} صح من 20 وجبت نقاط أكثر من ${esc(op.n || 'خصمك')}.` : m.res === 'draw' ? 'نفس النقاط بالضبط!' : `${esc(op.n || 'خصمك')} جاب نقاط أكثر. راجع الأسئلة تحت وارجع أقوى.`;
-    const rt = m.rated && m.r ? `<p class="ar-rtc">تصنيفك <b>${m.r.now}</b> <em class="${m.r.d >= 0 ? 'up' : 'dn'}" dir="ltr">${m.r.d >= 0 ? '+' : ''}${m.r.d}</em></p>` : '<p class="ar-rtc">مباراة بدون تصنيف</p>';
-    $('#arq').innerHTML = `<section class="ar-end ${m.res}">
+    const head = { win: _T('فزت!'), loss: _T('خسرت هالمرة'), draw: _T('تعادل') }[m.res];
+    const sub = why === 'quit' ? (win ? _T('خصمك انسحب من المباراة.') : _T('انسحبت من المباراة.')) : why === 'left' ? (win ? _T('انقطع اتصال خصمك وما رجع.') : _T('انقطع اتصالك وما رجعت في الوقت.'))
+      : win ? _T`جاوبت ${m.cor[0]} صح من 20 وجبت نقاط أكثر من ${esc(op.n || _T('خصمك'))}.` : m.res === 'draw' ? _T('نفس النقاط بالضبط!') : _T`${esc(op.n || _T('خصمك'))} جاب نقاط أكثر. راجع الأسئلة تحت وارجع أقوى.`;
+    const rt = m.rated && m.r ? _T`<p class="ar-rtc">تصنيفك <b>${m.r.now}</b> <em class="${m.r.d >= 0 ? 'up' : 'dn'}" dir="ltr">${m.r.d >= 0 ? '+' : ''}${m.r.d}</em></p>` : _T('<p class="ar-rtc">مباراة بدون تصنيف</p>');
+    $('#arq').innerHTML = _T`<section class="ar-end ${m.res}">
       <div class="ar-eh"><h2>${head}</h2><p>${sub}</p></div>
       <div class="ar-fin"><div class="me">${avatarHtml(AR.m.me.a || arMe().a, arMe().n, 56)}<b dir="ltr">${m.sc[0]}</b><span>${m.cor[0]} صح</span></div><span class="ar-fx">–</span><div class="op">${avatarHtml(op.a, op.n, 56)}<b dir="ltr">${m.sc[1]}</b><span>${m.cor[1]} صح</span></div></div>
       ${rt}
-      ${isFree() && AR.left === 0 ? `<div class="ar-acts c"><button class="rz-go" data-sub>⭐ اشترك والعب بدون حد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div><p class="ar-free">هذي كانت آخر مباراة مجانية لك اليوم، وترجع لك ${FREE_GAMES} مباريات بكرة.</p>`
-        : `<div class="ar-acts c"><button class="rz-go" id="arag">إعادة المباراة</button><button class="btn" id="arnw">خصم جديد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div>${isFree() && AR.left != null ? `<p class="ar-free">باقي لك <b>${AR.left}</b> من ${FREE_GAMES} مباريات مجانية اليوم</p>` : ''}`}
+      ${isFree() && AR.left === 0 ? _T`<div class="ar-acts c"><button class="rz-go" data-sub>⭐ اشترك والعب بدون حد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div><p class="ar-free">هذي كانت آخر مباراة مجانية لك اليوم، وترجع لك ${FREE_GAMES} مباريات بكرة.</p>`
+        : _T`<div class="ar-acts c"><button class="rz-go" id="arag">إعادة المباراة</button><button class="btn" id="arnw">خصم جديد</button><button class="btn ghost" id="arbk">رجوع للساحة</button></div>${isFree() && AR.left != null ? _T`<p class="ar-free">باقي لك <b>${AR.left}</b> من ${FREE_GAMES} مباريات مجانية اليوم</p>` : ''}`}
       <p class="ar-agn" id="aragn" aria-live="polite"></p>
-      ${m.done ? `<details class="ar-rv" id="arrvd"><summary>راجع ${m.done === 20 ? 'الأسئلة الـ20' : m.done === 1 ? 'السؤال' : 'الأسئلة الـ' + m.done} وإجاباتها</summary><div id="arrv"></div></details>` : ''}
+      ${m.done ? _T`<details class="ar-rv" id="arrvd"><summary>${EN ? (m.done === 1 ? 'Review the question and its answer' : `Review the ${m.done} questions and their answers`) : `راجع ${m.done === 20 ? 'الأسئلة الـ20' : m.done === 1 ? 'السؤال' : 'الأسئلة الـ' + m.done} وإجاباتها`}</summary><div id="arrv"></div></details>` : ''}
     </section>`;
     if (win && !RM()) confetti();
     if (AR.info) { if (m.rated && m.r) AR.info.r = m.r.now; AR.info.hist = null; }
@@ -3460,18 +3479,18 @@
   function arReview() {
     const op = AR.m.op;
     const full = (r) => AR.T ? AR.T.sections[r[0] - 1].items[r[1]] : null;
-    return (isFree() ? '<p class="ar-exl">🔒 شرح كل سؤال للمشتركين في الدورة. <button type="button" class="lnk" data-sub>اشترك</button></p>' : '') + AR.m.refs.slice(0, AR.done == null ? AR.m.refs.length : AR.done).map((r, j) => {
+    return (isFree() ? _T('<p class="ar-exl">🔒 شرح كل سؤال للمشتركين في الدورة. <button type="button" class="lnk" data-sub>اشترك</button></p>') : '') + AR.m.refs.slice(0, AR.done == null ? AR.m.refs.length : AR.done).map((r, j) => {
       const it = arItem(j), h = AR.hist[j] || {}; if (!it) return ''; const ty = it.type, fx = full(r), exp = fx && fx.exp;
       const lab = o => esc(ty === 'quant' ? o.replace(/^[A-D]\)\s*/, '') : o);
-      return `<article class="ar-ri"><div class="ar-rih"><b>سؤال ${j + 1}</b><span class="tag">${AR_T[ty] || ''}</span><span class="ar-rir ${h.mo ? 'ok' : 'bad'}">${h.mo ? `أنت صح +${h.mp || 0}` : h.my == null ? 'ما جاوبت' : 'أنت خطأ'}</span><span class="ar-rio">${esc(op.n || 'خصمك')}: ${h.oo ? 'صح' : h.op == null ? 'ما جاوب' : 'خطأ'}</span></div>
-        ${ty === 'quant' ? `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${j + 1}" loading="lazy">` : `<p class="ltr">${esc(it.q)}</p>`}
-        <ul class="ar-ro ltr">${it.opts.map((o, k) => `<li class="${k === h.k ? 'k' : k === h.my ? 'w' : ''}"><b>${LETTERS[k]}</b> ${lab(o)}${k === h.my ? ' <small>اختيارك</small>' : ''}${k === h.op ? ' <small>خصمك</small>' : ''}</li>`).join('')}</ul>
-        ${exp ? `<details class="ar-ex"><summary>الشرح</summary><div>${fmtExp(exp)}</div></details>` : ''}</article>`;
+      return _T`<article class="ar-ri"><div class="ar-rih"><b>سؤال ${j + 1}</b><span class="tag">${AR_T[ty] || ''}</span><span class="ar-rir ${h.mo ? 'ok' : 'bad'}">${h.mo ? _T`أنت صح +${h.mp || 0}` : h.my == null ? _T('ما جاوبت') : _T('أنت خطأ')}</span><span class="ar-rio">${esc(op.n || _T('خصمك'))}: ${h.oo ? _T('صح') : h.op == null ? _T('ما جاوب') : _T('خطأ')}</span></div>
+        ${ty === 'quant' ? _T`<img src="${it.img}" width="${it.w}" height="${it.h}" alt="سؤال ${j + 1}" loading="lazy">` : `<p class="ltr">${esc(it.q)}</p>`}
+        <ul class="ar-ro ltr">${it.opts.map((o, k) => `<li class="${k === h.k ? 'k' : k === h.my ? 'w' : ''}"><b>${LETTERS[k]}</b> ${lab(o)}${k === h.my ? _T(' <small>اختيارك</small>') : ''}${k === h.op ? _T(' <small>خصمك</small>') : ''}</li>`).join('')}</ul>
+        ${exp ? _T`<details class="ar-ex"><summary>الشرح</summary><div>${fmtExp(exp)}</div></details>` : ''}</article>`;
     }).join('');
   }
 
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
-  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });
+  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', _T('المساعد الذكي')), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });
   applyFs(); applyTheme();
   if (!gsiFromHash()) route();
 })();

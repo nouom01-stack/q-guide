@@ -143,3 +143,10 @@ h1{margin:0 0 6px;font-size:calc(24px * var(--fs))}h2{margin:0 0 10px;font-size:
 .freeb b{font-size:calc(17px * var(--fs))}
 .freeb span{color:rgba(255,255,255,.84);font-size:calc(14px * var(--fs));line-height:1.7}
 .tcard.hl{border-color:var(--teal);box-shadow:0 0 0 3px rgba(31,158,142,.25)}
+
+/* 🌐 English: كتل الواجهة اللي كانت عربية (.ar) تصير يسار ← يمين، وترجمة السؤال العربية (.tr) تبقى يمين ← يسار */
+html.l-en .ar:not(.tr){font-family:inherit;direction:ltr;text-align:left}
+.hdr .lng{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:30px;padding:0 9px;border-radius:6px;border:1.5px solid rgba(255,255,255,.5);color:#fff;font:inherit;font-weight:700;font-size:13px;background:none;cursor:pointer}
+.hdr .lng:hover{background:rgba(255,255,255,.14)}
+.login .card{position:relative}
+.lgl{position:absolute;top:12px;inset-inline-end:12px;display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:32px;padding:0 11px;border-radius:999px;border:1.5px solid #D5DEE3;background:#fff;color:#0B7A6F;font:inherit;font-weight:700;font-size:14px;cursor:pointer}

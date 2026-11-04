@@ -4,8 +4,8 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function open(opts) {
     return new Promise(resolve => {
-      const ov = document.createElement('div'); ov.className = 'qgdlg'; ov.setAttribute('dir', 'rtl');
-      ov.innerHTML = `<div class="qgdlg-box" role="dialog" aria-modal="true">${opts.title ? `<h3>${esc(opts.title)}</h3>` : ''}<p>${esc(opts.msg).replace(/\n/g, '<br>')}</p>${opts.input ? `<input type="text" class="qgdlg-in" value="${esc(opts.def || '')}" placeholder="${esc(opts.placeholder || '')}">` : ''}<div class="qgdlg-acts"><button class="qgdlg-ok ${opts.danger ? 'danger' : ''}">${esc(opts.ok || 'موافق')}</button>${opts.cancel !== false ? `<button class="qgdlg-cancel">${esc(opts.cancel || 'إلغاء')}</button>` : ''}</div></div>`;
+      const ov = document.createElement('div'); ov.className = 'qgdlg'; ov.setAttribute('dir', window.QGL && QGL.en ? 'ltr' : 'rtl');
+      ov.innerHTML = `<div class="qgdlg-box" role="dialog" aria-modal="true">${opts.title ? `<h3>${esc(opts.title)}</h3>` : ''}<p>${esc(opts.msg).replace(/\n/g, '<br>')}</p>${opts.input ? `<input type="text" class="qgdlg-in" value="${esc(opts.def || '')}" placeholder="${esc(opts.placeholder || '')}">` : ''}<div class="qgdlg-acts"><button class="qgdlg-ok ${opts.danger ? 'danger' : ''}">${esc(opts.ok || (window.QGL && QGL.en ? 'OK' : 'موافق'))}</button>${opts.cancel !== false ? `<button class="qgdlg-cancel">${esc(opts.cancel || (window.QGL && QGL.en ? 'Cancel' : 'إلغاء'))}</button>` : ''}</div></div>`;
       document.body.appendChild(ov);
       const inp = ov.querySelector('.qgdlg-in'); const okb = ov.querySelector('.qgdlg-ok'); const cb = ov.querySelector('.qgdlg-cancel');
       const done = v => { ov.classList.add('out'); setTimeout(() => ov.remove(), 120); document.removeEventListener('keydown', onKey); resolve(v); };
@@ -20,7 +20,7 @@
   window.QGDlg = {
     confirm: (msg, o) => open(Object.assign({ msg }, o || {})),
     prompt: (msg, def, o) => open(Object.assign({ msg, input: true, def }, o || {})),
-    alert: (msg, o) => open(Object.assign({ msg, cancel: false, ok: 'حسناً' }, o || {})),
+    alert: (msg, o) => open(Object.assign({ msg, cancel: false, ok: window.QGL && QGL.en ? 'OK' : 'حسناً' }, o || {})),
   };
   const css = document.createElement('style'); css.textContent = `
 .qgdlg{position:fixed;inset:0;background:rgba(10,20,50,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;opacity:0;transition:opacity .12s;font-family:"Tajawal","Segoe UI",Tahoma,sans-serif}

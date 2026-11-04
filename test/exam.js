@@ -37,7 +37,8 @@
   const today = () => new Date().toISOString().slice(0, 10);
   async function api(body) {
     const r = await fetch(window.QG.API, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow' });
-    return r.json();
+    const j = await r.json(); if (window.QGL && QGL.en && j && typeof j.msg === 'string') j.msg = _T(j.msg);   // 🌐 رسائل الخادم بالإنجليزي
+    return j;
   }
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function loadTest(id) {
@@ -61,8 +62,8 @@
     renderLobby();
   }
   function renderLogin(err) {
-    document.title = 'تسجيل الدخول | Q-Guide';
-    app.innerHTML = `<div class="login ar"><div class="card"><img src="/assets/logo.png" alt=""><h1>الاختبارات المحاكية</h1><p class="mut">نفس شكل اختبار قياس المحوسب: 4 أقسام × 24 سؤال، 25 دقيقة لكل قسم</p>
+    document.title = _T('تسجيل الدخول | Q-Guide');
+    app.innerHTML = _T`<div class="login ar"><div class="card">${window.QGL ? QGL.btn('lng lgl') : ''}<img src="/assets/logo.png" alt=""><h1>الاختبارات المحاكية</h1><p class="mut">نفس شكل اختبار قياس المحوسب: 4 أقسام × 24 سؤال، 25 دقيقة لكل قسم</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>${err ? `<div class="err">${err}</div>` : ''}
       <p class="mut" style="font-size:13px">سجّل دخولك بحساب Google. المشترك تنفتح له الاختبارات الـ 17، وغير المشترك يجرّب <b>الاختبار المحاكي 1 مجاناً</b>.</p><p style="font-size:13px"><a href="/p/">منصة التدريب</a> · <a href="/privacy/">الخصوصية</a></p></div></div>`;
     mountGoogle();
@@ -70,71 +71,71 @@
   let gTries = 0;
   // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...)
   function gsiFromHash() {
-    const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.'); return true; } return false; }
+    const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin(_T('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.')); return true; } return false; }
     const cred = decodeURIComponent(m[1]); history.replaceState(null, '', location.pathname);
     renderLogin(); onCredential({ credential: cred }); return true;
   }
   function mountGoogle() {
     const host = $('#gbtn'); if (!host) return;
-    if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.textContent = 'تعذّر تحميل تسجيل الدخول، حدّث الصفحة.'; return; }
+    if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.textContent = _T('تعذّر تحميل تسجيل الدخول، حدّث الصفحة.'); return; }
     google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi?to=/test/' } : { ux_mode: 'popup' }));
-    host.innerHTML = ''; google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ar', width: 280 });
+    host.innerHTML = ''; google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: window.QGL && QGL.en ? 'en' : 'ar', width: 280 });
   }
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = '<div class="spin"></div>';
     try {
       const r = await api({ op: 'login', idToken: resp.credential, ua: navigator.userAgent.slice(0, 120) });
-      if (!r.ok) return renderLogin(esc(r.msg || 'تعذّر تسجيل الدخول.') + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
+      if (!r.ok) return renderLogin(esc(r.msg || _T('تعذّر تسجيل الدخول.')) + _T('<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>'));
       auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || {}, display: r.display || r.name, avatar: r.avatar || '' };
       lsSet(LS.auth, auth); route();
-    } catch (e) { renderLogin('تعذّر الاتصال بالخادم، حاول مرة أخرى.'); }
+    } catch (e) { renderLogin(_T('تعذّر الاتصال بالخادم، حاول مرة أخرى.')); }
   }
 
   // ---------- header ----------
   function header(dateText) {
-    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، أحتاج دعم فني في الاختبارات المحاكية Q-Guide\n' + (auth.display || auth.name || '') + ' · ' + (auth.email || '') + '\nالمشكلة: ');
-    return `<header class="hdr"><div class="lg"><img src="/assets/logo.png" alt="">Q-Guide</div><div class="date">${esc(dateText || today())}</div><a class="wa" href="${wa}" target="_blank" rel="noopener" title="دعم فني عبر واتساب">💬 <span>دعم</span></a>
+    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أحتاج دعم فني في الاختبارات المحاكية Q-Guide\n') + (auth.display || auth.name || '') + ' · ' + (auth.email || '') + _T('\nالمشكلة: '));
+    return _T`<header class="hdr"><div class="lg"><img src="/assets/logo.png" alt="">Q-Guide</div><div class="date">${esc(dateText || today())}</div><a class="wa" href="${wa}" target="_blank" rel="noopener" title="دعم فني عبر واتساب">💬 <span>دعم</span></a>${window.QGL ? QGL.btn('lng') : ''}
       <div class="user"><span>${esc(auth.display || auth.name || '')}</span><img src="${auth.avatar ? esc(auth.avatar) : '/assets/logo.png'}" alt="" referrerpolicy="no-referrer" onerror="this.src='/assets/logo.png'"></div></header>`;
   }
 
   // ---------- lobby ----------
   async function renderLobby() {
-    document.title = 'الاختبارات المحاكية | Q-Guide';
+    document.title = _T('الاختبارات المحاكية | Q-Guide');
     // ⚡ نعرض آخر حالة محفوظة فوراً، ونحدّثها من الخادم في الخلفية
     const cached = lsGet(LS.exState, null); const mine = ++lobbySeq;
     if (cached && cached.e === auth.email && cached.tests) { state = cached.tests; try { if (!manifest) manifest = await (await fetch('/test/data/manifest.json', { cache: 'force-cache' })).json(); paintLobby(true); } catch (e) {} }
-    else app.innerHTML = header() + '<div class="page ar"><div class="card center"><div class="spin" style="margin:0 auto 10px"></div>جارٍ تحميل اختباراتك…</div></div>';
+    else app.innerHTML = header() + _T('<div class="page ar"><div class="card center"><div class="spin" style="margin:0 auto 10px"></div>جارٍ تحميل اختباراتك…</div></div>');
     try {
       const [mf, r] = await Promise.all([manifest ? Promise.resolve(manifest) : fetch('/test/data/manifest.json', { cache: 'force-cache' }).then(x => x.json()), api({ op: 'exam_state', session: auth.session })]);
       manifest = mf;
       if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.error); }
       state = r.tests; lsSet(LS.exState, { e: auth.email, tests: state, t: Date.now() });
-    } catch (e) { if (cached && cached.e === auth.email) return; app.innerHTML = header() + `<div class="page ar"><div class="card">تعذّر الاتصال بالخادم (${esc(e.message)}). <a href="#" onclick="location.reload()">أعد المحاولة</a></div></div>`; return; }
+    } catch (e) { if (cached && cached.e === auth.email) return; app.innerHTML = header() + _T`<div class="page ar"><div class="card">تعذّر الاتصال بالخادم (${esc(e.message)}). <a href="#" onclick="location.reload()">أعد المحاولة</a></div></div>`; return; }
     if (mine !== lobbySeq) return;   // المستخدم انتقل لصفحة أخرى أثناء التحميل
     paintLobby(false);
   }
   let lobbySeq = 0, lobbyJump = 0;
   function paintLobby(stale) {
     const cards = manifest.map(t => {
-      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return `<div class="tcard lk" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
+      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return _T`<div class="tcard lk" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
       const s = state[t.id] || { status: 'none' };
       let body, act;
-      if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? `<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = `<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
-      else if (s.status === 'in_progress') { body = `<div class="meta">متوقف عند القسم ${s.nextSection} من 4</div>`; act = `<button class="btn" data-go="${t.id}">متابعة الاختبار</button>`; }
-      else { body = `<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم${isFree() ? '' : ' · أول محاولة تُحسب في لوحة الصدارة'}</div>`; act = `<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
-      const pill = s.status === 'done' ? '<span class="pill done">مكتمل</span>' : s.status === 'in_progress' ? '<span class="pill prog">جارٍ</span>' : '<span class="pill none">لم يبدأ</span>';
-      const adm = auth.role === 'admin' && s.status !== 'none' ? `<button class="btn sm ghost" data-reset="${t.id}" style="margin-top:6px">إعادة تعيين (مشرف)</button>` : '';
+      if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? _T`<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = _T`<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = _T`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
+      else if (s.status === 'in_progress') { body = _T`<div class="meta">متوقف عند القسم ${s.nextSection} من 4</div>`; act = _T`<button class="btn" data-go="${t.id}">متابعة الاختبار</button>`; }
+      else { body = _T`<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم${isFree() ? '' : _T(' · أول محاولة تُحسب في لوحة الصدارة')}</div>`; act = _T`<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
+      const pill = s.status === 'done' ? _T('<span class="pill done">مكتمل</span>') : s.status === 'in_progress' ? _T('<span class="pill prog">جارٍ</span>') : _T('<span class="pill none">لم يبدأ</span>');
+      const adm = auth.role === 'admin' && s.status !== 'none' ? _T`<button class="btn sm ghost" data-reset="${t.id}" style="margin-top:6px">إعادة تعيين (مشرف)</button>` : '';
       return `<div class="tcard" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span>${pill}</div><div class="mut" style="font-size:13px">${esc(t.en)}</div>${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
     }).join('');
-    app.innerHTML = header() + `<div class="page ar">
-      <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>${isFree() ? '.' : '، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.'}</p>
-      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><a class="btn ghost sm" href="/p/">← منصة التدريب</a>${isFree() ? '' : '<a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a>'}${stale ? '<span class="mut" style="font-size:12.5px">⟳ جارٍ التحديث…</span>' : ''}</p></div>
-      ${isFree() ? `<div class="freeb"><div><b>أنت على الحساب المجاني</b><span>الاختبار المحاكي 1 مفتوح لك كامل. الاختبارات الـ 16 الباقية، مع أقسام الدورة كلها، للمشتركين.</span></div><a class="btn gold" href="${SUB_URL}">اشترك في الدورة</a></div>` : ''}
+    app.innerHTML = header() + _T`<div class="page ar">
+      <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>${isFree() ? '.' : _T('، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.')}</p>
+      <p style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><a class="btn ghost sm" href="/p/">← منصة التدريب</a>${isFree() ? '' : _T('<a class="btn ghost sm" href="/p/#board-exam">🏆 لوحة الصدارة</a>')}${stale ? _T('<span class="mut" style="font-size:12.5px">⟳ جارٍ التحديث…</span>') : ''}</p></div>
+      ${isFree() ? _T`<div class="freeb"><div><b>أنت على الحساب المجاني</b><span>الاختبار المحاكي 1 مفتوح لك كامل. الاختبارات الـ 16 الباقية، مع أقسام الدورة كلها، للمشتركين.</span></div><a class="btn gold" href="${SUB_URL}">اشترك في الدورة</a></div>` : ''}
       <div class="tests">${cards}</div></div>`;
     document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => startFlow(b.dataset.go));
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
-    document.querySelectorAll('[data-retake]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('بدء محاولة جديدة؟ نتيجتك الأولى تبقى هي المحسوبة في لوحة الصدارة، وهذه المحاولة للتدريب.', { ok: 'ابدأ' })) return; [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.retake + '_' + k)); startFlow(b.dataset.retake, true); });
-    document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('إعادة تعيين هذا الاختبار لك (مشرف)؟', { danger: true })) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.reset + '_' + k)); renderLobby(); });
+    document.querySelectorAll('[data-retake]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm(_T('بدء محاولة جديدة؟ نتيجتك الأولى تبقى هي المحسوبة في لوحة الصدارة، وهذه المحاولة للتدريب.'), { ok: _T('ابدأ') })) return; [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.retake + '_' + k)); startFlow(b.dataset.retake, true); });
+    document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm(_T('إعادة تعيين هذا الاختبار لك (مشرف)؟'), { danger: true })) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.reset + '_' + k)); renderLobby(); });
 
     // 📅 جاي من خطة المذاكرة (/test/#t5): نبيّن الاختبار نفسه
     const hm = /^#(t\d{1,2})$/.exec(location.hash), hc = hm && document.getElementById('tc-' + hm[1]);
@@ -155,7 +156,7 @@
     testIntro(id);
   }
   function testIntro(id) {
-    app.innerHTML = header() + `<div class="page"><div class="card instr">
+    app.innerHTML = header() + _T`<div class="page"><div class="card instr">
       <h1>${esc(T.en)} — Test Instructions</h1>
       <ul>
         <li>The test consists of <b>4 sections</b>, each with <b>24 multiple-choice questions</b> (verbal questions first, then quantitative).</li>
@@ -184,7 +185,7 @@
         if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); await QGDlg.alert(r.msg || r.error); return renderLobby(); }
         const skew = Date.now() - r.serverNow;   // local clock offset
         runSection(id, sec, r.deadline + skew);
-      } catch (e) { QGDlg.alert('تعذّر الاتصال بالخادم'); $('#start').disabled = false; }
+      } catch (e) { QGDlg.alert(_T('تعذّر الاتصال بالخادم')); $('#start').disabled = false; }
     };
   }
 
@@ -213,7 +214,7 @@
     $('#prev').onclick = () => { saveCur(); show(Math.max(0, E.cur - 1)); };
     $('#next').onclick = () => { saveCur(); if (E.cur < 23) show(E.cur + 1); else { renderGrid(); } };
     $('#mark').onchange = () => { E.m[E.cur] = $('#mark').checked ? 1 : 0; persist(); renderGrid(); };
-    $('#b_end').onclick = () => { saveCur(); const un = E.a.filter(x => x == null).length; modal(`<h3>${sec < 4 ? 'End Section' : 'End Test'}?</h3><p>${un ? `You have <b>${un}</b> unanswered question(s). ` : ''}You will not be able to return to this section.</p><p class="ar mut" style="font-size:13.5px">لن تستطيع الرجوع لهذا القسم بعد إنهائه.</p>`, [['Cancel', 'ghost', closeModal], ['Yes, end section', 'red', () => submit(false)]]); };
+    $('#b_end').onclick = () => { saveCur(); const un = E.a.filter(x => x == null).length; modal(_T`<h3>${sec < 4 ? 'End Section' : 'End Test'}?</h3><p>${un ? `You have <b>${un}</b> unanswered question(s). ` : ''}You will not be able to return to this section.</p><p class="ar mut" style="font-size:13.5px">لن تستطيع الرجوع لهذا القسم بعد إنهائه.</p>`, [['Cancel', 'ghost', closeModal], ['Yes, end section', 'red', () => submit(false)]]); };
     $('#b_sinstr').onclick = () => modal(`<h3>Section Instructions</h3><p>This section has 24 questions and 25 minutes. Verbal questions come first, then quantitative. Choose the best answer, press <b>Save &amp; Next</b>, and use the question grid to move between questions.</p>`, [['Close', '', closeModal]]);
     $('#b_tinstr').onclick = () => modal(`<h3>Test Instructions</h3><ul style="padding-left:18px"><li>4 sections × 24 questions, 25 minutes each.</li><li>No return to a finished section.</li><li>Unanswered = wrong; no penalty for guessing.</li></ul>`, [['Close', '', closeModal]]);
     $('#b_eq').onclick = () => modal(`<h3>Equations</h3><div class="eq">
@@ -268,7 +269,7 @@
       if (!(r && r.ok)) await new Promise(res => setTimeout(res, 1500));
     }
     ov.remove(); E = null;
-    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); QGDlg.alert('تعذّر تسليم القسم، تأكد من الإنترنت ثم أعد فتح الصفحة — إجاباتك محفوظة.'); return renderLobby(); }
+    if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); QGDlg.alert(_T('تعذّر تسليم القسم، تأكد من الإنترنت ثم أعد فتح الصفحة — إجاباتك محفوظة.')); return renderLobby(); }
     lsDel(LS.ex + id + '_' + sec);
     state[id] = r.state;
     if (r.state.status === 'done') return renderResult(id);
@@ -280,10 +281,10 @@
     app.innerHTML = header() + '<div class="page center"><div class="spin" style="margin:30px auto"></div></div>';
     const r = await api({ op: 'exam_result', session: auth.session, test: id }); if (!r.ok) return renderLobby();
     const s = r.state; const t = manifest.find(x => x.id === id) || { title: id };
-    app.innerHTML = header() + `<div class="page ar"><div class="card"><h1>نتيجة ${esc(t.title)}</h1>
+    app.innerHTML = header() + _T`<div class="page ar"><div class="card"><h1>نتيجة ${esc(t.title)}</h1>
       <div class="res"><div class="center"><div class="big">${s.pct}<small>%</small></div><div class="mut">${s.total} إجابة صحيحة من 96</div>
-      <p style="margin:14px 0 0;font-weight:700;color:#0F3D37">${s.pct >= 85 ? 'ممتاز! مستوى متقدم 🌟' : s.pct >= 70 ? 'جيد جداً 👏 — راجع الأخطاء وستتقدم أكثر' : s.pct >= 55 ? 'جيد 💪 — ركّز على الأقسام الأضعف' : 'ابدأ بمراجعة الشرح وأعد التدريب على الأقسام في منصة التدريب 📘'}</p></div>
-      <div><div class="stat"><span>اللفظي</span><b>${s.vpct}%</b></div><div class="stat"><span>الكمي</span><b>${s.qpct}%</b></div>${(s.secScores || []).map((c, i) => `<div class="stat"><span>القسم ${i + 1}</span><b>${c}/24</b></div>`).join('')}</div></div>
+      <p style="margin:14px 0 0;font-weight:700;color:#0F3D37">${s.pct >= 85 ? _T('ممتاز! مستوى متقدم 🌟') : s.pct >= 70 ? _T('جيد جداً 👏 — راجع الأخطاء وستتقدم أكثر') : s.pct >= 55 ? _T('جيد 💪 — ركّز على الأقسام الأضعف') : _T('ابدأ بمراجعة الشرح وأعد التدريب على الأقسام في منصة التدريب 📘')}</p></div>
+      <div><div class="stat"><span>اللفظي</span><b>${s.vpct}%</b></div><div class="stat"><span>الكمي</span><b>${s.qpct}%</b></div>${(s.secScores || []).map((c, i) => _T`<div class="stat"><span>القسم ${i + 1}</span><b>${c}/24</b></div>`).join('')}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn" id="rev">مراجعة الإجابات مع الشرح</button><a class="btn ghost" href="/test/" onclick="location.reload()">كل الاختبارات</a><a class="btn ghost" href="/p/">منصة التدريب</a></div></div></div>`;
     $('#rev').onclick = () => renderReview(id, r);
   }
@@ -292,18 +293,18 @@
     try { if (!T || T.id !== id) T = await loadTest(id); if (!res) res = await api({ op: 'exam_result', session: auth.session, test: id }); } catch (e) { return renderLobby(); }
     if (!res.ok) return renderLobby();
     const t = manifest.find(x => x.id === id) || { title: id };
-    let h = `<div class="page"><div class="card ar"><h1>مراجعة ${esc(t.title)}</h1><p class="mut">النتيجة ${res.state.pct}% · ${res.state.total}/96 — الأخضر إجابتك الصحيحة، الأحمر إجابتك الخاطئة والصحيح معلّم.</p><a class="btn ghost sm" href="/test/" onclick="location.reload()">← رجوع</a></div>`;
+    let h = _T`<div class="page"><div class="card ar"><h1>مراجعة ${esc(t.title)}</h1><p class="mut">النتيجة ${res.state.pct}% · ${res.state.total}/96 — الأخضر إجابتك الصحيحة، الأحمر إجابتك الخاطئة والصحيح معلّم.</p><a class="btn ghost sm" href="/test/" onclick="location.reload()">← رجوع</a></div>`;
     res.sections.forEach(sec => {
       const S = T.sections[sec.n - 1];
-      h += `<h2 class="ar" style="margin:18px 0 10px">القسم ${sec.n} — ${sec.c}/24</h2>`;
+      h += _T`<h2 class="ar" style="margin:18px 0 10px">القسم ${sec.n} — ${sec.c}/24</h2>`;
       S.items.forEach((it, i) => {
         const a = sec.a[i], k = it.ans, ok = a === k;
         h += `<div class="rv"><div class="h"><span>Q${i + 1} · ${INSTR[it.type] ? it.type.toUpperCase() : ''}</span><span class="${ok ? 'ok' : 'bad'}">${ok ? '✓ Correct' : (a == null ? '— Not answered' : '✗ Wrong')}</span></div>
           ${it.type === 'read' ? `<details><summary class="mut" style="cursor:pointer;font-size:13px">Passage: ${esc(it.ptitle || '')}</summary><div class="passage" style="max-height:none">${esc(it.passage)}</div></details>` : ''}
           ${it.type === 'quant' ? `<img src="${it.img}" alt="">` : `<p class="qtext" style="text-align:left">${esc(it.q)}</p>`}
           ${it.opts.map((o, j) => `<div class="o ${j === k ? 'k' : (j === a ? 'w' : '')}">${LETTERS[j]}) ${esc(o.replace(/^[A-D]\)\s*/, ''))}${j === k ? ' ✓' : (j === a ? ' ✗' : '')}</div>`).join('')}
-          ${window.QGAI ? `<div class="ar">${QGAI.slot({ ref: id + ':' + sec.n + ':' + i, pick: a == null ? null : a, wrong: a != null && !ok, label: `Q${i + 1} · القسم ${sec.n} · الإجابة الصحيحة ${LETTERS[k]}${a != null && !ok ? ` · إجابتك ${LETTERS[a]} ✗` : ''}` })}</div>` : ''}
-          ${it.ar && it.ar.q ? `<div class="ex ar tr"><b>🇸🇦 الترجمة:</b> ${arMath(it.ar.q)}${(it.ar.o || []).some(Boolean) ? `<div class="tro">${it.opts.map((o, j) => `<span class="${j === k ? 'k' : ''}">${LETTERS[j]}) ${arMath((it.ar.o || [])[j] || '')}</span>`).join('')}</div>` : ''}${it.wd && it.wd.length ? `<div class="wds">${it.wd.filter(x => !/^(ahmed|khalid|khaled|mohamed|mohammed|muhammad|sara|sarah|nora|ali|saad)$/.test(x[0])).map(x => `<span><b dir="ltr">${esc(x[0])}</b> ${esc(x[1])}</span>`).join('')}</div>` : ''}</div>` : ''}</div>`;
+          ${window.QGAI ? `<div class="ar">${QGAI.slot({ ref: id + ':' + sec.n + ':' + i, pick: a == null ? null : a, wrong: a != null && !ok, label: _T`Q${i + 1} · القسم ${sec.n} · الإجابة الصحيحة ${LETTERS[k]}${a != null && !ok ? _T` · إجابتك ${LETTERS[a]} ✗` : ''}` })}</div>` : ''}
+          ${it.ar && it.ar.q ? _T`<div class="ex ar tr"><b>🇸🇦 الترجمة:</b> ${arMath(it.ar.q)}${(it.ar.o || []).some(Boolean) ? `<div class="tro">${it.opts.map((o, j) => `<span class="${j === k ? 'k' : ''}">${LETTERS[j]}) ${arMath((it.ar.o || [])[j] || '')}</span>`).join('')}</div>` : ''}${it.wd && it.wd.length ? `<div class="wds">${it.wd.filter(x => !/^(ahmed|khalid|khaled|mohamed|mohammed|muhammad|sara|sarah|nora|ali|saad)$/.test(x[0])).map(x => `<span><b dir="ltr">${esc(x[0])}</b> ${esc(x[1])}</span>`).join('')}</div>` : ''}</div>` : ''}</div>`;
       });
     });
     app.innerHTML = header() + h + '</div>'; window.scrollTo(0, 0);

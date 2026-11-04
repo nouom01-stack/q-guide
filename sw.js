@@ -22,6 +22,7 @@ const dl = n => n === 1 ? 'يوم' : n === 2 ? 'يومين' : n <= 10 ? n + ' أ
 async function remNote() {
   let c = null; try { const r = await (await caches.open('qg-meta')).match('/__rem'); if (r) c = await r.json(); } catch (e) {}
   const now = Date.now(), today = dk(now), yest = dk(now - DAYMS);
+  if (c && c.lang === 'en') return remNoteEn(c, now, today, yest);   // 🌐 الواجهة بالإنجليزي
   let title = 'وقت المذاكرة 📚', body = 'كم سؤال اليوم يقرّبك من درجتك. يلّا نكمل!';
   if (c) {
     if (c.streak > 0 && (c.last === today || c.last === yest)) title = `🔥 لا تكسر سلسلتك: ${dl(c.streak)} ورا بعض`;
@@ -32,6 +33,17 @@ async function remNote() {
     if (parts.length) body = parts.join(' · ');
   }
   return self.registration.showNotification(title, { body, icon: '/assets/icon-192.png', badge: '/assets/badge-96.png', tag: 'qg-daily', renotify: true, dir: 'rtl', lang: 'ar', data: { url: '/p/' } });
+}
+function remNoteEn(c, now, today, yest) {
+  const days = n => n === 1 ? '1 day' : n + ' days';
+  let title = 'Study time 📚', body = 'A few questions today bring you closer to your score. Let’s go!';
+  if (c.streak > 0 && (c.last === today || c.last === yest)) title = `🔥 Don’t break your streak: ${days(c.streak)} in a row`;
+  else if (c.last && c.last < yest) title = (c.name ? c.name + ', ' : '') + 'we miss you! 👋 Come back to studying';
+  const parts = [];
+  if (c.exam && c.exam > now) { const d = Math.round((new Date(dk(c.exam)) - new Date(today)) / DAYMS); if (d >= 1) parts.push(d === 1 ? 'Your test is tomorrow!' : `${days(d)} until your test`); }
+  if (c.task) parts.push('Today’s task: ' + c.task); else if (c.next) parts.push('Continue ' + c.next);
+  if (parts.length) body = parts.join(' · ');
+  return self.registration.showNotification(title, { body, icon: '/assets/icon-192.png', badge: '/assets/badge-96.png', tag: 'qg-daily', renotify: true, dir: 'ltr', lang: 'en', data: { url: '/p/' } });
 }
 self.addEventListener('push', e => { e.waitUntil(remNote()); });
 self.addEventListener('notificationclick', e => {

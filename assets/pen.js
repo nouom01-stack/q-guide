@@ -10,17 +10,18 @@
     host.style.position = host.style.position || 'relative';
     const cv = document.createElement('canvas'); cv.className = 'qgpen-canvas'; host.appendChild(cv);
     const ctx = cv.getContext('2d');
+    const L = (ar, en) => window.QGL && QGL.en ? en : ar;   // 🌐 عربي / English
     const bar = document.createElement('div'); bar.className = 'qgpen-bar'; bar.innerHTML = `
-      <button data-t="pen" class="on" title="قلم / Pen">✎</button>
-      <button data-t="hl" title="تظليل / Highlighter">▬</button>
-      <button data-t="eraser" title="ممحاة / Eraser">◌</button>
+      <button data-t="pen" class="on" title="${L('قلم', 'Pen')}">✎</button>
+      <button data-t="hl" title="${L('تظليل', 'Highlighter')}">▬</button>
+      <button data-t="eraser" title="${L('ممحاة', 'Eraser')}">◌</button>
       <span class="sep"></span>
-      ${COLORS.pen.map((c, i) => `<button data-c="${c}" class="sw ${i === 0 ? 'on' : ''}" style="background:${c}" title="لون"></button>`).join('')}
+      ${COLORS.pen.map((c, i) => `<button data-c="${c}" class="sw ${i === 0 ? 'on' : ''}" style="background:${c}" title="${L('لون', 'Color')}"></button>`).join('')}
       <span class="sep"></span>
-      <button data-w="thin" title="رفيع">─</button><button data-w="thick" title="عريض">━</button>
+      <button data-w="thin" title="${L('رفيع', 'Thin')}">─</button><button data-w="thick" title="${L('عريض', 'Thick')}">━</button>
       <span class="sep"></span>
-      <button data-a="undo" title="تراجع / Undo">↶</button><button data-a="clear" title="مسح الكل / Clear">🗑</button>
-      <button data-a="off" title="إغلاق القلم">✕</button>`;
+      <button data-a="undo" title="${L('تراجع', 'Undo')}">↶</button><button data-a="clear" title="${L('مسح الكل', 'Clear all')}">🗑</button>
+      <button data-a="off" title="${L('إغلاق القلم', 'Close the pen')}">✕</button>`;
     if (opts.bar !== false) host.insertBefore(bar, host.firstChild);
     function size() { const r = host.getBoundingClientRect(); const dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); redraw(); }
     const ro = new ResizeObserver(size); ro.observe(host);
@@ -45,7 +46,7 @@
       else if (b.dataset.c) { st.color = st.tool === 'hl' ? COLORS.hl[[...bar.querySelectorAll('.sw')].indexOf(b) % COLORS.hl.length] : b.dataset.c; bar.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === b)); if (st.tool === 'eraser') { st.tool = 'pen'; bar.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x.dataset.t === 'pen')); } }
       else if (b.dataset.w) { st.width = b.dataset.w === 'thick' ? 5 : 2.4; }
       else if (b.dataset.a === 'undo') { st.strokes.pop(); redraw(); persist(); }
-      else if (b.dataset.a === 'clear') { const go = () => { st.strokes = []; redraw(); persist(); }; if (!st.strokes.length) go(); else if (window.QGDlg) QGDlg.confirm('مسح كل الكتابة على هذه الصفحة؟', { ok: 'مسح', danger: true }).then(ok => { if (ok) go(); }); else go(); }
+      else if (b.dataset.a === 'clear') { const go = () => { st.strokes = []; redraw(); persist(); }; if (!st.strokes.length) go(); else if (window.QGDlg) QGDlg.confirm(window.QGL && QGL.en ? 'Clear all your writing on this page?' : 'مسح كل الكتابة على هذه الصفحة؟', { ok: window.QGL && QGL.en ? 'Clear' : 'مسح', danger: true }).then(ok => { if (ok) go(); }); else go(); }
       else if (b.dataset.a === 'off') api.toggle(false);
     });
     function persist() { if (!st.save || !st.key) return; try { if (st.strokes.length) localStorage.setItem(st.key, JSON.stringify(st.strokes)); else localStorage.removeItem(st.key); } catch (e) {} }
