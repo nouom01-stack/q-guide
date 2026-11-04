@@ -1891,3 +1891,24 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 @media (max-width:640px){.top .chip.wbsw{margin-inline-start:0;padding:5px 8px}.top .chip.wbsw .tx{display:none}.top .ttl.wbttl{display:none}}
 .sbt.vid{cursor:default}.sbt.vid:hover{border-color:var(--line)}.sbt.vid b{color:var(--navy3)}
 .sbin{color:var(--okt,#127A4D);font-weight:700;font-size:calc(12.5px * var(--fs))}
+/* ⬆️ رفع المقاطع للموقع (المالك) */
+.vup{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);padding:12px 16px;margin:0 0 12px}
+.vup summary{cursor:pointer;font-weight:800;color:var(--navy2);font-size:calc(15px * var(--fs));list-style-position:inside}
+.vup summary small{background:#EEF1F8;color:var(--mut);border-radius:999px;padding:1px 9px;margin-inline-start:6px;font-weight:700}
+.vup>p{margin:8px 0 10px;font-size:calc(13px * var(--fs));line-height:1.7}
+.vupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.vupbar .btn.dis{opacity:.5;pointer-events:none}
+.vupgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:8px}
+.vslot{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-areas:"b p" "s p" "g g";column-gap:8px;row-gap:2px;align-items:center;padding:9px 11px 10px;border:1.5px dashed var(--line);border-radius:11px;background:#FBFCFE}
+.vslot b{grid-area:b;font-size:calc(14px * var(--fs));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vslot small{grid-area:s;font-size:calc(12px * var(--fs));color:var(--mut)}
+.vslot .pg{grid-area:g;display:block;height:4px;border-radius:4px;background:#E8ECF5;overflow:hidden;margin-top:5px}
+.vslot .pg span{display:block;height:100%;background:var(--navy3);transition:width .3s}
+.vslot .vpick{grid-area:p;font-size:calc(12.5px * var(--fs));font-weight:800;color:var(--navy3);cursor:pointer;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+.vslot .vpick:hover{border-color:var(--navy3)}
+.vslot.ok{border-style:solid;border-color:#BFE6D1;background:#F3FBF7}.vslot.ok small{color:var(--ok);font-weight:700}.vslot.ok .pg span{background:var(--ok)}
+.vslot.run{border-style:solid;border-color:var(--navy3)}
+.vslot.bad{border-style:solid;border-color:#F2C4C4;background:#FEF6F6}.vslot.bad small{color:var(--bad)}
+[data-theme="dark"] .vup summary{color:#DCE4FF}[data-theme="dark"] .vup summary small{background:#2a3350}
+[data-theme="dark"] .vslot{background:#141d31}[data-theme="dark"] .vslot.ok{background:#12291f;border-color:#2D5A45}[data-theme="dark"] .vslot.bad{background:#2c1717;border-color:#5a2a2a}[data-theme="dark"] .vslot .pg{background:#2a3350}
+.vupbar .vmiss{color:var(--warnt,#8a5a00);font-weight:700}

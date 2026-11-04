@@ -2571,6 +2571,7 @@
     W.innerHTML = `<div class="stf subs">
       <div class="sbtiles">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}<div class="sbt vid" aria-label="المقاطع داخل الموقع"><span class="i" aria-hidden="true">🎬</span><b><bdi>${up}/${tot}</bdi></b><span>مقطع داخل الموقع</span></div></div>
       ${vidLine}
+      ${vupHtml()}
       <p class="sbhelp">المجاني والتحويل البنكي يشوفون مقاطع الشرح هنا داخل الموقع: رابط مؤقت يشتغل من الموقع بس، وإيميل الطالب ظاهر على المقطع. مشترك يوتيوب تفتح له مقاطع الأعضاء في القناة مثل قبل.</p>
       <div class="abar"><input id="sbq" type="search" placeholder="ابحث بالاسم أو الإيميل أو اليوزر…" value="${esc(ADM.sq)}">${f !== 'all' ? `<button type="button" class="btn sm ghost" id="sball">عرض الكل (${all.length})</button>` : ''}</div>
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : 'ما فيه طلاب هنا'}</div>`}</div>
@@ -2582,6 +2583,69 @@
       try { await admCall(Object.assign({ op: 'adm_sub_set', email: x.email }, patch)); toast(msg); } catch (e) { Object.assign(x, undo); paintSubs(); toast('ما انحفظ: ' + e.message); } };
     W.querySelectorAll('.sbrow').forEach(r => { const x = all.find(y => y.email === r.dataset.e); if (!x) return;
       r.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = b.dataset.t; if (t === x.t) return; save(x, { t }, { t: x.t }, `${nm(x)}: ${SUB_N[t][0]} ${SUB_N[t][1]} ✓`); }); });
+    vupBind(W);
+  }
+  // ---------- ⬆️ رفع المقاطع للموقع (المالك): ملف MP4 لكل قسم/نموذج، بالأجزاء مع نسبة التقدّم ----------
+  const VUP = { busy: 0, st: {}, miss: [] };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها
+  function vupSlots() { const V = ADM.vids || {}, M = V.map || {}, objs = V.objects || [];
+    return Object.keys(M).map(k => { const f = M[k], o = objs.find(x => x.key === f), m = /^([qv]):(.+)$/.exec(k);
+      const label = m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2];
+      return { k, f, label, size: o ? o.size : 0, ord: (m[1] === 'q' ? 0 : 100) + (m[2] === 'rules' ? 0 : +m[2]) }; }).sort((a, b) => a.ord - b.ord); }
+  // نعرف المقطع من اسم الملف: Section 3 / Model 7 / قواعد الكمي…
+  function vupGuess(name) { const n = name.toLowerCase().replace(/[_\-–|｜⧸/]+/g, ' ');
+    let m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
+    m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'v/m' + m[1].padStart(2, '0') + '.mp4';
+    if (/(قواعد|قوانين|rules)/.test(n)) return /(لفظ|verbal|تناظر|analog)/.test(n) ? 'v/rules.mp4' : /(كمي|quant)/.test(n) ? 'q/rules.mp4' : '';
+    return ''; }
+  const vupMB = b => '<bdi dir="ltr">' + (b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e7 ? Math.round(b / 1e6) + ' MB' : (b / 1e6).toFixed(1) + ' MB') + '</bdi>';
+  function vupHtml() {
+    if (!ADM.vids || !ADM.vids.map) return '';
+    const S = vupSlots(), up = S.filter(x => x.size).length;
+    const cell = x => { const st = VUP.st[x.f] || {}, run = st.p != null && st.p < 1 && !st.err;
+      return `<div class="vslot${x.size ? ' ok' : ''}${run ? ' run' : ''}${st.err ? ' bad' : ''}" data-f="${x.f}"><b>${x.label}</b>
+        <small>${st.err ? '⚠️ ' + esc(st.err) : run ? 'يرتفع… ' + Math.round(st.p * 100) + '%' : x.size ? '✓ ' + vupMB(x.size) : 'ناقص'}</small>
+        <i class="pg" aria-hidden="true"><span style="width:${run ? Math.round(st.p * 100) : x.size ? 100 : 0}%"></span></i>
+        <label class="vpick" title="${x.size ? 'استبدل الملف' : 'اختر ملف المقطع'}">${x.size ? 'تغيير' : 'اختر'}<input type="file" accept="video/mp4,.mp4" hidden data-one="${x.f}"${VUP.busy ? ' disabled' : ''}></label></div>`; };
+    return `<details class="vup"${up < S.length ? ' open' : ''}><summary>⬆️ رفع المقاطع للموقع <small><bdi>${up}/${S.length}</bdi></small></summary>
+      <p class="mut">اختر ملفات المقاطع (MP4) من جهازك، ونعرف كل ملف من اسمه (Section 3، Model 7، قواعد الكمي…)، أو اختر لكل مقطع ملفه. خلّ الصفحة مفتوحة لين يخلص الرفع.</p>
+      <div class="vupbar"><label class="btn sm${VUP.busy ? ' dis' : ''}">📁 اختر عدة ملفات<input type="file" accept="video/mp4,.mp4" multiple hidden id="vupmany"${VUP.busy ? ' disabled' : ''}></label><span class="mut${VUP.miss.length && !VUP.busy ? ' vmiss' : ''}" id="vupst">${VUP.busy ? 'جاري الرفع…' : VUP.miss.length ? '⚠️ ما عرفت مقطع: ' + esc(VUP.miss.slice(0, 3).join('، ')) + (VUP.miss.length > 3 ? '…' : '') + '. ارفعه من زر «اختر» حق مقطعه.' : ''}</span></div>
+      <div class="vupgrid">${S.map(cell).join('')}</div></details>`;
+  }
+  function vupBind(W) {
+    const many = W.querySelector('#vupmany'); if (many) many.onchange = () => { const L = [...many.files], plan = [], miss = [];
+      L.forEach(f => { const g = vupGuess(f.name); if (g) plan.push([f, g]); else miss.push(f.name); });
+      VUP.miss = miss; if (!plan.length) { paintSubs(); if (miss.length) toast('ما عرفت مقطع هالملفات من أسمائها. ارفع كل واحد من زر «اختر» حق مقطعه.'); return; }
+      vupRun(plan); };
+    W.querySelectorAll('[data-one]').forEach(i => i.onchange = () => { if (i.files[0]) { VUP.miss = []; vupRun([[i.files[0], i.dataset.one]]); } });
+  }
+  async function vupRun(plan) {
+    if (!plan.length || VUP.busy) return; VUP.busy = 1;
+    const repaint = () => { if (location.hash === '#admin-subs') paintSubs(); };
+    plan.forEach(([, f]) => VUP.st[f] = { p: 0 }); repaint();
+    let ok = 0;
+    for (const [file, key] of plan) {
+      try { const size = await vupFile(file, key, p => { VUP.st[key].p = p; const c = document.querySelector(`.vslot[data-f="${key}"]`); if (c) { c.classList.add('run'); c.querySelector('small').textContent = 'يرتفع… ' + Math.round(p * 100) + '%'; c.querySelector('.pg span').style.width = Math.round(p * 100) + '%'; } });
+        VUP.st[key] = { p: 1 }; ok++;
+        const V = ADM.vids; V.objects = (V.objects || []).filter(o => o.key !== key).concat([{ key, size }]); const sk = Object.keys(V.map).find(k => V.map[k] === key); if (sk && V.files.indexOf(sk) < 0) V.files.push(sk);
+      } catch (e) { VUP.st[key] = { err: String(e.message || e).slice(0, 60) }; }
+      repaint();
+    }
+    VUP.busy = 0; repaint(); toast((ok === plan.length ? `✓ انرفع ${ok === 1 ? 'مقطع واحد' : ok === 2 ? 'مقطعين' : ok + ' مقاطع'}` : `انرفع ${ok} من ${plan.length}. اللي ما انرفع جرّبه مرة ثانية.`) + (VUP.miss.length ? ` · وفيه ${VUP.miss.length === 1 ? 'ملف' : VUP.miss.length + ' ملفات'} ما عرفت مقطعه` : ''));
+  }
+  async function vupFile(file, key, onp) {
+    const base = window.QG.API.replace(/\/$/, '') + '/vup', H = { 'x-qg-ses': auth.session }, J = Object.assign({ 'content-type': 'application/json' }, H);
+    const post = async b => { const r = await (await fetch(base, { method: 'POST', headers: J, body: JSON.stringify(b) })).json(); if (!r.ok) throw new Error(r.msg || r.error || 'تعذّر'); return r; };
+    if (!/\.mp4$/i.test(file.name) && file.type !== 'video/mp4') throw new Error('الملف لازم يكون MP4');
+    const c = await post({ op: 'create', key }), PART = 32 * 1024 * 1024, parts = [];
+    try {
+      for (let i = 0, n = 1; i < file.size; i += PART, n++) {
+        const blob = file.slice(i, Math.min(file.size, i + PART)); let r = null;
+        for (let t = 0; ; t++) { try { r = await (await fetch(`${base}?key=${encodeURIComponent(key)}&id=${encodeURIComponent(c.id)}&n=${n}`, { method: 'PUT', headers: H, body: blob })).json(); if (r.ok) break; throw new Error(r.msg || r.error || 'part'); }
+          catch (e) { if (t >= 3) throw e; await new Promise(z => setTimeout(z, 1500 * (t + 1))); } }
+        parts.push({ n: r.n, etag: r.etag }); onp(Math.min(.99, (i + blob.size) / file.size));
+      }
+      const d = await post({ op: 'done', key, id: c.id, parts }); onp(1); return d.size;
+    } catch (e) { post({ op: 'abort', key, id: c.id }).catch(() => {}); throw e; }
   }
   function refreshSubTab() {   // تبويب «💳 نوع الاشتراك» ما عليه عدّاد (المقاطع صارت داخل الموقع)
     const a = document.querySelector('.atabs a[href="#admin-subs"]'); if (a) a.textContent = '💳 نوع الاشتراك';
