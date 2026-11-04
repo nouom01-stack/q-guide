@@ -30,6 +30,7 @@
   let auth = null, manifest = null, cryptoKey = null, state = null; const cache = {};
   // 🆓 الزائر (حساب مجاني): الاختبار المحاكي 1 فقط، والباقي يفتح نافذة الاشتراك في منصة التدريب
   const isFree = () => !!(auth && auth.role === 'free'), FREE_TESTS = ['t1'], SUB_URL = '/p/#sub';
+  const EN_ = !!(window.QGL && QGL.en), TT = t => EN_ ? t.en || t.title : t.title;   // 🌐 عنوان الاختبار بلغة الواجهة
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -117,7 +118,7 @@
   let lobbySeq = 0, lobbyJump = 0;
   function paintLobby(stale) {
     const cards = manifest.map(t => {
-      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return _T`<div class="tcard lk" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
+      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return _T`<div class="tcard lk" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(TT(t))}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div>${EN_ ? '' : `<div class="mut" style="font-size:13px">${esc(t.en)}</div>`}<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
       const s = state[t.id] || { status: 'none' };
       let body, act;
       if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? _T`<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = _T`<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = _T`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
@@ -125,7 +126,7 @@
       else { body = _T`<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم${isFree() ? '' : _T(' · أول محاولة تُحسب في لوحة الصدارة')}</div>`; act = _T`<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
       const pill = s.status === 'done' ? _T('<span class="pill done">مكتمل</span>') : s.status === 'in_progress' ? _T('<span class="pill prog">جارٍ</span>') : _T('<span class="pill none">لم يبدأ</span>');
       const adm = auth.role === 'admin' && s.status !== 'none' ? _T`<button class="btn sm ghost" data-reset="${t.id}" style="margin-top:6px">إعادة تعيين (مشرف)</button>` : '';
-      return `<div class="tcard" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span>${pill}</div><div class="mut" style="font-size:13px">${esc(t.en)}</div>${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
+      return `<div class="tcard" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(TT(t))}</span>${pill}</div>${EN_ ? '' : `<div class="mut" style="font-size:13px">${esc(t.en)}</div>`}${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
     }).join('');
     app.innerHTML = header() + _T`<div class="page ar">
       <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>${isFree() ? '.' : _T('، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.')}</p>
@@ -167,7 +168,7 @@
         <li>Use the <b>End Section</b> button only when you have finished the section.</li>
         <li>You may retake the test as many times as you like, but <b>only your first attempt counts</b> on the leaderboard. Your detailed result and explanations appear after the last section.</li>
       </ul>
-      <p class="ar mut" style="font-size:14px">الاختبار يحاكي قياس المحوسب بالكامل: المؤقت لكل قسم على حدة، والأسئلة مختلطة (لفظي ثم كمي)، ولا يمكن العودة لقسم انتهى.</p>
+      ${EN_ ? '' : '<p class="ar mut" style="font-size:14px">الاختبار يحاكي قياس المحوسب بالكامل: المؤقت لكل قسم على حدة، والأسئلة مختلطة (لفظي ثم كمي)، ولا يمكن العودة لقسم انتهى.</p>'}
       <div style="display:flex;gap:10px;justify-content:flex-end"><a class="btn ghost" href="#" id="back">Back</a><button class="btn" id="start">Start Test</button></div></div></div>`;
     $('#back').onclick = e => { e.preventDefault(); renderLobby(); };
     $('#start').onclick = () => sectionIntro(id, 1);
@@ -214,7 +215,7 @@
     $('#prev').onclick = () => { saveCur(); show(Math.max(0, E.cur - 1)); };
     $('#next').onclick = () => { saveCur(); if (E.cur < 23) show(E.cur + 1); else { renderGrid(); } };
     $('#mark').onchange = () => { E.m[E.cur] = $('#mark').checked ? 1 : 0; persist(); renderGrid(); };
-    $('#b_end').onclick = () => { saveCur(); const un = E.a.filter(x => x == null).length; modal(_T`<h3>${sec < 4 ? 'End Section' : 'End Test'}?</h3><p>${un ? `You have <b>${un}</b> unanswered question(s). ` : ''}You will not be able to return to this section.</p><p class="ar mut" style="font-size:13.5px">لن تستطيع الرجوع لهذا القسم بعد إنهائه.</p>`, [['Cancel', 'ghost', closeModal], ['Yes, end section', 'red', () => submit(false)]]); };
+    $('#b_end').onclick = () => { saveCur(); const un = E.a.filter(x => x == null).length; modal(_T`<h3>${sec < 4 ? 'End Section' : 'End Test'}?</h3><p>${un ? `You have <b>${un}</b> unanswered question(s). ` : ''}You will not be able to return to this section.</p>${EN_ ? '' : '<p class="ar mut" style="font-size:13.5px">لن تستطيع الرجوع لهذا القسم بعد إنهائه.</p>'}`, [['Cancel', 'ghost', closeModal], ['Yes, end section', 'red', () => submit(false)]]); };
     $('#b_sinstr').onclick = () => modal(`<h3>Section Instructions</h3><p>This section has 24 questions and 25 minutes. Verbal questions come first, then quantitative. Choose the best answer, press <b>Save &amp; Next</b>, and use the question grid to move between questions.</p>`, [['Close', '', closeModal]]);
     $('#b_tinstr').onclick = () => modal(`<h3>Test Instructions</h3><ul style="padding-left:18px"><li>4 sections × 24 questions, 25 minutes each.</li><li>No return to a finished section.</li><li>Unanswered = wrong; no penalty for guessing.</li></ul>`, [['Close', '', closeModal]]);
     $('#b_eq').onclick = () => modal(`<h3>Equations</h3><div class="eq">
@@ -281,7 +282,7 @@
     app.innerHTML = header() + '<div class="page center"><div class="spin" style="margin:30px auto"></div></div>';
     const r = await api({ op: 'exam_result', session: auth.session, test: id }); if (!r.ok) return renderLobby();
     const s = r.state; const t = manifest.find(x => x.id === id) || { title: id };
-    app.innerHTML = header() + _T`<div class="page ar"><div class="card"><h1>نتيجة ${esc(t.title)}</h1>
+    app.innerHTML = header() + _T`<div class="page ar"><div class="card"><h1>نتيجة ${esc(TT(t))}</h1>
       <div class="res"><div class="center"><div class="big">${s.pct}<small>%</small></div><div class="mut">${s.total} إجابة صحيحة من 96</div>
       <p style="margin:14px 0 0;font-weight:700;color:#0F3D37">${s.pct >= 85 ? _T('ممتاز! مستوى متقدم 🌟') : s.pct >= 70 ? _T('جيد جداً 👏 — راجع الأخطاء وستتقدم أكثر') : s.pct >= 55 ? _T('جيد 💪 — ركّز على الأقسام الأضعف') : _T('ابدأ بمراجعة الشرح وأعد التدريب على الأقسام في منصة التدريب 📘')}</p></div>
       <div><div class="stat"><span>اللفظي</span><b>${s.vpct}%</b></div><div class="stat"><span>الكمي</span><b>${s.qpct}%</b></div>${(s.secScores || []).map((c, i) => _T`<div class="stat"><span>القسم ${i + 1}</span><b>${c}/24</b></div>`).join('')}</div></div>
@@ -293,7 +294,7 @@
     try { if (!T || T.id !== id) T = await loadTest(id); if (!res) res = await api({ op: 'exam_result', session: auth.session, test: id }); } catch (e) { return renderLobby(); }
     if (!res.ok) return renderLobby();
     const t = manifest.find(x => x.id === id) || { title: id };
-    let h = _T`<div class="page"><div class="card ar"><h1>مراجعة ${esc(t.title)}</h1><p class="mut">النتيجة ${res.state.pct}% · ${res.state.total}/96 — الأخضر إجابتك الصحيحة، الأحمر إجابتك الخاطئة والصحيح معلّم.</p><a class="btn ghost sm" href="/test/" onclick="location.reload()">← رجوع</a></div>`;
+    let h = _T`<div class="page"><div class="card ar"><h1>مراجعة ${esc(TT(t))}</h1><p class="mut">النتيجة ${res.state.pct}% · ${res.state.total}/96 — الأخضر إجابتك الصحيحة، الأحمر إجابتك الخاطئة والصحيح معلّم.</p><a class="btn ghost sm" href="/test/" onclick="location.reload()">← رجوع</a></div>`;
     res.sections.forEach(sec => {
       const S = T.sections[sec.n - 1];
       h += _T`<h2 class="ar" style="margin:18px 0 10px">القسم ${sec.n} — ${sec.c}/24</h2>`;

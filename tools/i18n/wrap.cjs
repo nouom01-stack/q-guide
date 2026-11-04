@@ -15,7 +15,9 @@ const SKIP_METHODS = new Set(['indexOf', 'lastIndexOf', 'includes', 'startsWith'
 const SKIP_OBJ = new Set(['QGT', 'console', 'JSON', 'localStorage', 'sessionStorage']);
 const ARG0_ONLY = new Set(['setAttribute', 'set', 'replace', 'replaceAll']);   // الوسيط الأول اسم/مفتاح، والثاني نص يطلع للطالب
 
+let SRC = '';
 function analyze(src) {
+  SRC = src;
   const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'script', locations: true, allowHashBang: true });
   const lines = src.split('\n'), off = new Array(lines.length + 2).fill(false);
   let on = true; lines.forEach((l, i) => { if (/\/\/\s*i18n:off/.test(l)) on = false; if (/\/\/\s*i18n:on/.test(l)) on = true; off[i + 1] = !on || /i18n:skip/.test(l); });
@@ -58,6 +60,8 @@ function reason(n, p, anc) {
   }
   for (let i = anc.length - 2; i >= 0; i--) {   // داخل QGT.ev(…) أو console.log(…) حتى لو بشرط
     const a = anc[i];
+    // EN ? 'English' : 'عربي' → الفرع العربي ما يحتاج ترجمة
+    if (a.type === 'ConditionalExpression' && a.alternate === anc[i + 1] && /^(EN_?|window\.QGL && QGL\.en|QGL\.en)$/.test(SRC.slice(a.test.start, a.test.end))) return 'ar-branch';
     if (a.type === 'CallExpression') { const c = calleeInfo(a.callee); if (SKIP_OBJ.has(c.obj)) return 'call:' + c.obj; }
     if (a.type === 'Property' && a.key === anc[i + 1]) return 'key';
   }

@@ -1972,3 +1972,13 @@ html.l-en .ar-srch #arel{text-align:left}
 html.l-en .wvi small{text-align:left}
 html.l-en .arc,html.l-en .qt-ar,html.l-en .trq,html.l-en .ru-cols,html.l-en .ru-fb p,html.l-en .fd-ex,html.l-en .tr-ex{direction:rtl;text-align:right}
 html.l-en .arr{direction:rtl;unicode-bidi:isolate}
+html.l-en .rz-week{direction:ltr}
+/* 📱 الشريط العلوي على الجوالات الضيقة: زر اللغة زاد زر، فنضغط المسافات شوي (بالعربي والإنجليزي) */
+@media (max-width:430px){
+  .top .w{gap:4px;padding:8px 6px}
+  .top .ctl button{padding:0 5px}.ctl .wa{padding:0 6px}.ctl .lng{min-width:0}
+  .tn{padding:0 5px}.tnav{gap:2px}
+  .top .brand img{width:32px;height:32px}
+}
+@media (max-width:640px){.sheets{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:400px){.tg .tbtns{margin-inline-start:0;flex-wrap:wrap}}

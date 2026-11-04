@@ -28,7 +28,7 @@
   async function fill(root) {
     const slots = [...(root || document).querySelectorAll('.qgai-slot:not(.done)')]; if (!slots.length) return;
     const s = await status(); slots.forEach(el => { el.classList.add('done'); if (!s.on) return;
-      el.innerHTML = _T`<button type="button" class="qgai-btn"><span class="qgai-bi">${SPARK}</span><span class="qgai-bt"><b>اشرح لي أكثر</b><small>المساعد الذكي يشرح لك السؤال خطوة بخطوة</small></span><span class="qgai-go" aria-hidden="true">←</span></button>`;
+      el.innerHTML = _T`<button type="button" class="qgai-btn"><span class="qgai-bi">${SPARK}</span><span class="qgai-bt"><b>اشرح لي أكثر</b><small>المساعد الذكي يشرح لك السؤال خطوة بخطوة</small></span><span class="qgai-go" aria-hidden="true">${window.QGL && QGL.en ? '→' : '←'}</span></button>`;
       el.querySelector('button').onclick = e => open({ ref: el.dataset.aiRef, pick: el.dataset.aiPick === '' ? null : +el.dataset.aiPick, wrong: el.dataset.aiWrong === '1', label: el.dataset.aiLabel, from: e.currentTarget }); });
   }
 
@@ -102,7 +102,7 @@
     log.querySelectorAll('.qgai-fl[data-i]').forEach(b => b.onclick = () => flag(+b.dataset.i));
     log.querySelectorAll('.qgai-rt').forEach(b => b.onclick = () => { const i = +b.dataset.i, m = C.msgs[i]; C.msgs.splice(i, 1);
       if (m.q) { const u = C.msgs.map(x => x.r === 'u' && x.t === m.q).lastIndexOf(true); if (u >= 0) C.msgs.splice(u, 1); } ask(m.q); });
-    const sb = log.querySelector('.qgai-sub'); if (sb) sb.onclick = () => { close(true); CFG.onSub && CFG.onSub(_T('المساعد الذكي')); };
+    const sb = log.querySelector('.qgai-sub'); if (sb) sb.onclick = () => { close(true); CFG.onSub && CFG.onSub('المساعد الذكي'); };   // i18n:skip (اسم الإحصائية بالعربي)
     if (atEnd) log.scrollTop = log.scrollHeight; W.stick = false;
     const turns = C.msgs.filter(m => m.r === 'u').length;
     const blocked = C.msgs.some(m => m.r === 'lim'), full = turns >= C.follow, any = C.msgs.some(m => m.r === 'a' && !m.live && m.t);

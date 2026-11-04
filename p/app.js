@@ -9,6 +9,8 @@
   const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
   const EN = !!(window.QGL && QGL.en);   // 🌐 الواجهة بالإنجليزي (p/i18n.js)
   const enN = (n, one, many) => n + ' ' + (n === 1 ? one : many);   // English: 1 day · 3 days
+  const BADGE_U_EN = { q: ['question', 'questions'], d: ['day', 'days'], s: ['section', 'sections'], m: ['model', 'models'], t: ['mock test', 'mock tests'], p: ['sheet', 'sheets'] };   // وحدات الشارات بالإنجليزي
+  const enPl = w => !w ? w : /(s|x|ch|sh)$/i.test(w) ? w + 'es' : /[^aeiou]y$/i.test(w) ? w.slice(0, -1) + 'ies' : w + 's';
   const PART_AR = { 1: _T('التناظر اللفظي'), 2: _T('إكمال الجمل'), 3: _T('الخطأ السياقي'), 4: _T('استيعاب المقروء') };
   let auth = null, manifest = null, cryptoKey = null;
   const cache = {};
@@ -112,6 +114,8 @@
     try { plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)); }
     catch (e) { logout(); throw new Error('bad key'); }
     cache[id] = JSON.parse(new TextDecoder().decode(plain));
+    if (EN && /^[qv]\d{1,2}$/.test(id)) { cache[id].title = SET_NAME(id);   // 🌐 «القسم 2» من ملف البيانات → Section 2
+      (cache[id].groups || []).forEach(g => { if (g.kind === 'part' && g.title) g.title = String(g.title).split(' – ')[0]; }); }   // «Analogies – التناظر اللفظي» → Analogies
     return cache[id];
   }
   function progGet(id) { return lsGet(LS.prog + id, { a: {}, best: null, started: 0, last: 0, done: 0 }); }
@@ -408,7 +412,7 @@
     return _T`<section class="rz" aria-label="متابعة المذاكرة">
       <div class="rz-top"><h1 class="rz-hi">أهلاً ${esc(first)} 👋</h1>
         <div class="rz-streak" title="الأيام اللي حليت فيها أسئلة"><span class="rz-r1"><span class="rz-fire ${streak ? '' : 'off'}">🔥 ${streak ? dLabel(streak) + _T(' ورا بعض') : _T('ابدأ سلسلتك اليوم')}</span><a class="rz-bdg" href="#badges" title="إنجازاتي: الشارات اللي حصلت عليها">🏅 ${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length}<small>/${BADGES.length}</small></a></span>
-          <span class="rz-week">${wk.map(d => _T`<i class="${d.n ? 'on' : ''}${d.today ? ' t' : ''}" title="${d.n} سؤال"><b>${d.l}</b></i>`).join('')}</span></div></div>
+          <span class="rz-week">${wk.map(d => _T`<i class="${d.n ? 'on' : ''}${d.today ? ' t' : ''}" title="${EN ? enN(d.n, 'question', 'questions') : d.n + ' سؤال'}"><b>${d.l}</b></i>`).join('')}</span></div></div>
       <div class="rz-body">
         <div class="rz-what"><span class="rz-k">${kick}</span><b class="rz-set">${title}</b><span class="rz-sub">${sub}</span></div>
         <div class="rz-dots" aria-hidden="true" style="--c:${cols(st.n, 30)};--cm:${cols(st.n, 17)}">${R.mode === 'alldone' ? '' : dotsHtml(rs.id, st.n, cur)}</div>
@@ -449,7 +453,7 @@
           ${toolA('#find', '🔎', _T('ابحث عن سؤال'), FR ? _T('اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين') : _T('اكتب السؤال أو صوّره ونقولك وين تلقاه'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
           ${RULES_ON ? toolA('#rules', '📐', _T('قوانين الكمي'), _T('القوانين اللي تحتاجها أسئلة الدورة، وتنطبع')) + toolA('#rules-v', '📘', _T('قواعد اللفظي'), _T('طرق الحل وأنواع الأسئلة في صفحة وحدة'), FR ? '' : _T('<span class="beta">جديد</span>')) : ''}
           ${toolA('#vocab', '📖', _T('قاموس الكلمات'), _T('ترجمة ونطق كل كلمات اللفظي'))}
-          ${toolA('#notes', '📒', _T('دفتري'), nMarks ? _T`${nMarks} سؤال محفوظ مع ملاحظاتك` : _T('الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها'))}
+          ${toolA('#notes', '📒', _T('دفتري'), nMarks ? (EN ? enN(nMarks, 'saved question', 'saved questions') + ' with your notes' : _T`${nMarks} سؤال محفوظ مع ملاحظاتك`) : _T('الأسئلة اللي تحفظها ⭐ وملاحظاتك عليها'))}
           ${isStaff ? toolA('#cards', '🃏', _T('بطاقات الحفظ'), _T('احفظ كلمات اللفظي بالبطاقات'), _T('<span class="beta">تجريبي</span>')) : ''}</div>
         <div class="tg"><h3>تابع تقدّمك</h3>
           ${toolA('#plan', '📅', _T('خطة المذاكرة'), pl ? _T('أنت على ') + pl.name : _T('اختر خطة 7 أو 14 أو 19 أو 28 يوم'))}
@@ -509,7 +513,7 @@
   let WB = null;
   // solved = 📗 النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته (meta.sp = الصفحات اللي فيها أسئلة، والباقي نفس الأصلية)
   async function renderWorkbook(kind, solved) {
-    const title = (kind === 'q' ? _T('مذكرة الكمي') : _T('مذكرة اللفظي')) + (solved ? _T(' المحلولة') : '');
+    const title = EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
     document.title = title + ' | Q-Guide';
     if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
     if (auth.member === 'manual') { toast(_T('المذكرة الشخصية غير متاحة لحسابك')); location.hash = ''; return; }
@@ -655,7 +659,7 @@
       _T`<main class="wrap sharh">
         <div class="hero"><div><h1>الشرح والمدرسين</h1><p>الشرح مقسّم بين أكثر من مدرس. الموجود الحين شرح سلمان الفرج للكمي واللفظي، والباقين ينزل شرحهم قريباً.</p></div></div>
         <div class="tchs">${TEACHERS.map(tcard).join('')}</div>
-        <section class="tsec" aria-labelledby="tsh"><h2 class="h2" id="tsh">شرح ${TEACHERS[0].name}</h2>
+        <section class="tsec" aria-labelledby="tsh"><h2 class="h2" id="tsh">${EN ? 'Explained by ' + TEACHERS[0].name : 'شرح ' + TEACHERS[0].name}</h2>
           <h3 class="tsub">📐 الكمي</h3><div class="wvlist">${item('q', 'rules')}${qn.map(n => item('q', n)).join('')}</div>
           <h3 class="tsub">📖 اللفظي</h3><div class="wvlist">${vn.map(n => item('v', n)).join('')}</div>
         </section></main>`;
@@ -733,7 +737,7 @@
     let html = '';
     if (set.kind === 'verbal') {
       const g = set.groups[gi]; const prevG = i > 0 ? items[i - 1].gi : -1;
-      if (g.kind === 'part') html += `<div class="ghd">${esc(g.title)} <small>— ${esc(g.ar || '')}</small></div>`;
+      if (g.kind === 'part') html += `<div class="ghd">${esc(g.title)}${EN ? '' : ` <small>— ${esc(g.ar || '')}</small>`}</div>`;
       else {
         const open = P.passOpen[gi] != null ? P.passOpen[gi] : true;
         html += _T`<div class="ghd">Passage ${g.num}: ${esc(g.title)} <small>— استيعاب المقروء</small></div>
@@ -1578,7 +1582,7 @@
     const r = remGet(); if (!force && !(r && r.on)) return; if (!('caches' in window)) return;
     try {
       const D = daysGet(), keys = Object.keys(D).filter(k => D[k] > 0).sort(), ex = examGet(), st = planState(), plan = PLANS.find(p => p.id === st.id);
-      let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(_T(' و')); }
+      let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و'); }
       let next = ''; try { if (manifest) next = SET_NAME(pickResume().s.id); } catch (e) {}
       const c = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], streak: streakOf(D), last: keys[keys.length - 1] || '', exam: ex ? examAt(ex) : 0, task, next, at: Date.now(), lang: EN ? 'en' : 'ar' };
       caches.open('qg-meta').then(cc => cc.put('/__rem', new Response(JSON.stringify(c), { headers: { 'content-type': 'application/json' } }))).catch(() => {});
@@ -1596,7 +1600,7 @@
         if (!remSupported() && isIOS() && !isStandalone()) body = _T`<p>على الآيفون، التنبيهات تشتغل لما تضيف المنصة للشاشة الرئيسية:</p>
           <ol class="rem-ios"><li>افتح المنصة من متصفح <b>Safari</b></li><li>اضغط زر المشاركة <span class="ios-share" aria-hidden="true">⬆︎</span> تحت</li><li>اختر <b>«إضافة إلى الشاشة الرئيسية»</b></li><li>افتح Q-Guide من الأيقونة الجديدة، وسجّل دخولك، ثم فعّل التذكير من هنا</li></ol><p class="mut">يحتاج iOS 16.4 أو أحدث.</p>`;
         else if (!remSupported()) body = _T`<p>متصفحك الحالي ما يدعم التنبيهات. جرّب من Google Chrome على الجوال أو الكمبيوتر.</p>`;
-        else if (perm === 'denied') body = _T`<p>التنبيهات مقفلة لهذا الموقع في متصفحك. افتح إعدادات الموقع (🔒 جنب الرابط فوق) ← <b>الإشعارات</b> ← <b>السماح</b>، ثم ارجع هنا وفعّل التذكير.</p>`;
+        else if (perm === 'denied') body = _T`<p>التنبيهات مقفلة لهذا الموقع في متصفحك. افتح إعدادات الموقع (🔒 جنب الرابط فوق) ← <b>الإشعارات</b> ${EN ? '→' : '←'} <b>السماح</b>، ثم ارجع هنا وفعّل التذكير.</p>`;
         else body = _T`<p>نرسل لك تنبيه كل يوم بالوقت اللي تختاره، فيه مهمتك من الخطة وكم باقي على اختبارك. <b>وإذا ذاكرت قبل الموعد ما نزعجك.</b></p>
           <div class="exf rem-f"><label><span>وقت التذكير</span><input type="time" id="remt" value="${p2(Math.floor(mins / 60))}:${p2(mins % 60)}" dir="ltr" step="300"></label><div class="rem-st ${on ? 'on' : ''}">${on ? _T('🔔 مفعّل') : _T('🔕 غير مفعّل')}</div></div>
           <div class="acts"><button class="btn" id="remon">${on ? _T('حفظ الوقت') : _T('فعّل التذكير')}</button>${on ? _T('<button class="btn ghost" id="remtest">أرسل تنبيه تجريبي</button><span class="sp"></span><button class="lnk" id="remoff">إيقاف التذكير</button>') : _T('<button class="btn ghost" id="remno">إلغاء</button>')}</div>`;
@@ -1810,25 +1814,25 @@
   // ---------- 🏅 الشارات (تنحسب من نشاط الطالب على جهازه وتتزامن مع حسابه) ----------
   const BADGE_LS = 'qg_badges';
   const BADGES = [
-    { id: 'first', i: '✏️', t: _T('البداية'), d: _T('جاوبت أول سؤال'), v: S => S.total, n: 1, u: _T('سؤال') },
-    { id: 'q100', i: '💯', t: _T('100 سؤال'), d: _T('حليت 100 سؤال'), v: S => S.total, n: 100, u: _T('سؤال') },
-    { id: 'q500', i: '🚀', t: _T('500 سؤال'), d: _T('حليت 500 سؤال'), v: S => S.total, n: 500, u: _T('سؤال') },
-    { id: 'q1000', i: '🏔️', t: _T('1000 سؤال'), d: _T('حليت 1000 سؤال'), v: S => S.total, n: 1000, u: _T('سؤال') },
-    { id: 'sheet1', i: '📄', t: _T('أول ورقة'), d: _T('خلّصت أول قسم أو نموذج كامل'), v: S => S.sheets, n: 1, u: _T('ورقة') },
-    { id: 'sheet5', i: '📚', t: _T('5 أوراق'), d: _T('خلّصت 5 أقسام أو نماذج'), v: S => S.sheets, n: 5, u: _T('ورقة') },
-    { id: 'allq', i: '📐', t: _T('بطل الكمي'), d: _T('خلّصت أقسام الكمي الـ14 كلها'), v: S => S.qdone, n: 14, u: _T('قسم') },
-    { id: 'allv', i: '📖', t: _T('بطل اللفظي'), d: _T('خلّصت نماذج اللفظي الـ14 كلها'), v: S => S.vdone, n: 14, u: _T('نموذج') },
+    { id: 'first', i: '✏️', t: _T('البداية'), d: _T('جاوبت أول سؤال'), v: S => S.total, n: 1, u: _T('سؤال'), uk: 'q' },
+    { id: 'q100', i: '💯', t: _T('100 سؤال'), d: _T('حليت 100 سؤال'), v: S => S.total, n: 100, u: _T('سؤال'), uk: 'q' },
+    { id: 'q500', i: '🚀', t: _T('500 سؤال'), d: _T('حليت 500 سؤال'), v: S => S.total, n: 500, u: _T('سؤال'), uk: 'q' },
+    { id: 'q1000', i: '🏔️', t: _T('1000 سؤال'), d: _T('حليت 1000 سؤال'), v: S => S.total, n: 1000, u: _T('سؤال'), uk: 'q' },
+    { id: 'sheet1', i: '📄', t: _T('أول ورقة'), d: _T('خلّصت أول قسم أو نموذج كامل'), v: S => S.sheets, n: 1, u: _T('ورقة'), uk: 'p' },
+    { id: 'sheet5', i: '📚', t: _T('5 أوراق'), d: _T('خلّصت 5 أقسام أو نماذج'), v: S => S.sheets, n: 5, u: _T('ورقة'), uk: 'p' },
+    { id: 'allq', i: '📐', t: _T('بطل الكمي'), d: _T('خلّصت أقسام الكمي الـ14 كلها'), v: S => S.qdone, n: 14, u: _T('قسم'), uk: 's' },
+    { id: 'allv', i: '📖', t: _T('بطل اللفظي'), d: _T('خلّصت نماذج اللفظي الـ14 كلها'), v: S => S.vdone, n: 14, u: _T('نموذج'), uk: 'm' },
     { id: 'p90', i: '🎯', t: _T('فوق الـ90'), d: _T('خلّصت قسم بنسبة 90% أو أكثر'), v: S => S.best, n: 90, pct: 1 },
     { id: 'p100', i: '👑', t: _T('العلامة الكاملة'), d: _T('جبت 100% في قسم كامل'), v: S => S.best, n: 100, pct: 1 },
-    { id: 'st3', i: '🔥', t: _T('3 أيام ورا بعض'), d: _T('ذاكرت 3 أيام متتالية'), v: S => S.streakMax, n: 3, u: _T('يوم') },
-    { id: 'st7', i: '⚡', t: _T('أسبوع كامل'), d: _T('ذاكرت 7 أيام متتالية'), v: S => S.streakMax, n: 7, u: _T('يوم') },
-    { id: 'st30', i: '🌙', t: _T('شهر كامل'), d: _T('ذاكرت 30 يوم متتالي'), v: S => S.streakMax, n: 30, u: _T('يوم') },
-    { id: 'goal1', i: '⭕', t: _T('هدف اليوم'), d: _T('حققت هدفك اليومي أول مرة'), v: S => S.goalDays, n: 1, u: _T('يوم') },
-    { id: 'goal7', i: '🎖️', t: _T('ملتزم'), d: _T('حققت هدفك اليومي في 7 أيام'), v: S => S.goalDays, n: 7, u: _T('يوم') },
-    { id: 'fix20', i: '🩹', t: _T('صياد الأخطاء'), d: _T('صحّحت 20 سؤال كنت غلطان فيها'), v: S => S.fixed, n: 20, u: _T('سؤال') },
-    { id: 'note10', i: '📒', t: _T('صاحب الدفتر'), d: _T('حفظت 10 أسئلة في دفترك'), v: S => S.marks, n: 10, u: _T('سؤال') },
+    { id: 'st3', i: '🔥', t: _T('3 أيام ورا بعض'), d: _T('ذاكرت 3 أيام متتالية'), v: S => S.streakMax, n: 3, u: _T('يوم'), uk: 'd' },
+    { id: 'st7', i: '⚡', t: _T('أسبوع كامل'), d: _T('ذاكرت 7 أيام متتالية'), v: S => S.streakMax, n: 7, u: _T('يوم'), uk: 'd' },
+    { id: 'st30', i: '🌙', t: _T('شهر كامل'), d: _T('ذاكرت 30 يوم متتالي'), v: S => S.streakMax, n: 30, u: _T('يوم'), uk: 'd' },
+    { id: 'goal1', i: '⭕', t: _T('هدف اليوم'), d: _T('حققت هدفك اليومي أول مرة'), v: S => S.goalDays, n: 1, u: _T('يوم'), uk: 'd' },
+    { id: 'goal7', i: '🎖️', t: _T('ملتزم'), d: _T('حققت هدفك اليومي في 7 أيام'), v: S => S.goalDays, n: 7, u: _T('يوم'), uk: 'd' },
+    { id: 'fix20', i: '🩹', t: _T('صياد الأخطاء'), d: _T('صحّحت 20 سؤال كنت غلطان فيها'), v: S => S.fixed, n: 20, u: _T('سؤال'), uk: 'q' },
+    { id: 'note10', i: '📒', t: _T('صاحب الدفتر'), d: _T('حفظت 10 أسئلة في دفترك'), v: S => S.marks, n: 10, u: _T('سؤال'), uk: 'q' },
     { id: 'level', i: '🧭', t: _T('عرفت مستواك'), d: _T('سويت اختبار تحديد المستوى'), v: S => S.level, n: 1 },
-    { id: 'mock1', i: '🧪', t: _T('أول محاكي'), d: _T('خلّصت أول اختبار محاكي'), v: S => S.mocks, n: 1, u: _T('اختبار') },
+    { id: 'mock1', i: '🧪', t: _T('أول محاكي'), d: _T('خلّصت أول اختبار محاكي'), v: S => S.mocks, n: 1, u: _T('اختبار'), uk: 't' },
     { id: 'plan', i: '🏁', t: _T('الخطة كاملة'), d: _T('خلّصت خطة المذاكرة كاملة'), v: S => S.planDone, n: 1 },
   ];
   function badgeStats() {
@@ -1857,7 +1861,7 @@
     if (!skillsPulled) { app.innerHTML = topbar(_T`<span class="ttl">🏅 إنجازاتي</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl(); await skillsPull(); if (location.hash !== '#badges') return; }
     badgeCheck();
     const S = badgeStats(), B = lsGet(BADGE_LS, {}), n = BADGES.filter(b => B[b.id]).length;
-    const left = b => { const v = Math.max(0, b.v(S)); if (b.pct) return _T`أفضل نتيجة لك ${v}%`; if (b.n === 1) return _T('ما حصلت عليها بعد'); return _T`باقي ${b.n - Math.min(v, b.n)} ${b.u || ''}`; };
+    const left = b => { const v = Math.max(0, b.v(S)); if (b.pct) return _T`أفضل نتيجة لك ${v}%`; if (b.n === 1) return _T('ما حصلت عليها بعد'); const r = b.n - Math.min(v, b.n); if (EN) { const u = BADGE_U_EN[b.uk] || ['', '']; return `${r} ${r === 1 ? u[0] : u[1]} left`.replace('  ', ' '); } return _T`باقي ${r} ${b.u || ''}`; };
     app.innerHTML = topbar(_T`<span class="ttl">🏅 إنجازاتي</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap badges">
       <div class="bd-top"><h1>إنجازاتي</h1><p>كل شارة تنختم لك تلقائياً لما توصل لها. <b>حصلت على ${n} من ${BADGES.length}</b></p><div class="bd-bar"><i style="width:${Math.round(n * 100 / BADGES.length)}%"></i></div></div>
       <div class="bds">${BADGES.map(b => { const on = !!B[b.id], v = Math.max(0, Math.min(b.v(S), b.n)), p = Math.round(v * 100 / b.n);
@@ -1954,7 +1958,7 @@
       let set; try { set = await loadSet(model); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#vocab">→</a>`) + _T('<div class="center">تعذّر فتح النموذج. <a href="#vocab">رجوع</a></div>'); return; }
       title = set.title + ' · ' + set.sub.split(' · ').pop();
       const seen = new Set(); const add = (txt, where) => { for (const m of (txt || '').matchAll(/[A-Za-z][A-Za-z'’]*/g)) { const w = m[0].toLowerCase().replace(/’/g, "'").replace(/'s$/, ''); if (seen.has(w) || STOP.has(w) || w.length < 3) continue; const ar = vocLook(w); if (!ar) continue; seen.add(w); rows.push([w, ar, where]); } };
-      set.groups.forEach(g => { const where = g.kind === 'passage' ? _T('قطعة: ') + g.title : (g.ar || g.title); if (g.kind === 'passage') add(g.passage, where); g.items.forEach(it => add(it.q + ' ' + it.opts.join(' '), where)); });
+      set.groups.forEach(g => { const where = g.kind === 'passage' ? _T('قطعة: ') + g.title : (EN ? g.title : g.ar || g.title); if (g.kind === 'passage') add(g.passage, where); g.items.forEach(it => add(it.q + ' ' + it.opts.join(' '), where)); });
     } else { rows = Object.keys(VOC).filter(w => !STOP.has(w) && w.length > 2).sort().map(w => [w, VOC[w], '']); title = _T('كل الكلمات (') + rows.length + ')'; }
     const tabs = _T`<div class="vtabs"><a class="${model ? '' : 'on'}" href="#vocab">الكل</a>${Array.from({ length: 14 }, (_, i) => _T`<a class="${model === 'v' + (i + 1) ? 'on' : ''}" href="#vocab-v${i + 1}">نموذج ${i + 1}</a>`).join('')}</div>`;
     app.innerHTML = topbar(_T`<span class="ttl">📖 قاموس الكلمات</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap vocab">
@@ -2957,7 +2961,7 @@
       else {
         const links = I.cur.tasks.map(t => t.k === 'rest' ? _T('<span class="tchip rest">😴 يوم راحة</span>') : taskSolve(t, 'tchip')).join('');
         const fit = ex && exT > now ? fitInfo(I.end, exT) : null;
-        const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class="fit ${fit.c}">${fit.s}</span>` : I.left > 0 ? _T`<span>باقي ${dLabel(I.left)}</span>` : '') + (I.lag > 0 ? _T`<span class="fit warn">متأخر ${I.lag === 1 && !EN ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : '') + (ex ? '' : _T('<button class="lnk" data-exam>حدّد موعد اختبارك</button>'));
+        const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class="fit ${fit.c}">${fit.s}</span>` : I.left > 0 ? _T`<span>باقي ${dLabel(I.left)}</span>` : '') + (I.lag > 0 ? _T`<span class="fit warn">متأخر ${I.lag === 1 && !EN ? _T('يوم') : dLabel(I.lag)} عن الجدول</span>` : '') + (ex ? '' : _T('<button class="lnk" data-exam>حدّد موعد اختبارك</button>'));
         const ahead = I.cur.n > I.tn;   // خلّص مهام اليوم، وهذي مهام الأيام الجاية
         h += _T`<div class="tr-pl"><span class="tr-pi" aria-hidden="true">📅</span><div class="tr-pt"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class="mut">(الجاي: اليوم ${I.cur.n} من ${plan.days})</span>` : _T`<b>خطتك اليوم</b> <span class="mut">(اليوم ${I.cur.n} من ${plan.days})</span>`}</span><span class="tr-lk">${links}</span><small class="tr-end">${tags}</small></div><a class="tr-go" href="#plan">افتح الخطة</a></div>`;
       }
@@ -2985,7 +2989,7 @@
         <div class="plans">${PLANS.map(p => { const star = rec ? p === rec : !live && p.star; const end = endOf(p); const f = live ? fitInfo(end, exT) : null;
           return _T`<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? _T('الأنسب لموعد اختبارك') : _T('الأنسب لأغلب الطلاب')}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🔁 ${p.rev === 1 ? _T('آخر يوم') : _T('آخر يومين')} مراجعة للـ14 قسم والـ14 نموذج</span><span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
         ${rec && dayDiff(endOf(rec), exT) < 1 ? _T`<div class="pverd bad">⚠ باقي على اختبارك ${dl ? dLabel(dl) : _T('أقل من يوم')} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.</div>` : ''}
-        <div class="sum" style="margin-top:16px;text-align:right"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
+        <div class="sum" style="margin-top:16px;text-align:start"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
       W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { planStart(b.dataset.p); renderPlan(); });
       bindExam(W, () => renderPlan({ keep: 1 }));
       return;
@@ -3004,7 +3008,7 @@
     const icon = { q: '🔵', v: '🟢', r: '🟠', rest: '😴' };
     const autoTip = { q: _T('انعلّمت لحالها لأنك حليت القسم'), v: _T('انعلّمت لحالها لأنك حليت النموذج'), rest: _T('يوم الراحة ينحسب لحاله لما يجي تاريخه') };
     const fit = live ? fitInfo(I.end, exT) : null;
-    const lagT = !cur ? _T('خلّصت كل الأيام 🎉') : I.lag > 0 ? _T`<span class="fit warn">متأخر ${I.lag === 1 && !EN ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : I.lag < 0 ? _T`<span class="fit ok">متقدم ${-I.lag === 1 && !EN ? 'يوم' : dLabel(-I.lag)} عن الجدول 👏</span>` : cur.n === I.exp + 1 ? _T('<span class="fit ok">خلّصت مهام اليوم ✓</span>') : _T('<span class="fit ok">ماشي على الجدول ✓</span>');
+    const lagT = !cur ? _T('خلّصت كل الأيام 🎉') : I.lag > 0 ? _T`<span class="fit warn">متأخر ${I.lag === 1 && !EN ? _T('يوم') : dLabel(I.lag)} عن الجدول</span>` : I.lag < 0 ? _T`<span class="fit ok">متقدم ${-I.lag === 1 && !EN ? _T('يوم') : dLabel(-I.lag)} عن الجدول 👏</span>` : cur.n === I.exp + 1 ? _T('<span class="fit ok">خلّصت مهام اليوم ✓</span>') : _T('<span class="fit ok">ماشي على الجدول ✓</span>');
     const leftT = I.left > 0 ? _T`باقي ${dLabel(I.left)}` : I.left === 0 ? _T('اليوم آخر يوم في الخطة') : _T`كان المفروض تخلص قبل ${dLabel(-I.left)}`;
     let verd = '';
     if (fit) verd = fit.c === 'ok' ? _T`✓ خطتك ${fit.t}${fit.gap >= 3 ? _T('. استغل الأيام الزيادة في مراجعة أخطائك') : _T('. التزم بالجدول عشان تلحق')}.`
@@ -3035,7 +3039,7 @@
       <div class="days">${act.length ? act.map(dayHtml).join('') : _T('<div class="pall">🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد حل الأقسام اللي درجتك فيها أقل.</div>')}</div>
       <section class="pdone" aria-labelledby="pdh"><header><h2 id="pdh">✅ إنجازك في الخطة</h2><span class="pdp">${fin.length ? _T`خلّصت ${dLabel(fin.length)} · ` : ''}<b><bdi>${pct}%</bdi></b></span></header>
         ${fin.length ? `<div class="pdl">${fin.map(finHtml).join('')}</div>` : _T('<p class="pde">أول ما تخلّص كل مهام يوم، يتلاشى من فوق وينزل هنا ✓</p>')}</section>
-      <div class="sum" style="margin-top:16px;text-align:right">🔵 كمي · 🟢 لفظي · 🟠 مراجعة. المهام تنعلّم ✓ لحالها لما تحل القسم، والمراجعة علّمها أنت. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.</div>`;
+      <div class="sum" style="margin-top:16px;text-align:start">🔵 كمي · 🟢 لفظي · 🟠 مراجعة. المهام تنعلّم ✓ لحالها لما تحل القسم، والمراجعة علّمها أنت. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.</div>`;
     planArrive = [];
     const save = () => planSave(Object.assign(st, { done }));
     const re = () => renderPlan({ keep: 1, tick: 1 });
@@ -3079,7 +3083,7 @@
       _T`<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button><button data-k="arena" class="${tabK === 'arena' ? 'on' : ''}">⚔️ الساحة</button></div>
       ${isSet ? _T`<div class="setpick"><label>اختر القسم:</label><select id="lbset">${opts.map(o => `<option value="${o}" ${o === setId ? 'selected' : ''}>${setTitle(o)}</option>`).join('')}</select></div>` : ''}
       <p class="mut lbnote">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أكثر.') : kind === 'exam' ? _T('الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.')
-        : isSet ? _T`ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`
+        : isSet ? (EN ? `Students in <b>${setTitle(setId)}</b> are ranked by their <b>first attempt</b> score; ties go to the faster time.` : _T`ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`)
         : kind === 'month' ? _T('أفضل 100 طالب <b>هذا الشهر</b>: مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الشهر، وعند التساوي الأسرع وقتاً.')
         : _T('الترتيب العام: مجموع الإجابات الصحيحة في <b>أول محاولة</b> لكل قسم ونموذج، وعند التساوي الأسرع وقتاً. إعادة القسم للتدريب لا تغيّر ترتيبك.')}</p>
       <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
@@ -3091,12 +3095,12 @@
     if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = _T('<div class="center">تعذّر تحميل اللوحة</div>'); return; }
     const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? _T`${h} س ${m % 60} د` : m ? _T`${m} د` : _T`${s} ث`; };
     const pct = x => x.q ? Math.round(x.correct * 100 / x.q) : 0;
-    const unit = kind === 'exam' ? _T('اختبار') : _T('قسم'), isAr = kind === 'arena';
+    const isAr = kind === 'arena', unitN = n => EN ? enN(n, kind === 'exam' ? 'test' : 'section', kind === 'exam' ? 'tests' : 'sections') : n + ' ' + (kind === 'exam' ? 'اختبار' : 'قسم');   // i18n:skip
     // عرض الدرجة: المحاكي والقسم = نسبة مئوية؛ العام والشهر = إجابات صحيحة (+ النسبة)
     const scoreHtml = x => isAr ? `<b>${x.r}</b>` : kind === 'exam' ? `<b>${Math.round(x.score)}%</b>` : isSet ? `<b>${Math.round(x.score)}%</b> <small>${x.correct}/${x.q}</small>` : `<b>${x.score}</b> ✓`;
     const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : _T('اختبارات')} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : _T`${pct(x)}% دقة · ${fmt(x.secs)}`;
-    const mine = isAr ? (r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me.r} · ${r.me.w} فوز و${r.me.l} خسارة${r.me.d ? _T(' و') + r.me.d + _T(' تعادل') : ''}</span></div><a class="btn sm" href="#arena">العب مباراة</a></div>` : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>العب مباراة وحدة في الساحة وتظهر هنا.</span></div><a class="btn sm" href="#arena">ادخل الساحة</a></div>`)
-      : r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r.me.score) + _T('% متوسط · ') + r.me.done + ' ' + unit : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + _T(' إجابة صحيحة · ') + r.me.done + ' ' + unit} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">اختبار جديد</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">افتح القسم</a>` : _T('<a class="btn sm" href="#">تدرّب</a>')}</div>`
+    const mine = isAr ? (r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me.r} · ${r.me.w} فوز و${r.me.l} خسارة${r.me.d ? (EN ? ' · ' + enN(r.me.d, 'draw', 'draws') : _T(' و') + r.me.d + _T(' تعادل')) : ''}</span></div><a class="btn sm" href="#arena">العب مباراة</a></div>` : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>العب مباراة وحدة في الساحة وتظهر هنا.</span></div><a class="btn sm" href="#arena">ادخل الساحة</a></div>`)
+      : r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r.me.score) + _T('% متوسط · ') + unitN(r.me.done) : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + _T(' إجابة صحيحة · ') + unitN(r.me.done)} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">اختبار جديد</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">افتح القسم</a>` : _T('<a class="btn sm" href="#">تدرّب</a>')}</div>`
       : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذا القسم مرة واحدة وتظهر هنا.') : kind === 'month' ? _T('حل قسماً هذا الشهر وتظهر هنا.') : _T('حل قسماً أو نموذجاً واحداً وتظهر هنا.')}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">ابدأ اختباراً</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : _T('<a class="btn sm" href="#">ابدأ قسماً</a>')}</div>`;
     if (!r.top.length) { el.innerHTML = mine + _T`<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
     const medal = k => ['🥇', '🥈', '🥉'][k - 1] || '';
@@ -3490,7 +3494,7 @@
   }
 
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
-  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', _T('المساعد الذكي')), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });
+  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });   // i18n:skip (اسم الإحصائية بالعربي)
   applyFs(); applyTheme();
   if (!gsiFromHash()) route();
 })();
