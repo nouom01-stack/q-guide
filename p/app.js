@@ -303,14 +303,16 @@
   // ---------- login ----------
   function renderLogin(err, good) {
     document.title = 'تسجيل الدخول | Q-Guide';
+    const mem = /[?&]m=1(&|$)/.test(location.search);   // جا من «دخول المشتركين» في الصفحة الرئيسية: صفحة دخول للمشترك بدون «جرّب مجاناً»
     app.innerHTML = `<div class="login"><div class="card">
       <img src="/assets/logo.png" alt="Q-Guide">
-      <h1>منصة تدريب Q-Guide</h1>
-      <p class="sub">أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح</p>
+      <h1>${mem ? 'دخول المشتركين' : 'منصة تدريب Q-Guide'}</h1>
+      <p class="sub">${mem ? 'سجّل بنفس إيميل Google اللي اشتركت فيه، وتنفتح لك الدورة كاملة.' : 'أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح'}</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>
       ${err ? `<div class="${good ? 'okm' : 'err'}">${err}</div>` : ''}
-      <div class="lg-free"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>
-      <p class="note">مشترك في الدورة؟ سجّل بنفس إيميل Google اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
+      ${mem ? '' : '<div class="lg-free"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>'}
+      <p class="note">${mem ? '' : 'مشترك في الدورة؟ سجّل بنفس إيميل Google اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>'}الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
+      ${mem ? '<p class="note" style="margin-top:6px"><a href="/p/">مو مشترك؟ جرّب مجاناً</a></p>' : ''}
       <p class="note" style="margin-top:10px"><a class="btn sm ghost" style="gap:6px" href="https://wa.me/966508003683?text=${encodeURIComponent('السلام عليكم، أحتاج مساعدة في الدخول لمنصة Q-Guide')}" target="_blank" rel="noopener">💬 دعم فني عبر واتساب</a></p>
       <p class="note" style="margin-top:8px"><a href="/privacy/">سياسة الخصوصية</a> · <a href="/terms/">الشروط</a></p>
     </div></div>`;
