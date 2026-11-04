@@ -1293,8 +1293,8 @@
       const q = ta.value.trim(), T = fdToks(q), words = T.en.filter(w => w[0] !== '_').length + T.ar.length, full = words >= 6 || q.length >= 60;
       if (!words && T.nu.length < 2) { R.innerHTML = `<div class="fd-res tip"><p>اكتب كلمة أو أكثر من السؤال (مثل <bdi dir="ltr">probability</bdi> أو <bdi dir="ltr">circle area</bdi>)، أو السؤال كامل.</p></div>`; ta.focus(); return; }
       R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقارن سؤالك بكل أسئلة الدورة…</div>`;
-      if (full) {   // سؤال كامل: محرك المقارنة على الخادم
-        const r = await call({ text: q });
+      if (full) {   // سؤال كامل: محرك المقارنة على الخادم (ocr = النص من صورته، عشان المالك يشوف الصورة معه في السجل)
+        const r = await call({ text: q, ocr: usedImg ? 1 : undefined });
         if (r && r.ok) return fsShow(R, r, q, usedImg || fromImg, kind);
         if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
       }
@@ -2073,8 +2073,68 @@
   }
   // ---------- 🆓 الزوار (حسابات مجانية): للمالك — العدد والإيميلات للتسويق ----------
   // 🔎 عمليات «ابحث عن سؤال»: وش يبحث عنه الطلاب، والأسئلة الجديدة اللي ما هي في الدورة
+  // كل بحث: سؤال الطالب (صورته أو كلامه) جنب سؤال الدورة اللي طلع له، عشان المالك يقارن بينهم
   const FL_ST = { exact: ['ok', 'موجود بالضبط'], reorder: ['ok', 'موجود · ترتيب الخيارات غير'], wording: ['ok', 'موجود بصياغة ثانية'], opts_same: ['mid', 'خيارات مختلفة · الإجابة نفسها'],
     opts_diff: ['mid', 'خيارات مختلفة · الإجابة غير'], numbers: ['mid', 'أرقام مختلفة'], new: ['no', 'سؤال جديد'], keywords: ['sim', 'كلمات'] };
+  const FL_SRC = { img: '📷 رفع صورة', ocr: '📷 بحث بنص الصورة', text: '⌨️ كتب السؤال' };
+  const FL_IMG = new Map(), FL_WAIT = []; let flBusy = 0;
+  const flPump = () => { while (flBusy < 3 && FL_WAIT.length) { flBusy++; FL_WAIT.shift()(); } };
+  const flImg = id => {   // صورة سؤال الطالب من الخادم: مرة وحدة لكل صورة، وثلاث طلبات بالكثير مع بعض
+    if (!FL_IMG.has(id)) FL_IMG.set(id, new Promise(res => { FL_WAIT.push(() => admCall({ op: 'adm_find_img', id }).then(r => r.img || '', () => '').then(v => { flBusy--; flPump(); res(v); })); flPump(); }));
+    return FL_IMG.get(id);
+  };
+  const FL_ZI = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zM15.3 15.3 20 20M10.5 7.8v5.4M7.8 10.5h5.4"/></svg>';
+  function flZoom(src, from) {   // الصورة بحجمها الكامل فوق الصفحة (Esc أو ✕ أو ضغطة برا الصورة تقفلها)
+    const d = document.createElement('div'); d.className = 'fl-lb'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'الصورة بحجمها الكامل');
+    d.innerHTML = '<button type="button" class="fl-lbx" aria-label="إغلاق">✕</button>'; const im = new Image(); im.alt = ''; im.src = src; d.appendChild(im);
+    const key = e => { if (e.key === 'Escape') close(); };
+    const close = () => { d.remove(); document.removeEventListener('keydown', key); document.documentElement.classList.remove('fl-lbo'); if (from && from.isConnected) from.focus(); };
+    d.onclick = e => { if (e.target === d || e.target.closest('.fl-lbx')) close(); };
+    document.addEventListener('keydown', key); document.documentElement.classList.add('fl-lbo'); document.body.appendChild(d); d.querySelector('.fl-lbx').focus();
+  }
+  function flShot(src, label, alt, w, h) {   // صورة تنضغط وتكبر
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'fl-shot'; b.setAttribute('aria-label', label);
+    const im = new Image(); im.alt = alt; if (w && h) { im.width = w; im.height = h; } im.src = src; b.appendChild(im);
+    b.insertAdjacentHTML('beforeend', `<span class="zi">${FL_ZI}</span>`); b.onclick = () => flZoom(src, b); return b;
+  }
+  function flRow(x, byId, Q) {
+    const S = FL_ST[x.status] || ['sim', x.status], L = x.ref ? fsLoc(x.ref) : null, pic = x.src === 'img' || x.src === 'ocr';
+    const base = x.src === 'ocr' && x.im ? byId.get(x.im) : null, edited = !!base && String(base.q || '').trim() !== String(x.q || '').trim();
+    let me;
+    if (pic && x.im) {
+      const sum = x.src === 'img' ? 'النص اللي قريناه من الصورة' : edited ? 'النص بعد ما عدّله الطالب' : base ? 'نفس النص اللي قريناه من الصورة' : 'النص اللي بحث فيه';
+      me = `<div class="fl-shotw" data-im="${+x.im}"><div class="fl-ph"><span class="spin sm"></span>نحمّل صورة الطالب…</div></div>
+        <details class="fl-ocr"${edited ? ' open' : ''}><summary>${sum}</summary><p class="fl-q ltr">${esc(x.q)}</p></details>`;
+    } else if (pic) me = `<p class="fl-note">${x.src === 'img' ? 'صورة هذا البحث ما انحفظت لأنه قبل تفعيل حفظ الصور. هذا النص اللي قريناه منها:' : 'بحث بالنص اللي قريناه من صورته:'}</p><p class="fl-q fl-txt ltr">${esc(x.q)}</p>`;
+    else me = `<p class="fl-q fl-txt ltr">${esc(x.q)}</p>`;
+    let crs;
+    if (Q && L) {
+      const m = String(x.ref).match(/^([qv]\d+):(\d+)$/), isQ = Q.s === 'q', T = s => isQ ? mx(String(s)) : esc(String(s)), o = Q.o || [];
+      crs = `<div class="fd-pv ltr" data-img="${isQ && m ? m[1] + ':' + m[2] : ''}">${Q.pt ? `<p class="fd-pt">📄 ${esc(Q.pt)}</p>` : ''}<p>${T(Q.e || Q.a || '')}</p>
+          ${o.length ? `<ol class="fd-o">${o.map((v, j) => `<li class="${j === Q.k ? 'k' : ''}"><span class="L">${LETTERS[j]}</span><span>${T(v)}</span></li>`).join('')}</ol>` : ''}</div>
+        ${Q.k != null && o[Q.k] != null ? `<p class="fl-ans">الإجابة الصحيحة: <b><bdi dir="ltr">${LETTERS[Q.k]}) ${T(o[Q.k])}</bdi></b></p>` : ''}
+        ${m ? `<a class="fl-open" href="#${m[1]}@${m[2]}">افتح السؤال في الدورة ←</a>` : ''}`;
+    } else crs = `<div class="fl-none">${x.status === 'keywords' ? 'كتب كلمات بس، فما قارناه بسؤال معيّن.' : 'ما لقينا هذا السؤال في الدورة.'}</div>`;
+    return `<article class="fl-row"><div class="fl-h"><span class="fl-st ${S[0]}">${S[1]}</span><span class="fl-src">${FL_SRC[x.src] || FL_SRC.text}</span><small>${arAgo(x.ts)} · ${esc(x.name || x.email)}${x.free ? ' · زائر' : ''}</small></div>
+      <div class="fl-cmp"><section class="fl-col"><h4 class="fl-ttl">سؤال الطالب</h4>${me}</section>
+        <section class="fl-col fl-crs"><h4 class="fl-ttl">سؤال الدورة${L && Q ? `<span class="fl-loc">${L.t}</span>` : ''}</h4>${crs}</section></div></article>`;
+  }
+  function flLazy(W) {   // الصور تنحمّل لما توصل لها (صورة الطالب من الخادم، وصورة سؤال الدورة من ملف القسم)
+    const load = row => {
+      const w = row.querySelector('[data-im]');
+      if (w) flImg(+w.dataset.im).then(src => { if (!w.isConnected) return;
+        if (src) w.replaceChildren(flShot(src, 'كبّر صورة سؤال الطالب', 'صورة السؤال اللي رفعها الطالب'));
+        else w.innerHTML = '<div class="fl-ph off">الصورة ما عادت محفوظة</div>'; });
+      const pv = row.querySelector('.fl-crs .fd-pv'), ref = pv && pv.dataset.img;
+      if (ref) { const [sid, i] = ref.split(':');
+        loadSet(sid).then(set => { const it = set.items && set.items[+i]; if (!it || !it.img || !pv.isConnected) return;
+          pv.classList.add('has-img'); pv.prepend(flShot(it.img, 'كبّر صورة سؤال الدورة', 'سؤال الدورة', it.w, it.h)); }).catch(() => {}); }
+    };
+    const rows = W.querySelectorAll('.fl-row');
+    if (!('IntersectionObserver' in window)) { rows.forEach(load); return; }
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); load(e.target); } }), { rootMargin: '600px 0px' });
+    rows.forEach(r => io.observe(r));
+  }
   async function renderFindLog() {
     document.title = 'البحث عن الأسئلة | Q-Guide';
     let only = lsGet('qg_fl_only', '');
@@ -2085,12 +2145,12 @@
       if (location.hash !== '#admin-find') return;
       const c = {}; (r.last30 || []).forEach(x => { c[x.status] = x.n; }); const tot = Object.values(c).reduce((a, x) => a + x, 0);
       const found = (c.exact || 0) + (c.reorder || 0) + (c.wording || 0), near = (c.opts_same || 0) + (c.opts_diff || 0) + (c.numbers || 0);
-      const row = x => { const S = FL_ST[x.status] || ['sim', x.status], loc = x.ref ? fsLoc(x.ref).t : '';
-        return `<div class="fl-row"><div class="fl-h"><span class="fl-st ${S[0]}">${S[1]}</span><span class="fl-src" title="${x.src === 'img' ? 'بحث بصورة' : 'بحث بنص'}">${x.src === 'img' ? '📷' : '⌨️'}</span>${loc ? `<span class="fl-loc">${loc}</span>` : ''}<small>${arAgo(x.ts)} · ${esc(x.name || x.email)}${x.free ? ' · زائر' : ''}</small></div><p class="fl-q ltr">${esc(x.q)}</p></div>`; };
+      const byId = new Map(r.rows.map(x => [x.id, x])), qs = r.qs || {};
       $('#adm').innerHTML = `<div class="fl"><div class="fl-sum"><div><b>${tot}</b><span>بحث في آخر 30 يوم</span></div><div class="ok"><b>${found}</b><span>لقيناها في الدورة</span></div><div class="mid"><b>${near}</b><span>نفسها بأرقام أو خيارات ثانية</span></div><div class="no"><b>${c.new || 0}</b><span>أسئلة جديدة</span></div></div>
         <div class="seg fl-f" role="tablist"><button type="button" data-o="" class="${only ? '' : 'on'}" aria-selected="${!only}">كل عمليات البحث</button><button type="button" data-o="new" class="${only ? 'on' : ''}" aria-selected="${!!only}">اللي ما لقيناها بالضبط</button></div>
-        ${r.rows.length ? `<div class="fl-list">${r.rows.map(row).join('')}</div>` : `<div class="sum">${only ? 'ما فيه أسئلة جديدة للحين 👌' : 'ما أحد بحث للحين.'}</div>`}</div>`;
+        ${r.rows.length ? `<p class="fl-help mut">كل بحث فيه سؤال الطالب مثل ما حطه (صورته أو كلامه)، وجنبه سؤال الدورة اللي طلع له عشان تقارن. اضغط أي صورة تكبر.</p><div class="fl-list">${r.rows.map(x => flRow(x, byId, x.ref && qs[x.ref])).join('')}</div>` : `<div class="sum">${only ? 'ما فيه أسئلة جديدة للحين 👌' : 'ما أحد بحث للحين.'}</div>`}</div>`;
       $('#adm').querySelectorAll('.fl-f button').forEach(b => b.onclick = () => { only = b.dataset.o; lsSet('qg_fl_only', only); draw(); });
+      flLazy($('#adm'));
     };
     draw();
   }

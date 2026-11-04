@@ -1676,6 +1676,43 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .fl-q{margin:8px 0 0;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(14px * var(--fs));line-height:1.65;color:var(--ink);white-space:pre-line;overflow-wrap:anywhere;max-height:16em;overflow:auto}
 [data-theme=dark] .fl-st.no{background:#3A1D22}
 @media (max-width:640px){.fl-sum{grid-template-columns:repeat(2,minmax(0,1fr))}.fl-h small{margin-inline-start:0;width:100%}}
+/* 🔎 سجل البحث: سؤال الطالب (صورته أو كلامه) جنب سؤال الدورة اللي طلع له */
+.fl-help{margin:0 0 10px;font-size:calc(13.5px * var(--fs))}
+.fl .fl-list{gap:12px}
+.fl .fl-row{padding:12px 14px 14px;box-shadow:var(--sh)}
+.fl-src{border-radius:999px;padding:2px 10px;font-weight:700;font-size:calc(12.5px * var(--fs));background:var(--dotbg);color:var(--ink)}
+.fl-cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:12px}
+.fl-col{min-width:0;display:flex;flex-direction:column;gap:8px}
+.fl-ttl{margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;font-size:calc(13.5px * var(--fs));font-weight:800;color:var(--ink2)}
+.fl-col .fl-q{margin:0}
+.fl-txt{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.fl-note{margin:0;color:var(--mut);font-size:calc(13px * var(--fs));line-height:1.6}
+.fl-shot{position:relative;display:block;width:100%;padding:8px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:zoom-in}
+.fl-shot img{display:block;width:auto;height:auto;max-width:100%;max-height:360px;margin:0 auto;border-radius:6px}
+.fl-shot .zi{position:absolute;bottom:8px;left:8px;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--navy);color:#fff;opacity:0}
+.fl-shot:focus-visible .zi{opacity:1}
+@media (hover:hover){.fl-shot:hover .zi{opacity:1}}
+.fl-shot:focus-visible{outline:3px solid var(--royal);outline-offset:2px}
+.fd-pv .fl-shot{padding:0;border:0;background:none}
+.fl-ph{min-height:130px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:12px;background:var(--bg);color:var(--mut);font-size:calc(13px * var(--fs));text-align:center;padding:12px}
+.fl-ph.off{min-height:64px}
+.fl-ocr{border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.fl-ocr summary{cursor:pointer;padding:8px 12px;color:var(--mut);font-weight:700;font-size:calc(13px * var(--fs))}
+.fl-ocr[open] summary{border-bottom:1px dashed var(--line)}
+.fl-ocr .fl-q{padding:8px 12px 10px}
+.fl-crs .fd-o li.k{font-weight:700}
+.fl-crs .fd-o li.k .L{background:var(--ok);color:#fff}
+.fl-ans{margin:0;font-size:calc(14px * var(--fs));color:var(--ink)}
+.fl-ans b{color:var(--okt)}
+.fl-open{align-self:flex-end;font-weight:700;font-size:calc(13.5px * var(--fs))}
+.fl-none{flex:1;min-height:90px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--mut);font-size:calc(13.5px * var(--fs));padding:14px}
+/* الصورة بحجمها الكامل */
+.fl-lbo,.fl-lbo body{overflow:hidden}
+.fl-lb{position:fixed;inset:0;z-index:3000;display:flex;overflow:auto;padding:64px 16px 24px;background:rgba(9,14,28,.9)}
+.fl-lb img{display:block;margin:auto;max-width:min(1200px,100%);height:auto;background:#fff;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.fl-lbx{position:fixed;top:12px;inset-inline-start:12px;width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.16);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center}
+.fl-lbx:hover,.fl-lbx:focus-visible{background:rgba(255,255,255,.3)}
+@media (max-width:760px){.fl-cmp{grid-template-columns:1fr}.fl-shot img{max-height:300px}}
 
 /* 💬 محادثات الطلاب مع المساعد (لوحة المالك): السؤال + وش كتب الطالب + وش رد المساعد */
 .aihelp{margin:4px 0 0;font-size:calc(13px * var(--fs))}
