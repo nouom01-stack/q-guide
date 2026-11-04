@@ -638,13 +638,12 @@
   function feedback(it, a) {
     const ok = a.s === it.ans; const corr = it.opts[it.ans];
     const OKS = ['✅ إجابة صحيحة، أحسنت!', '✅ صح! كفو عليك', '✅ ممتاز، إجابة صحيحة', '✅ صح عليك 👏', '✅ برافو، إجابة صحيحة'];
-    return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? OKS[(it.n || 0) % OKS.length] : '❌ إجابة خاطئة، شوف الشرح'}</div>
+    // الشرح المكتوب انشال: الشرح صار من المساعد الذكي بس (زر «اشرح لي أكثر»)
+    return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? OKS[(it.n || 0) % OKS.length] : '❌ إجابة خاطئة'}</div>
       ${ok ? '' : `<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
-      ${ok ? `<button class="lnk exshow" type="button" onclick="this.nextElementSibling.classList.toggle('on');this.textContent=this.nextElementSibling.classList.contains('on')?'إخفاء الشرح ▴':'عرض الشرح والترجمة ▾'">عرض الشرح والترجمة ▾</button><div class="exwrap">` : ''}
-      ${it.exp ? `<div class="exl">الشرح</div><div class="ex">${fmtExp(it.exp)}</div>` : ''}
       ${aiSlot(it, a)}
-      ${ytLink(it)}
-      ${P && P.set.kind === 'verbal' ? trHtml(it) : ''}${ok ? '</div>' : ''}</div>`;
+      ${ok ? '' : ytLink(it)}
+      ${P && P.set.kind === 'verbal' ? trHtml(it, ok) : ''}</div>`;
   }
   // 🤖 «اشرح لي أكثر»: مرجع السؤال في بنك المساعد = القسم/النموذج الأصلي + ترتيبه فيه
   function aiSlot(it, a) {
@@ -756,11 +755,11 @@
     return `<details class="qtr" id="qtr" ${lsGet(QTR_LS, 0) ? 'open' : ''}><summary><span class="qt-f" aria-hidden="true">🇸🇦</span>ترجمة السؤال <small>ومعاني الكلمات</small></summary><div class="qt-b"><p class="qt-ar">${arMath(ar.q)}</p><div class="says">${it.en ? sayBtn(it.en, 'en', 'اسمع السؤال بالإنجليزي') : ''}${hasAr() ? sayBtn(ar.q, 'ar', 'اسمع الترجمة') : ''}</div>${ot}${w.length ? `<div class="vcs">${w.map(x => vcChip(x[0], x[1])).join('')}</div>` : ''}</div></details>`;
   }
   // 🇸🇦 ترجمة السؤال والخيارات + كلمات السؤال
-  function trHtml(it) {
-    const ar = it.ar; let h = '';
-    if (ar && ar.q) h += `<details class="tr" open><summary>🇸🇦 ترجمة السؤال</summary><div class="trq">${esc(ar.q)}</div><div class="says">${sayBtn(it.q, 'en', 'اسمع السؤال')}${hasAr() ? sayBtn(ar.q, 'ar', 'اسمع الترجمة') : ''}</div><ol class="tro">${it.opts.map((o, k) => `<li class="${k === it.ans ? 'ok' : ''}"><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o)} ${sayBtn(o, 'en', '', 'sm')}</span><span class="arr">${esc((ar.o || [])[k] || '')}</span></li>`).join('')}</ol></details>`;
+  function trHtml(it, shut) {   // shut: مقفولة (بعد الإجابة الصحيحة) — الطالب يفتحها لو احتاجها
+    const ar = it.ar, op = shut ? '' : ' open'; let h = '';
+    if (ar && ar.q) h += `<details class="tr"${op}><summary>🇸🇦 ترجمة السؤال</summary><div class="trq">${esc(ar.q)}</div><div class="says">${sayBtn(it.q, 'en', 'اسمع السؤال')}${hasAr() ? sayBtn(ar.q, 'ar', 'اسمع الترجمة') : ''}</div><ol class="tro">${it.opts.map((o, k) => `<li class="${k === it.ans ? 'ok' : ''}"><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o)} ${sayBtn(o, 'en', '', 'sm')}</span><span class="arr">${esc((ar.o || [])[k] || '')}</span></li>`).join('')}</ol></details>`;
     const chips = vocabChips(it.q + ' ' + it.opts.join(' '), 40);
-    if (chips) h += `<details class="tr vocab" open><summary>📖 كلمات السؤال <small>(اضغط على أي كلمة في السؤال لترجمتها)</small></summary><div class="vcs">${chips}</div></details>`;
+    if (chips) h += `<details class="tr vocab"${op}><summary>📖 كلمات السؤال <small>(اضغط على أي كلمة في السؤال لترجمتها)</small></summary><div class="vcs">${chips}</div></details>`;
     return h;
   }
   function answer(i, k) {

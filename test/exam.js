@@ -293,7 +293,6 @@
           ${it.type === 'read' ? `<details><summary class="mut" style="cursor:pointer;font-size:13px">Passage: ${esc(it.ptitle || '')}</summary><div class="passage" style="max-height:none">${esc(it.passage)}</div></details>` : ''}
           ${it.type === 'quant' ? `<img src="${it.img}" alt="">` : `<p class="qtext" style="text-align:left">${esc(it.q)}</p>`}
           ${it.opts.map((o, j) => `<div class="o ${j === k ? 'k' : (j === a ? 'w' : '')}">${LETTERS[j]}) ${esc(o.replace(/^[A-D]\)\s*/, ''))}${j === k ? ' ✓' : (j === a ? ' ✗' : '')}</div>`).join('')}
-          ${it.exp ? `<div class="ex ar">${esc(it.exp)}</div>` : ''}
           ${window.QGAI ? `<div class="ar">${QGAI.slot({ ref: id + ':' + sec.n + ':' + i, pick: a == null ? null : a, wrong: a != null && !ok, label: `Q${i + 1} · القسم ${sec.n} · الإجابة الصحيحة ${LETTERS[k]}${a != null && !ok ? ` · إجابتك ${LETTERS[a]} ✗` : ''}` })}</div>` : ''}
           ${it.ar && it.ar.q ? `<div class="ex ar tr"><b>🇸🇦 الترجمة:</b> ${arMath(it.ar.q)}${(it.ar.o || []).some(Boolean) ? `<div class="tro">${it.opts.map((o, j) => `<span class="${j === k ? 'k' : ''}">${LETTERS[j]}) ${arMath((it.ar.o || [])[j] || '')}</span>`).join('')}</div>` : ''}${it.wd && it.wd.length ? `<div class="wds">${it.wd.filter(x => !/^(ahmed|khalid|khaled|mohamed|mohammed|muhammad|sara|sarah|nora|ali|saad)$/.test(x[0])).map(x => `<span><b dir="ltr">${esc(x[0])}</b> ${esc(x[1])}</span>`).join('')}</div>` : ''}</div>` : ''}</div>`;
       });
