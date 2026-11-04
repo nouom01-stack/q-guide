@@ -22,7 +22,10 @@
     q: { name: _T('القسم'), rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: _T('مقطع قواعد الكمي'), d: _T('كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام') }, list: 'PLNdATbln9B4k',
       v: ['WBnwPsSTuaU:36:18', 'SLGGlm5YwJU:34:43', 'VoVaWRFbIjg:36:50', 'dwvgSfK6Tfw:34:10', 'eVZsYR0QPq8:35:39', 'd3hX21VfSWo:34:19', 'EMNaSCi0IMk:43:40', 'fQynzmnlZmI:34:15', 'i4ELxBTMUw0:40:51', 'mZdhgMMOWB0:40:01', 'bscPMN6lDPQ:36:29', '6AxdKpQZevk:34:16', 'iVR5LsbBBv4:29:38', 'vf-aOADLlCs:56:06'] },
     v: { name: _T('النموذج'), rules: { id: 'vo91Yxx_6vw', dur: '14:18', t: _T('مقطع قواعد التناظر اللفظي'), d: _T('شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج') }, list: 'PLVFHCj9Zxd0E',
-      v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'VcaywhqSsVM:21:40', 'mFYiB0Z9G5k:15:17'] } };
+      v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'VcaywhqSsVM:21:40', 'mFYiB0Z9G5k:15:17',
+        'RD2yd4xavzw:17:18'] } };   // الـ15 = «الأسئلة الجديدة» (Verbal/Extra Questions)
+  // اسم المقطع/المجموعة: «النموذج 7»… والـ15 في اللفظي = «الأسئلة الجديدة»
+  const vLabel = (k, n) => k === 'v' && +n === 15 ? _T('الأسئلة الجديدة') : YT[k].name + ' ' + n;
   const ytUrl = id => 'https://youtu.be/' + id;
   // 🎬 المشترك المجاني أو بالتحويل: المقاطع تشتغل هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميله · مشترك يوتيوب يكمل على يوتيوب (مقاطع الأعضاء)
   // auth.vids = المقاطع المرفوعة للموقع · لو مقطع ما انرفع للحين يفتح نسخته الخاصة في يوتيوب (auth.yt) مثل قبل
@@ -33,7 +36,7 @@
   const TGT = ' target="_blank" rel="noopener"';
   const vidHash = (k, n) => '#watch-' + k + (n === 'rules' ? '-rules' : n);
   const inSite = (k, n) => vidSub() && vidHas(k + ':' + n) ? { url: vidHash(k, n), tgt: '', site: true } : null;
-  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), lab = k.name + ' ' + m[2], dur = raw.slice(i + 1);
+  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), lab = vLabel(m[1], m[2]), dur = raw.slice(i + 1);
     const s = inSite(m[1], +m[2]); if (s) return Object.assign({ id: raw.slice(0, i), dur, label: lab, alt: false }, s);
     const A = ytAlt(), alt = A && A[m[1]] && A[m[1]].v ? A[m[1]].v[+m[2] - 1] : ''; const id = alt || raw.slice(0, i); return { id, dur, url: ytUrl(id), tgt: TGT, label: lab, alt: !!alt }; }
   const ytRules = k => { if (k === 'v') return null;   // 🎬 مقطع قواعد اللفظي لطلال العنزي (قريباً): ما يطلع مع شرح سلمان الفرج
@@ -295,6 +298,7 @@
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
+    document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
     if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
@@ -316,7 +320,7 @@
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
     if (/^watch-[qv](-rules|\d{1,2})$/.test(h)) return renderWatch(h.slice(6));
     if (h === 'sharh') return renderSharh();
-    if (h === 'board' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : h === 'board-month' ? 'month' : 'practice');
+    if (h === 'board' || h === 'board-week' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'week');   // 🏆 الافتراضي: هذا الأسبوع
     if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
     if (h === 'qall' || h === 'vall') return renderPlayer(h);
     if (h === 'plan') return renderPlan();
@@ -324,6 +328,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
+    if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-regs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : h === 'admin-regs' ? renderRegs() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
@@ -382,7 +387,7 @@
     return `<header class="top"><div class="w">${left || `<a class="brand" href="#"><img src="/assets/logo.png" alt="">Q-Guide</a>`}${ctlHtml()}${inner || ''}</div></header>`;
   }
   // ---------- home: ورقة الإجابة ----------
-  const SET_NAME = id => (id[0] === 'q' ? _T('القسم ') : _T('النموذج ')) + id.slice(1);
+  const SET_NAME = id => id === 'v15' ? _T('الأسئلة الجديدة') : (id[0] === 'q' ? _T('القسم ') : _T('النموذج ')) + id.slice(1);
   function setState(id, n) { const p = progGet(id); const a = p.a || {}; let ans = 0, ok = 0, last = 0, gap = -1; for (let i = 0; i < n; i++) { const x = a[i]; if (x) { ans++; if (x.c) ok++; if (x.t > last) last = x.t; } else if (gap < 0) gap = i; } return { ans, ok, last, n, gap: gap < 0 ? 0 : gap, done: n > 0 && ans >= n, best: p.best }; }
   function dotsHtml(id, n, cur) { const a = progGet(id).a || {}; let h = ''; for (let i = 0; i < n; i++) { const x = a[i]; h += `<i class="${x ? (x.c ? 'ok' : 'bad') : ''}${i === cur ? ' cur' : ''}"></i>`; } return h; }
   function pickResume() {
@@ -574,7 +579,7 @@
   let VID = null;
   function vidList(k) {
     const L = k === 'q' ? [{ key: 'q:rules', h: 'q-rules', n: 'rules', label: _T('قواعد الكمي'), dur: YT.q.rules.dur }] : [];   // قواعد اللفظي لطلال العنزي (قريباً)
-    YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: YT[k].name + ' ' + (i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
+    YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: vLabel(k, i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
   }
   function vidStop() { if (!VID) return; clearInterval(VID.wm); clearInterval(VID.sv); document.removeEventListener('fullscreenchange', VID.fs); try { VID.v.pause(); VID.v.removeAttribute('src'); VID.v.load(); } catch (e) {} VID = null; }
@@ -584,7 +589,7 @@
     if (!cur) { location.hash = '#sharh'; return; }
     document.title = _T('شرح ') + cur.label + ' | Q-Guide';
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
-    const solve = n === 'rules' ? `<a class="btn sm ghost" href="#${k === 'q' ? 'rules' : 'rules-v'}">${k === 'q' ? _T('📐 ملخص القوانين') : _T('📘 ملخص القواعد')}</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${YT[k].name} ${n}</a>`;
+    const solve = n === 'rules' ? `<a class="btn sm ghost" href="#${k === 'q' ? 'rules' : 'rules-v'}">${k === 'q' ? _T('📐 ملخص القوانين') : _T('📘 ملخص القواعد')}</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
     app.innerHTML = topbar(_T`<span class="ttl">🎬 شرح ${esc(cur.label)}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wrap watch">
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
@@ -650,7 +655,7 @@
     const W = lsGet(VW_LS, {});
     // كل مقطع: داخل الموقع (المجاني والتحويل لو انرفع) أو يوتيوب (مشترك يوتيوب، أو مقطع ما انرفع للحين)
     const item = (k, n) => { const y = n === 'rules' ? ytRules(k) : ytFor(k + n); if (!y) return '';
-      const label = n === 'rules' ? _T('قواعد الكمي') : YT[k].name + ' ' + n, dur = n === 'rules' ? YT[k].rules.dur : y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
+      const label = n === 'rules' ? _T('قواعد الكمي') : vLabel(k, n), dur = n === 'rules' ? YT[k].rules.dur : y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
       return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${label}</span></b><small>${w ? _T('✓ شاهدته') : `<bdi dir="ltr">${esc(dur || '')}</bdi>`}</small></a>`; };
     const tcard = t => `<div class="tch${t.on ? ' on' : ' soon'}"><span class="tav" aria-hidden="true">${t.name[0]}</span>
       <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? _T('الكمي واللفظي') : SUBJ[t.s[0]] + _T(' فقط')}</span></span><span class="tst">${t.on ? _T('✓ موجود') : _T('⏳ قريباً')}</span></div>`;
@@ -737,6 +742,7 @@
     let html = '';
     if (set.kind === 'verbal') {
       const g = set.groups[gi]; const prevG = i > 0 ? items[i - 1].gi : -1;
+      if (g.m) html += `<div class="gmd"><bdi dir="ltr">Model ${g.m} · ${esc(g.mt || '')}</bdi></div>`;   // «الأسئلة الجديدة»: كل قطعة من أي نموذج
       if (g.kind === 'part') html += `<div class="ghd">${esc(g.title)}${EN ? '' : ` <small>— ${esc(g.ar || '')}</small>`}</div>`;
       else {
         const open = P.passOpen[gi] != null ? P.passOpen[gi] : true;
@@ -747,7 +753,7 @@
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
     html += _T`<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${items.length}</small></span><span class="hd-r">${set.kind === 'verbal' ? sayBtn(it.q, 'en') : ''}<button type="button" class="mk st ${mk && mk.s ? 'on' : ''}" id="mkS" aria-pressed="${!!(mk && mk.s)}" title="احفظ السؤال في دفتري" aria-label="احفظ السؤال في دفتري">${STARSVG}</button><button type="button" class="mk nt ${mk && mk.n ? 'on' : ''}" id="mkN" title="اكتب ملاحظتك على السؤال" aria-label="ملاحظتي">${NOTESVG}</button><span class="tag ltr">${tag}</span></span></div>`;
     if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">` + qtrHtml(it);
-    else html += `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
+    else html += (it.tag ? `<div class="qtag"><bdi dir="ltr">${esc(EN ? it.tag.split(' – ')[0] : it.tag)}</bdi></div>` : '') + `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
     const two = set.kind === 'quant' || it.opts.every(o => o.length <= 28);
     html += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => {
       const lab = set.kind === 'quant' && /^[A-D]\)\s/.test(o) ? o.replace(/^[A-D]\)\s*/, '') : o;
@@ -790,7 +796,7 @@
     return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: _T`سؤال ${P.cur + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? _T` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
   }
   function ytLink(it) {
-    const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';
+    const yt = ytFor(P && P.id === 'v15' ? 'v15' : it.src || (P && P.id)); if (!yt) return '';
     return _T`<a class="ytx" href="${yt.url}"${yt.tgt}${ytTip(yt)}>${vIcon(yt)}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو${yt.site ? '' : _T(' على يوتيوب')}</span><span class="go">${EN ? '→' : '←'}</span></a>`;
   }
   // 🇸🇦 ترجمة أسئلة الكمي: تظهر قبل الإجابة (الترجمة ما تكشف الحل) ونتذكّر إذا الطالب يفضّلها مفتوحة
@@ -2115,6 +2121,44 @@
   // ---------- 👑 لوحة المشرف ----------
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI';
   const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
+  // 📅 موعد انتهاء الاشتراك (للمالك): البداية + شهر — الطالب الجديد ياخذ تاريخه تلقائياً، و«+ شهر» يمدّد
+  const rDay = t => Math.floor((t + 3 * 3600000) / 864e5);
+  const admDay = (t, y) => t ? new Date(t).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', Object.assign({ day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' }, y ? { year: 'numeric' } : {})) : '—';
+  const arDays = n => n === 1 ? 'يوم' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';
+  function subLeft(until) {   // ok = باقي أكثر من 3 أيام · soon · over = مر عليه شهر (خلص موعده)
+    if (!until) return { c: 'na', t: 'بدون تاريخ' };
+    const t = Date.now();
+    if (until <= t) { const d = rDay(t) - rDay(until); return { c: 'over', t: d ? 'انتهى قبل ' + arDays(d) : 'انتهى اليوم' }; }
+    const d = rDay(until) - rDay(t); return { c: d <= 3 ? 'soon' : 'ok', t: d ? 'باقي ' + arDays(d) : 'ينتهي اليوم' };
+  }
+  const subOver = x => !x.banned && !x.ended && !x.end && x.until > 0 && x.until <= Date.now();
+  const subCell = x => { if (x.banned || x.ended || x.end) return '<span class="sdt na">—</span>'; const L = subLeft(x.until); return `<span class="sdt ${L.c}"><b>${x.until ? admDay(x.until) : '—'}</b><small>${L.t}</small></span>`; };
+  // «+ شهر» من موعد النهاية (أو من اليوم لو خلص)
+  async function subAddMonth(x, name) {
+    try { const r = await admCall({ op: 'adm_sub_dates', email: x.email, add: 1 }); x.start = r.start; x.until = r.until; toast(`📅 ${name}: صار ينتهي ${admDay(r.until, 1)}`); return r; } catch (e) { toast('ما انحفظ: ' + e.message); return null; }
+  }
+  // تعديل البداية والنهاية (النهاية الافتراضية = نفس يوم البداية بعد شهر)
+  function subDatesDlg(x, name) {
+    return new Promise(res => {
+      const ymd = t => t ? new Date(t + 3 * 3600000).toISOString().slice(0, 10) : '';
+      const nextM = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); if (!m) return ''; const last = new Date(Date.UTC(+m[1], +m[2] + 1, 0)).getUTCDate(); return new Date(Date.UTC(+m[1], +m[2], Math.min(+m[3], last))).toISOString().slice(0, 10); };
+      const md = document.createElement('div'); md.className = 'modal'; md.innerHTML = `<div class="m sdlg" role="dialog" aria-modal="true" aria-labelledby="sdh"><h3 id="sdh">📅 موعد اشتراك ${esc(name)}</h3>
+        <div class="sdgrid"><label><span>بداية الاشتراك</span><input type="date" id="sd_s" value="${ymd(x.start)}"></label><label><span>ينتهي في</span><input type="date" id="sd_u" value="${ymd(x.until)}"></label></div>
+        <p class="mut sdhelp">لما تغيّر البداية، النهاية تصير نفس اليوم بعد شهر (وتقدر تغيّرها). الاشتراك يبقى شغّال لين آخر يوم النهاية.</p>
+        <div class="acts"><button type="button" class="btn sm" id="sd_ok">حفظ</button><button type="button" class="btn sm ghost" id="sd_x">إلغاء</button></div></div>`;
+      document.body.appendChild(md); const S = md.querySelector('#sd_s'), U = md.querySelector('#sd_u'), done = v => { md.remove(); res(v); };
+      S.onchange = () => { const n = nextM(S.value); if (n) U.value = n; };
+      md.onclick = e => { if (e.target === md) done(null); }; md.querySelector('#sd_x').onclick = () => done(null);
+      md.onkeydown = e => { if (e.key === 'Escape') done(null); };
+      md.querySelector('#sd_ok').onclick = async () => {
+        if (!S.value || !U.value) return toast('اختر التاريخين'); if (U.value <= S.value) return toast('تاريخ النهاية لازم يكون بعد البداية');
+        const b = md.querySelector('#sd_ok'); b.disabled = true;
+        try { const r = await admCall({ op: 'adm_sub_dates', email: x.email, start: S.value, until: U.value }); x.start = r.start; x.until = r.until; toast(`📅 ${name}: ينتهي ${admDay(r.until, 1)}`); done(r); }
+        catch (e) { toast('ما انحفظ: ' + e.message); b.disabled = false; }
+      };
+      setTimeout(() => S.focus(), 30);
+    });
+  }
   let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '', subs: null, sf: 'all', sq: '', msub: 'free', regs: null, regsSync: null, regsAt: 0, rf: 'wait', rq: '', rt: {}, share: null };
   const isOwner = () => (ADM.role || auth.staff) === 'owner';
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
@@ -2135,20 +2179,22 @@
   }
   function paintAdmin() {
     const W = $('#adm'); if (!W) return; const all = ADM.list; const day = Date.now() - 86400000;
-    const stats = { n: all.filter(s => !s.banned && !s.ended).length, banned: all.filter(s => s.banned).length, today: all.filter(s => s.lastLogin > day).length, never: all.filter(s => !s.logins && !s.banned).length };
+    const OW = isOwner(), stats = { n: all.filter(s => !s.banned && !s.ended).length, banned: all.filter(s => s.banned).length, today: all.filter(s => s.lastLogin > day).length, never: all.filter(s => !s.logins && !s.banned).length, over: all.filter(subOver).length };
+    if (ADM.f === 'over' && !OW) ADM.f = 'all';
     const q = ADM.q.trim().toLowerCase();
     let list = all.filter(s => !q || [s.name, s.display, s.email, s.typed, s.phone, s.user].some(x => String(x || '').toLowerCase().includes(q)));
-    if (ADM.f === 'banned') list = list.filter(s => s.banned); else if (ADM.f === 'today') list = list.filter(s => s.lastLogin > day); else if (ADM.f === 'never') list = list.filter(s => !s.logins && !s.banned);
-    list.sort((a, b) => (b.lastLogin || 0) - (a.lastLogin || 0));
-    W.innerHTML = `<div class="astats"><div><b>${stats.n}</b><span>طالب مشترك</span></div><div><b>${stats.today}</b><span>دخل آخر 24 ساعة</span></div><div><b>${stats.never}</b><span>لم يدخل الموقع</span></div><div class="bad"><b>${stats.banned}</b><span>محظور</span></div></div>
-      <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل'], ['banned', 'محظور']].map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
-      <div class="atable"><div class="arow head"><span class="c-st">الطالب</span><span class="c-ph">الجوال</span><span class="c-n">الأقسام</span><span class="c-n">المحاكي</span><span class="c-dt">آخر دخول</span><span class="c-act">إجراءات</span></div>
-      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.typed || s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.manual ? ' · <span class="bdg man">➕ من اللوحة</span>' : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.ended ? ' · <span class="bdg">⛔ اشتراكه منتهي</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small></span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span><span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span></div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
+    if (ADM.f === 'banned') list = list.filter(s => s.banned); else if (ADM.f === 'today') list = list.filter(s => s.lastLogin > day); else if (ADM.f === 'never') list = list.filter(s => !s.logins && !s.banned); else if (ADM.f === 'over') list = list.filter(subOver);
+    if (ADM.f === 'over') list.sort((a, b) => a.until - b.until); else list.sort((a, b) => (b.lastLogin || 0) - (a.lastLogin || 0));   // ⏰ اللي خلص شهره من زمان أول
+    W.innerHTML = `<div class="astats${OW ? ' n5' : ''}"><div><b>${stats.n}</b><span>طالب مشترك</span></div><div><b>${stats.today}</b><span>دخل آخر 24 ساعة</span></div><div><b>${stats.never}</b><span>لم يدخل الموقع</span></div>${OW ? `<button type="button" class="over${ADM.f === 'over' ? ' on' : ''}" data-f="${ADM.f === 'over' ? 'all' : 'over'}" title="اللي مر على اشتراكهم شهر كامل (خلص موعده)"><b>${stats.over}</b><span>⏰ مر عليهم شهر</span></button>` : ''}<div class="bad"><b>${stats.banned}</b><span>محظور</span></div></div>
+      <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل']].concat(OW ? [['over', '⏰ مر عليه شهر']] : [], [['banned', 'محظور']]).map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+      ${ADM.f === 'over' ? `<div class="rgsync warn overnote">⏰ هذول مر على اشتراكهم شهر كامل (من وقت تسجيلهم). لو جدّد الطالب اضغط «+ شهر» من بطاقته أو من «💳 الاشتراكات»، ولو ما جدّد تقدر تنهي اشتراكه.</div>` : ''}
+      <div class="atable${OW ? ' dt' : ''}"><div class="arow head"><span class="c-st">الطالب</span><span class="c-ph">الجوال</span><span class="c-n">الأقسام</span><span class="c-n">المحاكي</span><span class="c-dt">آخر دخول</span>${OW ? '<span class="c-sub">ينتهي الاشتراك</span>' : ''}<span class="c-act">إجراءات</span></div>
+      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.typed || s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.manual ? ' · <span class="bdg man">➕ من اللوحة</span>' : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.ended ? ' · <span class="bdg">⛔ اشتراكه منتهي</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small>${OW && !s.banned && !s.ended && s.until ? (() => { const L = subLeft(s.until); return `<small class="sdm ${L.c}">⏰ ينتهي ${admDay(s.until)} · ${L.t}</small>`; })() : ''}</span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span>${OW ? `<span class="c-sub">${subCell(s)}</span>` : ''}<span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${OW ? `<a class="btn sm ghost rpb" href="#admin-report/${encodeURIComponent(s.email)}" title="التقرير الشامل" aria-label="التقرير الشامل لـ${esc(s.display || s.name || s.email)}">📊</a>` : ''}${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span></div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
       <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. ${isOwner() ? 'لإضافة مشتركين استخدم تبويب «➕ المشتركون» أو الشيت، وبيانات طلاب الشيت تتعدّل من الشيت.' : 'لإضافة طالب أو تعديل بياناته استخدم الشيت.'}</p>`;
     $('#aq').oninput = e => { ADM.q = e.target.value; const pos = e.target.selectionStart; paintAdmin(); const i = $('#aq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { ADM.f = b.dataset.f; paintAdmin(); });
     W.querySelectorAll('[data-view]').forEach(b => b.onclick = () => admStudent(b.dataset.view));
-    W.querySelectorAll('.arow[data-e]').forEach(r => r.onclick = e => { if (e.target.closest('button')) return; admStudent(r.dataset.e); });
+    W.querySelectorAll('.arow[data-e]').forEach(r => r.onclick = e => { if (e.target.closest('button,a')) return; admStudent(r.dataset.e); });
     W.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => admBan(b.dataset.ban));
     W.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => admUnban(b.dataset.unban));
   }
@@ -2171,7 +2217,10 @@
       ${d.ended && !d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ اشتراكه منتهي منذ ${fmtD(d.ended.at)}: يدخل بالحساب المجاني بس.${isOwner() ? ' <button class="lnk" id="a_srest">↩️ إرجاع الاشتراك</button>' : ''}</div>` : ''}
       ${mb ? `<div class="sum mbox">➕ مشترك أُضيف من اللوحة بواسطة ${esc((mb.added_by || '').split('@')[0])} · ${fmtD(mb.added_at)}${isOwner() ? ' <button class="lnk" id="a_mrm">حذف الاشتراك</button>' : ''}</div>` : ''}
       <div class="kv"><div><span>${mb ? 'الاسم' : 'الاسم في الشيت'}</span><b>${esc((mb ? mb.name : st.name) || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
-      <div class="acts"><button class="btn sm ghost" id="a_name">✏️ تعديل الاسم المعروض</button><button class="btn sm ghost" id="a_av">🖼 مسح الصورة</button><button class="btn sm ghost" id="a_kick">⎋ طرد الجلسة</button>${isOwner() && !d.ban && !d.ended && (d.student || d.member) ? '<button class="btn sm ghost dang" id="a_send">⛔ إنهاء الاشتراك</button>' : ''}${d.ban ? `<button class="btn sm" id="a_unban">فك الحظر</button>` : `<button class="btn sm danger" id="a_ban">⛔ حظر نهائي</button>`}</div>
+      ${isOwner() && (d.student || d.member) && !d.ban ? (() => { const D = d.dates || {}, L = subLeft(D.until);
+        return `<div class="sdbox ${d.ended ? 'na' : L.c}"><div class="sdl"><span>📅 بداية الاشتراك <b>${D.start ? admDay(D.start, 1) : '—'}</b></span><span>⏰ ينتهي <b>${D.until ? admDay(D.until, 1) : '—'}</b>${d.ended ? '' : ` <em>${L.t}</em>`}</span></div>
+          <div class="sdb"><button class="btn sm" id="a_sm">＋ شهر</button><button class="btn sm ghost" id="a_sd">تعديل التاريخ</button></div></div>`; })() : ''}
+      <div class="acts">${isOwner() ? `<a class="btn sm gold" href="#admin-report/${encodeURIComponent(email)}" id="a_rep">📊 التقرير الشامل</a>` : ''}<button class="btn sm ghost" id="a_name">✏️ تعديل الاسم المعروض</button><button class="btn sm ghost" id="a_av">🖼 مسح الصورة</button><button class="btn sm ghost" id="a_kick">⎋ طرد الجلسة</button>${isOwner() && !d.ban && !d.ended && (d.student || d.member) ? '<button class="btn sm ghost dang" id="a_send">⛔ إنهاء الاشتراك</button>' : ''}${d.ban ? `<button class="btn sm" id="a_unban">فك الحظر</button>` : `<button class="btn sm danger" id="a_ban">⛔ حظر نهائي</button>`}</div>
       ${skillsBarsHtml(d.skills && d.skills.data ? histAgg(JSON.parse(d.skills.data)) : null, true)}
       <h4>📚 نتائج الأقسام (${d.results.length})${d.results.length ? ' <button class="lnk" id="a_rr">حذف الكل</button>' : ''}</h4>
       <div class="alist">${d.results.slice(0, 40).map(r => `<div><span>${esc(r.set_id)}</span><span>${r.correct}/${r.n} (${r.pct}%)</span><span>${fmtS(r.secs)}</span><span class="mut">${fmtD(r.ts)}</span></div>`).join('') || '<div class="mut">لا توجد</div>'}</div>
@@ -2190,9 +2239,98 @@
     const mr = m.querySelector('#a_mrm'); if (mr) mr.onclick = async () => { m.remove(); if (await admMemberRemove(email)) { ADM.list = null; renderAdmin(); } };
     const se = m.querySelector('#a_send'); if (se) se.onclick = async () => { m.remove(); if (await subEndOne(email, pf.name || st.name || (mb && mb.name) || email)) again(); };
     const sr = m.querySelector('#a_srest'); if (sr) sr.onclick = async () => { m.remove(); if (await subRestoreOne(email, pf.name || st.name || (mb && mb.name) || email)) again(); };
+    const nmS = pf.name || st.name || (mb && mb.name) || email, dx = Object.assign({ email }, d.dates || {});
+    const sm = m.querySelector('#a_sm'); if (sm) sm.onclick = async () => { sm.disabled = true; if (await subAddMonth(dx, nmS)) { m.remove(); ADM.list = null; admStudent(email); } else sm.disabled = false; };
+    const sd = m.querySelector('#a_sd'); if (sd) sd.onclick = async () => { if (await subDatesDlg(dx, nmS)) { m.remove(); ADM.list = null; admStudent(email); } };
+    const rp = m.querySelector('#a_rep'); if (rp) rp.onclick = () => m.remove();
     const rr = m.querySelector('#a_rr'); if (rr) rr.onclick = async () => { if (!await QGDlg.confirm('حذف كل نتائج الأقسام لهذا الطالب؟ (تؤثر على لوحة الصدارة)', { danger: true })) return; try { await admCall({ op: 'adm_reset_results', email }); toast('تم'); again(); } catch (e) { toast(e.message); } };
     m.querySelectorAll('[data-rx]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('حذف كل محاولات ' + b.dataset.rx + ' لهذا الطالب ليبدأه من جديد؟', { danger: true })) return; try { await admCall({ op: 'adm_reset_exam', email, test: b.dataset.rx }); toast('تم'); again(); } catch (e) { toast(e.message); } });
     if (ADM.role === 'viewer') m.querySelectorAll('#a_name,#a_av,#a_kick,#a_ban,#a_unban,#a_rr,[data-rx]').forEach(x => x.remove());
+  }
+  // ---------- 📊 التقرير الشامل للطالب (المالك): كل اللي يبين هل ذاكر فعلاً ----------
+  const RP_TYPE = { yt: '▶️ مشترك يوتيوب', free: '🎁 اشتراك مجاني', bank: '🏦 تحويل بنكي' };
+  const rpSet = id => id === 'qall' ? 'الشامل كمي' : id === 'vall' ? 'الشامل لفظي' : id === 'v15' ? 'الأسئلة الجديدة' : /^q\d+$/.test(id) ? 'القسم ' + id.slice(1) : /^v\d+$/.test(id) ? 'النموذج ' + id.slice(1) : id;
+  const rpVid = k => { const m = /^([qv]):(.+)$/.exec(k || ''); if (!m) return k; return m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2]; };
+  const rpDur = x => { x = Math.max(0, Math.round(x || 0)); const h = Math.floor(x / 3600), m = Math.round(x % 3600 / 60); return h ? h + ' س' + (m ? ' ' + m + ' د' : '') : m ? m + ' د' : x ? 'أقل من دقيقة' : '—'; };
+  const rpN = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? n + ' ' + few : n + ' ' + many;
+  const pctC = p => p == null ? 'none' : p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo';
+  async function renderReport(email) {
+    const h0 = location.hash; document.title = 'التقرير الشامل | Q-Guide';
+    const top = () => topbar(`<span class="ttl">📊 التقرير الشامل</span><span class="sp"></span><button class="ib" id="rpprint" title="طباعة أو حفظ PDF">🖨</button><button class="ib" id="rpref" title="تحديث">⟳</button>`, `<a class="ib" href="#admin" title="رجوع للطلاب">→</a>`);
+    app.innerHTML = top() + '<main class="wrap rpt" id="rpt"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>';
+    bindCtl(); $('#rpref').onclick = () => renderReport(email); $('#rpprint').onclick = () => window.print();
+    try { await admLoadStaff(); } catch (e) {}
+    const W = () => $('#rpt');
+    if (!isOwner()) { if (W()) W().innerHTML = '<div class="sum">🔒 التقرير الشامل للمالك فقط.</div>'; return; }
+    let d; try { d = await admCall({ op: 'adm_report', email }); } catch (e) { if (W()) W().innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== h0 || !W()) return;
+    const w = d.who || {}, S = d.sub || {}, T = d.totals || {}, nm = w.display || w.name || email.split('@')[0];
+    document.title = 'تقرير ' + nm + ' | Q-Guide';
+    // 🧾 الاشتراك
+    const L = subLeft(S.until), status = S.ban ? `<span class="rpst bad">⛔ محظور ${fmtD(S.ban.at)}</span>` : S.ended ? `<span class="rpst bad">⛔ اشتراكه منتهي ${fmtD(S.ended.at)}</span>` : L.c === 'over' ? `<span class="rpst warn">⏰ مر على اشتراكه شهر</span>` : `<span class="rpst ok">✅ مشترك</span>`;
+    const chips = [w.phone ? `<span class="ltr">📞 ${esc(w.phone)}</span>` : '', w.user ? `<span class="ltr">▶️ @${esc(w.user)}</span>` : '', w.src === 'panel' ? `<span>➕ أضفته من اللوحة${w.added && w.added.at ? ' ' + admDay(w.added.at, 1) : ''}</span>` : w.src === 'sheet' ? '<span>📊 من الشيت</span>' : '', w.gender ? `<span>${esc(w.gender)}</span>` : ''].filter(Boolean).join('');
+    // 📚 الأقسام والنماذج: أول محاولة في كل واحد
+    const SETS = {}; (d.sets || []).forEach(x => SETS[x.id] = x);
+    const cell = (id, lab) => { const x = SETS[id], f = x && x.first, b = x && x.best;
+      const tip = x ? `${rpSet(id)}: أول محاولة ${f ? f.pct + '% (' + f.c + '/' + f.n + ')' : '—'} · أفضل ${b ? b.pct + '%' : '—'} · ${rpN(x.att, 'محاولة وحدة', 'محاولتين', 'محاولات', 'محاولة')} · آخر مرة ${admDay(x.last && x.last.ts, 1)}` : rpSet(id) + ': ما حلّه';
+      return `<div class="rpc ${pctC(f ? f.pct : b ? b.pct : null)}" title="${esc(tip)}"><b>${lab}</b><span>${f ? f.pct + '%' : b ? b.pct + '%' : '—'}</span><small>${x ? (x.att > 1 ? x.att + ' مرات' : 'مرة') : 'ما حلّه'}</small></div>`; };
+    const qIds = Array.from({ length: 14 }, (_, i) => 'q' + (i + 1)), vIds = Array.from({ length: 15 }, (_, i) => 'v' + (i + 1));
+    const done = [...qIds, ...vIds].filter(id => SETS[id]).length;
+    const allLine = ['qall', 'vall'].filter(id => SETS[id]).map(id => { const x = SETS[id]; return `<span>🧾 ${rpSet(id)}: أفضل ${x.best.pct}% · ${rpN(x.att, 'مرة', 'مرتين', 'مرات', 'مرة')}</span>`; }).join('');
+    // 🧪 المحاكي
+    const tests = (d.tests || []).slice().sort((a, b) => +a.test.slice(1) - +b.test.slice(1));
+    const tDone = tests.filter(t => t.first), avg = tDone.length ? Math.round(tDone.reduce((a, t) => a + t.first.pct, 0) / tDone.length) : null;
+    const tRows = tests.map(t => `<div class="rpr"><span><b>الاختبار المحاكي ${esc(t.test.slice(1))}</b></span><span data-l="أول محاولة" class="${pctC(t.first ? t.first.pct : null)}">${t.first ? t.first.pct + '%' : 'ما خلّصه'}</span><span data-l="أفضل">${t.best ? t.best.pct + '%' : '—'}</span><span data-l="اللفظي">${t.first && t.first.vpct != null ? t.first.vpct + '%' : '—'}</span><span data-l="الكمي">${t.first && t.first.qpct != null ? t.first.qpct + '%' : '—'}</span><span data-l="المحاولات">${t.att}</span><span data-l="آخر مرة" class="mut">${admDay(t.last, 1)}</span></div>`).join('');
+    // 📅 آخر 5 أسابيع: كل يوم حسب نشاطه
+    const cal = d.cal || [], dn = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'], dn1 = ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'];
+    const wd = t => new Date(t + 3 * 3600000).getUTCDay(), pad = cal.length ? wd(cal[0].d) : 0;
+    const lvl = x => { const v = x.q + x.e * 40; return v >= 60 ? 4 : v >= 30 ? 3 : v >= 10 ? 2 : v > 0 ? 1 : 0; };
+    const calHtml = dn.map((x, i) => `<i class="h" title="${x}"><span class="hl">${x}</span><span class="hs">${dn1[i]}</span></i>`).join('') + '<i class="p"></i>'.repeat(pad) + cal.map(x => { const parts = [x.q ? rpN(x.q, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال') : '', x.e ? (x.e > 1 ? x.e + ' اختبارات محاكية' : 'اختبار محاكي') : '', x.l ? 'دخل الموقع' : ''].filter(Boolean);
+      return `<i class="l${lvl(x)}${!x.q && !x.e && x.l ? ' lg' : ''}${rDay(x.d) === rDay(Date.now()) ? ' td' : ''}" title="${esc(new Date(x.d).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' }) + ': ' + (parts.join(' · ') || 'ما فيه نشاط'))}"></i>`; }).join('');
+    const act5 = cal.filter(x => x.q || x.e || x.l).length, q7 = cal.slice(-7).reduce((a, x) => a + x.q, 0), best = cal.reduce((a, x) => x.q > (a ? a.q : 0) ? x : a, null);
+    const calSide = `<div class="rpacts">
+        <div><span>✍️ أسئلة آخر 7 أيام</span><b>${q7 ? rpN(q7, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال') : 'ولا سؤال'}</b></div>
+        <div><span>📅 أيام فيها نشاط</span><b>${act5} <small>من 35 يوم</small></b></div>
+        <div><span>🔥 أكثر يوم</span><b>${best ? rpN(best.q, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال') + ` <small>${admDay(best.d)}</small>` : '—'}</b></div>
+        <div><span>⏱ آخر نشاط</span><b>${T.last ? fmtD(T.last) : '—'}</b></div>
+        <div><span>🗓 أول نشاط</span><b>${T.first ? admDay(T.first, 1) : '—'}</b></div></div>`;
+    // 📱 الدخول والأجهزة · ⚔️ · 🤖 · 🔎 · 🎬 · 🔔
+    const LG = d.logins || {}, A = d.arena, AI = d.ai || {}, F = d.find || {}, V = d.vids || [];
+    const card = (ic, t, body) => `<section class="rpcard rpu"><h3><span aria-hidden="true">${ic}</span>${t}</h3>${body}</section>`;
+    const kv = rows => `<div class="rpkv">${rows.filter(Boolean).map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
+    const usage = [
+      card('🔑', 'الدخول والأجهزة', LG.n ? kv([['مرات الدخول', LG.n], ['أول دخول', admDay(LG.first, 1)], ['آخر دخول', fmtD(LG.last)]]) + `<div class="rpdev">${(LG.devs || []).map(x => `<span>${esc(x.k)} <small>×${x.n}</small></span>`).join('')}</div>` : '<p class="mut">ما دخل الموقع للحين.</p>'),
+      card('⚔️', 'الساحة 1v1', A && A.games ? kv([['التصنيف', A.rating + (A.rank ? ` <small class="mut">(#${A.rank})</small>` : '')], ['المباريات', A.games], ['فوز · خسارة · تعادل', `${A.wins} · ${A.losses} · ${A.draws || 0}`], ['آخر مباراة', fmtD(A.last_at)]]) : '<p class="mut">ما لعب في الساحة.</p>'),
+      card('🤖', 'المساعد الذكي', AI.n || AI.f ? kv([['شروحات طلبها', AI.n], ['أسئلة متابعة', AI.f], ['أسئلة مختلفة', AI.q], ['بلاغات «الشرح فيه غلط»', AI.fl || 0], ['لغة الرد', AI.lang === 'en' ? 'English' : 'عربي'], ['آخر مرة', fmtD(AI.last)]]) : `<p class="mut">ما استخدم المساعد.${AI.lang === 'en' ? ' (لغة الرد: English)' : ''}</p>`),
+      card('🔎', 'ابحث عن سؤال', F.n ? kv([['عمليات البحث', F.n], ['بلاغات', F.rep || 0], ['آخر بحث', fmtD(F.last)]]) : '<p class="mut">ما استخدم البحث.</p>'),
+      card('🎬', 'مقاطع الشرح داخل الموقع', V.length ? `<div class="rpvid">${V.slice().sort((a, b) => b.last - a.last).map(x => `<span>${esc(rpVid(x.v))} <small>${x.n > 1 ? '×' + x.n : ''}</small></span>`).join('')}</div>` : `<p class="mut">${S.t === 'yt' ? 'مشترك يوتيوب: يشوف المقاطع في القناة (ما نقدر نتابعها من هنا).' : 'ما فتح أي مقطع داخل الموقع.'}</p>`),
+      card('🔔', 'التذكير اليومي', d.push ? `<p><b>مفعّل</b>${d.push.mins != null ? ` <span class="mut">الساعة <bdi dir="ltr">${String(Math.floor(d.push.mins / 60)).padStart(2, '0')}:${String(d.push.mins % 60).padStart(2, '0')}</bdi></span>` : ''}</p>` : '<p class="mut">مو مفعّل.</p>')].join('');
+    W().innerHTML = `<section class="rphead">
+        <div class="rpwho">${avatarHtml(w.avatar, nm, 64)}<div class="rpwt"><h1>${esc(nm)}${w.display && w.name && w.display !== w.name ? ` <small>(${esc(w.name)})</small>` : ''}</h1><p class="ltr rpem">${esc(email)}</p><p class="rpch">${status}${chips}</p></div></div>
+        <div class="rpsub ${S.ended || S.ban ? 'na' : L.c}"><div><span>نوع الاشتراك</span><b>${RP_TYPE[S.t] || '—'}</b></div><div><span>📅 بداية الاشتراك</span><b>${admDay(S.start, 1)}</b></div><div><span>⏰ ينتهي</span><b>${admDay(S.until, 1)}</b>${S.ended || S.ban || !S.until ? '' : `<em>${L.t}</em>`}</div>
+          ${S.ban ? '' : '<div class="rpsb"><button class="btn sm" id="rp_sm">＋ شهر</button><button class="btn sm ghost" id="rp_sd">تعديل التاريخ</button></div>'}</div></section>
+      <section class="rptiles">
+        <div><span class="i" aria-hidden="true">✍️</span><b>${T.answered || 0}</b><span>سؤال حلّه</span></div>
+        <div><span class="i" aria-hidden="true">🎯</span><b>${T.answered ? Math.round(T.correct * 100 / T.answered) + '%' : '—'}</b><span>الدقة${T.answered ? ` · ${T.correct} صح` : ''}</span></div>
+        <div><span class="i" aria-hidden="true">⏱</span><b>${rpDur(T.secs)}</b><span>وقت الحل</span></div>
+        <div><span class="i" aria-hidden="true">📚</span><b><bdi>${done}/29</bdi></b><span>قسم ونموذج حلّها</span></div>
+        <div><span class="i" aria-hidden="true">🧪</span><b><bdi>${tDone.length}/17</bdi></b><span>اختبار محاكي${avg != null ? ` · متوسط ${avg}%` : ''}</span></div>
+        <div><span class="i" aria-hidden="true">📅</span><b>${T.days || 0}</b><span>يوم نشاط${T.last ? ` · آخر نشاط ${fmtD(T.last)}` : ''}</span></div></section>
+      <section class="rpcard"><div class="rph"><h2>📅 النشاط آخر 5 أسابيع</h2><span class="mut">كل مربع يوم، ولونه حسب عدد الأسئلة اللي حلها</span></div>
+        <div class="rpactw"><div class="rpcal" role="img" aria-label="نشاط الطالب آخر 5 أسابيع">${calHtml}</div>${calSide}</div>
+        <div class="rpleg"><span>أقل</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>أكثر</span><i class="l0 lg"></i><span>دخل بس</span></div></section>
+      <div class="rp2">
+        <section class="rpcard"><div class="rph"><h2>📐 الكمي</h2><span class="mut">نسبة أول محاولة في كل قسم</span></div><div class="rpgrid">${qIds.map((id, i) => cell(id, i + 1)).join('')}</div></section>
+        <section class="rpcard"><div class="rph"><h2>📖 اللفظي</h2><span class="mut">نسبة أول محاولة في كل نموذج</span></div><div class="rpgrid">${vIds.map((id, i) => cell(id, i === 14 ? 'جديدة' : i + 1)).join('')}</div></section></div>
+      <div class="rpkey"><span><i class="hi"></i>80% فأكثر</span><span><i class="mid"></i>60–79%</span><span><i class="lo"></i>أقل من 60%</span><span><i class="none"></i>ما حلّه</span>${allLine}</div>
+      <section class="rpcard"><div class="rph"><h2>🧪 الاختبارات المحاكية</h2><span class="mut">${tDone.length ? `خلّص ${rpN(tDone.length, 'اختبار واحد', 'اختبارين', 'اختبارات', 'اختبار')} من 17` : 'ما خلّص أي اختبار'}</span></div>
+        ${tests.length ? `<div class="rptbl"><div class="rpr head"><span>الاختبار</span><span>أول محاولة</span><span>أفضل</span><span>اللفظي</span><span>الكمي</span><span>المحاولات</span><span>آخر مرة</span></div>${tRows}</div>` : '<p class="mut">ما بدأ أي اختبار محاكي.</p>'}</section>
+      <section class="rpcard rpsk">${skillsBarsHtml(d.skills && d.skills.data ? histAgg(JSON.parse(d.skills.data)) : null, true)}</section>
+      <div class="rpus">${usage}</div>
+      <p class="mut rpft">التقرير وقت ${new Date(d.t).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' })} · الأسئلة والوقت من الأقسام والنماذج اللي خلّصها (المحاكي لحاله).</p>`;
+    const x = { email, start: S.start, until: S.until };
+    const sm = $('#rp_sm'); if (sm) sm.onclick = async () => { sm.disabled = true; if (await subAddMonth(x, nm)) { ADM.list = null; renderReport(email); } else sm.disabled = false; };
+    const sd = $('#rp_sd'); if (sd) sd.onclick = async () => { if (await subDatesDlg(x, nm)) { ADM.list = null; renderReport(email); } };
   }
   // ---------- 🛡 المشرفون ----------
   async function renderStaff() {
@@ -2605,11 +2743,11 @@
     const W = $('#adm'); if (!W || !ADM.subs) return;
     if (ADM.sf === 'need') ADM.sf = 'all';
     const all = ADM.subs, f = ADM.sf, q = ADM.sq.trim().toLowerCase(), alt = x => x.t !== 'yt', on = x => !x.end;
-    const n = { yt: all.filter(x => on(x) && x.t === 'yt').length, free: all.filter(x => on(x) && x.t === 'free').length, bank: all.filter(x => on(x) && x.t === 'bank').length, end: all.filter(x => x.end).length };
+    const n = { yt: all.filter(x => on(x) && x.t === 'yt').length, free: all.filter(x => on(x) && x.t === 'free').length, bank: all.filter(x => on(x) && x.t === 'bank').length, end: all.filter(x => x.end).length, over: all.filter(subOver).length };
     if (f === 'end' && !n.end) ADM.sf = 'all';
     let list = all.filter(x => !q || [x.name, x.display, x.email, x.typed, x.user].some(v => String(v || '').toLowerCase().includes(q)));
-    if (ADM.sf === 'end') list = list.filter(x => x.end); else if (ADM.sf !== 'all') list = list.filter(x => on(x) && x.t === ADM.sf);
-    list.sort((a, b) => (alt(a) ? 0 : 1) - (alt(b) ? 0 : 1) || (b.last || 0) - (a.last || 0));
+    if (ADM.sf === 'end') list = list.filter(x => x.end); else if (ADM.sf === 'over') list = list.filter(subOver); else if (ADM.sf !== 'all') list = list.filter(x => on(x) && x.t === ADM.sf);
+    if (ADM.sf === 'over') list.sort((a, b) => a.until - b.until); else list.sort((a, b) => (alt(a) ? 0 : 1) - (alt(b) ? 0 : 1) || (b.last || 0) - (a.last || 0));
     const nm = x => x.display || x.name || x.email.split('@')[0];
     // 🎬 المقاطع داخل الموقع: كم مقطع مرفوع + المشاهدات آخر 30 يوم
     const V = ADM.vids, up = V && V.files ? V.files.length : 0, tot = (V && V.total) || 30, views = V && V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0;
@@ -2621,10 +2759,11 @@
     const row = x => `<div class="srow sbrow${x.end ? ' ended' : ''}" data-e="${esc(x.email)}">
       <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
       <span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}"${x.end ? ' aria-disabled="true"' : ''}>${['yt', 'free', 'bank'].map(t => `<button type="button" role="radio" data-t="${t}" class="${x.t === t ? 'on ' + t : ''}" aria-checked="${x.t === t}"${x.end ? ' disabled' : ''}>${SUB_N[t][0]} ${SUB_N[t][1]}</button>`).join('')}</span>
-      <span class="sbsh">${x.end ? `<small class="sbendst">⛔ انتهى اشتراكه ${fmtD(x.end)}</small>` : alt(x) ? '<small class="sbin">🎬 يشوف المقاطع داخل الموقع</small>' : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}</span>
+      <span class="sbsh">${x.end ? `<small class="sbendst">⛔ انتهى اشتراكه ${fmtD(x.end)}</small>` : alt(x) ? '<small class="sbin">🎬 يشوف المقاطع داخل الموقع</small>' : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}${x.end ? '' : (() => { const L = subLeft(x.until);
+        return `<span class="sbdt ${L.c}"><span>📅 ينتهي <b>${x.until ? admDay(x.until) : '—'}</b> · ${L.t}</span><span class="sbdtb"><button type="button" class="lnk" data-add title="يمدّد الاشتراك شهر من موعد نهايته (أو من اليوم لو خلص)">＋ شهر</button><button type="button" class="lnk" data-dates>تعديل</button></span></span>`; })()}</span>
       <span class="sbend">${x.end ? '<button type="button" class="btn sm ghost" data-restore>↩️ إرجاع الاشتراك</button>' : '<button type="button" class="btn sm ghost dang" data-end>⛔ إنهاء الاشتراك</button>'}</span></div>`;
     W.innerHTML = `<div class="stf subs">
-      <div class="sbtiles${n.end ? ' n5' : ''}">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${n.end ? tile('end', '⛔', n.end, 'اشتراك منتهي') : ''}<div class="sbt vid" aria-label="المقاطع داخل الموقع"><span class="i" aria-hidden="true">🎬</span><b><bdi>${up}/${tot}</bdi></b><span>مقطع داخل الموقع</span></div></div>
+      <div class="sbtiles ${n.end ? 'n6' : 'n5'}">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${tile('over', '⏰', n.over, 'مر عليهم شهر')}${n.end ? tile('end', '⛔', n.end, 'اشتراك منتهي') : ''}<div class="sbt vid" aria-label="المقاطع داخل الموقع"><span class="i" aria-hidden="true">🎬</span><b><bdi>${up}/${tot}</bdi></b><span>مقطع داخل الموقع</span></div></div>
       ${B && B.n ? `<div class="rgsync warn sbundo"><span>⛔ أنهيت كل الاشتراكات ${fmtD(B.at)}، واللي باقي اشتراكهم منتهي منها ${nStu(B.n)}.</span><button type="button" class="lnk" id="sbundo">↩️ تراجع وأرجعهم</button></div>` : ''}
       ${vidLine}
       ${vupHtml()}
@@ -2642,7 +2781,9 @@
     W.querySelectorAll('.sbrow').forEach(r => { const x = all.find(y => y.email === r.dataset.e); if (!x) return;
       r.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = b.dataset.t; if (t === x.t || x.end) return; save(x, { t }, { t: x.t }, `${nm(x)}: ${SUB_N[t][0]} ${SUB_N[t][1]} ✓`); });
       const e1 = r.querySelector('[data-end]'); if (e1) e1.onclick = async () => { const at = await subEndOne(x.email, nm(x)); if (at) { x.end = at; x.eb = ''; paintSubs(); } };
-      const r1 = r.querySelector('[data-restore]'); if (r1) r1.onclick = async () => { if (await subRestoreOne(x.email, nm(x))) { x.end = 0; x.eb = ''; if (B) B.n = all.filter(y => y.end && y.eb === B.batch).length; paintSubs(); } }; });
+      const r1 = r.querySelector('[data-restore]'); if (r1) r1.onclick = async () => { if (await subRestoreOne(x.email, nm(x))) { x.end = 0; x.eb = ''; if (B) B.n = all.filter(y => y.end && y.eb === B.batch).length; ADM.subs = null; renderSubs(); } };
+      const ad = r.querySelector('[data-add]'); if (ad) ad.onclick = async () => { ad.disabled = true; if (await subAddMonth(x, nm(x))) { ADM.list = null; paintSubs(); } else ad.disabled = false; };
+      const dt = r.querySelector('[data-dates]'); if (dt) dt.onclick = async () => { if (await subDatesDlg(x, nm(x))) { ADM.list = null; paintSubs(); } }; });
     const ea = $('#sbendall'); if (ea) ea.onclick = async () => {
       const k = all.filter(on).length; if (!k) return;
       const v = await QGDlg.prompt(`إنهاء اشتراك كل الطلاب (${nStu(k)})؟\nيطلعون من الموقع فوراً، ولو دخلوا مرة ثانية يدخلون بالحساب المجاني. أنت والمشرفين ما تتأثرون، وتقدر تتراجع بعدها.\n\nللتأكيد اكتب: إنهاء الكل`, '', { ok: '⛔ إنهاء كل الاشتراكات', danger: true, placeholder: 'إنهاء الكل' });
@@ -2669,10 +2810,11 @@
   const VUP = { busy: 0, st: {}, miss: [] };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها
   function vupSlots() { const V = ADM.vids || {}, M = V.map || {}, objs = V.objects || [];
     return Object.keys(M).map(k => { const f = M[k], o = objs.find(x => x.key === f), m = /^([qv]):(.+)$/.exec(k);
-      const label = m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2];
+      const label = m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2];
       return { k, f, label, size: o ? o.size : 0, ord: (m[1] === 'q' ? 0 : 100) + (m[2] === 'rules' ? 0 : +m[2]) }; }).sort((a, b) => a.ord - b.ord); }
-  // نعرف المقطع من اسم الملف: Section 3 / Model 7 / قواعد الكمي…
+  // نعرف المقطع من اسم الملف: Section 3 / Model 7 / قواعد الكمي / Extra Questions (الأسئلة الجديدة)…
   function vupGuess(name) { const n = name.toLowerCase().replace(/[_\-–|｜⧸/]+/g, ' ');
+    if (/(extra|new)\s*(questions?|15)\b|الأسئلة الجديدة|الاسئلة الجديدة|أسئلة جديدة|اسئلة جديدة|(?:model|نموذج)\s*15\b/.test(n)) return 'v/m15.mp4';
     let m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
     m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'v/m' + m[1].padStart(2, '0') + '.mp4';
     if (/(قواعد|قوانين|rules)/.test(n)) return /(لفظ|verbal|تناظر|analog)/.test(n) ? '' : /(كمي|quant)/.test(n) ? 'q/rules.mp4' : '';   // قواعد اللفظي لطلال العنزي (قريباً): ما ترتفع هنا
@@ -3077,18 +3219,17 @@
     const isSet = kind.startsWith('set:'); const setId = isSet ? kind.slice(4) : (lsGet('qg_lb_set', 'q1'));
     if (isSet) lsSet('qg_lb_set', setId);
     const tabK = isSet ? 'set' : kind;
-    const setTitle = id => (id[0] === 'q' ? _T('القسم ') : _T('النموذج ')) + id.slice(1) + (id[0] === 'q' ? _T(' (كمي)') : _T(' (لفظي)'));
-    const opts = [...Array.from({ length: 14 }, (_, i) => 'q' + (i + 1)), ...Array.from({ length: 14 }, (_, i) => 'v' + (i + 1))];
+    const setTitle = id => SET_NAME(id) + (id[0] === 'q' ? _T(' (كمي)') : _T(' (لفظي)'));
+    const opts = [...Array.from({ length: 14 }, (_, i) => 'q' + (i + 1)), ...Array.from({ length: 15 }, (_, i) => 'v' + (i + 1))];
     app.innerHTML = topbar(_T`<span class="ttl">🏆 لوحة الصدارة</span><span class="sp"></span><button class="ib" id="lbref" title="تحديث">⟳</button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      _T`<main class="wrap"><div class="tabs lbtabs"><button data-k="month" class="${tabK === 'month' ? 'on' : ''}">📆 هذا الشهر</button><button data-k="practice" class="${tabK === 'practice' ? 'on' : ''}">📚 الكل</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button><button data-k="arena" class="${tabK === 'arena' ? 'on' : ''}">⚔️ الساحة</button></div>
+      _T`<main class="wrap"><div class="tabs lbtabs"><button data-k="week" class="${tabK === 'week' ? 'on' : ''}">📆 هذا الأسبوع</button><button data-k="set" class="${tabK === 'set' ? 'on' : ''}">🎯 حسب القسم</button><button data-k="exam" class="${tabK === 'exam' ? 'on' : ''}">🧪 المحاكي</button><button data-k="arena" class="${tabK === 'arena' ? 'on' : ''}">⚔️ الساحة</button></div>
       ${isSet ? _T`<div class="setpick"><label>اختر القسم:</label><select id="lbset">${opts.map(o => `<option value="${o}" ${o === setId ? 'selected' : ''}>${setTitle(o)}</option>`).join('')}</select></div>` : ''}
       <p class="mut lbnote">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أكثر.') : kind === 'exam' ? _T('الترتيب بـ<b>متوسط النسبة المئوية</b> لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.')
         : isSet ? (EN ? `Students in <b>${setTitle(setId)}</b> are ranked by their <b>first attempt</b> score; ties go to the faster time.` : _T`ترتيب الطلاب في <b>${setTitle(setId)}</b> بنسبة <b>أول محاولة</b> فيه، وعند التساوي الأسرع وقتاً.`)
-        : kind === 'month' ? _T('أفضل 100 طالب <b>هذا الشهر</b>: مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الشهر، وعند التساوي الأسرع وقتاً.')
-        : _T('الترتيب العام: مجموع الإجابات الصحيحة في <b>أول محاولة</b> لكل قسم ونموذج، وعند التساوي الأسرع وقتاً. إعادة القسم للتدريب لا تغيّر ترتيبك.')}</p>
+        : _T('أفضل 100 طالب <b>هذا الأسبوع</b> (من الأحد): مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الأسبوع، وعند التساوي الأسرع وقتاً. اللوحة تبدأ من جديد كل أحد.')}</p>
       <div id="lb"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
     bindCtl(); $('#lbref').onclick = () => renderBoard(kind);
-    document.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { const k = b.dataset.k; location.hash = k === 'practice' ? 'board' : k === 'set' ? 'board-set-' + lsGet('qg_lb_set', 'q1') : 'board-' + k; });
+    document.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { const k = b.dataset.k; location.hash = k === 'week' ? 'board' : k === 'set' ? 'board-set-' + lsGet('qg_lb_set', 'q1') : 'board-' + k; });
     const sel = $('#lbset'); if (sel) sel.onchange = () => { location.hash = 'board-set-' + sel.value; };
     let r; try { r = await api({ op: 'leaderboard', session: auth.session, kind }); } catch (e) { r = null; }
     const el = $('#lb'); if (!el) return;
@@ -3096,12 +3237,12 @@
     const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? _T`${h} س ${m % 60} د` : m ? _T`${m} د` : _T`${s} ث`; };
     const pct = x => x.q ? Math.round(x.correct * 100 / x.q) : 0;
     const isAr = kind === 'arena', unitN = n => EN ? enN(n, kind === 'exam' ? 'test' : 'section', kind === 'exam' ? 'tests' : 'sections') : n + ' ' + (kind === 'exam' ? 'اختبار' : 'قسم');   // i18n:skip
-    // عرض الدرجة: المحاكي والقسم = نسبة مئوية؛ العام والشهر = إجابات صحيحة (+ النسبة)
+    // عرض الدرجة: المحاكي والقسم = نسبة مئوية؛ الأسبوع = إجابات صحيحة (+ النسبة)
     const scoreHtml = x => isAr ? `<b>${x.r}</b>` : kind === 'exam' ? `<b>${Math.round(x.score)}%</b>` : isSet ? `<b>${Math.round(x.score)}%</b> <small>${x.correct}/${x.q}</small>` : `<b>${x.score}</b> ✓`;
     const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : _T('اختبارات')} · ${fmt(x.secs)}` : isSet ? fmt(x.secs) : _T`${pct(x)}% دقة · ${fmt(x.secs)}`;
     const mine = isAr ? (r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me.r} · ${r.me.w} فوز و${r.me.l} خسارة${r.me.d ? (EN ? ' · ' + enN(r.me.d, 'draw', 'draws') : _T(' و') + r.me.d + _T(' تعادل')) : ''}</span></div><a class="btn sm" href="#arena">العب مباراة</a></div>` : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>العب مباراة وحدة في الساحة وتظهر هنا.</span></div><a class="btn sm" href="#arena">ادخل الساحة</a></div>`)
       : r.me ? _T`<div class="mycard"><div class="myrank">#${r.me.rank}</div><div class="myi"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r.me.score) + _T('% متوسط · ') + unitN(r.me.done) : isSet ? Math.round(r.me.score) + '% (' + r.me.correct + '/' + r.me.q + ')' : r.me.score + _T(' إجابة صحيحة · ') + unitN(r.me.done)} · ${fmt(r.me.secs)}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">اختبار جديد</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">افتح القسم</a>` : _T('<a class="btn sm" href="#">تدرّب</a>')}</div>`
-      : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذا القسم مرة واحدة وتظهر هنا.') : kind === 'month' ? _T('حل قسماً هذا الشهر وتظهر هنا.') : _T('حل قسماً أو نموذجاً واحداً وتظهر هنا.')}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">ابدأ اختباراً</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : _T('<a class="btn sm" href="#">ابدأ قسماً</a>')}</div>`;
+      : _T`<div class="mycard none"><div class="myi"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذا القسم مرة واحدة وتظهر هنا.') : _T('حل قسماً أو نموذجاً هذا الأسبوع وتظهر هنا.')}</span></div>${kind === 'exam' ? _T('<a class="btn sm" href="/test/">ابدأ اختباراً</a>') : isSet ? _T`<a class="btn sm" href="#${setId}">ابدأ القسم</a>` : _T('<a class="btn sm" href="#">ابدأ قسماً</a>')}</div>`;
     if (!r.top.length) { el.innerHTML = mine + _T`<div class="sum" style="margin-top:12px">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }
     const medal = k => ['🥇', '🥈', '🥉'][k - 1] || '';
     const top3 = r.top.slice(0, 3), rest = r.top.slice(3);

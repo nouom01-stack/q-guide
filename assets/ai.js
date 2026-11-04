@@ -5,6 +5,10 @@
   const CFG = { api: '', session: () => '', fmt: null, free: () => false, onSub: null, onAuth: null };
   const CONV = new Map();          // محادثة كل سؤال تبقى في نفس الجلسة (فتحها مرة ثانية ما ينحسب)
   let ST = null, W = null;         // ST: رصيد اليوم · W: النافذة المفتوحة
+  // 🌐 لغة رد المساعد: عربي (الافتراضي) أو English — اختيار الطالب ينحفظ له ويصير الافتراضي دايم (كل أجهزته)
+  const LG_LS = 'qg_ai_lang';
+  let LANG = (() => { try { return localStorage.getItem(LG_LS) === 'en' ? 'en' : 'ar'; } catch (e) { return 'ar'; } })();
+  const lgSave = l => { LANG = l === 'en' ? 'en' : 'ar'; try { localStorage.setItem(LG_LS, LANG); } catch (e) {} };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const L = i => 'ABCD'[i] || '';
   const SPARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2.6l1.95 5.45 5.45 1.95-5.45 1.95L11 17.4l-1.95-5.45L3.6 10l5.45-1.95z" fill="currentColor"/><path d="M18.6 14.2l.85 2.15 2.15.85-2.15.85-.85 2.15-.85-2.15-2.15-.85 2.15-.85z" fill="currentColor" opacity=".75"/></svg>';
@@ -20,7 +24,7 @@
   async function status(force) {
     if (ST && !force && Date.now() - ST.at < 300000) return ST;
     if (!CFG.session()) return { on: false };
-    try { const r = await post({ op: 'ai_me', session: CFG.session() }); ST = Object.assign({ on: false }, r && r.ok ? r : {}, { at: Date.now() }); }
+    try { const r = await post({ op: 'ai_me', session: CFG.session() }); ST = Object.assign({ on: false }, r && r.ok ? r : {}, { at: Date.now() }); if (r && r.ok && (r.lang === 'en' || r.lang === 'ar')) lgSave(r.lang); }
     catch (e) { ST = { on: false, at: Date.now() - 240000 }; }
     return ST;
   }
@@ -56,7 +60,7 @@
     let C = CONV.get(o.ref); if (!C) { C = { ref: o.ref, pick: o.pick, wrong: !!o.wrong, msgs: [], cid: '', follow: 5, busy: false }; CONV.set(o.ref, C); }
     const ov = document.createElement('div'); ov.className = 'qgai'; ov.setAttribute('dir', window.QGL && QGL.en ? 'ltr' : 'rtl');
     ov.innerHTML = _T`<section class="qgai-p" role="dialog" aria-modal="true" aria-labelledby="qgai-t">
-      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">مساعد Q-Guide</b><small>يشرح لك السؤال على طريقة شرح الدورة</small></div><button type="button" class="qgai-x" aria-label="إغلاق">✕</button></header>
+      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">مساعد Q-Guide</b><small>يشرح لك السؤال على طريقة شرح الدورة</small></div>${lgHtml()}<button type="button" class="qgai-x" aria-label="إغلاق">✕</button></header>
       <div class="qgai-ctx">${String(o.label || '').split(' · ').filter(Boolean).map((t, i) => `<span class="${/✗/.test(t) ? 'bad' : /الصحيحة|correct/i.test(t) ? 'ok' : ''}">${esc(t)}</span>`).join('')}</div>
       <div class="qgai-log" aria-live="polite"></div>
       <form class="qgai-f" autocomplete="off"><textarea rows="1" maxlength="300" placeholder="اسأل عن هذا السؤال…" aria-label="اكتب سؤالك عن هذا السؤال"></textarea><button type="submit" class="qgai-s" aria-label="أرسل">${SEND}</button></form>
@@ -74,6 +78,7 @@
     const onK = e => { if (e.key === 'Escape' && W && !W.ov.contains(e.target)) close(); }; W.onK = onK; document.addEventListener('keydown', onK);
     ov.addEventListener('click', e => { if (e.target === ov) close(); });
     ov.querySelector('.qgai-x').onclick = () => close();
+    ov.querySelectorAll('.qgai-lg [data-lg]').forEach(b => b.onclick = () => setLang(b.dataset.lg));
     const ta = W.ta; ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); const f = ov.querySelector('form'); f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event('submit', { cancelable: true })); } });
     ov.querySelector('form').onsubmit = e => { e.preventDefault(); const t = ta.value.trim(); if (!t || C.busy) return; ta.value = ''; ta.style.height = 'auto'; ask(t); };
@@ -89,6 +94,22 @@
     if (w.from && w.from.focus && document.body.contains(w.from)) w.from.focus({ preventScroll: true });
   }
 
+  // 🌐 زر لغة الرد: اختيار الطالب ينحفظ (الجهاز + حسابه)، ولو فيه شرح مفتوح بلغة ثانية نطلب نفس الشرح باللغة الجديدة (سؤال متابعة، ما ينقص رصيده)
+  function lgHtml() { const lab = window.QGL && QGL.en ? 'Answer language' : 'لغة الشرح';   // i18n:skip
+    return `<div class="qgai-lg" role="group" aria-label="${lab}" title="${lab}"><button type="button" data-lg="ar" lang="ar" aria-pressed="${LANG === 'ar'}">عربي</button><button type="button" data-lg="en" lang="en" aria-pressed="${LANG === 'en'}">English</button></div>`; }   // i18n:skip
+  function setLang(l) {
+    l = l === 'en' ? 'en' : 'ar'; if (l === LANG) return; lgSave(l);
+    if (W) W.ov.querySelectorAll('.qgai-lg [data-lg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lg === LANG)));
+    post({ op: 'ai_lang', session: CFG.session(), lang: LANG }).catch(() => {});
+    reLang();
+  }
+  function reLang() {
+    if (!W) return; const C = W.C, last = [...C.msgs].reverse().find(m => m.r === 'a' && m.t);
+    if (!last || (last.lg || 'ar') === LANG) return;   // ما فيه شرح، أو آخر شرح أصلاً بنفس اللغة
+    if (C.busy) { C.wantLg = LANG; return; }           // يخلص الشرح اللي ينكتب وبعدها نطلبه باللغة الجديدة
+    if (C.msgs.some(m => m.r === 'lim') || C.msgs.filter(m => m.r === 'u').length >= C.follow) return;
+    ask(LANG === 'en' ? 'Explain it in English, please.' : 'اشرحه بالعربي لو سمحت.');   // i18n:skip
+  }
   function paint() {
     if (!W) return; const { C, log } = W;
     const atEnd = W.stick || log.scrollHeight - log.scrollTop - log.clientHeight < 60;   // الطالب يقرأ فوق؟ لا ننزله غصب
@@ -97,7 +118,7 @@
       if (m.r === 'lim') return `<div class="qgai-lim"><span class="qgai-li" aria-hidden="true">🔒</span><b>${m.free ? _T('خلصت شروحاتك المجانية اليوم') : _T('خلص رصيد اليوم')}</b><p>${esc(m.t)}</p>${m.free && CFG.onSub ? _T('<button type="button" class="qgai-sub">اشترك في الدورة</button>') : ''}</div>`;
       if (m.r === 'e') return `<div class="qgai-m e"><span>${esc(m.t)}</span>${m.retry ? _T`<button type="button" class="qgai-rt" data-i="${i}">حاول مرة ثانية</button>` : ''}</div>`;
       const typing = m.live && !m.t;
-      return `<div class="qgai-m a${m.live ? ' live' : ''}">${typing ? _T('<div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>المساعد يكتب الشرح…</div>') : `<div class="qgai-tx">${render(m.t)}</div>`}${!m.live && m.id ? `<div class="qgai-ma">${m.flag ? _T('<span class="qgai-fl ok">✓ وصل بلاغك، بنراجع الشرح</span>') : _T`<button type="button" class="qgai-fl" data-i="${i}">🚩 الشرح فيه غلط؟</button>`}</div>` : ''}</div>`;
+      return `<div class="qgai-m a${m.live ? ' live' : ''}">${typing ? _T('<div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>المساعد يكتب الشرح…</div>') : `<div class="qgai-tx" dir="${m.lg === 'en' ? 'ltr' : 'rtl'}" lang="${m.lg === 'en' ? 'en' : 'ar'}">${render(m.t)}</div>`}${!m.live && m.id ? `<div class="qgai-ma">${m.flag ? _T('<span class="qgai-fl ok">✓ وصل بلاغك، بنراجع الشرح</span>') : _T`<button type="button" class="qgai-fl" data-i="${i}">🚩 الشرح فيه غلط؟</button>`}</div>` : ''}</div>`;
     }).join('');
     log.querySelectorAll('.qgai-fl[data-i]').forEach(b => b.onclick = () => flag(+b.dataset.i));
     log.querySelectorAll('.qgai-rt').forEach(b => b.onclick = () => { const i = +b.dataset.i, m = C.msgs[i]; C.msgs.splice(i, 1);
@@ -118,11 +139,11 @@
     const show = () => { if (W && W.C === C) paint(); }, showSoon = () => { if (W && W.C === C) paintSoon(); };
     if (text) C.msgs.push({ r: 'u', t: text });
     const hist = C.msgs.filter(m => (m.r === 'a' && !m.live && m.t) || m.r === 'u').map(m => ({ r: m.r, t: m.t }));
-    const am = { r: 'a', t: '', live: true }; C.msgs.push(am); C.busy = true; W.stick = true; paint();
+    const am = { r: 'a', t: '', live: true, lg: LANG }; C.msgs.push(am); C.busy = true; W.stick = true; paint();
     const fail = (msg, canRetry) => { const i = C.msgs.indexOf(am); if (i >= 0) C.msgs.splice(i, 1); C.msgs.push({ r: 'e', t: msg, retry: canRetry, q: text }); };
     try {
       const r = await fetch(CFG.api.replace(/\/?$/, '/') + 'ai', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ session: CFG.session(), ref: C.ref, pick: C.pick, msgs: hist.length > 0 ? hist : [], cid: C.cid }) });
+        body: JSON.stringify({ session: CFG.session(), ref: C.ref, pick: C.pick, msgs: hist.length > 0 ? hist : [], cid: C.cid, lang: am.lg }) });
       if (!/event-stream/.test(r.headers.get('content-type') || '')) {
         const j = await r.json().catch(() => ({ msg: _T('صار خطأ، حاول مرة ثانية.') })); if (j && typeof j.msg === 'string') j.msg = _T(j.msg);   // 🌐
         const i = C.msgs.indexOf(am); if (i >= 0) C.msgs.splice(i, 1);
@@ -148,7 +169,8 @@
       if (!am.t && C.msgs.indexOf(am) >= 0) fail(_T('ما وصلني شرح، حاول مرة ثانية.'), true);
     } catch (e) {
       if (am.t) am.t += '\n…'; else fail(_T('تعذّر الاتصال، تأكد من النت وحاول مرة ثانية.'), true);
-    } finally { am.live = false; C.busy = false; show(); if (W && W.C === C && !W.ta.disabled && text) W.ta.focus({ preventScroll: true }); }
+    } finally { am.live = false; C.busy = false; show(); if (W && W.C === C && !W.ta.disabled && text) W.ta.focus({ preventScroll: true });
+      if (W && W.C === C && C.wantLg) { const l = C.wantLg; C.wantLg = null; if (l === LANG) reLang(); } }
   }
   async function flag(i) {
     const C = W && W.C; const m = C && C.msgs[i]; if (!m || !m.id) return; m.flag = 1; paint();
@@ -189,7 +211,13 @@ html.qgai-lock,html.qgai-lock body{overflow:hidden}
 .qgai-log::-webkit-scrollbar{width:8px}.qgai-log::-webkit-scrollbar-track{background:transparent}.qgai-log::-webkit-scrollbar-thumb{background:var(--aibd);border-radius:8px}
 [data-theme="dark"] .qgai{color-scheme:dark}
 .qgai-m.a .qgai-tx{font-size:calc(16px * var(--fs,1));line-height:1.85}
-html.l-en .qgai-m.a .qgai-tx{direction:rtl;text-align:right}
+.qgai-m.a .qgai-tx{text-align:start}
+.qgai-lg{margin-inline-start:auto;flex:none;display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--aibg);border:1px solid var(--aibd)}
+.qgai-lg button{border:0;background:transparent;color:var(--mut,#6B7590);font:inherit;font-weight:700;font-size:calc(13px * var(--fs,1));line-height:1.2;padding:6px 12px;border-radius:999px;cursor:pointer;transition:background .15s,color .15s}
+.qgai-lg button:hover{color:var(--ai2)}
+.qgai-lg button[aria-pressed="true"]{background:var(--ai2);color:#fff;box-shadow:0 1px 3px rgba(14,36,88,.25)}
+[data-theme="dark"] .qgai-lg button[aria-pressed="true"]{background:#2F4FA6}
+.qgai-lg+.qgai-x{margin-inline-start:0}
 .qgai-l{margin:0 0 2px}.qgai-sp{height:6px}
 .qgai-l b{color:var(--ai2);font-weight:800}
 .qgai-l.li{position:relative;padding-inline-start:16px}
@@ -232,6 +260,7 @@ bdi{unicode-bidi:isolate}
   .qgai-h{padding-top:18px;position:relative}
   .qgai-h:before{content:"";position:absolute;top:7px;left:50%;width:40px;height:4px;margin-left:-20px;border-radius:4px;background:var(--line,#E1E6F0)}
   .qgai-log{padding:12px 14px 6px}
+  .qgai-h{gap:10px}.qgai-ht small{display:none}.qgai-lg button{padding:6px 10px}
   .qgai-ft{padding-bottom:max(10px,env(safe-area-inset-bottom))}
 }
 @media (prefers-reduced-motion:reduce){.qgai,.qgai-p{transition:none}.qgai-dots i,.qgai-m.a.live .qgai-tx>:last-child:after{animation:none}}`;

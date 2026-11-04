@@ -1187,5 +1187,11 @@
  "🧭 اعرف مستواك أول": "🧭 Find your level first",
  "🧭 تحديد المستوى": "🧭 Placement test",
  "🧭 مراجعة إجاباتك": "🧭 Review your answers",
- "🧭 نتيجة تحديد المستوى": "🧭 Placement test result"
+ "🧭 نتيجة تحديد المستوى": "🧭 Placement test result",
+ "الأسئلة الجديدة": "New Questions",
+ "✍️ حل {0}": "✍️ Solve {0}",
+ "هذا الأسبوع": "this week",
+ "(من الأحد): مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الأسبوع، وعند التساوي الأسرع وقتاً. اللوحة تبدأ من جديد كل أحد.": "(from Sunday): total correct answers on the first attempt at each section and model during the week; ties go to the fastest time. The board starts over every Sunday.",
+ "📆 هذا الأسبوع": "📆 This week",
+ "حل قسماً أو نموذجاً هذا الأسبوع وتظهر هنا.": "Solve a section or model this week to show up here."
 }
