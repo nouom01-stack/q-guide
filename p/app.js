@@ -32,10 +32,10 @@
   function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), lab = k.name + ' ' + m[2], dur = raw.slice(i + 1);
     const s = inSite(m[1], +m[2]); if (s) return Object.assign({ id: raw.slice(0, i), dur, label: lab, alt: false }, s);
     const A = ytAlt(), alt = A && A[m[1]] && A[m[1]].v ? A[m[1]].v[+m[2] - 1] : ''; const id = alt || raw.slice(0, i); return { id, dur, url: ytUrl(id), tgt: TGT, label: lab, alt: !!alt }; }
-  const ytRules = k => { const s = inSite(k, 'rules'); if (s) return Object.assign({}, YT[k].rules, s);
+  const ytRules = k => { if (k === 'v') return null;   // 🎬 مقطع قواعد اللفظي لطلال العنزي (قريباً): ما يطلع مع شرح سلمان الفرج
+    const s = inSite(k, 'rules'); if (s) return Object.assign({}, YT[k].rules, s);
     const A = ytAlt(), alt = A && A[k] && A[k].rules, r = alt ? Object.assign({}, YT[k].rules, { id: alt, alt: true }) : YT[k].rules; return Object.assign({}, r, { url: ytUrl(r.id), tgt: TGT }); };
   const ytList = k => { const A = ytAlt(); return (A && A[k] && A[k].list) || YT[k].list; };
-  const ytAll = k => vidSub() && vidHas(k + ':1') ? { url: vidHash(k, 1), tgt: '' } : { url: 'https://www.youtube.com/playlist?list=' + ytList(k), tgt: TGT };   // «كل المقاطع»
   const ytTip = (y, t) => y && y.site ? ' title="يشتغل هنا داخل الموقع"' : y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
   const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
   const PLAYSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#2350C4"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
@@ -237,7 +237,7 @@
   setInterval(heartbeat, 3 * 60 * 1000);
 
   // ---------- 🆓 الزائر: المسارات المفتوحة + نافذة الاشتراك ----------
-  const freeRoute = h => h === '' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
+  const freeRoute = h => h === '' || h === 'sharh' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return 'الاختبار المحاكي ' + h.slice(5);
@@ -303,6 +303,7 @@
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
     if (/^watch-[qv](-rules|\d{1,2})$/.test(h)) return renderWatch(h.slice(6));
+    if (h === 'sharh') return renderSharh();
     if (h === 'board' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : h === 'board-month' ? 'month' : 'practice');
     if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
     if (h === 'qall' || h === 'vall') return renderPlayer(h);
@@ -426,7 +427,7 @@
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
-        <span class="sp"></span><a class="rvid" href="${RR.url}"${RR.tgt} title="${RR.site ? 'يشتغل هنا داخل الموقع' : RR.alt ? YT_ALT_TIP : esc(RR.d)}">${vIcon(RR)}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a><a class="rall" href="${ytAll(tab === 'quant' ? 'q' : 'v').url}"${ytAll(tab === 'quant' ? 'q' : 'v').tgt}>كل المقاطع</a>${!RULES_ON ? '' : tab === 'quant' ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : '<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>'}</div>
+        <span class="sp"></span>${RR ? `<a class="rvid" href="${RR.url}"${RR.tgt} title="${RR.site ? 'يشتغل هنا داخل الموقع' : RR.alt ? YT_ALT_TIP : esc(RR.d)}">${vIcon(RR)}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a>` : ''}<a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : '<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>'}</div>
       <div class="sheets" id="grid"></div>
       <h2 class="h2">أدوات المذاكرة</h2>
       <section class="tgroups">
@@ -559,7 +560,7 @@
   const VW_LS = 'qg_vw';   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
   let VID = null;
   function vidList(k) {
-    const L = [{ key: k + ':rules', h: k + '-rules', n: 'rules', label: k === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي', dur: YT[k].rules.dur }];
+    const L = k === 'q' ? [{ key: 'q:rules', h: 'q-rules', n: 'rules', label: 'قواعد الكمي', dur: YT.q.rules.dur }] : [];   // قواعد اللفظي لطلال العنزي (قريباً)
     YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: YT[k].name + ' ' + (i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
   }
@@ -567,7 +568,7 @@
   async function renderWatch(h) {
     vidStop();
     const k = h[0], n = /-rules$/.test(h) ? 'rules' : +h.slice(1), L = vidList(k), cur = L.find(x => x.n === n);
-    if (!cur) { location.hash = ''; return; }
+    if (!cur) { location.hash = '#sharh'; return; }
     document.title = 'شرح ' + cur.label + ' | Q-Guide';
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
     const solve = n === 'rules' ? `<a class="btn sm ghost" href="#${k === 'q' ? 'rules' : 'rules-v'}">${k === 'q' ? '📐 ملخص القوانين' : '📘 ملخص القواعد'}</a>` : `<a class="btn sm" href="#${k}${n}">✍️ حل ${YT[k].name} ${n}</a>`;
@@ -576,13 +577,13 @@
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
           <div class="wvwm" id="wvwm" aria-hidden="true"></div><div class="wvmsg" id="wvmsg"><div class="spin"></div></div>
           <button type="button" class="wvfs" id="wvfs" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
-        <div class="wvbar"><div class="wvt"><b>شرح ${esc(cur.label)}</b><span class="mut">${esc(cur.dur || '')}</span></div>
+        <div class="wvbar"><div class="wvt"><b>شرح ${esc(cur.label)}</b><span class="mut"><span class="wvteach">👨‍🏫 ${TEACHERS[0].name}</span> · <bdi dir="ltr">${esc(cur.dur || '')}</bdi></span></div>
           <div class="wvact">${solve}${prev ? `<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? `<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
-        <div class="wvhead"><h2 class="h2">${k === 'q' ? '📐 مقاطع الكمي' : '📖 مقاطع اللفظي'}</h2><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? '📖 مقاطع اللفظي' : '📐 مقاطع الكمي'}</a></div>
+        <div class="wvhead"><h2 class="h2">${k === 'q' ? '📐 مقاطع الكمي' : '📖 مقاطع اللفظي'}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? '📖 مقاطع اللفظي' : '📐 مقاطع الكمي'}</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span></div>
         <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${esc(x.label)}</b><small>${w ? '✓ شاهدته' : esc(x.dur || '')}</small></a>`; }).join('')}</div>
       </main>`;
-    bindCtl();
+    bindCtl(); window.scrollTo({ top: 0 });
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب
@@ -622,6 +623,34 @@
       v.src = r.url; v.load();
     };
     load();
+  }
+
+  // ---------- 👨‍🏫 الشرح والمدرسين: الشرح مقسّم بين أكثر من مدرس (المتاح الحين سلمان الفرج) ----------
+  const TEACHERS = [
+    { id: 'salman', name: 'سلمان الفرج', s: ['q', 'v'], on: 1 },
+    { id: 'abdullah', name: 'عبدالله الشمراني', s: ['v'], on: 0 },
+    { id: 'talal', name: 'طلال العنزي', s: ['q', 'v'], on: 0 },
+  ];
+  const SUBJ = { q: 'الكمي', v: 'اللفظي' };
+  function renderSharh() {
+    document.title = 'الشرح والمدرسين | Q-Guide';
+    const W = lsGet(VW_LS, {});
+    // كل مقطع: داخل الموقع (المجاني والتحويل لو انرفع) أو يوتيوب (مشترك يوتيوب، أو مقطع ما انرفع للحين)
+    const item = (k, n) => { const y = n === 'rules' ? ytRules(k) : ytFor(k + n); if (!y) return '';
+      const label = n === 'rules' ? 'قواعد الكمي' : YT[k].name + ' ' + n, dur = n === 'rules' ? YT[k].rules.dur : y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
+      return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${label}</span></b><small>${w ? '✓ شاهدته' : `<bdi dir="ltr">${esc(dur || '')}</bdi>`}</small></a>`; };
+    const tcard = t => `<div class="tch${t.on ? ' on' : ' soon'}"><span class="tav" aria-hidden="true">${t.name[0]}</span>
+      <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? 'الكمي واللفظي' : SUBJ[t.s[0]] + ' فقط'}</span></span><span class="tst">${t.on ? '✓ موجود' : '⏳ قريباً'}</span></div>`;
+    const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
+    app.innerHTML = topbar(`<span class="ttl">👨‍🏫 الشرح والمدرسين</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<main class="wrap sharh">
+        <div class="hero"><div><h1>الشرح والمدرسين</h1><p>الشرح مقسّم بين أكثر من مدرس. الموجود الحين شرح سلمان الفرج للكمي واللفظي، والباقين ينزل شرحهم قريباً.</p></div></div>
+        <div class="tchs">${TEACHERS.map(tcard).join('')}</div>
+        <section class="tsec" aria-labelledby="tsh"><h2 class="h2" id="tsh">شرح ${TEACHERS[0].name}</h2>
+          <h3 class="tsub">📐 الكمي</h3><div class="wvlist">${item('q', 'rules')}${qn.map(n => item('q', n)).join('')}</div>
+          <h3 class="tsub">📖 اللفظي</h3><div class="wvlist">${vn.map(n => item('v', n)).join('')}</div>
+        </section></main>`;
+    bindCtl(); window.scrollTo({ top: 0 });
   }
 
   // ---------- player ----------
@@ -1471,7 +1500,7 @@
     const tx = VB ? esc : mx;   // اللفظي نص إنجليزي عادي، والكمي نرسم كسوره وأسسه
     app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + `<main class="wrap rules${VB ? ' rules-v' : ''}">
       <div class="ru-top"><div><h1>${C.h1}</h1><p>${C.intro(nItems)}</p></div>
-        <a class="rvid" href="${R.url}"${R.tgt}>${vIcon(R)}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a></div>
+        ${R ? `<a class="rvid" href="${R.url}"${R.tgt}>${vIcon(R)}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a>` : ''}</div>
       <div class="ru-bar"><input id="ruq" type="search" placeholder="${C.ph}" autocomplete="off"><span class="mut" id="run"></span></div>
       <nav class="ru-nav" aria-label="المواضيع">${D.map(s => `<a href="${C.hash}" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
       <div class="ru-cols" id="ruc">${D.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2>${s.how ? `<div class="ru-how"><h3>طريقة الحل</h3><ol>${s.how.map(t => `<li>${arFx(t)}</li>`).join('')}</ol></div>` : ''}${s.sub ? `<h3 class="ru-sub">${esc(s.sub)}</h3>` : ''}<div class="ru-g">
@@ -2595,7 +2624,7 @@
   function vupGuess(name) { const n = name.toLowerCase().replace(/[_\-–|｜⧸/]+/g, ' ');
     let m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
     m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'v/m' + m[1].padStart(2, '0') + '.mp4';
-    if (/(قواعد|قوانين|rules)/.test(n)) return /(لفظ|verbal|تناظر|analog)/.test(n) ? 'v/rules.mp4' : /(كمي|quant)/.test(n) ? 'q/rules.mp4' : '';
+    if (/(قواعد|قوانين|rules)/.test(n)) return /(لفظ|verbal|تناظر|analog)/.test(n) ? '' : /(كمي|quant)/.test(n) ? 'q/rules.mp4' : '';   // قواعد اللفظي لطلال العنزي (قريباً): ما ترتفع هنا
     return ''; }
   const vupMB = b => '<bdi dir="ltr">' + (b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e7 ? Math.round(b / 1e6) + ' MB' : (b / 1e6).toFixed(1) + ' MB') + '</bdi>';
   function vupHtml() {
@@ -2613,7 +2642,8 @@
   }
   function vupBind(W) {
     const many = W.querySelector('#vupmany'); if (many) many.onchange = () => { const L = [...many.files], plan = [], miss = [];
-      L.forEach(f => { const g = vupGuess(f.name); if (g) plan.push([f, g]); else miss.push(f.name); });
+      const ok = new Set(vupSlots().map(x => x.f));
+      L.forEach(f => { const g = vupGuess(f.name); if (g && ok.has(g)) plan.push([f, g]); else miss.push(f.name); });
       VUP.miss = miss; if (!plan.length) { paintSubs(); if (miss.length) toast('ما عرفت مقطع هالملفات من أسمائها. ارفع كل واحد من زر «اختر» حق مقطعه.'); return; }
       vupRun(plan); };
     W.querySelectorAll('[data-one]').forEach(i => i.onchange = () => { if (i.files[0]) { VUP.miss = []; vupRun([[i.files[0], i.dataset.one]]); } });
