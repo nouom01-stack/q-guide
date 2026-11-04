@@ -2554,14 +2554,16 @@
   function withMocks(d, ok) {   // ok = الأيام اللي ينحط فيها اختبار · الباقي من القسمة يروح لآخر الأيام (أقرب لموعد الاختبار)
     const E = d.filter(ok), base = Math.floor(MOCKS / E.length), extra = MOCKS % E.length; let k = 1;
     E.forEach((x, j) => { for (let c = base + (j >= E.length - extra ? 1 : 0); c > 0; c--) x.tasks.push(pt(k++)); });
-    d.forEach(x => { if (x.tasks[0].k !== 'rest') x.time = durLabel(x.tasks.reduce((s, t) => s + taskMin(t), 0)); });
-    return d;
+    return timed(d);
   }
+  const timed = d => { d.forEach(x => { if (x.tasks[0].k !== 'rest') x.time = durLabel(x.tasks.reduce((s, t) => s + taskMin(t), 0)); }); return d; };
+  // الخطة القوية (7 أيام) بدون الاختبارات المحاكية: بدالها مراجعة بسيطة لأخطاء أقسام اليوم (nw = مهمة انضافت بعدين، الأيام القديمة المخلّصة ما تنطلب فيها)
+  const pSimple = () => Object.assign(pr('مراجعة بسيطة: أعد حل الأسئلة اللي أخطأت فيها في أقسام اليوم', [WQ, WV], 30), { nw: 1 });
   const PCONT = '13 مقطع كمي · 14 مقطع لفظي · 17 اختبار محاكي';
   const PLANS = [
-    { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 8 ساعات يومياً', fit: 'للي اختباره بعد أسبوع', content: PCONT,
-      build() { const d = []; for (let i = 1; i <= 6; i++) d.push({ n: i, tasks: [pq(2 * i - 1), pv(2 * i - 1), pq(2 * i), pv(2 * i)] });
-        d.push({ n: 7, tasks: [pq(13), pv(13), pv(14), pr('راجع كل أخطائك في الكمي', [WQ])] }); return withMocks(d, () => 1); } },
+    { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 4 ساعات ونص يومياً', fit: 'للي اختباره بعد أسبوع', content: '13 مقطع كمي · 14 مقطع لفظي',
+      build() { const d = []; for (let i = 1; i <= 6; i++) d.push({ n: i, tasks: [pq(2 * i - 1), pv(2 * i - 1), pq(2 * i), pv(2 * i), pSimple()] });
+        d.push({ n: 7, tasks: [pq(13), pv(13), pv(14), pr('راجع كل أخطائك في الكمي', [WQ])] }); return timed(d); } },
     { id: 'intense', name: 'الخطة المكثفة', days: 14, daily: 'حوالي 4 ساعات يومياً', fit: 'للي اختباره قريب', content: PCONT,
       build() { const d = []; for (let i = 1; i <= 13; i++) d.push({ n: i, tasks: [pq(i), pv(i)] });
         d.push({ n: 14, tasks: [QREV(), pv(14)] }); return withMocks(d, () => 1); } },
@@ -2599,9 +2601,9 @@
     const auto = (d, t) => t.set ? !!progGet(t.set).done : t.ex ? exDone(EX[t.ex]) : t.k === 'rest' ? addDays(start, d.n - 1) <= today : false;
     const tDone = (d, i) => !!(done[d.n] && done[d.n][i]) || auto(d, d.tasks[i]);
     // أيام خلّصها الطالب قبل لا تنضاف الاختبارات المحاكية تبقى مخلّصة، واختباراتها تطلع له فوق («اختبارات باقية»)
-    const lg = st.mv ? st.lg || [] : days.filter(d => d.tasks.every((t, i) => t.k === 't' || tDone(d, i))).map(d => d.n);
+    const lg = st.mv ? st.lg || [] : days.filter(d => d.tasks.every((t, i) => t.k === 't' || t.nw || tDone(d, i))).map(d => d.n);
     const isLg = d => lg.indexOf(d.n) >= 0;
-    const dayDone = d => d.tasks.every((t, i) => tDone(d, i) || (t.k === 't' && isLg(d)));
+    const dayDone = d => d.tasks.every((t, i) => tDone(d, i) || ((t.k === 't' || t.nw) && isLg(d)));
     const nDone = days.filter(dayDone).length, cur = days.find(d => !dayDone(d)) || null;
     const work = []; days.forEach(d => d.tasks.forEach((t, i) => { if (t.k !== 'rest') work.push(tDone(d, i)); }));
     const pct = work.length ? Math.round(work.filter(Boolean).length * 100 / work.length) : 0;
@@ -2672,10 +2674,10 @@
       let rec = null;
       if (live) { const fits = PLANS.filter(p => dayDiff(endOf(p), exT) >= 1); rec = fits.length ? fits.reduce((a, b) => b.days > a.days ? b : a) : PLANS[0]; }
       const dl = live ? dayDiff(now, exT) : 0;
-      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (13 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة، ومعها الـ17 اختبار محاكي للمراجعة موزّعة على نفس أيامها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
+      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (13 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة. والخطط المكثفة والمتوازنة والمريحة معها الـ17 اختبار محاكي للمراجعة موزّعة على نفس أيامها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
         <div class="exrow"><span class="exi" aria-hidden="true">🎯</span><div class="ext">${ex ? `<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? `باقي ${dLabel(dl)}. علّمنا لك بالنجمة ⭐ الخطة اللي تلحق قبله` : 'اختبارك اليوم! بالتوفيق') : 'الموعد المحفوظ مضى. حدّثه إذا عندك اختبار جديد'}</span>` : `<b>متى اختبارك؟</b><span>حدّد الموعد ونعلّم لك الخطة اللي تلحق قبله، ونعرض لك عدّاد تنازلي</span>`}</div><button class="btn sm ${ex ? 'ghost' : ''}" data-exam>${ex ? 'تعديل الموعد' : 'حدّد الموعد'}</button></div>
         <div class="plans">${PLANS.map(p => { const star = rec ? p === rec : !live && p.star; const end = endOf(p); const f = live ? fitInfo(end, exT) : null;
-          return `<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? 'الأنسب لموعد اختبارك' : 'الأنسب لأغلب الطلاب'}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🧪 فيها الـ17 اختبار محاكي</span><span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
+          return `<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? 'الأنسب لموعد اختبارك' : 'الأنسب لأغلب الطلاب'}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span>${p.build().some(d => d.tasks.some(t => t.k === 't')) ? '<span class="pm">🧪 فيها الـ17 اختبار محاكي</span>' : '<span class="pm">🔁 مراجعة بسيطة كل يوم</span>'}<span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
         ${rec && dayDiff(endOf(rec), exT) < 1 ? `<div class="pverd bad">⚠ باقي على اختبارك ${dl ? dLabel(dl) : 'أقل من يوم'} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.</div>` : ''}
         <div class="sum" style="margin-top:16px;text-align:right"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم أو تخلّص الاختبار المحاكي • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
       W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { planStart(b.dataset.p); renderPlan(); });
