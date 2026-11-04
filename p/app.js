@@ -665,6 +665,11 @@
     const seg = (t, a) => {
       let lead = t.match(/^[\s.,:]*/)[0].length, trail = t.match(/[\s.,:]*$/)[0].length;
       let core = t.slice(lead, t.length - trail);
+      // قوس مفتوح في آخر المعادلة أو مقفول في أولها (مثل «2, 3, 12, 13 (المجموع 4)») يطلع برّا المقطع الإنجليزي، وإلا ينقلب ترتيب السطر
+      const bal = c => (c.match(/\(/g) || []).length - (c.match(/\)/g) || []).length;
+      while (bal(core) > 0 && /[\s(]$/.test(core)) { core = core.slice(0, -1); trail++; }
+      while (bal(core) < 0 && /^[\s)]/.test(core)) { core = core.slice(1); lead++; }
+      { const tw = core.length - core.trimEnd().length, lw = core.length - core.trimStart().length; core = core.trim(); trail += tw; lead += lw; }
       while (core.endsWith(')') && (core.match(/\(/g) || []).length < (core.match(/\)/g) || []).length) { core = core.slice(0, -1); trail++; }
       while (core.startsWith('(') && (core.match(/\(/g) || []).length > (core.match(/\)/g) || []).length) { core = core.slice(1); lead++; }
       if (!/[A-Za-z0-9√π∠△∥\u0391-\u03C9½⅓⅔¼¾]/.test(core)) return;
@@ -2232,8 +2237,33 @@
     m = ref.match(/^t(\d+):(\d):(\d+)$/); if (m) return `المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}`;
     return ref;
   }
+  // 💬 السجل كمحادثات: رسائل الطالب على نفس السؤال ورا بعض (المحادثة الجديدة تبدأ لما يرجع الشرح الأول)
+  const AI_IT = { vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)' };
+  function aiConvs(logs) {
+    const open = new Map(), out = [];
+    for (const l of logs.slice().sort((a, b) => a.id - b.id)) {
+      const k = l.email + '|' + l.ref; let c = open.get(k);
+      if (!c || l.turn <= c.turn || l.ts - c.last > 12 * 3600e3) { c = { ref: l.ref, who: l.who, msgs: [], turn: 0, last: 0 }; open.set(k, c); out.push(c); }
+      c.msgs.push(l); c.turn = l.turn; c.last = l.ts;
+    }
+    return out.sort((a, b) => b.last - a.last);
+  }
+  const nReply = n => n === 1 ? 'رد واحد' : n === 2 ? 'ردّين' : n <= 10 ? n + ' ردود' : n + ' رد';
+  function aiConvHtml(c, Q, open) {
+    const fl = c.msgs.some(m => m.flag), asks = c.msgs.filter(m => m.turn > 1), last = asks.length ? asks[asks.length - 1].q : '';
+    const pk = (c.msgs.find(m => m.pk != null) || {}).pk, mref = c.ref.match(/^([qv]\d+):(\d+)$/);
+    const qbox = Q ? `<div class="cvq">${Q.p ? `<div class="cvp">📄 القطعة: ${esc(Q.p)}</div>` : ''}<div class="cvs" dir="ltr">${esc(Q.e || Q.a)}</div>${Q.f ? '<small class="mut">السؤال فيه رسم أو جدول</small>' : ''}
+      <ol class="cvo" dir="ltr">${Q.o.map((o, i) => `<li class="${i === Q.k ? 'k' : i === pk ? 'w' : ''}"><b>${LETTERS[i]}</b> ${esc(o)}${i === Q.k ? ' <span dir="rtl">✓ الصحيحة</span>' : i === pk ? ' <span dir="rtl">✗ اختيار الطالب</span>' : ''}</li>`).join('')}</ol></div>` : '';
+    const msg = m => (m.turn > 1
+      ? `<div class="cvm u"><span class="cvl">🧑‍🎓 الطالب كتب</span><p>${esc(m.q)}</p>${AI_IT[m.it] ? `<small class="cvit">🧭 فهم المساعد إنه ${AI_IT[m.it]}</small>` : ''}</div>`
+      : `<div class="cvm u sys"><span class="cvl">🧑‍🎓 الطالب</span><p>ضغط «اشرح لي أكثر»${m.pk != null && Q ? (m.pk === Q.k ? ' بعد ما جاوب صح' : ` بعد ما اختار ${LETTERS[m.pk]} وهي خطأ`) : ''}</p></div>`)
+      + `<div class="cvm a${m.flag ? ' fl' : ''}"><span class="cvl">🤖 المساعد ردّ</span><div class="aian">${window.QGAI ? QGAI.render(m.a) : esc(m.a)}</div>
+        <div class="cvmeta"><span dir="ltr">${esc(String(m.model || '').split('/').pop())}</span><span>${(m.ms / 1000).toFixed(1)} ث</span><span>${fmtD(m.ts)}</span>${m.flag ? '<b class="cvfl">🚩 الطالب بلّغ إن هذا الرد فيه غلط</b>' : ''}</div></div>`;
+    return `<details class="ailg aicv${fl ? ' fl' : ''}"${open ? ' open' : ''}><summary><span class="who"><b>${esc(c.who)}</b><small>${fmtD(c.last)}</small></span><span class="ref">${esc(aiRefLabel(c.ref))}</span><span class="fq${last ? '' : ' first'}">${last ? `«${esc(last)}»` : 'طلب شرح بس'}</span><span class="cvn">${nReply(c.msgs.length)}</span>${fl ? '<span class="rbdg flg">🚩 بلاغ</span>' : ''}</summary>
+      <div class="cvb">${qbox}<div class="cvth">${c.msgs[0].turn > 1 ? '<div class="cvcut">… أول المحادثة أقدم من آخر السجل</div>' : ''}${c.msgs.map(msg).join('')}</div>${mref ? `<div class="cvact"><a href="#${mref[1]}@${mref[2]}">افتح السؤال في الدورة ←</a></div>` : ''}</div></details>`;
+  }
   function paintAi() {
-    const W = $('#adm'); if (!W || !ADM.ai) return; const A = ADM.ai, S = A.set;
+    const W = $('#adm'); if (!W || !ADM.ai) return; const A = ADM.ai, S = A.set, convs = aiConvs(A.logs || []);
     const nr = A.today.nr || 0, usd = Math.max(0, nr - 10000) * 0.011 / 1000;   // Cloudflare: أول 10,000 وحدة يومياً مجانية، وبعدها 0.011$ لكل 1000 وحدة
     W.innerHTML = `<div class="stf aiadm">
       ${A.on ? '' : '<div class="sum warn">⚠️ ربط الذكاء الاصطناعي (Workers AI) ما هو مفعّل في الخادم.</div>'}
@@ -2243,10 +2273,9 @@
         <div class="aimode" role="radiogroup" aria-label="حالة المساعد">${Object.entries(AI_MODE).map(([k, [t, d]]) => `<label class="${S.mode === k ? 'on' : ''}"><input type="radio" name="aimode" value="${k}" ${S.mode === k ? 'checked' : ''}><b>${t}</b><small>${d}</small></label>`).join('')}</div>
         <div class="airow"><label><span>شروحات المشترك في اليوم</span><input type="number" id="aipaid" min="0" max="200" inputmode="numeric" value="${S.paid}"></label><label><span>شروحات الزائر في اليوم</span><input type="number" id="aifree" min="0" max="50" inputmode="numeric" value="${S.free}"></label><label><span>النموذج</span><select id="aimodel">${Object.entries(A.models).map(([k, v]) => `<option value="${k}" ${k === S.model ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>
         <div class="aiact"><button class="btn" id="aisave">حفظ الإعدادات</button><span class="mut">الشرح الأول للسؤال ينحسب من رصيد الطالب، وأسئلة المتابعة على نفس السؤال (لين ${esc(String(S.follow))}) ما تنحسب.</span></div></section>
-      <div class="aihd"><h3 class="sh">آخر الشروحات <small>${A.logs.length}</small></h3><label class="aiflt"><input type="checkbox" id="aiflg" ${ADM.aiF ? 'checked' : ''}> البلاغات بس</label></div>
-      <div class="ailog">${A.logs.map(l => { const m = l.ref.match(/^([qv]\d+):(\d+)$/);
-        return `<details class="ailg${l.flag ? ' fl' : ''}"><summary><span class="who"><b>${esc(l.who)}</b><small>${fmtD(l.ts)}</small></span><span class="ref">${esc(aiRefLabel(l.ref))}</span><span class="fq${l.turn > 1 ? '' : ' first'}">${l.turn > 1 ? `سؤال متابعة: «${esc(l.q)}»` : 'أول شرح'}</span>${l.flag ? '<span class="rbdg flg">🚩 بلاغ</span>' : ''}</summary>
-          <div class="aian">${window.QGAI ? QGAI.render(l.a) : esc(l.a)}</div><div class="aimeta"><span dir="ltr">${esc(String(l.model || '').split('/').pop())}</span><span>${(l.ms / 1000).toFixed(1)} ث</span>${m ? `<a href="#${m[1]}@${m[2]}">افتح السؤال ←</a>` : ''}</div></details>`; }).join('') || `<div class="sempty">${ADM.aiF ? 'ما فيه بلاغات 👍' : 'ما استخدم أحد المساعد للحين.'}</div>`}</div></div>`;
+      <div class="aihd"><h3 class="sh">محادثات الطلاب مع المساعد <small>${convs.length}</small></h3><label class="aiflt"><input type="checkbox" id="aiflg" ${ADM.aiF ? 'checked' : ''}> اللي فيها بلاغ بس</label></div>
+      <p class="aihelp mut">كل محادثة فيها السؤال نفسه، ووش كتب الطالب، ووش رد عليه المساعد بالترتيب.</p>
+      <div class="ailog">${convs.map(c => aiConvHtml(c, A.qs && A.qs[c.ref], !!ADM.aiF)).join('') || `<div class="sempty">${ADM.aiF ? 'ما فيه بلاغات 👍' : 'ما استخدم أحد المساعد للحين.'}</div>`}</div></div>`;
     W.querySelectorAll('input[name=aimode]').forEach(r => r.onchange = () => W.querySelectorAll('.aimode label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)));
     $('#aisave').onclick = async e => { const b = e.currentTarget; b.disabled = true;
       try { const mode = (W.querySelector('input[name=aimode]:checked') || {}).value; ADM.ai = await admCall({ op: 'adm_ai_set', flagged: !!ADM.aiF, set: { mode, paid: +$('#aipaid').value, free: +$('#aifree').value, model: $('#aimodel').value } });

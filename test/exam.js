@@ -13,6 +13,11 @@
     s = String(s || ''); let out = '', last = 0;
     for (const m of s.matchAll(MRUN)) {
       const t = m[0], a = m.index; let lead = t.match(/^[\s.,:]*/)[0].length, trail = t.match(/[\s.,:]*$/)[0].length; let core = t.slice(lead, t.length - trail);
+      // قوس مفتوح في آخر المعادلة أو مقفول في أولها (مثل «2, 3, 12, 13 (المجموع 4)») يطلع برّا المقطع الإنجليزي، وإلا ينقلب ترتيب السطر
+      const bal = c => (c.match(/\(/g) || []).length - (c.match(/\)/g) || []).length;
+      while (bal(core) > 0 && /[\s(]$/.test(core)) { core = core.slice(0, -1); trail++; }
+      while (bal(core) < 0 && /^[\s)]/.test(core)) { core = core.slice(1); lead++; }
+      { const tw = core.length - core.trimEnd().length, lw = core.length - core.trimStart().length; core = core.trim(); trail += tw; lead += lw; }
       while (core.endsWith(')') && (core.match(/\(/g) || []).length < (core.match(/\)/g) || []).length) { core = core.slice(0, -1); trail++; }
       while (core.startsWith('(') && (core.match(/\(/g) || []).length > (core.match(/\)/g) || []).length) { core = core.slice(1); lead++; }
       if (!/[A-Za-z0-9√π∠△∥]/.test(core)) continue;
