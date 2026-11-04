@@ -1764,3 +1764,33 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 [data-theme="dark"] .cvo li.k span{color:#7FE0AE}[data-theme="dark"] .cvo li.w span{color:#FFB3B3}
 [data-theme="dark"] .cvm.a.fl{border-color:#6A2A33}[data-theme="dark"] .cvfl{color:#FFB3B3}
 @media (max-width:760px){.cvo{grid-template-columns:1fr}.aicv .cvb{padding:10px 12px 12px}.aicv .cvn{order:9}}
+/* 💳 نوع الاشتراك (لوحة المالك): يوتيوب · مجاني · تحويل بنكي + هل المقاطع الخاصة مشاركة مع الطالب */
+.sbtiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.sbt{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:start;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--sh);color:var(--ink)}
+.sbt .i{grid-row:1/3;font-size:calc(22px * var(--fs));line-height:1}
+.sbt b{font-size:calc(24px * var(--fs));line-height:1.15;color:var(--ink2);font-weight:900}
+.sbt span:last-child{font-size:calc(12.5px * var(--fs));font-weight:700;color:var(--mut);line-height:1.4}
+.sbt:hover{border-color:var(--navy3)}
+.sbt.on{border-color:var(--navy3);background:#F2F6FF;box-shadow:inset 0 0 0 1px var(--navy3)}
+.sbt.warn b{color:var(--warnt)}
+.sbt:focus-visible,.sbseg button:focus-visible{outline:3px solid var(--royal);outline-offset:2px}
+.sbhelp{margin:0 0 12px;color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.75}
+.sbcopy{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--stampbg);color:var(--stampfg);font-size:calc(13px * var(--fs));font-weight:700}
+.srow.sbrow{grid-template-columns:minmax(220px,1.5fr) auto minmax(200px,1fr)}
+.sbrow .who small+small{font-size:calc(12px * var(--fs))}
+.sbseg{display:inline-flex;background:#E8ECF5;border-radius:11px;padding:3px;gap:3px}
+.sbseg button{padding:6px 10px;border-radius:9px;font-weight:800;font-size:calc(13px * var(--fs));color:var(--mut);white-space:nowrap}
+.sbseg button:hover{color:var(--ink)}
+.sbseg button.on{background:var(--card);box-shadow:var(--sh)}
+.sbseg button.on.yt{color:#C4302B}.sbseg button.on.free{color:var(--okt)}.sbseg button.on.bank{color:var(--navy3)}
+.sbsh{display:flex;justify-content:flex-end}
+.sbsw{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;cursor:pointer;font-weight:700;font-size:calc(13px * var(--fs));background:var(--stampbg);color:var(--stampfg)}
+.sbsw.on{background:var(--okbg);color:var(--okt)}
+.sbsw input{width:17px;height:17px;accent-color:var(--ok);margin:0}
+.sbnote{font-size:calc(12.5px * var(--fs));margin-top:10px;line-height:1.7}
+.sroles.s3{grid-template-columns:repeat(3,minmax(0,1fr))}
+[data-theme=dark] .sbseg{background:#182238}[data-theme=dark] .sbseg button.on{background:#263654}
+[data-theme=dark] .sbseg button.on.yt{color:#FF7A72}[data-theme=dark] .sbseg button.on.bank{color:#9DB4FF}
+[data-theme=dark] .sbt.on{background:#1B2540}
+@media (max-width:900px){.sbtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.srow.sbrow{grid-template-columns:1fr;grid-template-areas:"st" "seg" "sh";gap:8px}.sbrow .c-st{grid-area:st}.sbrow .sbseg{grid-area:seg;display:flex}.sbrow .sbseg button{flex:1;padding:8px 6px}.sbrow .sbsh{grid-area:sh;justify-content:flex-start}.sroles.s3{grid-template-columns:1fr}}

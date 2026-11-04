@@ -16,11 +16,17 @@
   // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات)
   const YT = {
     q: { name: 'القسم', rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: 'مقطع قواعد الكمي', d: 'كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام' }, list: 'PLNdATbln9B4k',
-      v: ['WBnwPsSTuaU:36:18', 'SLGGlm5YwJU:34:43', 'VoVaWRFbIjg:36:50', 'dwvgSfK6Tfw:34:10', 'eVZsYR0QPq8:35:39', 'd3hX21VfSWo:34:19', 'EMNaSCi0IMk:43:40', 'fQynzmnlZmI:34:15', 'i4ELxBTMUw0:40:51', 'mZdhgMMOWB0:40:01', 'bscPMN6lDPQ:36:29', '6AxdKpQZevk:34:16', 'iVR5LsbBBv4:29:38', '5SXV-pbaQ7U:47:45'] },
-    v: { name: 'النموذج', rules: { id: 'vo91Yxx_6vw', dur: '', t: 'مقطع قواعد التناظر اللفظي', d: 'شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج' }, list: 'PLVFHCj9Zxd0E',
-      v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'CACQHxNpOTE:21:40', 'mFYiB0Z9G5k:15:17'] } };
+      v: ['WBnwPsSTuaU:36:18', 'SLGGlm5YwJU:34:43', 'VoVaWRFbIjg:36:50', 'dwvgSfK6Tfw:34:10', 'eVZsYR0QPq8:35:39', 'd3hX21VfSWo:34:19', 'EMNaSCi0IMk:43:40', 'fQynzmnlZmI:34:15', 'i4ELxBTMUw0:40:51', 'mZdhgMMOWB0:40:01', 'bscPMN6lDPQ:36:29', '6AxdKpQZevk:34:16', 'iVR5LsbBBv4:29:38', 'vf-aOADLlCs:56:06'] },
+    v: { name: 'النموذج', rules: { id: 'vo91Yxx_6vw', dur: '14:18', t: 'مقطع قواعد التناظر اللفظي', d: 'شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج' }, list: 'PLVFHCj9Zxd0E',
+      v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'VcaywhqSsVM:21:40', 'mFYiB0Z9G5k:15:17'] } };
   const ytUrl = id => 'https://youtu.be/' + id;
-  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'); return { id: raw.slice(0, i), dur: raw.slice(i + 1), url: ytUrl(raw.slice(0, i)), label: k.name + ' ' + m[2] }; }
+  // 🎁 المشترك المجاني أو بالتحويل ما يشوف مقاطع الأعضاء: الخادم يرسل له روابط النسخ الخاصة (auth.yt) ونستخدمها بدل الأصلية
+  const ytAlt = () => auth && auth.yt && (auth.sub === 'free' || auth.sub === 'bank') ? auth.yt : null;
+  const YT_ALT_TIP = 'مقطع خاص لك: افتحه وأنت داخل يوتيوب بنفس إيميل Google اللي تدخل فيه الموقع';
+  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), A = ytAlt(), alt = A && A[m[1]] && A[m[1]].v ? A[m[1]].v[+m[2] - 1] : ''; const id = alt || raw.slice(0, i); return { id, dur: raw.slice(i + 1), url: ytUrl(id), label: k.name + ' ' + m[2], alt: !!alt }; }
+  const ytRules = k => { const A = ytAlt(), alt = A && A[k] && A[k].rules; return alt ? Object.assign({}, YT[k].rules, { id: alt, alt: true }) : YT[k].rules; };
+  const ytList = k => { const A = ytAlt(); return (A && A[k] && A[k].list) || YT[k].list; };
+  const ytTip = (y, t) => y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
   const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
   const GRIDSVG = '<svg class="gi" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.9"/><circle cx="8" cy="3" r="1.9"/><circle cx="13" cy="3" r="1.9"/><circle cx="3" cy="8" r="1.9"/><circle cx="8" cy="8" r="1.9"/><circle cx="13" cy="8" r="1.9"/><circle cx="3" cy="13" r="1.9"/><circle cx="8" cy="13" r="1.9"/><circle cx="13" cy="13" r="1.9" fill-opacity=".45"/></g></svg>';
   const LOSVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>';
@@ -211,6 +217,8 @@
       if (r && !r.ok && r.error === 'upgraded') logout(esc(r.msg || 'تم تفعيل اشتراكك، سجّل دخولك من جديد.'), false, 1);   // 🎉 الزائر اشترك
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || 'انتهت الجلسة، سجّل دخولك من جديد.'));
       else if (r && r.ok && auth.role === 'admin' && r.staff && r.staff !== auth.staff) { auth.staff = r.staff; lsSet(LS.auth, auth); }
+      if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
+        auth.sub = r.sub; auth.yt = r.yt || null; lsSet(LS.auth, auth); if (!location.hash || location.hash === '#') renderHome(); }
     } catch (e) {} finally { hbBusy = false; }
   }
   setInterval(heartbeat, 3 * 60 * 1000);
@@ -289,7 +297,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
-    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : renderMembers(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -336,7 +344,7 @@
         const msg = r.msg || (r.error === 'not_member' ? 'هذا الحساب غير مسجّل في الدورة.' : 'تعذّر تسجيل الدخول (' + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + '<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>');
       }
-      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '' };
+      auth = { name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null };
       lsSet(LS.auth, auth); location.hash = ''; route();
     } catch (e) { renderLogin('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'); }
   }
@@ -391,7 +399,7 @@
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = '<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'; return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
     const adminLinks = auth.role === 'admin' ? `<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
-    const R = YT[tab === 'quant' ? 'q' : 'v'];
+    const RR = ytRules(tab === 'quant' ? 'q' : 'v');
     const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
     const megaPct = (id, n) => Math.round(Object.keys(progGet(id).a || {}).length * 100 / n);
     if (!isFree()) badgeCheck();
@@ -404,7 +412,7 @@
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
-        <span class="sp"></span><a class="rvid" href="${ytUrl(R.rules.id)}" target="_blank" rel="noopener" title="${esc(R.rules.d)}">${YTSVG}<span>${R.rules.t}</span>${R.rules.dur ? `<small>${R.rules.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${R.list}" target="_blank" rel="noopener">كل المقاطع</a>${!RULES_ON ? '' : tab === 'quant' ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : '<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>'}</div>
+        <span class="sp"></span><a class="rvid" href="${ytUrl(RR.id)}" target="_blank" rel="noopener" title="${RR.alt ? YT_ALT_TIP : esc(RR.d)}">${YTSVG}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a><a class="rall" href="https://www.youtube.com/playlist?list=${ytList(tab === 'quant' ? 'q' : 'v')}" target="_blank" rel="noopener">كل المقاطع</a>${!RULES_ON ? '' : tab === 'quant' ? '<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>' : '<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>'}</div>
       <div class="sheets" id="grid"></div>
       <h2 class="h2">أدوات المذاكرة</h2>
       <section class="tgroups">
@@ -564,7 +572,7 @@
     P = { id, set, items, prog, cur, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener" title="شرح ${ytFor(id).label} على يوتيوب">${YTSVG}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span></button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      ${ytFor(id) ? `<a class="ytb" href="${ytFor(id).url}" target="_blank" rel="noopener"${ytTip(ytFor(id), 'شرح ' + ytFor(id).label + ' على يوتيوب')}>${YTSVG}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span></button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${items.map((x, i) => `<i class="${prog.a[i] ? (prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('')}</div><main class="wrap" id="pm"></main>
       <aside class="sheetp" aria-label="ورقة الإجابة"><div class="sp-h"><b>ورقة الإجابة</b><span id="spn"></span></div><div class="qgrid" id="spg"></div></aside>
       <div class="nav" id="nav" role="dialog" aria-modal="true" aria-label="كل الأسئلة"><div class="bg"></div><div class="sh"><div class="nvh"><b>كل الأسئلة</b><span class="nlg"><span><i class="ok"></i>صحيحة</span><span><i class="bad"></i>خاطئة</span><span><i></i>ما جاوبتها</span></span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة من البداية</button></div><div class="qgrid big" id="ng"></div></div></div>`;
@@ -656,7 +664,7 @@
   }
   function ytLink(it) {
     const yt = ytFor(it.src || (P && P.id)); if (!yt) return '';
-    return `<a class="ytx" href="${yt.url}" target="_blank" rel="noopener">${YTSVG}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو على يوتيوب</span><span class="go">←</span></a>`;
+    return `<a class="ytx" href="${yt.url}" target="_blank" rel="noopener"${ytTip(yt)}>${YTSVG}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو على يوتيوب</span><span class="go">←</span></a>`;
   }
   // 🇸🇦 ترجمة أسئلة الكمي: تظهر قبل الإجابة (الترجمة ما تكشف الحل) ونتذكّر إذا الطالب يفضّلها مفتوحة
   const QTR_LS = 'qg_qtr', QNAMES = new Set(['ahmed', 'khalid', 'khaled', 'mohamed', 'mohammed', 'muhammad', 'sara', 'sarah', 'nora', 'ali', 'saad']);   // أسماء الأشخاص ما تحتاج ترجمة
@@ -807,7 +815,7 @@
       <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
       <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? `<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : `<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? `<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? `<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
-      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? 'القسم' : 'النموذج') : 'الاختبار'}</button>${nm && !isFree() ? `<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? `<a class="lnk2" href="${ytFor(set.id).url}" target="_blank" rel="noopener">${YTSVG} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
+      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? 'القسم' : 'النموذج') : 'الاختبار'}</button>${nm && !isFree() ? `<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? `<a class="lnk2" href="${ytFor(set.id).url}" target="_blank" rel="noopener"${ytTip(ytFor(set.id))}>${YTSVG} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${wrong.length ? `<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
@@ -1361,10 +1369,10 @@
   // ---------- 📐 قوانين الكمي · 📘 قواعد اللفظي (من أسئلة الدورة) ----------
   const RULES_V = 4, RULES_ON = true, RU_DATA = {};
   const RU_CFG = {
-    q: { hash: '#rules', ttl: '📐 قوانين الكمي', h1: 'قوانين الكمي', file: 'rules.json?v=' + RULES_V, yt: () => YT.q.rules,
+    q: { hash: '#rules', ttl: '📐 قوانين الكمي', h1: 'قوانين الكمي', file: 'rules.json?v=' + RULES_V, yt: () => ytRules('q'),
       ph: 'ابحث عن قانون: مساحة، نسبة، زاوية، area…', none: 'ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.',
       intro: n => `${n} قانون وقاعدة تحتاجها أسئلة الدورة، مرتبة حسب الموضوع. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.` },
-    v: { hash: '#rules-v', ttl: '📘 قواعد اللفظي', h1: 'قواعد اللفظي', file: 'rules_v.json?v=1', yt: () => YT.v.rules,
+    v: { hash: '#rules-v', ttl: '📘 قواعد اللفظي', h1: 'قواعد اللفظي', file: 'rules_v.json?v=1', yt: () => ytRules('v'),
       ph: 'ابحث: سبب ونتيجة، although، main idea…', none: 'ما لقينا قاعدة بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.',
       intro: () => 'طريقة الحل في كل نوع من أسئلة اللفظي، وأنواع العلاقات والقرائن والأسئلة اللي تكررت في أسئلة الدورة. تحت كل نوع مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.' } };
   async function renderRules(kind) {
@@ -1973,12 +1981,12 @@
   // ---------- 👑 لوحة المشرف ----------
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI';
   const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
-  let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '' };
+  let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '', subs: null, sf: 'all', sq: '', msub: 'free' };
   const isOwner = () => (ADM.role || auth.staff) === 'owner';
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-subs" class="${tab === 'subs' ? 'on' : ''}">💳 نوع الاشتراك${ADM.subs ? (n => n ? ` <small class="red" title="ما شاركت المقاطع الخاصة معهم">${n}</small>` : '')(ADM.subs.filter(x => x.t !== 'yt' && !x.sh).length) : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
@@ -2369,6 +2377,54 @@
         if (window.QGAI) QGAI.status(true); paintAi(); toast('انحفظت إعدادات المساعد ✓'); } catch (er) { toast(er.message); b.disabled = false; } };
     $('#aiflg').onchange = e => { ADM.aiF = e.target.checked; ADM.ai = null; renderAiAdmin(); };
   }
+  // ---------- 💳 نوع الاشتراك: ▶️ يوتيوب · 🎁 مجاني · 🏦 تحويل بنكي ----------
+  // المجاني والتحويل ما يشوفون مقاطع الأعضاء: أزرار يوتيوب في الموقع تفتح لهم النسخ الخاصة، وتشتغل إذا المالك شاركها مع إيميلهم
+  const SUB_N = { yt: ['▶️', 'يوتيوب'], free: ['🎁', 'مجاني'], bank: ['🏦', 'تحويل بنكي'] };
+  async function renderSubs() {
+    document.title = 'نوع الاشتراك | Q-Guide';
+    const top = () => { app.innerHTML = admTop('subs'); bindCtl(); $('#admref').onclick = () => { ADM.subs = null; renderSubs(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.subs) ADM.subs = (await admCall({ op: 'adm_subs' })).rows; }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-subs') return;
+    top(); paintSubs();
+  }
+  function paintSubs() {
+    const W = $('#adm'); if (!W || !ADM.subs) return;
+    const all = ADM.subs, f = ADM.sf, q = ADM.sq.trim().toLowerCase(), alt = x => x.t !== 'yt', need = x => alt(x) && !x.sh;
+    const n = { yt: all.filter(x => x.t === 'yt').length, free: all.filter(x => x.t === 'free').length, bank: all.filter(x => x.t === 'bank').length, need: all.filter(need).length };
+    let list = all.filter(x => !q || [x.name, x.display, x.email, x.typed, x.user].some(v => String(v || '').toLowerCase().includes(q)));
+    if (f === 'need') list = list.filter(need); else if (f !== 'all') list = list.filter(x => x.t === f);
+    const rank = x => need(x) ? 0 : alt(x) ? 1 : 2;
+    list.sort((a, b) => rank(a) - rank(b) || (b.last || 0) - (a.last || 0));
+    const nm = x => x.display || x.name || x.email.split('@')[0];
+    const tile = (k, ic, b, t, cls) => `<button type="button" class="sbt ${k}${f === k ? ' on' : ''}${cls ? ' ' + cls : ''}" data-sf="${k}" aria-pressed="${f === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
+    const row = x => `<div class="srow sbrow" data-e="${esc(x.email)}">
+      <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
+      <span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}">${['yt', 'free', 'bank'].map(t => `<button type="button" role="radio" data-t="${t}" class="${x.t === t ? 'on ' + t : ''}" aria-checked="${x.t === t}">${SUB_N[t][0]} ${SUB_N[t][1]}</button>`).join('')}</span>
+      <span class="sbsh">${alt(x) ? `<label class="sbsw${x.sh ? ' on' : ''}"><input type="checkbox" data-sh${x.sh ? ' checked' : ''}><span>${x.sh ? '✓ شاركت المقاطع معه' : '⚠️ ما شاركت المقاطع معه'}</span></label>` : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}</span></div>`;
+    W.innerHTML = `<div class="stf subs">
+      <div class="sbtiles">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${tile('need', '⚠️', n.need, 'ما شاركت المقاطع معهم', n.need ? 'warn' : '')}</div>
+      <p class="sbhelp">المجاني والتحويل البنكي: أزرار يوتيوب في الموقع تفتح لهم النسخ الخاصة من المقاطع، وتشتغل بس إذا شاركتها مع إيميلهم من يوتيوب ستوديو (المشاركة الخاصة لكل مقطع حدها 50 إيميل). مشترك يوتيوب تفتح له مقاطع الأعضاء.</p>
+      <div class="abar"><input id="sbq" type="search" placeholder="ابحث بالاسم أو الإيميل أو اليوزر…" value="${esc(ADM.sq)}">${f !== 'all' ? `<button type="button" class="btn sm ghost" id="sball">عرض الكل (${all.length})</button>` : ''}</div>
+      ${f === 'need' && n.need ? `<div class="sbcopy"><button type="button" class="btn sm" id="sbcp">📋 انسخ إيميلاتهم (${n.need})</button><span>الصقها في «المشاركة الخاصة» لكل مقطع في يوتيوب ستوديو، وبعدها علّم عليهم هنا.</span></div>` : ''}
+      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : f === 'need' ? 'كل المجانيين والتحويل شاركت المقاطع معهم 👍' : 'ما فيه طلاب هنا'}</div>`}</div>
+      <p class="mut sbnote">الطالب الجديد من الشيت يطلع «يوتيوب»، واللي تضيفه من «➕ المشتركون» يطلع بالنوع اللي تختاره هناك. تقدر تغيّر أي طالب من هنا، ويتغيّر عنده خلال دقائق.</p></div>`;
+    W.querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { ADM.sf = ADM.sf === b.dataset.sf ? 'all' : b.dataset.sf; paintSubs(); });
+    const ab = $('#sball'); if (ab) ab.onclick = () => { ADM.sf = 'all'; paintSubs(); };
+    $('#sbq').oninput = e => { ADM.sq = e.target.value; const pos = e.target.selectionStart; paintSubs(); const i = $('#sbq'); i.focus(); i.setSelectionRange(pos, pos); };
+    const cp = $('#sbcp'); if (cp) cp.onclick = async () => { const em = all.filter(need).map(x => x.typed || x.email).join(', ');
+      try { await navigator.clipboard.writeText(em); toast(`انسخت ${n.need === 1 ? 'إيميل واحد' : n.need === 2 ? 'إيميلين' : n.need + ' إيميلات'} ✓`); } catch (e) { await QGDlg.prompt('انسخ الإيميلات:', em, { ok: 'تم' }); } };
+    const save = async (x, patch, undo, msg) => { Object.assign(x, patch); paintSubs(); refreshSubTab();
+      try { await admCall(Object.assign({ op: 'adm_sub_set', email: x.email }, patch)); toast(msg); } catch (e) { Object.assign(x, undo); paintSubs(); refreshSubTab(); toast('ما انحفظ: ' + e.message); } };
+    W.querySelectorAll('.sbrow').forEach(r => { const x = all.find(y => y.email === r.dataset.e); if (!x) return;
+      r.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = b.dataset.t; if (t === x.t) return; save(x, { t }, { t: x.t }, `${nm(x)}: ${SUB_N[t][0]} ${SUB_N[t][1]} ✓`); });
+      const sh = r.querySelector('[data-sh]'); if (sh) sh.onchange = () => save(x, { sh: sh.checked ? 1 : 0 }, { sh: x.sh }, sh.checked ? 'علّمته إنك شاركت المقاطع معه ✓' : 'شلت العلامة'); });
+  }
+  function refreshSubTab() {   // عدّاد «ما شاركت المقاطع معهم» في شريط التبويبات
+    const a = document.querySelector('.atabs a[href="#admin-subs"]'); if (!a || !ADM.subs) return; const n = ADM.subs.filter(x => x.t !== 'yt' && !x.sh).length;
+    a.innerHTML = '💳 نوع الاشتراك' + (n ? ` <small class="red" title="ما شاركت المقاطع الخاصة معهم">${n}</small>` : '');
+  }
   async function renderMembers() {
     document.title = 'المشتركون | Q-Guide';
     const top = () => { app.innerHTML = admTop('members'); bindCtl(); $('#admref').onclick = () => { ADM.members = null; renderMembers(); }; };
@@ -2395,6 +2451,7 @@
     W.innerHTML = `<div class="stf">
       <form class="sadd" id="madd" autocomplete="off"><h3>➕ إضافة مشتركين</h3>
         <div class="sgrid"><label class="wide"><span>إيميلات Google — كل إيميل في سطر، وتقدر تكتب اسم الطالب بعد الإيميل</span><textarea id="m_em" rows="5" dir="ltr" spellcheck="false" placeholder="ahmed@gmail.com أحمد محمد&#10;sara@gmail.com"></textarea></label></div>
+        <div class="sroles s3" role="radiogroup" aria-label="نوع اشتراكهم">${[['free', '🎁 مجاني', 'تفتح له النسخ الخاصة من المقاطع'], ['bank', '🏦 تحويل بنكي', 'تفتح له النسخ الخاصة من المقاطع'], ['yt', '▶️ يوتيوب', 'عضو في القناة: مقاطع الأعضاء']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_sub" value="${v}" ${ADM.msub === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
         <div class="acts"><button class="btn gold" type="submit" id="m_go" disabled>إضافة</button><span class="mcnt" id="m_cnt"></span></div>
         ${resHtml}
         <p class="mnote">يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة الشخصية (باسم الطالب وجواله) تنعمل من الشيت، فما تطلع للمضافين من هنا.</p></form>
@@ -2409,8 +2466,9 @@
     $('#madd').onsubmit = async e => {
       e.preventDefault(); const p = parseMembers(ta.value); if (!p.items.length) return;
       go.disabled = true; go.textContent = 'جارٍ الإضافة…';
-      try { const r = await admCall({ op: 'adm_members_add', items: p.items });
-        ADM.draft = p.bad.join('\n'); ADM.members = (await admCall({ op: 'adm_members_list' })).members; ADM.list = null;
+      const sub = ((W.querySelector('input[name=m_sub]:checked') || {}).value) || 'free'; ADM.msub = sub;
+      try { const r = await admCall({ op: 'adm_members_add', items: p.items, sub });
+        ADM.draft = p.bad.join('\n'); ADM.members = (await admCall({ op: 'adm_members_list' })).members; ADM.list = null; ADM.subs = null;
         toast(r.added.length ? 'تمت الإضافة ✓' : 'ما فيه إيميلات جديدة'); app.innerHTML = admTop('members'); bindCtl(); $('#admref').onclick = () => { ADM.members = null; renderMembers(); }; paintMembers(r);
       } catch (err) { toast(err.message); upd(); }
     };
@@ -2530,7 +2588,7 @@
   }
   function taskLinks(t) {
     const y = t.set ? ytFor(t.set) : null;
-    return (y ? `<a class="go yt" href="${y.url}" target="_blank" rel="noopener" title="مقطع شرح ${y.label} على يوتيوب">${YTSVG}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
+    return (y ? `<a class="go yt" href="${y.url}" target="_blank" rel="noopener"${ytTip(y, 'مقطع شرح ' + y.label + ' على يوتيوب')}>${YTSVG}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
   }
   // بطاقة «رحلتك للاختبار» في الرئيسية: عدّاد الاختبار + مهمة اليوم من الخطة
   function tripHtml() {
