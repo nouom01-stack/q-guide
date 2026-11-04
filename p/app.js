@@ -2573,8 +2573,8 @@
     const dayDone = d => d.tasks.every((t, i) => done[d.n] && done[d.n][i]);
     const nDone = days.filter(dayDone).length, cur = days.find(d => !dayDone(d)) || null;
     const start = day0(st.started || Date.now()), end = addDays(start, plan.days - 1), today = day0();
-    const expect = Math.min(plan.days, dayDiff(start, today) + 1);   // اليوم المفروض حسب التاريخ
-    return { days, done, dayDone, nDone, cur, start, end, lag: cur ? expect - cur.n : 0, left: dayDiff(today, end) };
+    const tn = dayDiff(start, today) + 1, expect = Math.min(plan.days, tn);   // tn = رقم يوم «اليوم» في الخطة حسب التاريخ (يطلع برا 1..days قبل/بعد الخطة)
+    return { days, done, dayDone, nDone, cur, start, end, tn, lag: cur ? expect - cur.n : 0, left: dayDiff(today, end) };
   }
   // روابط المهمة: المقطع على يوتيوب + حل القسم (مع تقدّمك فيه)
   function taskSolve(t, cls) {
@@ -2655,8 +2655,10 @@
         <div class="pst ex">${ex ? `<span class="pk">🎯 ${live ? 'باقي على اختبارك' : 'موعد اختبارك'}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>`}<span class="ps">${live ? fmtDay(exT) + '، ' + fmtTime(exT) + ' · ' : ''}<button class="lnk" data-exam>تعديل</button></span>` : `<span class="pk">🎯 موعد اختبارك</span><b class="none">ما حدّدته</b><span class="ps"><button class="btn sm" data-exam>حدّد الموعد</button></span>`}</div>
       </div>
       ${verd ? `<div class="pverd ${fit.c}">${verd}</div>` : ''}
-      <div class="days">${days.map(d => { const wk = plan.days > 14 && d.w !== lastW ? `<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW; const dd = I.dayDone(d); const isCur = cur && cur.n === d.n;
-        return wk + `<section class="day ${dd ? 'done' : ''} ${isCur ? 'cur' : ''}" id="day${d.n}"><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${dd ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time} · ${fmtDay(addDays(I.start, d.n - 1))}</span>${isCur ? '<span class="now">اليوم الحالي</span>' : ''}</header>
+      <div class="days">${days.map(d => { const wk = plan.days > 14 && d.w !== lastW ? `<div class="wk">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW; const dd = I.dayDone(d); const isCur = cur && cur.n === d.n, isTod = d.n === I.tn;
+        // «اليوم» = تاريخ اليوم فعلاً · «كمّل من هنا» = أول يوم ما علّمت عليه ✓ (لو مو هو نفس اليوم)
+        const tag = isTod ? `<span class="now${isCur ? '' : ' td'}" title="تاريخ اليوم">اليوم</span>` : isCur ? '<span class="now" title="أول يوم في خطتك ما علّمت عليه ✓">كمّل من هنا</span>' : '';
+        return wk + `<section class="day ${dd ? 'done' : ''} ${isCur ? 'cur' : ''} ${isTod ? 'tod' : ''}" id="day${d.n}"${isTod ? ' aria-current="date"' : ''}><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${dd ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time} · ${fmtDay(addDays(I.start, d.n - 1))}</span>${tag}</header>
           <ul>${d.tasks.map((t, i) => `<li class="${isDone(d, i) ? 'ok' : ''} k${t.k}"><label><input type="checkbox" data-day="${d.n}" data-i="${i}" ${isDone(d, i) ? 'checked' : ''}><span class="ic" aria-hidden="true">${icon[t.k] || ''}</span><span class="tt">${t.t}</span></label><span class="tl">${taskLinks(t)}</span></li>`).join('')}</ul></section>`; }).join('')}</div>
       <div class="sum" style="margin-top:16px;text-align:right">🔵 كمي · 🟢 لفظي · 🟠 مراجعة. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.<br><span class="mut">ملاحظة: القسم 14 من الكمي (<bdi dir="ltr">643-733</bdi>) إضافي خارج الجدول. حِلّه بعد ما تخلص الخطة أو في أيام المراجعة.</span></div>`;
     const save = () => planSave(Object.assign(st, { done }));
