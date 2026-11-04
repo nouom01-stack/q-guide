@@ -1935,3 +1935,23 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .wvhl{display:flex;gap:4px;flex-wrap:wrap}
 @media (max-width:860px){.tchs{grid-template-columns:1fr}}
 @media (max-width:640px){.sharh .wvlist{margin-left:0;margin-right:0}.tch{padding:12px 14px}}
+
+/* ---------- ⛔ إنهاء الاشتراك (المالك، تبويب «💳 الاشتراكات») ---------- */
+.srow.sbrow{grid-template-columns:minmax(220px,1.5fr) auto minmax(150px,1fr) auto}
+.sbend{display:flex;justify-content:flex-end}
+.btn.ghost.dang{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,var(--line))}
+.btn.ghost.dang:hover{background:var(--badbg);border-color:var(--bad)}
+.sbrow.ended{background:color-mix(in srgb,var(--bad) 5%,var(--card))}
+.sbrow.ended .sbseg{opacity:.45}.sbrow.ended .sbseg button{cursor:not-allowed}
+.sbendst{color:var(--bad);font-weight:800;font-size:calc(12.5px * var(--fs))}
+.sbt.end b{color:var(--bad)}
+.sbtiles.n5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.sbundo{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sbdz{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:22px;padding:16px 18px;border:1.5px dashed color-mix(in srgb,var(--bad) 50%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--bad) 4%,var(--card))}
+.sbdzt{flex:1 1 360px;min-width:0}
+.sbdz h3{margin:0 0 4px;color:var(--bad);font-size:calc(16px * var(--fs))}
+.sbdz p{margin:0;color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.7}
+.sbdz .btn[disabled]{opacity:.45}
+[data-theme=dark] .btn.ghost.dang{color:#FF8A8A}[data-theme=dark] .btn.ghost.dang:hover{background:#3A1E22}
+@media (max-width:900px){.sbtiles.n5{grid-template-columns:repeat(2,minmax(0,1fr))}.sbtiles.n5 .sbt.vid{grid-column:1/-1}}
+@media (max-width:760px){.srow.sbrow{grid-template-columns:1fr;grid-template-areas:"st" "seg" "sh" "end"}.sbrow .sbend{grid-area:end;justify-content:stretch}.sbrow .sbend .btn{flex:1}.sbdz .btn{width:100%}}
