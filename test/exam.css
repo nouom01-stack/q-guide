@@ -142,3 +142,4 @@ h1{margin:0 0 6px;font-size:calc(24px * var(--fs))}h2{margin:0 0 10px;font-size:
 .freeb div{display:flex;flex-direction:column;gap:2px;flex:1 1 360px;min-width:0}
 .freeb b{font-size:calc(17px * var(--fs))}
 .freeb span{color:rgba(255,255,255,.84);font-size:calc(14px * var(--fs));line-height:1.7}
+.tcard.hl{border-color:var(--teal);box-shadow:0 0 0 3px rgba(31,158,142,.25)}

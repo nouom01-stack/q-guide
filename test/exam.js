@@ -113,10 +113,10 @@
     if (mine !== lobbySeq) return;   // المستخدم انتقل لصفحة أخرى أثناء التحميل
     paintLobby(false);
   }
-  let lobbySeq = 0;
+  let lobbySeq = 0, lobbyJump = 0;
   function paintLobby(stale) {
     const cards = manifest.map(t => {
-      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return `<div class="tcard lk"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
+      if (isFree() && FREE_TESTS.indexOf(t.id) < 0) return `<div class="tcard lk" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span><span class="pill lock" title="للمشتركين في الدورة">🔒</span></div><div class="mut" style="font-size:13px">${esc(t.en)}</div><div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم</div><div style="margin-top:auto"><a class="btn ghost" href="${SUB_URL}-${t.id}">اشترك وافتحه</a></div></div>`;
       const s = state[t.id] || { status: 'none' };
       let body, act;
       if (s.status === 'done') { const fn = s.first && s.attempts > 1 ? `<div class="meta">⭐ المحسوب في لوحة الصدارة: المحاولة الأولى ${s.first.pct}% (${s.first.total}/96)</div>` : ''; body = `<div class="score">${s.pct}%<small> · ${s.total}/96</small></div><div class="meta">لفظي ${s.vpct}% · كمي ${s.qpct}% · المحاولة ${s.attempt || 1}</div>${fn}`; act = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-rev="${t.id}">مراجعة الإجابات</button><button class="btn" data-retake="${t.id}">🔁 إعادة الاختبار</button></div>`; }
@@ -124,7 +124,7 @@
       else { body = `<div class="meta">4 أقسام × 24 سؤال · 25 دقيقة لكل قسم${isFree() ? '' : ' · أول محاولة تُحسب في لوحة الصدارة'}</div>`; act = `<button class="btn" data-go="${t.id}">ابدأ الاختبار</button>`; }
       const pill = s.status === 'done' ? '<span class="pill done">مكتمل</span>' : s.status === 'in_progress' ? '<span class="pill prog">جارٍ</span>' : '<span class="pill none">لم يبدأ</span>';
       const adm = auth.role === 'admin' && s.status !== 'none' ? `<button class="btn sm ghost" data-reset="${t.id}" style="margin-top:6px">إعادة تعيين (مشرف)</button>` : '';
-      return `<div class="tcard"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span>${pill}</div><div class="mut" style="font-size:13px">${esc(t.en)}</div>${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
+      return `<div class="tcard" id="tc-${t.id}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="t">${esc(t.title)}</span>${pill}</div><div class="mut" style="font-size:13px">${esc(t.en)}</div>${body}<div style="margin-top:auto">${act}${adm}</div></div>`;
     }).join('');
     app.innerHTML = header() + `<div class="page ar">
       <div class="card"><h1>الاختبارات المحاكية</h1><p class="mut" style="margin:0">محاكاة كاملة لاختبار قياس (قدرات إنجليزي) المحوسب: كل اختبار 4 أقسام، في كل قسم 24 سؤالاً مختلطاً (لفظي ثم كمي) ومدته 25 دقيقة. المؤقت يعمل من الخادم، ولا يمكن الرجوع لقسم انتهى. <b>المحاولات غير محدودة</b>${isFree() ? '.' : '، لكن <b>أول محاولة فقط</b> هي التي تُحسب في لوحة الصدارة — فادخلها وأنت مستعد.'}</p>
@@ -135,6 +135,10 @@
     document.querySelectorAll('[data-rev]').forEach(b => b.onclick = () => renderReview(b.dataset.rev));
     document.querySelectorAll('[data-retake]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('بدء محاولة جديدة؟ نتيجتك الأولى تبقى هي المحسوبة في لوحة الصدارة، وهذه المحاولة للتدريب.', { ok: 'ابدأ' })) return; [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.retake + '_' + k)); startFlow(b.dataset.retake, true); });
     document.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { if (!await QGDlg.confirm('إعادة تعيين هذا الاختبار لك (مشرف)؟', { danger: true })) return; await api({ op: 'exam_reset', session: auth.session, test: b.dataset.reset }); [1, 2, 3, 4].forEach(k => lsDel(LS.ex + b.dataset.reset + '_' + k)); renderLobby(); });
+
+    // 📅 جاي من خطة المذاكرة (/test/#t5): نبيّن الاختبار نفسه
+    const hm = /^#(t\d{1,2})$/.exec(location.hash), hc = hm && document.getElementById('tc-' + hm[1]);
+    if (hc) { hc.classList.add('hl'); if (!lobbyJump) { lobbyJump = 1; setTimeout(() => hc.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80); } }
   }
 
   // ---------- flow ----------
