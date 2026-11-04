@@ -1097,8 +1097,6 @@
     const body = `${head}<span class="fd-it-q ltr">${txt}</span>${e[4].length ? `<span class="fd-it-o ltr">${e[4].map((o, j) => `<b>${LETTERS[j]}</b> ${e[0] === 'q' ? mx(o) : esc(o)}`).join('<i>·</i>')}</span>` : ''}`;
     return e[1] ? `<a class="fd-it" href="#${e[1]}@${e[2]}">${body}</a>` : `<div class="fd-it">${body}</div>`;
   }
-  const fdWa = (q, img, kind) => `https://wa.me/${WA_NUM}?text=` + encodeURIComponent(`السلام عليكم، بحثت في موقع Q-Guide عن هذا السؤال (${kind === 'q' ? 'كمي' : 'لفظي'}) وما لقيته:\n\n${String(q || '').trim().slice(0, 700)}${img ? '\n\n(بأرسل لكم صورة السؤال)' : ''}`);
-  const fdWaBtn = (q, img, kind) => `<a class="btn wa" href="${fdWa(q, img, kind)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>واتساب 0508003683</a>`;
   // 🆓 بحث الزائر: نقوله إذا السؤال في الدورة ووين، بدون نص السؤال ولا حله (الفهرس فيه بصمات الكلمات فقط)
   let FDP = null;
   async function fdLoadPub() {
@@ -1127,7 +1125,7 @@
   async function fdRunPub(R, q, kind, full, img) {
     let ix; try { ix = await fdLoadPub(); } catch (e) { R.innerHTML = `<div class="fd-res tip"><p>تعذّر تحميل البحث. تأكد من الإنترنت وحاول مرة ثانية.</p></div>`; return; }
     if (!$('#fdr')) return;
-    const res = fdPubSearch(ix, q, kind, 6), top = res[0], E = ix.P, p = top && E[top.i], sc = top ? top.s : 0, wa = fdWaBtn(q, img, kind);
+    const res = fdPubSearch(ix, q, kind, 6), top = res[0], E = ix.P, p = top && E[top.i], sc = top ? top.s : 0;
     const lock = `<p class="fd-lkn">🔒 نص السؤال وحله وشرحه للمشتركين في الدورة.</p>`;
     if (window.QGT) QGT.ev('find', full && p && sc >= FDP_HI ? 'لقاه في الدورة' : full && p && sc >= FDP_MID ? 'لقى سؤال قريب' : full ? 'ما لقاه في الدورة' : 'بحث بكلمات', img ? 1 : 0);
     if (full && p && sc >= FDP_HI) {
@@ -1136,22 +1134,22 @@
         <div class="fd-locs">${fdLocP(p)}${same.map(fdLocP).join('')}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div></div>`;
     } else if (full && p && sc >= FDP_MID) {
       R.innerHTML = `<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>يمكن يكون نفسه بأرقام أو خيارات ثانية:</small></div></div>
-        <div class="fd-locs">${fdLocP(p)}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div><div class="fd-acts fd-wa"><span class="fd-or">تبي نتأكد لك؟ أرسله لنا:</span>${wa}</div></div>`;
+        <div class="fd-locs">${fdLocP(p)}</div>${fdIsFreeP(p) ? '' : lock}<div class="fd-acts">${fdActP(p)}</div>${fsRepBox('تبي نتأكد لك؟ بلّغنا عنه:', 0, 1)}</div>`;
     } else if (full) {
       const near = res.filter(r => r.s >= 0.5).map(r => E[r.i]).slice(0, 5);
-      R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>أرسله لنا على واتساب ونتواصل معك${img ? '، وأرفق صورة السؤال في المحادثة' : ''}.</small></div></div>
-        <div class="fd-acts">${wa}</div>${near.length ? `<div class="fd-near"><h4>أسئلة قريبة منه في الدورة</h4><div class="fd-list">${near.map(x => fdItemP(x)).join('')}</div></div>` : ''}</div>`;
+      R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>بلّغ عنه عشان نراجعه.</small></div></div>
+        ${fsRepBox('')}${near.length ? `<div class="fd-near"><h4>أسئلة قريبة منه في الدورة</h4><div class="fd-list">${near.map(x => fdItemP(x)).join('')}</div></div>` : ''}</div>`;
     } else {
       const seen = new Set(), list = [], exact = new Set(res.filter(r => r.s >= FDP_HI).map(r => r.i));
       res.filter(r => r.s >= FDP_MID).concat(fdPubKeyword(ix, q, kind, 40)).forEach(r => { if (!seen.has(r.i)) { seen.add(r.i); list.push(r.i); } });
       let shown = 10; const show = () => { const box = $('#fdl'); if (!box) return; box.innerHTML = list.slice(0, shown).map(i => fdItemP(E[i], exact.has(i))).join(''); bindSub(box); const mb = $('#fdmore'); if (mb) mb.hidden = shown >= list.length; };
       R.innerHTML = list.length ? `<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة في الدورة فيها كلامك</b><small>لقينا ${list.length >= 40 ? 'أكثر من 40 سؤالاً' : fdQn(list.length)}${list.length > 10 ? '، هذي أقربها' : ''}. نص الأسئلة وحلها للمشتركين، وهنا تشوف وين تلقاها.</small></div></div>
           <div class="fd-list" id="fdl"></div><button type="button" class="btn ghost fd-more" id="fdmore">عرض أسئلة أكثر</button>
-          <div class="fd-acts fd-wa"><span class="fd-or">ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو أرسله لنا:</span>${wa}</div></div>`
-        : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو أرسله لنا على واتساب.</small></div></div><div class="fd-acts">${wa}</div></div>`;
+          ${fsRepBox('ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو بلّغنا عنه:', 1)}</div>`
+        : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو بلّغ عنه.</small></div></div>${fsRepBox('', 1)}</div>`;
       show(); const mb = $('#fdmore'); if (mb) mb.onclick = () => { shown += 10; show(); };
     }
-    bindSub(R);
+    bindSub(R); fsRep(R, { text: q });
     R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
   }
   // ---------- 🔎 البحث الذكي على الخادم: يقارن سؤالك بكل أسئلة الدورة (والصورة تنقرى هناك) ----------
@@ -1217,28 +1215,34 @@
     R.querySelectorAll('.fd-pv[data-img]').forEach(async el => { const [sid, i] = (el.dataset.img || '').split(':'); if (!sid || el.classList.contains('has-img')) return;
       try { const set = await loadSet(sid), it = set.items[+i]; if (it && it.img && el.isConnected) { el.classList.add('has-img'); el.insertAdjacentHTML('afterbegin', `<img src="${it.img}" width="${it.w}" height="${it.h}" alt="السؤال">`); } } catch (x) {} });
   }
-  // 🚩 بلاغ عن سؤال ما لقيناه: زر ← ملاحظة اختيارية ← إرسال (يوصل للمالك مع سؤال الطالب وصورته)
-  const FS_REP = '<div class="fd-acts"><button type="button" class="btn" data-rep>🚩 بلّغ عن السؤال</button></div>';
-  function fsRep(box, lid) {
-    const start = () => {
-      box.innerHTML = `<label class="fd-l" for="fdrn">ملاحظة للمعلم (اختياري)</label><textarea id="fdrn" class="fd-rn" dir="auto" rows="2" maxlength="300" placeholder="مثلاً: جاني في الاختبار، أو لقيته في ملف تجميعات"></textarea>
-        <div class="fd-acts"><button type="button" class="btn" data-send>إرسال البلاغ</button><button type="button" class="btn ghost" data-x>إلغاء</button></div>`;
-      const ta = box.querySelector('textarea'), send = box.querySelector('[data-send]'); ta.focus();
-      box.querySelector('[data-x]').onclick = () => { box.innerHTML = FS_REP; bind(); box.querySelector('[data-rep]').focus(); };
-      send.onclick = async () => {
-        send.disabled = true; send.textContent = 'نرسل البلاغ…';
-        const r = await api({ op: 'find_report', session: auth.session, id: lid, note: ta.value }).catch(() => null);
-        if (r && r.ok) { box.innerHTML = '<p class="fd-repok" role="status">✓ وصلنا بلاغك، وبنراجع السؤال. شكراً لك!</p>'; if (window.QGT) QGT.ev('find', 'بلّغ عن سؤال'); return; }
-        if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
-        toast((r && r.msg) || 'تعذّر إرسال البلاغ، جرّب مرة ثانية.'); send.disabled = false; send.textContent = 'إرسال البلاغ';
+  // 🚩 بلاغ بدل الواتساب في كل نتائج البحث: زر ← ملاحظة للمعلم (اختياري) ← إرسال — يوصل للمالك في سجل البحث مع سؤال الطالب (وصورته)
+  // base = { id: رقم البحث في الخادم }، أو { text: نص الطالب } لما البحث صار على جهازه (كلمات، أو الخادم ما رد)
+  let fdRepCtx = () => ({});   // صفحة البحث تحدده: نوع السؤال، وإن النص من صورة، وصورته لو ما وصلت الخادم
+  const fsRepBtn = (lead, gh) => `<div class="fd-acts">${lead ? `<span class="fd-or">${lead}</span>` : ''}<button type="button" class="btn${gh ? ' ghost' : ''}" data-rep>🚩 بلّغ عن السؤال</button></div>`;
+  const fsRepBox = (lead, kw, gh) => `<div class="fd-rep${lead ? ' fd-wa' : ''}" data-lead="${esc(lead || '')}"${kw ? ' data-kw="1"' : ''}${gh ? ' data-gh="1"' : ''}>${fsRepBtn(lead, gh)}</div>`;   // gh = زر ثانوي (لما فيه «افتح السؤال»)
+  function fsRep(R, base) {
+    R.querySelectorAll('.fd-rep').forEach(box => {
+      const lead = box.dataset.lead || '', ph = box.dataset.kw ? 'مثلاً: اكتب السؤال كامل، أو وين شفته' : 'مثلاً: جاني في الاختبار، أو لقيته في ملف تجميعات';
+      const bind = () => { box.querySelector('[data-rep]').onclick = start; };
+      const start = () => {
+        box.innerHTML = `<label class="fd-l" for="fdrn">ملاحظة للمعلم (اختياري)</label><textarea id="fdrn" class="fd-rn" dir="auto" rows="2" maxlength="300" placeholder="${ph}"></textarea>
+          <div class="fd-acts"><button type="button" class="btn" data-send>إرسال البلاغ</button><button type="button" class="btn ghost" data-x>إلغاء</button></div>`;
+        const ta = box.querySelector('textarea'), send = box.querySelector('[data-send]'); ta.focus();
+        box.querySelector('[data-x]').onclick = () => { box.innerHTML = fsRepBtn(lead, box.dataset.gh); bind(); box.querySelector('[data-rep]').focus(); };
+        send.onclick = async () => {
+          send.disabled = true; send.textContent = 'نرسل البلاغ…';
+          const r = await api(Object.assign({ op: 'find_report', session: auth.session, note: ta.value }, fdRepCtx(), base)).catch(() => null);
+          if (r && r.ok) { box.innerHTML = '<p class="fd-repok" role="status">✓ وصلنا بلاغك، وبنراجع السؤال. شكراً لك!</p>'; if (window.QGT) QGT.ev('find', 'بلّغ عن سؤال'); return; }
+          if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
+          toast((r && r.msg) || 'تعذّر إرسال البلاغ، جرّب مرة ثانية.'); send.disabled = false; send.textContent = 'إرسال البلاغ';
+        };
       };
-    };
-    const bind = () => { box.querySelector('[data-rep]').onclick = start; };
-    bind();
+      bind();
+    });
   }
   function fsShow(R, r, q, img, kind) {
     if (!$('#fdr')) return;
-    const S = FS[r.status] || FS.new, free = isFree(), it = r.best, wa = fdWaBtn(q, img, (it && it.s) || kind);
+    const S = FS[r.status] || FS.new, free = isFree(), it = r.best;
     if (window.QGT) QGT.ev('find', FS_EV[r.status] || 'ما لقاه في الدورة', img ? 1 : 0);
     let h = `<div class="fd-res ${S[0]}"><div class="fd-h"><span class="ic" aria-hidden="true">${S[1]}</span><div><b>${S[2]}</b><small>${S[3]}</small></div></div>`;
     if (it) {
@@ -1247,11 +1251,11 @@
       else h += fsPreview(it) + fsAns(r, it);
       h += `<div class="fd-acts">${fsOpen(it)}</div>`;
       if (r.alts && r.alts.length) h += `<div class="fd-alt"><h4>${r.alts.length > 1 ? 'أو يمكن يكون واحد من هذي:' : 'أو يمكن يكون هذا:'}</h4>${r.alts.map(a => `<div class="fd-ai"><div class="fd-locs">${fsLocs(a.refs)}</div>${free ? '' : fsPreview(a)}<div class="fd-acts">${fsOpen(a, true)}</div></div>`).join('')}</div>`;
-      if (S[0] !== 'ok') h += `<div class="fd-acts fd-wa"><span class="fd-or">تبي نتأكد لك؟ أرسله لنا:</span>${wa}</div>`;
-    } else h += r.lid ? `<div class="fd-rep">${FS_REP}</div>` : `<div class="fd-acts">${wa}</div>`;   // 🚩 ما لقيناه: بلاغ يوصل للمالك في سجل البحث (الواتساب بس لو ما عندنا رقم البحث)
+      if (S[0] !== 'ok') h += fsRepBox('تبي نتأكد لك؟ بلّغنا عنه:', 0, 1);
+    } else h += fsRepBox('');   // 🚩 ما لقيناه: بلاغ يوصل للمالك في سجل البحث
     if (r.similar && r.similar.length) h += `<div class="fd-near"><h4>${it ? 'أسئلة قريبة منه في الدورة' : 'أقرب الأسئلة له في الدورة — يمكن تفيدك'}</h4><div class="fd-list">${r.similar.map(fsItem).join('')}</div></div>`;
     R.innerHTML = h + '</div>';
-    bindSub(R); fdImgs(R); const rp = R.querySelector('.fd-rep'); if (rp) fsRep(rp, r.lid);
+    bindSub(R); fdImgs(R); fsRep(R, r.lid ? { id: r.lid } : { text: q });
     R.querySelectorAll('[data-ans]').forEach(b => b.onclick = () => { const p = b.nextElementSibling; p.hidden = !p.hidden; b.setAttribute('aria-expanded', !p.hidden); b.textContent = p.hidden ? '👁️ اعرض الإجابة' : '🙈 اخفِ الإجابة'; });
     R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
   }
@@ -1264,7 +1268,8 @@
   }
   async function renderFind() {
     document.title = 'ابحث عن سؤال | Q-Guide';
-    let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '';
+    let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '', imgData = '', imgLid = 0;   // imgLid = رقم بحث الصورة في الخادم (صورته محفوظة هناك)
+    fdRepCtx = () => ({ kind, ocr: usedImg ? 1 : undefined, fr: usedImg && imgLid ? imgLid : undefined, img: usedImg && !imgLid && imgData ? imgData : undefined });
     app.innerHTML = topbar(`<span class="ttl">🔎 ابحث عن سؤال</span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap fd">
       <div class="fd-top"><h1>ابحث عن سؤال</h1><p>شفت سؤال وتبي تعرف إذا هو في الدورة؟ اكتبه أو ارفع صورته، ونقولك وين تلقاه بالضبط، أو إذا هو نفسه بأرقام أو خيارات مختلفة، أو سؤال جديد.${isFree() ? ' حله وشرحه للمشتركين.' : ''}</p></div>
       <div class="fd-box">
@@ -1282,9 +1287,9 @@
     const call = p => api(Object.assign({ op: 'find', session: auth.session, kind }, p)).catch(() => null);
     $('#fdk').onclick = e => { const b = e.target.closest('button[data-k]'); if (!b || b.dataset.k === kind) return; kind = b.dataset.k; lsSet('qg_find_k', kind); $('#fdk').querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); if (ta.value.trim()) run(); };
     ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); run(); } };   // Enter يبحث · Shift+Enter سطر جديد
-    ta.oninput = () => { if (usedImg && ocrTxt && !ta.value.includes(ocrTxt.slice(0, 24))) { pv.hidden = true; usedImg = false; ocrTxt = ''; } };   // كتب سؤال ثاني بدل نص الصورة
+    ta.oninput = () => { if (usedImg && ocrTxt && !ta.value.includes(ocrTxt.slice(0, 24))) { pv.hidden = true; usedImg = false; ocrTxt = ''; imgData = ''; imgLid = 0; } };   // كتب سؤال ثاني بدل نص الصورة
     go.onclick = () => run();
-    $('#fdx').onclick = () => { pv.hidden = true; usedImg = false; ocrTxt = ''; inp.value = ''; };
+    $('#fdx').onclick = () => { pv.hidden = true; usedImg = false; ocrTxt = ''; imgData = ''; imgLid = 0; inp.value = ''; };
     async function localOcr(f) {   // احتياط: قراءة الصورة على جهاز الطالب لو الخادم ما قدر
       if (!fdCanOcr()) return '';
       st.innerHTML = '<span class="spin sm"></span> ' + (lsGet('qg_ocr_ok', 0) ? 'نقرأ الصورة على جهازك…' : 'نجهّز قارئ الصور على جهازك (حوالي 5 ميجا) ثم نقرأ الصورة…');
@@ -1298,8 +1303,9 @@
       R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقرأ الصورة ونقارنها بكل أسئلة الدورة…</div>`;
       try {
         let data = null; try { data = await fsImgData(f); } catch (e) {}
+        imgData = data || ''; imgLid = 0;
         const r = data ? await call({ img: data }) : null;
-        if (r && r.ok) { ta.value = ocrTxt = r.text || ''; pv.className = 'fd-img ok'; st.textContent = '✓ قرينا السؤال من الصورة — لو فيه خطأ صحّحه فوق واضغط ابحث'; fsShow(R, r, ocrTxt, true, kind); return; }
+        if (r && r.ok) { imgLid = r.lid || 0; ta.value = ocrTxt = r.text || ''; pv.className = 'fd-img ok'; st.textContent = '✓ قرينا السؤال من الصورة — لو فيه خطأ صحّحه فوق واضغط ابحث'; fsShow(R, r, ocrTxt, true, kind); return; }
         if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
         if (r && r.error === 'noq') { pv.className = 'fd-img bad'; st.textContent = r.msg; R.innerHTML = ''; return; }
         const why = r && r.error === 'limit' ? r.msg : '';
@@ -1313,7 +1319,7 @@
       if (!words && T.nu.length < 2) { R.innerHTML = `<div class="fd-res tip"><p>اكتب كلمة أو أكثر من السؤال (مثل <bdi dir="ltr">probability</bdi> أو <bdi dir="ltr">circle area</bdi>)، أو السؤال كامل.</p></div>`; ta.focus(); return; }
       R.innerHTML = `<div class="fd-res wait"><span class="spin sm"></span> نقارن سؤالك بكل أسئلة الدورة…</div>`;
       if (full) {   // سؤال كامل: محرك المقارنة على الخادم (ocr = النص من صورته، عشان المالك يشوف الصورة معه في السجل)
-        const r = await call({ text: q, ocr: usedImg ? 1 : undefined });
+        const r = await call({ text: q, ocr: usedImg ? 1 : undefined, fr: usedImg && imgLid ? imgLid : undefined });
         if (r && r.ok) return fsShow(R, r, q, usedImg || fromImg, kind);
         if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
       }
@@ -1325,28 +1331,27 @@
       const same = e ? res.filter(r => r.s >= FD_HI && E[r.i] !== e && E[r.i][3] === e[3]).map(r => E[r.i]) : [];   // نفس السؤال مكرر في قسم ثاني
       const alts = e ? res.slice(1).filter(r => r.s >= Math.max(FD_MID, sc - 0.06) && E[r.i][3] !== e[3]).map(r => E[r.i]).slice(0, 2) : [];   // أسئلة متقاربة جداً بنفس الدرجة
       const altHtml = alts.length ? `<div class="fd-alt"><h4>أو يمكن يكون ${alts.length > 1 ? 'واحد من هذي' : 'هذا'}:</h4>${alts.map(x => `<div class="fd-ai"><div class="fd-locs">${fdLoc(x)}</div>${fdPreview(x)}<div class="fd-acts">${fdOpen(x).replace('class="btn"', 'class="btn ghost"')}</div></div>`).join('')}</div>` : '';
-      const wa = fdWaBtn(q, usedImg, kind);
       if (full && e && sc >= FD_HI) {
         R.innerHTML = `<div class="fd-res ok"><div class="fd-h"><span class="ic">✓</span><div><b>السؤال موجود في الدورة</b><small>تلقاه هنا:</small></div></div>
           <div class="fd-locs">${fdLoc(e)}${same.map(fdLoc).join('')}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}</div>`;
       } else if (full && e && sc >= FD_MID) {
         R.innerHTML = `<div class="fd-res mid"><div class="fd-h"><span class="ic">🔎</span><div><b>لقينا سؤال قريب جداً</b><small>قارنه بسؤالك وتأكد إنه نفسه:</small></div></div>
-          <div class="fd-locs">${fdLoc(e)}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}<div class="fd-acts fd-wa"><span class="fd-or">مو نفسه؟ أرسله لنا:</span>${wa}</div></div>`;
+          <div class="fd-locs">${fdLoc(e)}</div>${fdPreview(e)}<div class="fd-acts">${fdOpen(e)}</div>${altHtml}${fsRepBox('مو نفسه؟ بلّغنا عنه:', 0, 1)}</div>`;
       } else if (full) {   // سؤال كامل ما لقيناه: واتساب + أقرب الأسئلة عندنا
         const near = fdSearch(ix, q, kind, 6).filter(r => r.s >= 0.5).map(r => E[r.i]).slice(0, 5);
-        R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>أرسله لنا على واتساب ونتواصل معك${usedImg ? '، وأرفق صورة السؤال في المحادثة' : ''}.</small></div></div>
-          <div class="fd-acts">${wa}</div>${near.length ? `<div class="fd-near"><h4>أسئلة مشابهة عندنا — يمكن تفيدك</h4><div class="fd-list">${near.map(fdItem).join('')}</div></div>` : ''}</div>`;
+        R.innerHTML = `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا هذا السؤال في الدورة</b><small>بلّغ عنه عشان نراجعه.</small></div></div>
+          ${fsRepBox('')}${near.length ? `<div class="fd-near"><h4>أسئلة مشابهة عندنا — يمكن تفيدك</h4><div class="fd-list">${near.map(fdItem).join('')}</div></div>` : ''}</div>`;
       } else {   // كلام بسيط: أسئلة فيها نفس الكلمات (والمطابق تماماً أولها)
         const seen = new Set(), list = [], exact = new Set(res.filter(r => r.s >= FD_HI).map(r => r.i));
         res.filter(r => r.s >= FD_MID).concat(fdKeyword(ix, q, kind, 40)).forEach(r => { if (!seen.has(r.i)) { seen.add(r.i); list.push(r.i); } });
         let shown = 10; const show = () => { const box = $('#fdl'); if (!box) return; box.innerHTML = list.slice(0, shown).map(i => fdItem(E[i], exact.has(i))).join(''); const mb = $('#fdmore'); if (mb) mb.hidden = shown >= list.length; };
         R.innerHTML = list.length ? `<div class="fd-res sim"><div class="fd-h"><span class="ic">🔎</span><div><b>أسئلة مشابهة لكلامك</b><small>لقينا ${list.length >= 40 ? 'أكثر من 40 سؤالاً' : fdQn(list.length)}${list.length > 10 ? '، هذي أقربها' : ''} — ${list.length === 1 ? 'اضغط عليه تفتحه' : 'اضغط أي سؤال تفتحه'}</small></div></div>
             <div class="fd-list" id="fdl"></div><button type="button" class="btn ghost fd-more" id="fdmore">عرض أسئلة أكثر</button>
-            <div class="fd-acts fd-wa"><span class="fd-or">ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو أرسله لنا:</span>${wa}</div></div>`
-          : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو أرسله لنا على واتساب.</small></div></div><div class="fd-acts">${wa}</div></div>`;
+            ${fsRepBox('ما لقيت سؤالك؟ اكتبه كامل أو صوّره، أو بلّغنا عنه:', 1)}</div>`
+          : `<div class="fd-res no"><div class="fd-h"><span class="ic">✕</span><div><b>ما لقينا أسئلة فيها هالكلام</b><small>جرّب كلمات ثانية، أو اكتب السؤال كامل، أو بلّغ عنه.</small></div></div>${fsRepBox('', 1)}</div>`;
         show(); const mb = $('#fdmore'); if (mb) mb.onclick = () => { shown += 10; show(); };
       }
-      fdImgs(R);
+      fdImgs(R); fsRep(R, { text: q });
       R.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'nearest' });
     }
   }

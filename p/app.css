@@ -1718,6 +1718,7 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .fd-rn:focus{outline:none;border-color:var(--navy3);background:var(--card)}
 .fd-rn::placeholder{color:#A3ACC2}
 .fd-repok{margin:0;padding:10px 14px;border-radius:12px;background:var(--okbg);color:var(--okt);font-weight:800;font-size:calc(14.5px * var(--fs))}
+.fd-rep.fd-wa>.fd-acts:first-child{margin-top:0}
 [data-theme=dark] .fd-rn{background:#111A30}
 .fl-rep{border-radius:999px;padding:2px 10px;font-weight:800;font-size:calc(12.5px * var(--fs));background:#FCE9E9;color:#B42B2B}
 .fl .fl-row.rep{border-color:#F2C4C4}
