@@ -1454,7 +1454,7 @@
     const r = remGet(); if (!force && !(r && r.on)) return; if (!('caches' in window)) return;
     try {
       const D = daysGet(), keys = Object.keys(D).filter(k => D[k] > 0).sort(), ex = examGet(), st = planState(), plan = PLANS.find(p => p.id === st.id);
-      let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.ex ? 'الاختبار المحاكي ' + t.ex.slice(1) : t.k === 'rest' ? 'يوم راحة' : (t.links && t.links[0] ? t.links[0][1] : '')).filter(Boolean).join(' و'); }
+      let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? 'يوم راحة' : 'مراجعة أخطائك'))].join(' و'); }
       let next = ''; try { if (manifest) next = SET_NAME(pickResume().s.id); } catch (e) {}
       const c = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], streak: streakOf(D), last: keys[keys.length - 1] || '', exam: ex ? examAt(ex) : 0, task, next, at: Date.now() };
       caches.open('qg-meta').then(cc => cc.put('/__rem', new Response(JSON.stringify(c), { headers: { 'content-type': 'application/json' } }))).catch(() => {});
@@ -2620,85 +2620,91 @@
   function bindExam(root, after) { (root || document).querySelectorAll('[data-exam]').forEach(b => b.onclick = async () => { if (await examDlg()) after(); }); }
 
   // ---------- 📅 خطة المذاكرة ----------
-  const PLAN_Q = ['1-50', '51-100', '101-150', '151-200', '201-250', '251-300', '301-350', '351-400', '401-450', '451-500', '501-550', '551-600', '601-642'];
   // كل مهمة = شاهد مقطع الشرح ثم حل نفس القسم هنا في المنصة (حل القسم هو نفسه اختبار المقطع)
-  const pq = i => ({ k: 'q', set: 'q' + i, t: `كمي <bdi dir="ltr">${PLAN_Q[i - 1]}</bdi>: شاهد المقطع ثم حل القسم ${i}` });
+  const pq = i => ({ k: 'q', set: 'q' + i, t: `كمي Section ${i}: شاهد المقطع ثم حل القسم ${i}` });
   const pv = i => ({ k: 'v', set: 'v' + i, t: `لفظي Model ${i}: شاهد المقطع ثم حل النموذج ${i}` });
-  const WQ = ['#t-wrong-q', 'أخطائي في الكمي'], WV = ['#t-wrong-v', 'أخطائي في اللفظي'];
+  const WQ = ['#t-wrong-q', 'أخطائي في الكمي'], WV = ['#t-wrong-v', 'أخطائي في اللفظي'], RULESL = ['#rules', 'قوانين الكمي'];
   const pr = (t, links, m) => ({ k: 'r', t, links: links || [], m: m || 60 });
-  const QREV = () => pr('راجع كل أخطائك في الكمي (بدل المقطع)', [WQ]);
-  // 🧪 الاختبارات المحاكية الـ17 (4 أقسام × 24 سؤال · 25 دقيقة للقسم) موزّعة على أيام الخطة نفسها (بدون أيام زيادة)
-  const MOCKS = 17;
-  const pt = i => ({ k: 't', ex: 't' + i, t: `اختبار محاكي ${i}: اختبره كامل وراجع أخطاءك فيه` });
-  const taskMin = t => t.k === 'q' || t.k === 'v' ? 60 : t.k === 't' ? 100 : t.k === 'r' ? t.m : 0;
+  // 🔁 آخر الأيام مراجعة على الـ14 قسم كمي والـ14 نموذج لفظي (الخطط ما فيها اختبارات محاكية)
+  const rng = (a, b) => `<bdi dir="ltr">${a}–${b}</bdi>`;
+  const RQ = (a, b, m) => pr(`مراجعة الكمي، الأقسام ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها وراجع القوانين`, [WQ, RULESL], m);
+  const RV = (a, b, m) => pr(`مراجعة اللفظي، النماذج ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها`, [WV], m);
+  const FINAL = m => [[RQ(1, 7, m), RV(1, 7, m)], [RQ(8, 14, m), RV(8, 14, m)]];   // آخر يومين
+  const taskMin = t => t.k === 'q' || t.k === 'v' ? 60 : t.k === 'r' ? t.m : 0;
   const durLabel = m => { const h = Math.round(m / 30) / 2, w = Math.floor(h), half = h % 1 ? ' ونص' : ''; return !h ? 'راحة' : !w ? '≈ 30 دقيقة' : '≈ ' + (w === 1 ? 'ساعة' : w === 2 ? 'ساعتين' : w + (w <= 10 ? ' ساعات' : ' ساعة')) + half; };
-  function withMocks(d, ok) {   // ok = الأيام اللي ينحط فيها اختبار · الباقي من القسمة يروح لآخر الأيام (أقرب لموعد الاختبار)
-    const E = d.filter(ok), base = Math.floor(MOCKS / E.length), extra = MOCKS % E.length; let k = 1;
-    E.forEach((x, j) => { for (let c = base + (j >= E.length - extra ? 1 : 0); c > 0; c--) x.tasks.push(pt(k++)); });
-    return timed(d);
-  }
   const timed = d => { d.forEach(x => { if (x.tasks[0].k !== 'rest') x.time = durLabel(x.tasks.reduce((s, t) => s + taskMin(t), 0)); }); return d; };
-  // الخطة القوية (7 أيام) بدون الاختبارات المحاكية: بدالها مراجعة بسيطة لأخطاء أقسام اليوم (nw = مهمة انضافت بعدين، الأيام القديمة المخلّصة ما تنطلب فيها)
-  const pSimple = () => Object.assign(pr('مراجعة بسيطة: أعد حل الأسئلة اللي أخطأت فيها في أقسام اليوم', [WQ, WV], 30), { nw: 1 });
-  const PCONT = '13 مقطع كمي · 14 مقطع لفظي · 17 اختبار محاكي';
+  // أيام مذاكرة متتالية: [كم قسم كمي، كم نموذج لفظي] لكل يوم، بالترتيب ومتداخلة (كمي، لفظي، كمي…)
+  function studyDays(counts) { const d = []; let q = 1, v = 1;
+    counts.forEach(([nq, nv], j) => { const t = []; for (let i = 0; i < Math.max(nq, nv); i++) { if (i < nq) t.push(pq(q++)); if (i < nv) t.push(pv(v++)); } d.push({ n: j + 1, tasks: t }); });
+    return d; }
+  const PCONT = '14 مقطع كمي · 14 مقطع لفظي · مراجعة للأقسام كلها آخر الخطة';
   const PLANS = [
-    { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 4 ساعات ونص يومياً', fit: 'للي اختباره بعد أسبوع', content: '13 مقطع كمي · 14 مقطع لفظي',
-      build() { const d = []; for (let i = 1; i <= 6; i++) d.push({ n: i, tasks: [pq(2 * i - 1), pv(2 * i - 1), pq(2 * i), pv(2 * i), pSimple()] });
-        d.push({ n: 7, tasks: [pq(13), pv(13), pv(14), pr('راجع كل أخطائك في الكمي', [WQ])] }); return timed(d); } },
-    { id: 'intense', name: 'الخطة المكثفة', days: 14, daily: 'حوالي 4 ساعات يومياً', fit: 'للي اختباره قريب', content: PCONT,
-      build() { const d = []; for (let i = 1; i <= 13; i++) d.push({ n: i, tasks: [pq(i), pv(i)] });
-        d.push({ n: 14, tasks: [QREV(), pv(14)] }); return withMocks(d, () => 1); } },
-    { id: 'balanced', name: 'الخطة المتوازنة', days: 19, daily: 'حوالي 3 ساعات ونص · 5 أيام بالأسبوع', fit: 'الأنسب لأغلب الطلاب', content: PCONT, star: true,
-      build() { const d = []; let k = 1;
-        const study = n => d.push({ n, tasks: [pq(k), pv(k)], w: Math.ceil(n / 7) }), rev = n => d.push({ n, tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع', [WQ, WV])], w: Math.ceil(n / 7) }), rest = n => d.push({ n, time: 'راحة', tasks: [{ k: 'rest', t: 'يوم راحة: استرجع نشاطك' }], w: Math.ceil(n / 7) });
-        for (let w = 0; w < 2; w++) { for (let i = 1; i <= 5; i++) { study(w * 7 + i); k++; } rev(w * 7 + 6); rest(w * 7 + 7); }
-        for (let i = 15; i <= 17; i++) { study(i); k++; }
-        d.push({ n: 18, tasks: [QREV(), pv(14)], w: 3 }); rev(19); return withMocks(d, x => x.tasks[0].k !== 'rest'); } },
-    { id: 'relaxed', name: 'الخطة المريحة', days: 28, daily: 'حوالي ساعتين يومياً: يوم مذاكرة ويوم اختبار محاكي', fit: 'للي عنده دوام أو مدرسة', content: PCONT,
-      build() { const d = []; for (let k = 1; k <= 14; k++) { const n = 2 * k - 1; const w = Math.ceil(n / 7);
-          d.push({ n, tasks: k <= 13 ? [pq(k), pv(k)] : [QREV(), pv(14)], w });
-          d.push({ n: n + 1, tasks: [pr('مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك', [WQ, WV], 30)], w: Math.ceil((n + 1) / 7) }); } return withMocks(d, x => x.n % 2 === 0); } },
+    { id: 'strong', name: 'الخطة القوية', days: 7, daily: 'حوالي 4 إلى 5 ساعات يومياً', fit: 'للي اختباره بعد أسبوع', content: PCONT, rev: 1,
+      build() { const d = studyDays([[3, 2], [2, 3], [3, 2], [2, 3], [2, 2], [2, 2]]);
+        d.push({ n: 7, tasks: [RQ(1, 14, 90), RV(1, 14, 90)] }); return timed(d); } },
+    { id: 'intense', name: 'الخطة المكثفة', days: 14, daily: 'حوالي ساعتين إلى 3 ساعات يومياً', fit: 'للي اختباره قريب', content: PCONT, rev: 2,
+      build() { const d = studyDays([[2, 1], [1, 1], [1, 1], [1, 2], [1, 1], [1, 1], [2, 1], [1, 1], [1, 1], [1, 2], [1, 1], [1, 1]]);
+        FINAL(90).forEach((t, j) => d.push({ n: 13 + j, tasks: t })); return timed(d); } },
+    { id: 'balanced', name: 'الخطة المتوازنة', days: 19, daily: 'حوالي ساعتين يومياً · يوم راحة كل أسبوع', fit: 'الأنسب لأغلب الطلاب', content: PCONT, star: true, rev: 2,
+      build() { const d = [], W = n => Math.ceil(n / 7); let k = 1;
+        const study = n => { d.push({ n, tasks: [pq(k), pv(k)], w: W(n) }); k++; }, rest = n => d.push({ n, time: 'راحة', tasks: [{ k: 'rest', t: 'يوم راحة: استرجع نشاطك' }], w: W(n) });
+        for (let n = 1; n <= 5; n++) study(n);
+        d.push({ n: 6, tasks: [pr('مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع', [WQ, WV])], w: 1 }); rest(7);
+        for (let n = 8; n <= 13; n++) study(n); rest(14);
+        for (let n = 15; n <= 17; n++) study(n);
+        FINAL(60).forEach((t, j) => d.push({ n: 18 + j, tasks: t, w: 3 })); return timed(d); } },
+    { id: 'relaxed', name: 'الخطة المريحة', days: 28, daily: 'حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة', fit: 'للي عنده دوام أو مدرسة', content: PCONT, rev: 2,
+      build() { const d = [], W = n => Math.ceil(n / 7);
+        for (let k = 1; k <= 12; k++) { const n = 2 * k - 1;
+          d.push({ n, tasks: [pq(k), pv(k)], w: W(n) });
+          d.push({ n: n + 1, tasks: [pr('مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك', [WQ, WV], 30)], w: W(n + 1) }); }
+        d.push({ n: 25, tasks: [pq(13), pv(13)], w: 4 }, { n: 26, tasks: [pq(14), pv(14)], w: 4 });
+        FINAL(60).forEach((t, j) => d.push({ n: 27 + j, tasks: t, w: 4 })); return timed(d); } },
   ];
   const PLAN_LS = 'qg_plan', PSEEN_LS = 'qg_plan_seen';
   function planState() { return lsGet(PLAN_LS, { id: '', done: {} }); }
   const planUp = p => (p && (p.up || p.started)) || 0;
   function planSave(st) { st.up = Date.now(); lsSet(PLAN_LS, st); skillsPushSoon(2500); remCtx(); }
-  // تبدأ خطة (أو ترجع لخطة قديمة بعلاماتها) · mv = الخطة فيها الاختبارات المحاكية من أولها
-  function planStart(id) { const a = lsGet('qg_plan_all', {})[id]; planSave(Object.assign({ id, started: Date.now() }, !a ? { done: {}, mv: 1, lg: [] } : a.mv ? { done: a.done || {}, lg: a.lg || [], mv: 1 } : { done: a })); }
-  // 🧪 حالة الاختبارات المحاكية (نفس اللي تحفظها صفحة الاختبارات) · المخلّص = أي محاولة كاملة
-  function exTests() { const s = lsGet('qg_ex_state', null); return s && auth && s.e === auth.email && s.tests ? s.tests : {}; }
-  const exDone = s => !!(s && (s.status === 'done' || s.first));
-  const exSig = T => Object.keys(T).sort().map(k => k + (exDone(T[k]) ? 2 : T[k] && T[k].status === 'in_progress' ? 1 : 0)).join();
-  let exAt = 0;
-  function exRefresh(after) {   // من الخادم (مرة بالدقيقة بالكثير) عشان المهمة تنعلّم حتى لو اختبر من جهاز ثاني
-    if (!auth || !auth.session || isFree() || Date.now() - exAt < 60e3) return; exAt = Date.now();
-    const old = exSig(exTests());
-    api({ op: 'exam_state', session: auth.session }).then(r => { if (!r || !r.ok || !r.tests) return; lsSet('qg_ex_state', { e: auth.email, tests: r.tests, t: Date.now() }); if (exSig(r.tests) !== old && after) after(); }).catch(() => {});
-  }
+  // بنية الخطط: 2 = بدون اختبارات محاكية + القسم 14 من الكمي + مراجعة آخر الأيام (sv يمشي مع علامات الخطة وين ما انحفظت)
+  const PLAN_SV = 2;
+  // تبدأ خطة (أو ترجع لخطة قديمة بعلاماتها)
+  function planStart(id) { const a = lsGet('qg_plan_all', {})[id]; planSave(Object.assign({ id, started: Date.now(), mv: 1, lg: [] }, !a ? { done: {}, sv: PLAN_SV } : a.mv ? { done: a.done || {}, sv: a.sv } : { done: a })); }
   function planInfo(plan, st) {   // تواريخ الخطة + موقعك منها + نسبة الإنجاز
-    const days = plan.build(), done = st.done || {}, EX = exTests();
+    planMig(plan, st);
+    const days = plan.build(), done = st.done || {};
     const start = day0(st.started || Date.now()), end = addDays(start, plan.days - 1), today = day0();
-    // المهمة تنعلّم ✓ لحالها: حل القسم كامل · خلّص الاختبار المحاكي · يوم الراحة لما يجي تاريخه
-    const auto = (d, t) => t.set ? !!progGet(t.set).done : t.ex ? exDone(EX[t.ex]) : t.k === 'rest' ? addDays(start, d.n - 1) <= today : false;
+    // المهمة تنعلّم ✓ لحالها: حل القسم كامل · يوم الراحة لما يجي تاريخه · المراجعة يعلّمها الطالب
+    const auto = (d, t) => t.set ? !!progGet(t.set).done : t.k === 'rest' ? addDays(start, d.n - 1) <= today : false;
     const tDone = (d, i) => !!(done[d.n] && done[d.n][i]) || auto(d, d.tasks[i]);
-    // أيام خلّصها الطالب قبل لا تنضاف الاختبارات المحاكية تبقى مخلّصة، واختباراتها تطلع له فوق («اختبارات باقية»)
-    const lg = st.mv ? st.lg || [] : days.filter(d => d.tasks.every((t, i) => t.k === 't' || t.nw || tDone(d, i))).map(d => d.n);
-    const isLg = d => lg.indexOf(d.n) >= 0;
-    const dayDone = d => d.tasks.every((t, i) => tDone(d, i) || ((t.k === 't' || t.nw) && isLg(d)));
+    const dayDone = d => d.tasks.every((t, i) => tDone(d, i));
     const nDone = days.filter(dayDone).length, cur = days.find(d => !dayDone(d)) || null;
     const work = []; days.forEach(d => d.tasks.forEach((t, i) => { if (t.k !== 'rest') work.push(tDone(d, i)); }));
     const pct = work.length ? Math.round(work.filter(Boolean).length * 100 / work.length) : 0;
-    const back = []; days.forEach(d => { if (isLg(d)) d.tasks.forEach((t, i) => { if (t.k === 't' && !tDone(d, i)) back.push(t); }); });
     const tn = dayDiff(start, today) + 1, expect = Math.min(plan.days, tn);   // tn = رقم يوم «اليوم» في الخطة حسب التاريخ (يطلع برا 1..days قبل/بعد الخطة)
     // متأخر = أيام قبل اليوم ما خلصت · خلّص مهام اليوم = ماشي على الجدول · متقدم = خلّص أيام بعد اليوم
-    return { days, done, auto, tDone, dayDone, nDone, cur, start, end, tn, exp: expect, lg, pct, back, lag: !cur ? 0 : cur.n > expect ? Math.min(0, expect + 1 - cur.n) : expect - cur.n, left: dayDiff(today, end) };
+    return { days, done, auto, tDone, dayDone, nDone, cur, start, end, tn, exp: expect, pct, lag: !cur ? 0 : cur.n > expect ? Math.min(0, expect + 1 - cur.n) : expect - cur.n, left: dayDiff(today, end) };
   }
-  function planMig(plan, st) {   // مرة وحدة لكل خطة قديمة: نثبّت أيامها المخلّصة قبل الاختبارات المحاكية
-    if (st.mv || !st.id) return; st.lg = planInfo(plan, st).lg; st.mv = 1; lsSet(PLAN_LS, st); skillsPushSoon(2500);
+  // قبل البنية 2: وين كانت مهام الكمي واللفظي في كل يوم (عشان العلامات اليدوية تنتقل لنفس القسم، وعلامات المراجعات والاختبارات القديمة تنشال)
+  function planOldSets(id) {
+    const M = {}, qv = n => ['q' + n, 'v' + n];
+    if (id === 'strong') { for (let i = 1; i <= 6; i++) M[i] = ['q' + (2 * i - 1), 'v' + (2 * i - 1), 'q' + 2 * i, 'v' + 2 * i]; M[7] = ['q13', 'v13', 'v14']; }
+    else if (id === 'intense') { for (let i = 1; i <= 13; i++) M[i] = qv(i); M[14] = ['', 'v14']; }
+    else if (id === 'balanced') { [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 15, 16, 17].forEach((n, j) => M[n] = qv(j + 1)); M[18] = ['', 'v14']; }
+    else if (id === 'relaxed') { for (let k = 1; k <= 14; k++) M[2 * k - 1] = k <= 13 ? qv(k) : ['', 'v14']; }
+    return M;
   }
-  // روابط المهمة: المقطع على يوتيوب + حل القسم (مع تقدّمك فيه) أو الاختبار المحاكي
+  function planRemap(id, done) {
+    const old = planOldSets(id), keep = {}, plan = PLANS.find(p => p.id === id), nd = {};
+    Object.keys(done || {}).forEach(n => Object.keys(done[n] || {}).forEach(i => { const s = (old[n] || [])[+i]; if (s && done[n][i]) keep[s] = 1; }));
+    if (plan) plan.build().forEach(d => d.tasks.forEach((t, i) => { if (t.set && keep[t.set]) (nd[d.n] = nd[d.n] || {})[i] = 1; }));
+    return nd;
+  }
+  function planMig(plan, st) {   // مرة وحدة لكل خطة محفوظة بالبنية القديمة (فيها اختبارات محاكية)
+    if (!st.id || st.sv === PLAN_SV) return;
+    st.done = planRemap(st.id, st.done); st.sv = PLAN_SV; st.mv = 1; st.lg = []; lsSet(PLAN_LS, st); skillsPushSoon(2500);
+  }
+  // روابط المهمة: المقطع + حل القسم (مع تقدّمك فيه) · المراجعة: أخطاؤك والقوانين
   function taskSolve(t, cls) {
-    if (t.ex) return exLink(t, cls);
     if (t.set) {
       const p = progGet(t.set), ans = Object.keys(p.a || {}).length, nm = SET_NAME(t.set);
       const tot = manifest ? ((manifest[t.k === 'q' ? 'quant' : 'verbal'] || []).find(s => s.id === t.set) || {}).n : 0;
@@ -2706,11 +2712,6 @@
       return `<a class="${cls} ${p.done ? 'ok' : ''}" href="#${t.set}">${lab}</a>`;
     }
     return (t.links || []).map(l => `<a class="${cls}" href="${l[0]}">${l[1]}</a>`).join('');
-  }
-  function exLink(t, cls) {   // 🧪 يفتح صفحة الاختبارات على نفس الاختبار، وعليه حالتك فيه
-    const s = exTests()[t.ex], n = t.ex.slice(1), ok = exDone(s), p = !s ? null : s.status === 'done' ? s.pct : s.first ? s.first.pct : null;
-    const lab = ok ? `✓ المحاكي ${n}${p != null ? ` <small>${p}%</small>` : ''}` : s && s.status === 'in_progress' ? `كمّل المحاكي ${n}` : `اختبر المحاكي ${n}`;
-    return `<a class="${cls} ${ok ? 'ok' : ''}" href="/test/#${t.ex}">${lab}</a>`;
   }
   function taskLinks(t) {
     const y = t.set ? ytFor(t.set) : null;
@@ -2727,8 +2728,8 @@
       h += `<div class="tr-ex"><div class="tr-l"><span class="tr-k">${live ? (dl === 0 ? '⏳ اختبارك اليوم بعد' : '⏳ باقي على اختبارك') : dl === 0 ? '🤲 اليوم اختبارك' : '🎓 كان اختبارك'}</span><span class="tr-d">${fmtDay(exT)}، الساعة ${fmtTime(exT)} <button class="lnk" data-exam>تعديل</button></span><span class="tr-m">${examMsg(dl)}</span></div>${live ? cdHtml(exT) : ''}</div>`;
     }
     if (plan) {
-      planMig(plan, st); const I = planInfo(plan, st);
-      if (!I.cur) h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">🎉</span><div class="tr-pt"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now ? '. الحين راجع أخطاءك وحل الاختبارات المحاكية' : ''}.</span></div><a class="tr-go" href="#plan">الخطة</a></div>`;
+      const I = planInfo(plan, st);
+      if (!I.cur) h += `<div class="tr-pl"><span class="tr-pi" aria-hidden="true">🎉</span><div class="tr-pt"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now ? '. الحين راجع أخطاءك لين يجي اختبارك' : ''}.</span></div><a class="tr-go" href="#plan">الخطة</a></div>`;
       else {
         const links = I.cur.tasks.map(t => t.k === 'rest' ? '<span class="tchip rest">😴 يوم راحة</span>' : taskSolve(t, 'tchip')).join('');
         const fit = ex && exT > now ? fitInfo(I.end, exT) : null;
@@ -2755,20 +2756,18 @@
       let rec = null;
       if (live) { const fits = PLANS.filter(p => dayDiff(endOf(p), exT) >= 1); rec = fits.length ? fits.reduce((a, b) => b.days > a.days ? b : a) : PLANS[0]; }
       const dl = live ? dayDiff(now, exT) : 0;
-      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (13 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة. والخطط المكثفة والمتوازنة والمريحة معها الـ17 اختبار محاكي للمراجعة موزّعة على نفس أيامها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
+      W.innerHTML = `<div class="hero"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة، وآخر أيامها مراجعة على الأقسام والنماذج كلها. تقدر تغيّر الخطة في أي وقت.</p></div></div>
         <div class="exrow"><span class="exi" aria-hidden="true">🎯</span><div class="ext">${ex ? `<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? `باقي ${dLabel(dl)}. علّمنا لك بالنجمة ⭐ الخطة اللي تلحق قبله` : 'اختبارك اليوم! بالتوفيق') : 'الموعد المحفوظ مضى. حدّثه إذا عندك اختبار جديد'}</span>` : `<b>متى اختبارك؟</b><span>حدّد الموعد ونعلّم لك الخطة اللي تلحق قبله، ونعرض لك عدّاد تنازلي</span>`}</div><button class="btn sm ${ex ? 'ghost' : ''}" data-exam>${ex ? 'تعديل الموعد' : 'حدّد الموعد'}</button></div>
         <div class="plans">${PLANS.map(p => { const star = rec ? p === rec : !live && p.star; const end = endOf(p); const f = live ? fitInfo(end, exT) : null;
-          return `<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? 'الأنسب لموعد اختبارك' : 'الأنسب لأغلب الطلاب'}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span>${p.build().some(d => d.tasks.some(t => t.k === 't')) ? '<span class="pm">🧪 فيها الـ17 اختبار محاكي</span>' : '<span class="pm">🔁 مراجعة بسيطة كل يوم</span>'}<span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
+          return `<button class="pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}" data-p="${p.id}">${star ? `<span class="pstar">⭐ ${rec ? 'الأنسب لموعد اختبارك' : 'الأنسب لأغلب الطلاب'}</span>` : ''}<span class="pn">${p.name}</span><span class="pdays">${p.days} يوماً</span><span class="pm">⏱ ${p.daily}</span><span class="pm">🔁 ${p.rev === 1 ? 'آخر يوم' : 'آخر يومين'} مراجعة للـ14 قسم والـ14 نموذج</span><span class="pm">🎯 ${p.fit}</span><span class="pm">🏁 تخلص ${fmtDay(end)}</span>${f ? `<span class="pfit ${f.c}">${f.c === 'ok' ? '✓' : '⚠'} ${f.t}</span>` : ''}<span class="btn">ابدأ هذه الخطة</span></button>`; }).join('')}</div>
         ${rec && dayDiff(endOf(rec), exT) < 1 ? `<div class="pverd bad">⚠ باقي على اختبارك ${dl ? dLabel(dl) : 'أقل من يوم'} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.</div>` : ''}
-        <div class="sum" style="margin-top:16px;text-align:right"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم أو تخلّص الاختبار المحاكي • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
+        <div class="sum" style="margin-top:16px;text-align:right"><b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.</div>`;
       W.querySelectorAll('.pcard').forEach(b => b.onclick = () => { planStart(b.dataset.p); renderPlan(); });
       bindExam(W, () => renderPlan({ keep: 1 }));
       return;
     }
-    planMig(plan, st);
-    exRefresh(() => { if (location.hash === '#plan') renderPlan({ keep: 1 }); });
     const I = planInfo(plan, st), { days, done, cur } = I, tok = ++planTok, calm = planCalm();
-    // ✅ الأيام اللي خلصت تنزل تحت في «إنجازك». اللي خلص للحين (من هنا أو من حل القسم/الاختبار) يبان مكانه لحظة، يتلاشى وينزل
+    // ✅ الأيام اللي خلصت تنزل تحت في «إنجازك». اللي خلص للحين (من هنا أو من حل القسم) يبان مكانه لحظة، يتلاشى وينزل
     const seenK = plan.id + ':' + (st.started || 0); let SN = lsGet(PSEEN_LS, null);
     if (!SN || SN.k !== seenK || !Array.isArray(SN.n)) SN = { k: seenK, n: days.filter(I.dayDone).map(d => d.n) };
     SN.n = SN.n.filter(n => days.some(d => d.n === n && I.dayDone(d)));
@@ -2778,13 +2777,13 @@
     lsSet(PSEEN_LS, SN);
     const act = days.filter(d => !I.dayDone(d) || fresh.indexOf(d.n) >= 0), fin = days.filter(d => I.dayDone(d) && fresh.indexOf(d.n) < 0).reverse();   // «إنجازك»: الأحدث فوق (يطلع تحت الأيام الباقية مباشرة)
     const pct = I.pct, from = planPctShown != null && planPctShown !== pct && !calm ? planPctShown : pct; planPctShown = pct;
-    const icon = { q: '🔵', v: '🟢', t: '🟣', r: '🟠', rest: '😴' };
-    const autoTip = { q: 'انعلّمت لحالها لأنك حليت القسم', v: 'انعلّمت لحالها لأنك حليت النموذج', t: 'انعلّمت لحالها لأنك خلّصت الاختبار', rest: 'يوم الراحة ينحسب لحاله لما يجي تاريخه' };
+    const icon = { q: '🔵', v: '🟢', r: '🟠', rest: '😴' };
+    const autoTip = { q: 'انعلّمت لحالها لأنك حليت القسم', v: 'انعلّمت لحالها لأنك حليت النموذج', rest: 'يوم الراحة ينحسب لحاله لما يجي تاريخه' };
     const fit = live ? fitInfo(I.end, exT) : null;
     const lagT = !cur ? 'خلّصت كل الأيام 🎉' : I.lag > 0 ? `<span class="fit warn">متأخر ${I.lag === 1 ? 'يوم' : dLabel(I.lag)} عن الجدول</span>` : I.lag < 0 ? `<span class="fit ok">متقدم ${-I.lag === 1 ? 'يوم' : dLabel(-I.lag)} عن الجدول 👏</span>` : cur.n === I.exp + 1 ? '<span class="fit ok">خلّصت مهام اليوم ✓</span>' : '<span class="fit ok">ماشي على الجدول ✓</span>';
     const leftT = I.left > 0 ? `باقي ${dLabel(I.left)}` : I.left === 0 ? 'اليوم آخر يوم في الخطة' : `كان المفروض تخلص قبل ${dLabel(-I.left)}`;
     let verd = '';
-    if (fit) verd = fit.c === 'ok' ? `✓ خطتك ${fit.t}${fit.gap >= 3 ? '. استغلها في مراجعة أخطائك وإعادة الاختبارات المحاكية' : '. التزم بالجدول عشان تلحق'}.`
+    if (fit) verd = fit.c === 'ok' ? `✓ خطتك ${fit.t}${fit.gap >= 3 ? '. استغل الأيام الزيادة في مراجعة أخطائك' : '. التزم بالجدول عشان تلحق'}.`
       : fit.c === 'warn' ? '⚠ خطتك تخلص يوم اختبارك نفسه. حاول تسبق الجدول بيوم أو يومين.'
       : (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return `⚠ خطتك ${fit.t}. ${sh ? `بدّل لـ«${sh.name}» (${dLabel(sh.days)})، أو ضاعف` : 'حاول تضاعف'} بعض الأيام عشان تلحق.`; })();
     let lastW = 0;
@@ -2794,11 +2793,10 @@
       const tag = fr ? '<span class="now ok">✓ خلّصته</span>' : isTod ? `<span class="now${isCur ? '' : ' td'}" title="تاريخ اليوم">اليوم</span>` : isCur ? '<span class="now" title="أول يوم في خطتك ما خلّصته">كمّل من هنا</span>' : '';
       return wk + `<section class="day ${fr ? 'fin' : ''} ${isCur ? 'cur' : ''} ${isTod ? 'tod' : ''}" id="day${d.n}"${isTod ? ' aria-current="date"' : ''}><header><label class="dchk"><input type="checkbox" data-day="${d.n}" ${fr ? 'checked' : ''}><span>اليوم ${d.n}</span></label><span class="mut">${d.time} · ${fmtDay(addDays(I.start, d.n - 1))}</span>${tag}</header>
           <ul>${d.tasks.map((t, i) => { const a = I.auto(d, t), ok = I.tDone(d, i); return `<li class="${ok ? 'ok' : ''} k${t.k}"><label${a ? ` title="${autoTip[t.k] || ''}"` : ''}><input type="checkbox" data-day="${d.n}" data-i="${i}" ${ok ? 'checked' : ''}${a ? ' disabled' : ''}><span class="ic" aria-hidden="true">${icon[t.k] || ''}</span><span class="tt">${t.t}</span></label><span class="tl">${taskLinks(t)}</span></li>`; }).join('')}</ul></section>`; };
-    const dnChip = (d, t, i) => {   // في «إنجازك» كل مهمة ✓ (إلا اختبار باقي من يوم قديم)
+    const dnChip = (d, t, i) => {   // في «إنجازك» كل مهمة ✓
       if (t.k === 'rest') return '<span class="tchip rest">😴 راحة</span>';
       if (!I.tDone(d, i)) return taskSolve(t, 'tchip');
       if (t.set) { const g = progGet(t.set); return `<a class="tchip ok" href="#${t.set}">✓ ${SET_NAME(t.set)}${g.done && g.best != null ? ` <small>${g.best}%</small>` : ''}</a>`; }
-      if (t.ex) { const s = exTests()[t.ex], q = !s ? null : s.status === 'done' ? s.pct : s.first ? s.first.pct : null; return `<a class="tchip ok" href="/test/#${t.ex}">✓ المحاكي ${t.ex.slice(1)}${q != null ? ` <small>${q}%</small>` : ''}</a>`; }
       return '<span class="tchip ok">✓ مراجعة</span>'; };
     const finHtml = d => `<div class="dn ${planArrive.indexOf(d.n) >= 0 ? 'arrive' : ''}" id="dn${d.n}"><label class="dchk" title="شيل العلامة لو علّمته بالغلط"><input type="checkbox" data-day="${d.n}" checked><span>اليوم ${d.n}</span></label><span class="mut">${fmtDay(addDays(I.start, d.n - 1))}${d.n === I.tn ? ' · <b class="dtod">اليوم</b>' : ''}</span><span class="dnl">${d.tasks.map((t, i) => dnChip(d, t, i)).join('')}</span></div>`;
     const doneTxt = I.nDone ? `خلّصت ${dLabel(I.nDone)} من ${days.length}` : `ما خلّصت أي يوم من ${days.length} للحين`;
@@ -2810,20 +2808,19 @@
         <div class="pst ex">${ex ? `<span class="pk">🎯 ${live ? 'باقي على اختبارك' : 'موعد اختبارك'}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>`}<span class="ps">${live ? fmtDay(exT) + '، ' + fmtTime(exT) + ' · ' : ''}<button class="lnk" data-exam>تعديل</button></span>` : `<span class="pk">🎯 موعد اختبارك</span><b class="none">ما حدّدته</b><span class="ps"><button class="btn sm" data-exam>حدّد الموعد</button></span>`}</div>
       </div>
       ${verd ? `<div class="pverd ${fit.c}">${verd}</div>` : ''}
-      ${I.back.length ? `<div class="pback"><span class="pbi" aria-hidden="true">🧪</span><div class="pbt"><b>انضافت الاختبارات المحاكية للخطة</b><span>هذي اختبارات أيام خلّصتها قبل لا تنضاف. اختبرها متى ما قدرت:</span><span class="pbl">${I.back.map(t => exLink(t, 'tchip')).join('')}</span></div></div>` : ''}
-      <div class="days">${act.length ? act.map(dayHtml).join('') : '<div class="pall">🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد الاختبارات المحاكية اللي درجتك فيها أقل.</div>'}</div>
+      <div class="days">${act.length ? act.map(dayHtml).join('') : '<div class="pall">🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد حل الأقسام اللي درجتك فيها أقل.</div>'}</div>
       <section class="pdone" aria-labelledby="pdh"><header><h2 id="pdh">✅ إنجازك في الخطة</h2><span class="pdp">${fin.length ? `خلّصت ${dLabel(fin.length)} · ` : ''}<b><bdi>${pct}%</bdi></b></span></header>
         ${fin.length ? `<div class="pdl">${fin.map(finHtml).join('')}</div>` : '<p class="pde">أول ما تخلّص كل مهام يوم، يتلاشى من فوق وينزل هنا ✓</p>'}</section>
-      <div class="sum" style="margin-top:16px;text-align:right">🔵 كمي · 🟢 لفظي · 🟣 اختبار محاكي · 🟠 مراجعة. المهام تنعلّم ✓ لحالها لما تحل القسم أو تخلّص الاختبار المحاكي، والمراجعة علّمها أنت. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.<br><span class="mut">ملاحظة: القسم 14 من الكمي (<bdi dir="ltr">643-733</bdi>) إضافي خارج الجدول. حِلّه بعد ما تخلص الخطة أو في أيام المراجعة.</span></div>`;
+      <div class="sum" style="margin-top:16px;text-align:right">🔵 كمي · 🟢 لفظي · 🟠 مراجعة. المهام تنعلّم ✓ لحالها لما تحل القسم، والمراجعة علّمها أنت. <b>طريقة المذاكرة:</b> شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.</div>`;
     planArrive = [];
     const save = () => planSave(Object.assign(st, { done }));
     const re = () => renderPlan({ keep: 1, tick: 1 });
     W.querySelectorAll('input[data-i]').forEach(c => c.onchange = () => { done[c.dataset.day] = done[c.dataset.day] || {}; if (c.checked) done[c.dataset.day][c.dataset.i] = 1; else delete done[c.dataset.day][c.dataset.i]; save(); re(); });
     W.querySelectorAll('input[data-day]:not([data-i])').forEach(c => c.onchange = () => { const d = days.find(x => x.n == c.dataset.day); done[d.n] = {}; if (c.checked) d.tasks.forEach((t, i) => done[d.n][i] = 1); save();
-      if (!c.checked) { const J = planInfo(plan, st); if (J.dayDone(J.days.find(x => x.n === d.n))) toast('هذا اليوم محسوب لك لأنك حليت أقسامه أو اختباره ✓'); }
+      if (!c.checked) { const J = planInfo(plan, st); if (J.dayDone(J.days.find(x => x.n === d.n))) toast('هذا اليوم محسوب لك لأنك حليت أقسامه ✓'); }
       re(); });
-    $('#chg').onclick = async () => { if (await QGDlg.confirm('تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)', { ok: 'تغيير' })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = { done, lg: st.lg || [], mv: 1 }; lsSet('qg_plan_all', all); planSave({ id: '', done: {} }); renderPlan(); } };
-    $('#rst').onclick = async () => { if (await QGDlg.confirm('مسح علاماتك والبدء من اليوم 1؟ (الأقسام والاختبارات اللي حليتها تبقى محسوبة)', { ok: 'إعادة البدء', danger: true })) { planSave({ id: plan.id, done: {}, started: Date.now(), mv: 1, lg: [] }); renderPlan(); } };
+    $('#chg').onclick = async () => { if (await QGDlg.confirm('تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)', { ok: 'تغيير' })) { const all = lsGet('qg_plan_all', {}); all[plan.id] = { done, lg: [], mv: 1, sv: PLAN_SV }; lsSet('qg_plan_all', all); planSave({ id: '', done: {} }); renderPlan(); } };
+    $('#rst').onclick = async () => { if (await QGDlg.confirm('مسح علاماتك والبدء من اليوم 1؟ (الأقسام اللي حليتها تبقى محسوبة)', { ok: 'إعادة البدء', danger: true })) { planSave({ id: plan.id, done: {}, started: Date.now(), mv: 1, lg: [], sv: PLAN_SV }); renderPlan(); } };
     bindExam(W, () => renderPlan({ keep: 1 }));
     // نسبة الإنجاز تعدّ لين توصل الرقم الجديد
     if (from !== pct) { const pe = W.querySelector('[data-pct]'), bar = W.querySelector('.pst.pg .bar i'), t0 = performance.now();
