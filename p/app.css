@@ -1828,6 +1828,23 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .sbsw.on{background:var(--okbg);color:var(--okt)}
 .sbsw input{width:17px;height:17px;accent-color:var(--ok);margin:0}
 .sbnote{font-size:calc(12.5px * var(--fs));margin-top:10px;line-height:1.7}
+/* 📝 التسجيلات (فورم الشيت) + 🔁 حالة المشاركة التلقائية */
+.rgsync{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:9px 12px;border-radius:12px;background:var(--okbg);color:var(--okt);font-weight:700;font-size:calc(13.5px * var(--fs));line-height:1.6}
+.rgsync.warn{background:var(--stampbg);color:var(--warnt)}
+.srow.rgrow{grid-template-columns:minmax(260px,1fr) auto;align-items:center}
+.rgrow.need{border-inline-start:4px solid var(--gold3)}
+.rgrow .who small.rgmeta{white-space:normal;overflow:visible;line-height:1.7}
+.rgmeta a{color:var(--royal);text-decoration:none;font-weight:700}
+.rgmeta a:hover{text-decoration:underline}
+.rgbad{color:var(--badt);font-weight:700}
+.rgchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.rgchip{font-size:calc(11.5px * var(--fs));font-weight:700;border-radius:999px;padding:1px 9px;background:var(--stampbg);color:var(--stampfg)}
+.rgrow .who small.rgwhy{color:var(--mut);white-space:normal;margin-top:4px;line-height:1.6}
+.rgact{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.rgbtns{display:inline-flex;gap:6px}
+.rgwait{font-weight:800;color:var(--warnt);font-size:calc(13px * var(--fs))}
+.rgdone{font-weight:800;color:var(--okt);font-size:calc(13px * var(--fs))}
+@media (max-width:760px){.srow.rgrow{grid-template-columns:1fr;grid-template-areas:"st" "act";gap:10px}.rgrow .rgact{grid-area:act;justify-content:flex-start}.rgact .sbseg{display:flex;width:100%}.rgact .sbseg button{flex:1;padding:8px 6px}.rgbtns{width:100%}.rgbtns .btn{flex:1}}
 .sroles.s3{grid-template-columns:repeat(3,minmax(0,1fr))}
 [data-theme=dark] .sbseg{background:#182238}[data-theme=dark] .sbseg button.on{background:#263654}
 [data-theme=dark] .sbseg button.on.yt{color:#FF7A72}[data-theme=dark] .sbseg button.on.bank{color:#9DB4FF}

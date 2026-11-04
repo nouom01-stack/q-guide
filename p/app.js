@@ -297,7 +297,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
-    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : renderMembers(); location.hash = ''; return; }
+    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-regs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : h === 'admin-regs' ? renderRegs() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
   window.addEventListener('hashchange', route);
@@ -1980,15 +1980,15 @@
   // ---------- leaderboard ----------
   // ---------- 👑 لوحة المشرف ----------
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1RaKf8jqdIJ2tsZx95jhxhqyNq0scSvnzPyfttYch8CI';
-  const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
-  let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '', subs: null, sf: 'all', sq: '', msub: 'free' };
+  const fmtD = t => { if (!t) return '—'; const d = new Date(t); const diff = (Date.now() - t) / 60000; if (diff < 60) return 'قبل ' + Math.max(1, Math.round(diff)) + ' د'; if (diff < 1440) return 'قبل ' + Math.round(diff / 60) + ' س'; return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
+  let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '', subs: null, sf: 'all', sq: '', msub: 'free', regs: null, regsSync: null, regsAt: 0, rf: 'wait', rq: '', rt: {}, share: null };
   const isOwner = () => (ADM.role || auth.staff) === 'owner';
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-subs" class="${tab === 'subs' ? 'on' : ''}">💳 نوع الاشتراك${ADM.subs ? (n => n ? ` <small class="red" title="ما شاركت المقاطع الخاصة معهم">${n}</small>` : '')(ADM.subs.filter(x => x.t !== 'yt' && !x.sh).length) : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}">${regTabLabel()}</a>` : ''}${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-subs" class="${tab === 'subs' ? 'on' : ''}">💳 نوع الاشتراك${ADM.subs ? (n => n ? ` <small title="بطابور المشاركة التلقائية">${n}</small>` : '')(ADM.subs.filter(x => x.t !== 'yt' && !x.sh).length) : ''}</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
-  async function admLoadStaff(force) { if (ADM.staff && !force) return ADM.staff; const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } return r; }
+  async function admLoadStaff(force) { if (ADM.staff && !force) { regsSoon(); return ADM.staff; } const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } regsSoon(); return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
   async function renderAdmin() {
     document.title = 'لوحة الإدارة | Q-Guide';
@@ -2380,11 +2380,85 @@
   // ---------- 💳 نوع الاشتراك: ▶️ يوتيوب · 🎁 مجاني · 🏦 تحويل بنكي ----------
   // المجاني والتحويل ما يشوفون مقاطع الأعضاء: أزرار يوتيوب في الموقع تفتح لهم النسخ الخاصة، وتشتغل إذا المالك شاركها مع إيميلهم
   const SUB_N = { yt: ['▶️', 'يوتيوب'], free: ['🎁', 'مجاني'], bank: ['🏦', 'تحويل بنكي'] };
+  // ---------- 📝 التسجيلات (فورم الشيت): تأكيد أو رفض بضغطة — القرار يوصل الشيت خلال دقيقة والشيت يكمّل الباقي ----------
+  const regNeed = x => x.status === 'wait' && !x.act;                    // ينتظر قرارك
+  const regPending = x => x.status !== 'ok' && x.act && !x.applied;      // قرارك ينتظر الشيت
+  const regFinishing = x => x.act === 'confirm' && x.applied && x.status !== 'ok';   // الشيت يكمّل التأكيد
+  function regTabLabel() { const n = ADM.regs ? ADM.regs.filter(regNeed).length : 0; return '📝 التسجيلات' + (n ? ` <small class="red" title="بانتظار تأكيدك">${n}</small>` : ''); }
+  function refreshRegTab() { const a = document.querySelector('.atabs a[href="#admin-regs"]'); if (a) a.innerHTML = regTabLabel(); }
+  async function admLoadRegs() { const r = await admCall({ op: 'adm_regs' }); ADM.regs = r.rows || []; ADM.regsSync = r.sync || null; ADM.regsAt = Date.now(); refreshRegTab(); return r; }
+  function regsSoon() { if (!isOwner() || (ADM.regs && Date.now() - ADM.regsAt < 60000)) return; ADM.regsAt = Date.now(); admLoadRegs().catch(() => {}); }   // عدّاد التبويب في كل صفحات اللوحة
+  let regsT = 0;
+  function regsPoll() {   // تحديث تلقائي وأنت على التبويب: كل 15 ثانية لو فيه قرار ينتظر الشيت، وإلا كل دقيقة
+    clearTimeout(regsT); if (location.hash !== '#admin-regs') return;
+    const busy = (ADM.regs || []).some(x => regPending(x) || regFinishing(x));
+    regsT = setTimeout(async () => { if (location.hash !== '#admin-regs') return; try { await admLoadRegs(); if (!document.querySelector('#adm .rgact:focus-within')) paintRegs(); } catch (e) {} regsPoll(); }, busy ? 15000 : 60000);
+  }
+  async function renderRegs() {
+    document.title = 'التسجيلات | Q-Guide';
+    const top = () => { app.innerHTML = admTop('regs'); bindCtl(); $('#admref').onclick = () => { ADM.regs = null; renderRegs(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.regs) await admLoadRegs(); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-regs') return;
+    top(); paintRegs(); regsPoll();
+  }
+  function paintRegs() {
+    const W = $('#adm'); if (!W || !ADM.regs) return;
+    const all = ADM.regs, f = ADM.rf, q = ADM.rq.trim().toLowerCase();
+    const n = { wait: all.filter(x => x.status === 'wait').length, dup: all.filter(x => x.status === 'dup').length, ok: all.filter(x => x.status === 'ok').length, exp: all.filter(x => x.status === 'exp').length };
+    const need = all.filter(regNeed).length;
+    let list = all.filter(x => x.status === f && (!q || [x.name, x.email, x.phone, x.raw, x.user, x.school].some(v => String(v || '').toLowerCase().includes(q))));
+    const rank = x => regNeed(x) ? 0 : regPending(x) || regFinishing(x) ? 1 : 2;
+    list.sort((a, b) => rank(a) - rank(b) || (f === 'ok' ? (b.ca || 0) - (a.ca || 0) : (b.ts || 0) - (a.ts || 0)));
+    const nm = x => x.name || (x.email ? x.email.split('@')[0] : '') || 'بدون اسم';
+    const S = ADM.regsSync, age = S ? (Date.now() - S.at) / 60000 : 1e9;
+    const sync = !S ? '<div class="rgsync warn">⚠️ الشيت ما أرسل الطلبات للحين. افتح الشيت مرة، وتأكد إن «☁️ مزامنة الموقع» مفعّلة.</div>'
+      : age > 5 ? `<div class="rgsync warn">⚠️ آخر مزامنة مع الشيت ${fmtD(S.at)}. قراراتك توصل الشيت أول ما ترجع المزامنة.</div>`
+      : `<div class="rgsync">🔄 متزامن مع الشيت · آخر تحديث ${fmtD(S.at)}</div>`;
+    const tile = (k, ic, b, t, cls) => `<button type="button" class="sbt ${k}${f === k ? ' on' : ''}${cls ? ' ' + cls : ''}" data-rf="${k}" aria-pressed="${f === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
+    const tsel = x => ADM.rt[x.key] || x.act_t || (/تليقرام|تحويل|بنك/.test(x.src || '') ? 'bank' : 'yt');
+    const chips = x => String(x.note || '').split('|').map(v => v.trim()).filter(v => v && !/^(تأكيد يدوي|✅ من الموقع|✕ رفض من الموقع)$/.test(v)).map(v => `<span class="rgchip">${esc(v)}</span>`).join('');
+    const side = x => {
+      if (x.status === 'ok') return `<span class="rgdone">✅ تأكد ${x.ca ? fmtD(x.ca) : ''}${x.act === 'confirm' ? ' · من الموقع' : ''}</span>`;
+      if (regPending(x)) return `<span class="rgwait">${x.act === 'confirm' ? `⏳ يتأكد خلال دقيقة · ${SUB_N[x.act_t || 'yt'][0]} ${SUB_N[x.act_t || 'yt'][1]}` : '⏳ ينرفض خلال دقيقة'}</span><button type="button" class="lnk" data-undo>تراجع</button>`;
+      if (regFinishing(x)) return '<span class="rgwait">⏳ الشيت يكمّل التأكيد…</span>';
+      const t = tsel(x);
+      return `<span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}">${['yt', 'bank', 'free'].map(k => `<button type="button" role="radio" data-t="${k}" class="${t === k ? 'on ' + k : ''}" aria-checked="${t === k}">${SUB_N[k][0]} ${k === 'bank' ? 'تحويل' : SUB_N[k][1]}</button>`).join('')}</span>
+        <span class="rgbtns"><button type="button" class="btn sm" data-ok>✅ تأكيد</button>${x.status === 'exp' ? '' : '<button type="button" class="btn sm ghost" data-no>✕ رفض</button>'}</span>`;
+    };
+    const why = x => x.status === 'dup' ? '<small class="rgwhy">🔁 اليوزر هذا مستخدم في طلب مؤكد قبل. لو هو نفس الطالب بإيميل جديد أكّده.</small>'
+      : x.status === 'exp' ? `<small class="rgwhy">${x.act === 'reject' ? '✕ رفضته' : '⌛ مر عليه 14 يوم بدون تأكيد'}. تقدر تأكده الحين لو تبي.</small>` : '';
+    const row = x => `<div class="srow rgrow${regNeed(x) ? ' need' : ''}" data-k="${esc(x.key)}">
+      <span class="c-st">${avatarHtml('', nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.email || 'بدون إيميل')}</small>
+        <small class="rgmeta">${[x.phone ? `<a href="https://wa.me/${esc(String(x.phone).replace(/\D/g, ''))}" target="_blank" rel="noopener" dir="ltr">📱 ${esc(x.phone)}</a>` : '', x.user ? `<a href="https://www.youtube.com/@${encodeURIComponent(x.user)}" target="_blank" rel="noopener" dir="ltr" title="افتح قناته في يوتيوب">▶️ @${esc(x.raw ? String(x.raw).replace(/^@/, '') : x.user)}</a>` : '<span class="rgbad">بدون يوزر يوتيوب</span>', x.gender ? esc(x.gender) : '', x.school ? esc(x.school) : '', 'سجّل ' + fmtD(x.ts)].filter(Boolean).join(' · ')}</small>
+        ${chips(x) ? `<span class="rgchips">${chips(x)}</span>` : ''}${why(x)}</span></span>
+      <span class="rgact">${side(x)}</span></div>`;
+    W.innerHTML = `<div class="stf regs">
+      ${sync}
+      <div class="sbtiles">${tile('wait', '⏳', n.wait, 'بانتظار التأكيد', need ? 'warn' : '')}${tile('dup', '🔁', n.dup, 'مكرر')}${tile('ok', '✅', n.ok, 'تأكدوا آخر 7 أيام')}${tile('exp', '⌛', n.exp, 'منتهي أو مرفوض')}</div>
+      <p class="sbhelp">هذي طلبات فورم «المقدمة». اختر نوع اشتراكه واضغط «تأكيد»: الشيت يأكده خلال دقيقة ويكمّل لحاله (إيميل التأكيد، فتح الاختبارات، ملف المرشد)، وبعدها يدخل الموقع. لو اخترت تحويل أو مجاني، المقاطع الخاصة تنشارك معه تلقائياً.</p>
+      <div class="abar"><input id="rgq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.rq)}"><a class="btn sm ghost" href="${SHEET_URL}" target="_blank" rel="noopener">📊 افتح الشيت</a></div>
+      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : f === 'wait' ? 'ما فيه طلبات تنتظرك 👍' : 'ما فيه طلبات هنا'}</div>`}</div>
+      <p class="mut sbnote">«بانتظار التأكيد» = يوزره ما طلع في قائمة أعضاء القناة. افتح قناته وتأكد إنه عضو، أو اختر تحويل أو مجاني. الطلب اللي ما يتأكد خلال 14 يوم يروح «منتهي».</p></div>`;
+    W.querySelectorAll('[data-rf]').forEach(b => b.onclick = () => { ADM.rf = b.dataset.rf; paintRegs(); });
+    $('#rgq').oninput = e => { ADM.rq = e.target.value; const pos = e.target.selectionStart; paintRegs(); const i = $('#rgq'); i.focus(); i.setSelectionRange(pos, pos); };
+    const send = async (x, body, patch, msg) => {
+      const undo = { act: x.act, act_t: x.act_t, applied: x.applied }; Object.assign(x, patch); paintRegs(); refreshRegTab();
+      try { await admCall(Object.assign({ op: 'adm_reg_act', key: x.key }, body)); toast(msg); if (body.act === 'confirm' && body.t !== 'yt') ADM.subs = null; regsPoll(); }
+      catch (e) { Object.assign(x, undo); paintRegs(); refreshRegTab(); toast('ما انحفظ: ' + e.message); }
+    };
+    W.querySelectorAll('.rgrow').forEach(r => { const x = all.find(y => y.key === r.dataset.k); if (!x) return;
+      r.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { ADM.rt[x.key] = b.dataset.t; paintRegs(); const nb = W.querySelector(`.rgrow[data-k="${CSS.escape(x.key)}"] [data-t="${b.dataset.t}"]`); if (nb) nb.focus(); });
+      const ok = r.querySelector('[data-ok]'); if (ok) ok.onclick = () => { const t = tsel(x); send(x, { act: 'confirm', t }, { act: 'confirm', act_t: t, applied: 0 }, `✓ ${nm(x)}: يتأكد خلال دقيقة ويوصله إيميل التأكيد`); };
+      const no = r.querySelector('[data-no]'); if (no) no.onclick = async () => { if (await QGDlg.confirm(`رفض طلب ${nm(x)}؟ ما يوصله شي، وتقدر تأكده بعدين من «⌛ منتهي أو مرفوض».`, { ok: 'رفض', danger: true })) send(x, { act: 'reject' }, { act: 'reject', act_t: null, applied: 0 }, `${nm(x)}: انرفض الطلب`); };
+      const un = r.querySelector('[data-undo]'); if (un) un.onclick = () => send(x, { act: 'undo' }, { act: null, act_t: null, applied: 0 }, 'تم التراجع ↩︎'); });
+  }
   async function renderSubs() {
     document.title = 'نوع الاشتراك | Q-Guide';
     const top = () => { app.innerHTML = admTop('subs'); bindCtl(); $('#admref').onclick = () => { ADM.subs = null; renderSubs(); }; };
     top();
-    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.subs) ADM.subs = (await admCall({ op: 'adm_subs' })).rows; }
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.subs) { const r = await admCall({ op: 'adm_subs' }); ADM.subs = r.rows; ADM.share = r.share || null; } }
     catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#admin-subs') return;
     top(); paintSubs();
@@ -2398,17 +2472,24 @@
     const rank = x => need(x) ? 0 : alt(x) ? 1 : 2;
     list.sort((a, b) => rank(a) - rank(b) || (b.last || 0) - (a.last || 0));
     const nm = x => x.display || x.name || x.email.split('@')[0];
+    // 🔁 آخر تشغيل للمشاركة التلقائية (كل مقطع ينسجّل لحاله؛ التشغيل الواحد = آخر 30 دقيقة)
+    const SH = ADM.share || {}, runs = SH.runs || [], tot = SH.total || 27, last = runs[0], nMaq = k => k === 1 ? 'مقطع واحد' : k === 2 ? 'مقطعين' : k <= 10 ? k + ' مقاطع' : k + ' مقطع';
+    let shareLine = '<div class="rgsync">🔁 المشاركة التلقائية جاهزة، وتبدأ مع أول تشغيل للمهمة في جهازك.</div>';
+    if (last) { const cur = runs.filter(r => r.at >= last.at - 30 * 60e3), okN = cur.filter(r => r.ok).length, bad = cur.find(r => !r.ok);
+      shareLine = bad ? `<div class="rgsync warn">⚠️ آخر مشاركة ${fmtD(last.at)}: يوتيوب رفض «${esc(bad.label || bad.video)}»${bad.note ? ` (${esc(bad.note)})` : ''}. يعيد المحاولة في التشغيل الجاي.</div>`
+        : `<div class="rgsync">🔁 آخر مشاركة تلقائية ${fmtD(last.at)} · ${nMaq(okN)}</div>`; }
     const tile = (k, ic, b, t, cls) => `<button type="button" class="sbt ${k}${f === k ? ' on' : ''}${cls ? ' ' + cls : ''}" data-sf="${k}" aria-pressed="${f === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
     const row = x => `<div class="srow sbrow" data-e="${esc(x.email)}">
       <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
       <span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}">${['yt', 'free', 'bank'].map(t => `<button type="button" role="radio" data-t="${t}" class="${x.t === t ? 'on ' + t : ''}" aria-checked="${x.t === t}">${SUB_N[t][0]} ${SUB_N[t][1]}</button>`).join('')}</span>
-      <span class="sbsh">${alt(x) ? `<label class="sbsw${x.sh ? ' on' : ''}"><input type="checkbox" data-sh${x.sh ? ' checked' : ''}><span>${x.sh ? '✓ شاركت المقاطع معه' : '⚠️ ما شاركت المقاطع معه'}</span></label>` : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}</span></div>`;
+      <span class="sbsh">${alt(x) ? `<label class="sbsw${x.sh ? ' on' : ''}"><input type="checkbox" data-sh${x.sh ? ' checked' : ''}><span>${x.sh ? '✓ المقاطع مشاركة معه' : `⏳ بتنشارك تلقائياً${x.shn ? ` · ${x.shn}/${tot}` : ''}`}</span></label>` : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}</span></div>`;
     W.innerHTML = `<div class="stf subs">
-      <div class="sbtiles">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${tile('need', '⚠️', n.need, 'ما شاركت المقاطع معهم', n.need ? 'warn' : '')}</div>
-      <p class="sbhelp">المجاني والتحويل البنكي: أزرار يوتيوب في الموقع تفتح لهم النسخ الخاصة من المقاطع، وتشتغل بس إذا شاركتها مع إيميلهم من يوتيوب ستوديو (المشاركة الخاصة لكل مقطع حدها 50 إيميل). مشترك يوتيوب تفتح له مقاطع الأعضاء.</p>
+      <div class="sbtiles">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${tile('need', '⏳', n.need, 'بطابور المشاركة التلقائية')}</div>
+      ${shareLine}
+      <p class="sbhelp">المجاني والتحويل البنكي: أزرار يوتيوب في الموقع تفتح لهم النسخ الخاصة من المقاطع. المشاركة صارت تلقائية: مهمة في جهازك تشارك النسخ مع أي طالب جديد هنا كل 4 ساعات (لازم يكون جهازك شغّال وتطبيق Claude مفتوح). مشترك يوتيوب تفتح له مقاطع الأعضاء.</p>
       <div class="abar"><input id="sbq" type="search" placeholder="ابحث بالاسم أو الإيميل أو اليوزر…" value="${esc(ADM.sq)}">${f !== 'all' ? `<button type="button" class="btn sm ghost" id="sball">عرض الكل (${all.length})</button>` : ''}</div>
-      ${f === 'need' && n.need ? `<div class="sbcopy"><button type="button" class="btn sm" id="sbcp">📋 انسخ إيميلاتهم (${n.need})</button><span>الصقها في «المشاركة الخاصة» لكل مقطع في يوتيوب ستوديو، وبعدها علّم عليهم هنا.</span></div>` : ''}
-      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : f === 'need' ? 'كل المجانيين والتحويل شاركت المقاطع معهم 👍' : 'ما فيه طلاب هنا'}</div>`}</div>
+      ${f === 'need' && n.need ? `<div class="sbcopy"><button type="button" class="btn sm" id="sbcp">📋 انسخ إيميلاتهم (${n.need})</button><span>تنشارك تلقائياً. لو تبي تشاركها بنفسك الحين، الصقها في «المشاركة الخاصة» لكل مقطع وعلّم عليهم هنا.</span></div>` : ''}
+      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : f === 'need' ? 'كل المجانيين والتحويل المقاطع مشاركة معهم 👍' : 'ما فيه طلاب هنا'}</div>`}</div>
       <p class="mut sbnote">الطالب الجديد من الشيت يطلع «يوتيوب»، واللي تضيفه من «➕ المشتركون» يطلع بالنوع اللي تختاره هناك. تقدر تغيّر أي طالب من هنا، ويتغيّر عنده خلال دقائق.</p></div>`;
     W.querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { ADM.sf = ADM.sf === b.dataset.sf ? 'all' : b.dataset.sf; paintSubs(); });
     const ab = $('#sball'); if (ab) ab.onclick = () => { ADM.sf = 'all'; paintSubs(); };
@@ -2419,11 +2500,11 @@
       try { await admCall(Object.assign({ op: 'adm_sub_set', email: x.email }, patch)); toast(msg); } catch (e) { Object.assign(x, undo); paintSubs(); refreshSubTab(); toast('ما انحفظ: ' + e.message); } };
     W.querySelectorAll('.sbrow').forEach(r => { const x = all.find(y => y.email === r.dataset.e); if (!x) return;
       r.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = b.dataset.t; if (t === x.t) return; save(x, { t }, { t: x.t }, `${nm(x)}: ${SUB_N[t][0]} ${SUB_N[t][1]} ✓`); });
-      const sh = r.querySelector('[data-sh]'); if (sh) sh.onchange = () => save(x, { sh: sh.checked ? 1 : 0 }, { sh: x.sh }, sh.checked ? 'علّمته إنك شاركت المقاطع معه ✓' : 'شلت العلامة'); });
+      const sh = r.querySelector('[data-sh]'); if (sh) sh.onchange = () => save(x, { sh: sh.checked ? 1 : 0 }, { sh: x.sh }, sh.checked ? 'علّمته إن المقاطع مشاركة معه ✓' : 'رجع لطابور المشاركة التلقائية'); });
   }
   function refreshSubTab() {   // عدّاد «ما شاركت المقاطع معهم» في شريط التبويبات
     const a = document.querySelector('.atabs a[href="#admin-subs"]'); if (!a || !ADM.subs) return; const n = ADM.subs.filter(x => x.t !== 'yt' && !x.sh).length;
-    a.innerHTML = '💳 نوع الاشتراك' + (n ? ` <small class="red" title="ما شاركت المقاطع الخاصة معهم">${n}</small>` : '');
+    a.innerHTML = '💳 نوع الاشتراك' + (n ? ` <small title="بطابور المشاركة التلقائية">${n}</small>` : '');
   }
   async function renderMembers() {
     document.title = 'المشتركون | Q-Guide';
