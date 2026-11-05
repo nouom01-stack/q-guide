@@ -1992,7 +1992,7 @@ html.l-en .rz-week{direction:ltr}
 .astats button.over{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;box-shadow:var(--sh);font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,background .15s}
 .astats button.over b{color:var(--warnt)}.astats button.over:hover{border-color:var(--warnt)}
 .astats button.over.on{background:var(--stampbg);border-color:var(--warnt);box-shadow:inset 0 0 0 1px var(--warnt)}
-.atable.dt .arow{grid-template-columns:minmax(220px,2.2fr) 104px 62px 62px 100px 128px 196px}
+.atable.dt .arow{grid-template-columns:minmax(220px,2.2fr) 104px 62px 62px 100px 150px 196px}
 .arow .c-sub{min-width:0}.arow.head .c-sub{text-align:start}
 .sdt{display:flex;flex-direction:column;line-height:1.35;min-width:0}
 .sdt b{font-size:calc(13.5px * var(--fs));color:var(--ink);font-weight:700;white-space:nowrap}
@@ -2001,9 +2001,21 @@ html.l-en .rz-week{direction:ltr}
 .sdt.over b{color:var(--badt)}
 .arow .c-act .rpb{min-width:38px;padding-inline:8px;text-align:center;text-decoration:none}
 .overnote{margin-top:-2px}
+/* ⏰ خلص موعده: «＋ شهر» (أخضر) و«⛔ إنهاء» (أحمر فاتح — غير زر «حظر» الأحمر الغامق) */
+.sdx{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.sdx button{font:inherit;font-weight:800;font-size:calc(12px * var(--fs));line-height:1.2;padding:5px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.15s}
+.sdx .sxm{background:var(--okbg);color:var(--okt);border:1px solid color-mix(in srgb,var(--ok) 40%,transparent)}
+.sdx .sxm:hover{background:color-mix(in srgb,var(--ok) 22%,var(--okbg))}
+.sdx .sxe{background:var(--badbg);color:var(--badt);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}
+.sdx .sxe:hover{background:color-mix(in srgb,var(--bad) 22%,var(--badbg))}
+.sdx button:disabled{opacity:.5;cursor:default}
+.sdx button:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.arow .sdxrow{display:none}
 .arow .who .sdm{display:none;font-weight:700}.arow .who .sdm.ok{color:var(--okt)}.arow .who .sdm.soon{color:var(--warnt)}.arow .who .sdm.over{color:var(--badt)}
 [data-theme="dark"] .astats b{color:var(--ink2)}[data-theme="dark"] .astats .bad b{color:var(--bad)}[data-theme="dark"] .astats button.over b{color:var(--warnt)}
-@media (max-width:900px){.astats.n5{grid-template-columns:repeat(2,1fr)}.astats.n5>:last-child{grid-column:1/-1}.atable.dt .arow{grid-template-columns:minmax(0,1fr) 90px 150px}.arow .c-sub{display:none}.atable.dt .arow .who .sdm{display:block}}
+@media (max-width:900px){.astats.n5{grid-template-columns:repeat(2,1fr)}.astats.n5>:last-child{grid-column:1/-1}.atable.dt .arow{grid-template-columns:minmax(0,1fr) 90px 150px}.arow .c-sub{display:none}.atable.dt .arow .who .sdm{display:block}.atable.dt .arow .sdxrow{display:flex;grid-column:1/-1;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 10px;margin-top:2px;border-radius:10px;background:var(--badbg)}
+  .atable.dt .arow .sdxrow .sdt{flex-direction:row;gap:4px;align-items:baseline;flex-wrap:wrap;color:var(--badt)}.atable.dt .arow .sdxrow .sdt b{font-size:calc(12.5px * var(--fs))}
+  .atable.dt .arow .sdxrow .sdx{margin-top:0}.atable.dt .arow .sdxrow .sdx .sxe{background:var(--card)}.atable.dt .arow.hasx .who .sdm{display:none}}
 @media (max-width:640px){.abar .tabs.sm{flex-wrap:wrap;width:100%}.abar .tabs.sm button{flex:1 1 auto;white-space:nowrap}}
 /* بطاقة الطالب */
 .sdbox{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin:4px 0 12px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg)}
