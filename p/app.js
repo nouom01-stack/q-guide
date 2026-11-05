@@ -22,11 +22,11 @@
   const payOn = () => !!(auth && auth.role === 'free' && auth.pay && auth.pay.on);
   const payPending = () => { try { return sessionStorage.getItem(PAY_SS) || ''; } catch (e) { return ''; } };
   const payDone = () => { try { sessionStorage.removeItem(PAY_SS); } catch (e) {} };
-  // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات)
+  // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات) · مقطعا القواعد (الكمي واللفظي) انشالوا من الموقع بطلب المالك
   const YT = {
-    q: { name: _T('القسم'), rules: { id: 'WjcD6JHnwIc', dur: '45:44', t: _T('مقطع قواعد الكمي'), d: _T('كل قوانين الكمي (الكسور، الجذور، النسب، الهندسة، الساعة…) في مقطع واحد — شاهده قبل الأقسام') }, list: 'PLNdATbln9B4k',
+    q: { name: _T('القسم'), list: 'PLNdATbln9B4k',
       v: ['WBnwPsSTuaU:36:18', 'SLGGlm5YwJU:34:43', 'VoVaWRFbIjg:36:50', 'dwvgSfK6Tfw:34:10', 'eVZsYR0QPq8:35:39', 'd3hX21VfSWo:34:19', 'EMNaSCi0IMk:43:40', 'fQynzmnlZmI:34:15', 'i4ELxBTMUw0:40:51', 'mZdhgMMOWB0:40:01', 'bscPMN6lDPQ:36:29', '6AxdKpQZevk:34:16', 'iVR5LsbBBv4:29:38', 'vf-aOADLlCs:56:06'] },
-    v: { name: _T('النموذج'), rules: { id: 'vo91Yxx_6vw', dur: '14:18', t: _T('مقطع قواعد التناظر اللفظي'), d: _T('شرح علاقات التناظر وطريقة الحل — شاهده قبل أول نموذج') }, list: 'PLVFHCj9Zxd0E',
+    v: { name: _T('النموذج'), list: 'PLVFHCj9Zxd0E',
       v: ['qWlJ9gh2G3U:24:15', 'l4v74KKFrj8:23:59', '5EOXngu_9R0:19:54', 'BFewNC6ocP4:25:05', 'r34_ruXqoJg:17:50', '85cq5t4G9Rs:23:07', 'za5kEoY6bxI:17:37', 'ShJH_Dpijiw:16:33', 'SmU59p7M5OY:18:37', 'V1-07MAx6YI:12:32', 'oYJmNRMwAKg:15:49', 'vSrkVscXAXs:17:45', 'VcaywhqSsVM:21:40', 'mFYiB0Z9G5k:15:17',
         'RD2yd4xavzw:17:18'] } };   // الـ15 = «الأسئلة الجديدة» (Verbal/Extra Questions)
   // اسم المقطع/المجموعة: «النموذج 7»… والـ15 في اللفظي = «الأسئلة الجديدة»
@@ -39,14 +39,11 @@
   const ytAlt = () => auth && auth.yt && vidSub() ? auth.yt : null;
   const YT_ALT_TIP = _T('مقطع خاص لك: افتحه وأنت داخل يوتيوب بنفس إيميل Google اللي تدخل فيه الموقع');
   const TGT = ' target="_blank" rel="noopener"';
-  const vidHash = (k, n) => '#watch-' + k + (n === 'rules' ? '-rules' : n);
+  const vidHash = (k, n) => '#watch-' + k + n;
   const inSite = (k, n) => vidSub() && vidHas(k + ':' + n) ? { url: vidHash(k, n), tgt: '', site: true } : null;
   function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), lab = vLabel(m[1], m[2]), dur = raw.slice(i + 1);
     const s = inSite(m[1], +m[2]); if (s) return Object.assign({ id: raw.slice(0, i), dur, label: lab, alt: false }, s);
     const A = ytAlt(), alt = A && A[m[1]] && A[m[1]].v ? A[m[1]].v[+m[2] - 1] : ''; const id = alt || raw.slice(0, i); return { id, dur, url: ytUrl(id), tgt: TGT, label: lab, alt: !!alt }; }
-  const ytRules = k => { if (k === 'v') return null;   // 🎬 مقطع قواعد اللفظي لطلال العنزي (قريباً): ما يطلع مع شرح سلمان الفرج
-    const s = inSite(k, 'rules'); if (s) return Object.assign({}, YT[k].rules, s);
-    const A = ytAlt(), alt = A && A[k] && A[k].rules, r = alt ? Object.assign({}, YT[k].rules, { id: alt, alt: true }) : YT[k].rules; return Object.assign({}, r, { url: ytUrl(r.id), tgt: TGT }); };
   const ytList = k => { const A = ytAlt(); return (A && A[k] && A[k].list) || YT[k].list; };
   const ytTip = (y, t) => y && y.site ? _T(' title="يشتغل هنا داخل الموقع"') : y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
   const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
@@ -262,7 +259,7 @@
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
-    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (h === 'qall' || h === 'vall') return _T('الاختبار الشامل'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك');
+    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
     return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي') }[h.replace(/-v\d+$/, '')] || '';
   }
@@ -367,6 +364,7 @@
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
+    if (h === 'qall' || h === 'vall') { history.replaceState(null, '', location.pathname); return route(); }   // 🗑 الاختبار الشامل انشال: الروابط القديمة ترجع للرئيسية
     if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
       H.dir = adm ? 'rtl' : 'ltr'; H.lang = adm ? 'ar' : 'en'; H.classList.toggle('l-en', !adm); H.classList.toggle('l-ar', adm); }
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
@@ -386,11 +384,10 @@
     if (h === 'find') return renderFind();
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
-    if (/^watch-[qv](-rules|\d{1,2})$/.test(h)) return renderWatch(h.slice(6));
+    if (/^watch-[qv](\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين
     if (h === 'sharh') return renderSharh();
     if (h === 'board' || h === 'board-week' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'week');   // 🏆 الافتراضي: هذا الأسبوع
     if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
-    if (h === 'qall' || h === 'vall') return renderPlayer(h);
     if (h === 'plan') return renderPlan();
     if (/^t-[a-z-]+$/.test(h)) return renderPlayer(h);
     if (h === 'skills') return renderSkills();
@@ -512,9 +509,6 @@
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = _T('<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'); return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
     const adminLinks = auth.role === 'admin' ? _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
-    const RR = ytRules(tab === 'quant' ? 'q' : 'v');
-    const nq = manifest.quant.reduce((a, b) => a + b.n, 0), nv = manifest.verbal.reduce((a, b) => a + b.n, 0);
-    const megaPct = (id, n) => Math.round(Object.keys(progGet(id).a || {}).length * 100 / n);
     if (!isFree()) badgeCheck();
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
     const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
@@ -525,15 +519,14 @@
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
-        <span class="sp"></span>${RR ? `<a class="rvid" href="${RR.url}"${RR.tgt} title="${RR.site ? _T('يشتغل هنا داخل الموقع') : RR.alt ? YT_ALT_TIP : esc(RR.d)}">${vIcon(RR)}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a>` : ''}<a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
+        <span class="sp"></span><a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
       <div class="sheets" id="grid"></div>
       <h2 class="h2">أدوات المذاكرة</h2>
       <section class="tgroups">
         <div class="tg"><h3>اختبر نفسك</h3>
           ${toolA('#level', '🧭', _T('تحديد المستوى'), lv ? _T`مستواك: ${LEVELS[lv.lvl].t} (${lv.pct}%) · تقدر تعيده` : _T('20 سؤال تعرف منها مستواك ونقاط ضعفك'), FR ? _T('<span class="frb">مجاني</span>') : '', 1)}
           ${toolA('#arena', '⚔️', _T('الساحة 1v1'), FR ? _T`تحدَّ طالب مباشرة، ${FREE_GAMES} مباريات مجانية كل يوم` : _T('تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
-          ${toolA('/test/', '🧪', _T('الاختبارات المحاكية'), FR ? _T('الاختبار المحاكي 1 مجاني، والـ 16 الباقية للمشتركين') : _T('17 اختبار بنفس شكل قياس المحوسب'), FR ? _T('<span class="frb">1 مجاني</span>') : '', 1)}
-          ${FR ? lockTool('🏁', _T('الاختبار الشامل'), _T('كل الأسئلة في اختبار واحد متواصل')) : _T`<div class="tool"><span class="ti">🏁</span><span class="tx"><b>الاختبار الشامل</b><small>كل الأسئلة في اختبار واحد متواصل</small></span><span class="tbtns"><a href="#qall">الكمي <small>${nq}</small>${megaPct('qall', nq) ? `<em>${megaPct('qall', nq)}%</em>` : ''}</a><a href="#vall">اللفظي <small>${nv}</small>${megaPct('vall', nv) ? `<em>${megaPct('vall', nv)}%</em>` : ''}</a></span></div>`}</div>
+          ${toolA('/test/', '🧪', _T('الاختبارات المحاكية'), FR ? _T('الاختبار المحاكي 1 مجاني، والـ 16 الباقية للمشتركين') : _T('17 اختبار بنفس شكل قياس المحوسب'), FR ? _T('<span class="frb">1 مجاني</span>') : '', 1)}</div>
         <div class="tg"><h3>تعلّم وراجع</h3>
           ${toolA('#find', '🔎', _T('ابحث عن سؤال'), FR ? _T('اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين') : _T('اكتب السؤال أو صوّره ونقولك وين تلقاه'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
           ${RULES_ON ? toolA('#rules', '📐', _T('قوانين الكمي'), _T('القوانين اللي تحتاجها أسئلة الدورة، وتنطبع')) + toolA('#rules-v', '📘', _T('قواعد اللفظي'), _T('طرق الحل وأنواع الأسئلة في صفحة وحدة'), FR ? '' : _T('<span class="beta">جديد</span>')) : ''}
@@ -660,18 +653,18 @@
   const VW_LS = 'qg_vw';   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
   let VID = null;
   function vidList(k) {
-    const L = k === 'q' ? [{ key: 'q:rules', h: 'q-rules', n: 'rules', label: _T('قواعد الكمي'), dur: YT.q.rules.dur }] : [];   // قواعد اللفظي لطلال العنزي (قريباً)
+    const L = [];
     YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: vLabel(k, i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
   }
   function vidStop() { if (!VID) return; clearInterval(VID.wm); clearInterval(VID.sv); document.removeEventListener('fullscreenchange', VID.fs); try { VID.v.pause(); VID.v.removeAttribute('src'); VID.v.load(); } catch (e) {} VID = null; }
   async function renderWatch(h) {
     vidStop();
-    const k = h[0], n = /-rules$/.test(h) ? 'rules' : +h.slice(1), L = vidList(k), cur = L.find(x => x.n === n);
-    if (!cur) { location.hash = '#sharh'; return; }
+    const k = h[0], n = +h.slice(1), L = vidList(k), cur = L.find(x => x.n === n);
+    if (!cur) { location.replace('#sharh'); return; }
     document.title = _T('شرح ') + cur.label + ' | Q-Guide';
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
-    const solve = n === 'rules' ? `<a class="btn sm ghost" href="#${k === 'q' ? 'rules' : 'rules-v'}">${k === 'q' ? _T('📐 ملخص القوانين') : _T('📘 ملخص القواعد')}</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
+    const solve = _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
     app.innerHTML = topbar(_T`<span class="ttl">🎬 شرح ${esc(cur.label)}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wrap watch">
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
@@ -687,8 +680,8 @@
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب
-    const toYT = t => { const A = ytAlt(), alt = A && A[k] && (n === 'rules' ? A[k].rules : A[k].v && A[k].v[n - 1]);
-      const raw = n === 'rules' ? YT[k].rules.id : YT[k].v[n - 1].split(':')[0];
+    const toYT = t => { const A = ytAlt(), alt = A && A[k] && A[k].v && A[k].v[n - 1];
+      const raw = YT[k].v[n - 1].split(':')[0];
       say(t, _T`<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
     if (!(vidSub() || auth.role === 'admin')) { toYT(_T('مقاطع الشرح عندك تفتح في يوتيوب (عضوية القناة).')); return; }
     VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
@@ -736,8 +729,8 @@
     document.title = _T('الشرح والمدرسين | Q-Guide');
     const W = lsGet(VW_LS, {});
     // كل مقطع: داخل الموقع (المجاني والتحويل لو انرفع) أو يوتيوب (مشترك يوتيوب، أو مقطع ما انرفع للحين)
-    const item = (k, n) => { const y = n === 'rules' ? ytRules(k) : ytFor(k + n); if (!y) return '';
-      const label = n === 'rules' ? _T('قواعد الكمي') : vLabel(k, n), dur = n === 'rules' ? YT[k].rules.dur : y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
+    const item = (k, n) => { const y = ytFor(k + n); if (!y) return '';
+      const label = vLabel(k, n), dur = y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
       return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${label}</span></b><small>${w ? _T('✓ شاهدته') : `<bdi dir="ltr">${esc(dur || '')}</bdi>`}</small></a>`; };
     const tcard = t => `<div class="tch${t.on ? ' on' : ' soon'}"><span class="tav" aria-hidden="true">${t.name[0]}</span>
       <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? _T('الكمي واللفظي') : SUBJ[t.s[0]] + _T(' فقط')}</span></span><span class="tst">${t.on ? _T('✓ موجود') : _T('⏳ قريباً')}</span></div>`;
@@ -747,7 +740,7 @@
         <div class="hero"><div><h1>الشرح والمدرسين</h1><p>الشرح مقسّم بين أكثر من مدرس. الموجود الحين شرح سلمان الفرج للكمي واللفظي، والباقين ينزل شرحهم قريباً.</p></div></div>
         <div class="tchs">${TEACHERS.map(tcard).join('')}</div>
         <section class="tsec" aria-labelledby="tsh"><h2 class="h2" id="tsh">${EN ? 'Explained by ' + TEACHERS[0].name : 'شرح ' + TEACHERS[0].name}</h2>
-          <h3 class="tsub">📐 الكمي</h3><div class="wvlist">${item('q', 'rules')}${qn.map(n => item('q', n)).join('')}</div>
+          <h3 class="tsub">📐 الكمي</h3><div class="wvlist">${qn.map(n => item('q', n)).join('')}</div>
           <h3 class="tsub">📖 اللفظي</h3><div class="wvlist">${vn.map(n => item('v', n)).join('')}</div>
         </section></main>`;
     bindCtl(); window.scrollTo({ top: 0 });
@@ -1057,11 +1050,6 @@
     skillsPushSoon(1500);
     if (set.topicSet) { $('#saved').textContent = _T('تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'); return; }
     try {
-      if (set.id === 'qall' || set.id === 'vall') {   // نتائج كل قسم/نموذج على حدة (للوحة الصدارة) + ملخص
-        const per = {}; items.forEach((x, i) => { const k = x.it.src || set.id; const o = per[k] || (per[k] = { n: 0, c: 0 }); o.n++; if (prog.a[i] && prog.a[i].c) o.c++; });
-        const share = n ? secs / n : 0;
-        for (const k of Object.keys(per)) { try { await api({ op: 'result', session: auth.session, set: k, kind: set.kind + '-all', n: per[k].n, correct: per[k].c, secs: Math.round(share * per[k].n), wrong: '' }); } catch (e) {} }
-      }
       const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
       $('#saved').textContent = r.ok ? (r.admin ? _T('وضع المشرف: النتيجة لا تُسجّل') : r.free ? _T('نتيجتك محفوظة على جهازك ✓') : _T('تم حفظ نتيجتك ✓')) : '';
       if (!r.ok && r.error === 'session') { toast(_T('انتهت الجلسة، سجّل دخولك من جديد')); }
@@ -1690,10 +1678,10 @@
     return `<div class="fb-meta">${r ? _T`<a class="fb-r" href="${r.href}"><span aria-hidden="true">${r.icon}</span>راجع القاعدة: <b>${esc(r.t)}</b><span class="go" aria-hidden="true">${EN ? '→' : '←'}</span></a>` : ''}${p ? _T`<span class="fb-t ${p.k}" title="في قياس عندك تقريباً دقيقة لكل سؤال"><span aria-hidden="true">⏱</span><b dir="ltr">${fmtDur(p.s)}</b>${p.t}</span>` : ''}</div>`;
   }
   const RU_CFG = {
-    q: { hash: '#rules', ttl: _T('📐 قوانين الكمي'), h1: _T('قوانين الكمي'), file: 'rules.json?v=' + RULES_V, yt: () => ytRules('q'),
+    q: { hash: '#rules', ttl: _T('📐 قوانين الكمي'), h1: _T('قوانين الكمي'), file: 'rules.json?v=' + RULES_V,
       ph: _T('ابحث عن قانون: مساحة، نسبة، زاوية، area…'), none: _T('ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.'),
       intro: n => _T`${n} قانون وقاعدة تحتاجها أسئلة الدورة، مرتبة حسب الموضوع. تحت كل قانون مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.` },
-    v: { hash: '#rules-v', ttl: _T('📘 قواعد اللفظي'), h1: _T('قواعد اللفظي'), file: 'rules_v.json?v=1', yt: () => ytRules('v'),
+    v: { hash: '#rules-v', ttl: _T('📘 قواعد اللفظي'), h1: _T('قواعد اللفظي'), file: 'rules_v.json?v=1',
       ph: _T('ابحث: سبب ونتيجة، although، main idea…'), none: _T('ما لقينا قاعدة بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.'),
       intro: () => _T('طريقة الحل في كل نوع من أسئلة اللفظي، وأنواع العلاقات والقرائن والأسئلة اللي تكررت في أسئلة الدورة. تحت كل نوع مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.') } };
   async function renderRules(kind, goTo) {
@@ -1703,11 +1691,10 @@
     if (!RU_DATA[kind]) { app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl();
       try { RU_DATA[kind] = await (await fetch('/p/data/' + C.file)).json(); } catch (e) { app.innerHTML = topbar('', back) + _T('<div class="center">تعذّر التحميل. <a href="#">رجوع</a></div>'); return; } }
     if (location.hash !== C.hash + (goTo ? '/' + goTo : '')) return;
-    const D = RU_DATA[kind], R = C.yt(), nItems = D.reduce((a, s) => a + s.items.length, 0);
+    const D = RU_DATA[kind], nItems = D.reduce((a, s) => a + s.items.length, 0);
     const tx = VB ? esc : mx;   // اللفظي نص إنجليزي عادي، والكمي نرسم كسوره وأسسه
     app.innerHTML = topbar(_T`<span class="ttl">${C.ttl}</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + _T`<main class="wrap rules${VB ? ' rules-v' : ''}">
-      <div class="ru-top"><div><h1>${C.h1}</h1><p>${C.intro(nItems)}</p></div>
-        ${R ? `<a class="rvid" href="${R.url}"${R.tgt}>${vIcon(R)}<span>${R.t}</span>${R.dur ? `<small>${R.dur}</small>` : ''}</a>` : ''}</div>
+      <div class="ru-top"><div><h1>${C.h1}</h1><p>${C.intro(nItems)}</p></div></div>
       <div class="ru-bar"><input id="ruq" type="search" placeholder="${C.ph}" autocomplete="off"><span class="mut" id="run"></span></div>
       <nav class="ru-nav" aria-label="المواضيع">${D.map(s => `<a href="${C.hash}" data-go="${s.id}">${s.icon} ${esc(s.t)}</a>`).join('')}</nav>
       <div class="ru-cols" id="ruc">${D.map((s, si) => `<section class="ru-s" id="ru-${s.id}"><h2><span class="ic" aria-hidden="true">${s.icon}</span>${esc(s.t)}<small dir="ltr">${esc(s.en || '')}</small></h2>${s.how ? _T`<div class="ru-how"><h3>طريقة الحل</h3><ol>${s.how.map(t => `<li>${arFx(t)}</li>`).join('')}</ol></div>` : ''}${s.sub ? `<h3 class="ru-sub">${esc(s.sub)}</h3>` : ''}<div class="ru-g">
@@ -2126,7 +2113,7 @@
     const total = done.reduce((a, t) => a + agg[t].w + agg[t].r, 0);
     const card = (t) => _T`<a class="tcard ${TOPICS[t].k}" href="#t-${t}"><span class="ic">${TOPICS[t].i}</span><b>${TOPICS[t].t}</b><small>${tot[t] || '—'} سؤال · ${TOPICS[t].k === 'quant' ? _T('الكمي') : _T('اللفظي')}</small>${agg[t].w + agg[t].r ? `<span class="mini ${lvl(Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)), agg[t].w + agg[t].r).c}">${Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r))}%</span>` : ''}</a>`;
     app.innerHTML = topbar(_T`<span class="ttl">🎯 نقاط القوة والضعف</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap skills">
-      <div class="hero sk"><div><h1>تحليل مهاراتك</h1><p>${total ? _T`حلّلنا <b>${total}</b> إجابة من كل اختباراتك (الأقسام، الشامل، التدريب الموجّه). كل ما حليت أكثر صار التحليل أدق.` : _T('ابدأ بحل أي قسم من الكمي أو اللفظي، وبعدها تظهر لك هنا المواضيع اللي تقوى فيها واللي تحتاج تركيز.')}</p></div></div>
+      <div class="hero sk"><div><h1>تحليل مهاراتك</h1><p>${total ? _T`حلّلنا <b>${total}</b> إجابة من كل اختباراتك (الأقسام، النماذج، التدريب الموجّه). كل ما حليت أكثر صار التحليل أدق.` : _T('ابدأ بحل أي قسم من الكمي أو اللفظي، وبعدها تظهر لك هنا المواضيع اللي تقوى فيها واللي تحتاج تركيز.')}</p></div></div>
       ${weak.length ? _T`<h2 class="h2">🎯 ركّز على هذي المواضيع</h2><div class="focus">${weak.map(x => _T`<a class="fc bad" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة · ${agg[x.t].wrongNow} سؤال خطأ حالياً</small></span><span class="btn sm gold">تدرّب الآن</span></a>`).join('')}</div>` : ''}
       ${strong.length ? _T`<h2 class="h2">💪 نقاط قوتك</h2><div class="focus">${strong.map(x => _T`<a class="fc ok" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة</small></span><span class="btn sm ghost">حافظ عليها</span></a>`).join('')}</div>` : ''}
       <h2 class="h2">🔁 مراجعة أخطائي</h2>
@@ -2976,7 +2963,7 @@
     if (ADM.sf === 'over') list.sort((a, b) => a.until - b.until); else list.sort((a, b) => (alt(a) ? 0 : 1) - (alt(b) ? 0 : 1) || (b.last || 0) - (a.last || 0));
     const nm = x => x.display || x.name || x.email.split('@')[0];
     // 🎬 المقاطع داخل الموقع: كم مقطع مرفوع + المشاهدات آخر 30 يوم
-    const V = ADM.vids, up = V && V.files ? V.files.length : 0, tot = (V && V.total) || 30, views = V && V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0;
+    const V = ADM.vids, up = V && V.files ? V.files.length : 0, tot = (V && V.total) || 29, views = V && V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0;
     const vidLine = !V ? '<div class="rgsync warn">⚠️ تعذّر قراءة حالة المقاطع داخل الموقع. حدّث الصفحة.</div>'
       : up >= tot ? `<div class="rgsync">🎬 المجاني والتحويل يشوفون المقاطع داخل الموقع: كل الـ${tot} مقطع مرفوعة · ${views} مشاهدة آخر 30 يوم</div>`
       : `<div class="rgsync warn">⏳ انرفع ${up} من ${tot} مقطع للموقع. اللي ما انرفع للحين يفتح لهم نسخته الخاصة في يوتيوب.</div>`;
@@ -3051,12 +3038,11 @@
     return Object.keys(M).map(k => { const f = M[k], o = objs.find(x => x.key === f), m = /^([qv]):(.+)$/.exec(k);
       const label = m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2];
       return { k, f, label, size: o ? o.size : 0, ord: (m[1] === 'q' ? 0 : 100) + (m[2] === 'rules' ? 0 : +m[2]) }; }).sort((a, b) => a.ord - b.ord); }
-  // نعرف المقطع من اسم الملف: Section 3 / Model 7 / قواعد الكمي / Extra Questions (الأسئلة الجديدة)…
+  // نعرف المقطع من اسم الملف: Section 3 / Model 7 / Extra Questions (الأسئلة الجديدة)…
   function vupGuess(name) { const n = name.toLowerCase().replace(/[_\-–|｜⧸/]+/g, ' ');
     if (/(extra|new)\s*(questions?|15)\b|الأسئلة الجديدة|الاسئلة الجديدة|أسئلة جديدة|اسئلة جديدة|(?:model|نموذج)\s*15\b/.test(n)) return 'v/m15.mp4';
     let m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
     m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'v/m' + m[1].padStart(2, '0') + '.mp4';
-    if (/(قواعد|قوانين|rules)/.test(n)) return /(لفظ|verbal|تناظر|analog)/.test(n) ? '' : /(كمي|quant)/.test(n) ? 'q/rules.mp4' : '';   // قواعد اللفظي لطلال العنزي (قريباً): ما ترتفع هنا
     return ''; }
   const vupMB = b => '<bdi dir="ltr">' + (b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e7 ? Math.round(b / 1e6) + ' MB' : (b / 1e6).toFixed(1) + ' MB') + '</bdi>';
   function vupHtml() {
@@ -3068,7 +3054,7 @@
         <i class="pg" aria-hidden="true"><span style="width:${run ? Math.round(st.p * 100) : x.size ? 100 : 0}%"></span></i>
         <label class="vpick" title="${x.size ? 'استبدل الملف' : 'اختر ملف المقطع'}">${x.size ? 'تغيير' : 'اختر'}<input type="file" accept="video/mp4,.mp4" hidden data-one="${x.f}"${VUP.busy ? ' disabled' : ''}></label></div>`; };
     return `<details class="vup"${up < S.length ? ' open' : ''}><summary>⬆️ رفع المقاطع للموقع <small><bdi>${up}/${S.length}</bdi></small></summary>
-      <p class="mut">اختر ملفات المقاطع (MP4) من جهازك، ونعرف كل ملف من اسمه (Section 3، Model 7، قواعد الكمي…)، أو اختر لكل مقطع ملفه. خلّ الصفحة مفتوحة لين يخلص الرفع.</p>
+      <p class="mut">اختر ملفات المقاطع (MP4) من جهازك، ونعرف كل ملف من اسمه (Section 3، Model 7…)، أو اختر لكل مقطع ملفه. خلّ الصفحة مفتوحة لين يخلص الرفع.</p>
       <div class="vupbar"><label class="btn sm${VUP.busy ? ' dis' : ''}">📁 اختر عدة ملفات<input type="file" accept="video/mp4,.mp4" multiple hidden id="vupmany"${VUP.busy ? ' disabled' : ''}></label><span class="mut${VUP.miss.length && !VUP.busy ? ' vmiss' : ''}" id="vupst">${VUP.busy ? 'جاري الرفع…' : VUP.miss.length ? '⚠️ ما عرفت مقطع: ' + esc(VUP.miss.slice(0, 3).join('، ')) + (VUP.miss.length > 3 ? '…' : '') + '. ارفعه من زر «اختر» حق مقطعه.' : ''}</span></div>
       <div class="vupgrid">${S.map(cell).join('')}</div></details>`;
   }

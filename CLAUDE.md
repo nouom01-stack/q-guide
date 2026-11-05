@@ -28,6 +28,10 @@ Also bump `p/i18n.js?v=` in `p/index.html` and `test/index.html` when `p/i18n.js
 every item keeps `src`/`sidx` of its model question (notes, skills and the AI use the original). Group fields `m`/`mt` show «Model N · title»; items in the last group have `tag`.
 `find`/AI banks only index v1–v14, so v15 adds no duplicate search results. Video label helper `vLabel()`; YouTube members video `YT.v.v[14]`.
 
+## 🗑 Removed at the owner's request (Nov 2026) — don't bring back
+- The quant rules video («مقطع قواعد الكمي», was `YT.q.rules` / `ytRules` / `#watch-q-rules`) and the verbal rules video: gone from the home row, «الشرح والمدرسين», the rules pages and the in-site player (API slot `q:rules` removed too). The rules summary pages (`#rules`, `#rules-v`) stay.
+- «🏁 الاختبار الشامل» (`#qall` / `#vall`): no home tool, no route — old links go home (`route()`). Old qall/vall progress is still folded into the skills history and shown in the owner report.
+
 ## 👑 Owner-only pages (Arabic, `i18n:off`)
 Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the report (`renderReport`, route `#admin-report/<email>`). Modals close on every route change.
 
