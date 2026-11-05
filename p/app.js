@@ -364,7 +364,7 @@
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     const h = location.hash.replace('#', '');
-    if (h === 'qall' || h === 'vall') { history.replaceState(null, '', location.pathname); return route(); }   // 🗑 الاختبار الشامل انشال: الروابط القديمة ترجع للرئيسية
+    if (h === 'qall' || h === 'vall' || (!RULES_ON && /^rules(-v)?(\/|$)/.test(h))) { history.replaceState(null, '', location.pathname); return route(); }   // 🗑 الاختبار الشامل وملخص القوانين/القواعد انشالوا: الروابط القديمة ترجع للرئيسية
     if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
       H.dir = adm ? 'rtl' : 'ltr'; H.lang = adm ? 'ar' : 'en'; H.classList.toggle('l-en', !adm); H.classList.toggle('l-ar', adm); }
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
@@ -1558,6 +1558,7 @@
     vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
     't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'] };
   function helpLink(tok) {
+    if (!RULES_ON && /^rules/.test(tok)) return '';   // ملخص القوانين/القواعد انشال: الرمز ينشال من الرد
     let m; const a = (ic, t, h) => `<a class="qgai-lk" href="${h}"><span aria-hidden="true">${ic}</span>${t}</a>`;
     if (HELP_PAGES[tok]) return a(...HELP_PAGES[tok]);
     if ((m = /^([qv])(\d{1,2})$/.exec(tok)) && +m[2] >= 1 && +m[2] <= (m[1] === 'v' ? 15 : 14)) return a(m[1] === 'q' ? '📘' : '📗', SET_NAME(tok), '#' + tok);
@@ -1658,7 +1659,9 @@
   }
 
   // ---------- 📐 قوانين الكمي · 📘 قواعد اللفظي (من أسئلة الدورة) ----------
-  const RULES_V = 4, RULES_ON = true, RU_DATA = {};
+  // 🗑 انشالوا من الموقع بطلب المالك (نوفمبر 2026): RULES_ON = false يقفل الصفحتين وكل روابطهما (الرئيسية، المساعد، «راجع القاعدة»، الخطة).
+  // الكود والبيانات باقية هنا مقفلة — لا ترجعها إلا بطلبه.
+  const RULES_V = 4, RULES_ON = false, RU_DATA = {};
   // 📐 أي قاعدة تناسب السؤال؟ الكمي من خريطة p/data/rulemap.json (مرجع السؤال → قسم في ملخص القوانين؛ تُبنى في مستودع الـ API بـ tools/rulemap.mjs
   // وتترك السؤال بدون قاعدة لو ما كانت واضحة)، واللفظي من نوع السؤال نفسه (تناظر/إكمال/خطأ/استيعاب)
   const RMAP_V = 1; let RMAP = null, rmapP = null;
@@ -3216,11 +3219,11 @@
   // كل مهمة = شاهد مقطع الشرح ثم حل نفس القسم هنا في المنصة (حل القسم هو نفسه اختبار المقطع)
   const pq = i => ({ k: 'q', set: 'q' + i, t: _T`كمي Section ${i}: شاهد المقطع ثم حل القسم ${i}` });
   const pv = i => ({ k: 'v', set: 'v' + i, t: _T`لفظي Model ${i}: شاهد المقطع ثم حل النموذج ${i}` });
-  const WQ = ['#t-wrong-q', _T('أخطائي في الكمي')], WV = ['#t-wrong-v', _T('أخطائي في اللفظي')], RULESL = ['#rules', _T('قوانين الكمي')];
+  const WQ = ['#t-wrong-q', _T('أخطائي في الكمي')], WV = ['#t-wrong-v', _T('أخطائي في اللفظي')];
   const pr = (t, links, m) => ({ k: 'r', t, links: links || [], m: m || 60 });
   // 🔁 آخر الأيام مراجعة على الـ14 قسم كمي والـ14 نموذج لفظي (الخطط ما فيها اختبارات محاكية)
   const rng = (a, b) => `<bdi dir="ltr">${a}–${b}</bdi>`;
-  const RQ = (a, b, m) => pr(_T`مراجعة الكمي، الأقسام ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها وراجع القوانين`, [WQ, RULESL], m);
+  const RQ = (a, b, m) => pr(_T`مراجعة الكمي، الأقسام ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها`, [WQ], m);
   const RV = (a, b, m) => pr(_T`مراجعة اللفظي، النماذج ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها`, [WV], m);
   const FINAL = m => [[RQ(1, 7, m), RV(1, 7, m)], [RQ(8, 14, m), RV(8, 14, m)]];   // آخر يومين
   const taskMin = t => t.k === 'q' || t.k === 'v' ? 60 : t.k === 'r' ? t.m : 0;

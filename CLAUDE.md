@@ -29,7 +29,8 @@ every item keeps `src`/`sidx` of its model question (notes, skills and the AI us
 `find`/AI banks only index v1–v14, so v15 adds no duplicate search results. Video label helper `vLabel()`; YouTube members video `YT.v.v[14]`.
 
 ## 🗑 Removed at the owner's request (Nov 2026) — don't bring back
-- The quant rules video («مقطع قواعد الكمي», was `YT.q.rules` / `ytRules` / `#watch-q-rules`) and the verbal rules video: gone from the home row, «الشرح والمدرسين», the rules pages and the in-site player (API slot `q:rules` removed too). The rules summary pages (`#rules`, `#rules-v`) stay.
+- The quant rules video («مقطع قواعد الكمي», was `YT.q.rules` / `ytRules` / `#watch-q-rules`) and the verbal rules video: gone from the home row, «الشرح والمدرسين» and the in-site player (API slot `q:rules` removed too).
+- The rules summary pages «📐 قوانين الكمي» (`#rules`) and «📘 قواعد اللفظي» (`#rules-v`): `RULES_ON = false` hides the home links/tools, the routes (old links go home), the «راجع القاعدة» chips + the summary's rules box, the assistant's `{{rules…}}` chips and the plan's «قوانين الكمي» link. Code, CSS and `p/data/rules*.json` / `rulemap.json` stay dormant — flip the flag only if the owner asks.
 - «🏁 الاختبار الشامل» (`#qall` / `#vall`): no home tool, no route — old links go home (`route()`). Old qall/vall progress is still folded into the skills history and shown in the owner report.
 
 ## 👑 Owner-only pages (Arabic, `i18n:off`)
@@ -48,11 +49,11 @@ Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the 
   Found (exact / reorder / wording / opts_same) → the explanation starts at once (`/ai` with that ref) · similar (numbers / opts_diff) → «اشرح لي طريقة الحل» button · new → report + nearest questions. Free visitors: only q1 / v1 / t1 refs are explained.
 - Typed text after an explanation is a follow-up on that question (thread `H.tk`); «سؤال جديد», the camera, or pasting a full question with A) B) options starts a new search.
 - Anything else (Arabic text, concept questions, "what should I study", tips) → chat mode (`/ai {chat: 1}`): the coach solves/explains/advises using the student's profile; a searched question that is not in the course falls through to chat too (slim «مو من أسئلة الدورة» bar + report). `helpProfile()` (exam countdown, streak, weakest topics from `histAgg`, today's plan task, resume set) feeds the welcome card's status chips and suggestion chips, and `ctx` of every chat request.
-- Link tokens in answers (`{{q3}}`, `{{rules:circles}}`, `{{t-geo}}`, `{{plan}}`…) → `helpLink()` page chips (`.qgai-lk`); `#rules/<section id>` deep-links a rules section (highlighted).
+- Link tokens in answers (`{{q3}}`, `{{t-geo}}`, `{{plan}}`…) → `helpLink()` page chips (`.qgai-lk`). `{{rules…}}` tokens are dropped while `RULES_ON` is false (the API prompt no longer offers them).
 - Home «ركّز اليوم» strip (`focusHtml`): weakest skill + drill `#t-<topic>` + «أعد حل أخطائك» + «اسأل المساعد»; placement-test nudge when there is no data yet.
 - Test: `site/help_e2e.js` (the dev server multiplies per-minute rate limits ×10: `RATE_X`).
 
-## ⏱📐 After every answer: pace + «راجع القاعدة» (`fbMeta` in `p/app.js`)
+## ⏱📐 After every answer: pace + «راجع القاعدة» (`fbMeta` in `p/app.js`) — the rule part is OFF (`RULES_ON = false`, rules pages removed)
 - `paceOf(ms)` compares the question's own time (`a.ms`, capped at `Q_CAP`) with the GAT pace (~1 min/question): `fast` ≤ 40 s · `ok` ≤ 75 s · `slow`; chip `.fb-t` after every answer, hidden when the time is unknown/capped.
 - `ruleFor(it, i)` → `{href, icon, t}` of the rules section to review: quant from `p/data/rulemap.json` (`"q4:29": "fractions"`, built in the API repo by `tools/rulemap.mjs` from the bank — only confident matches, ~70 % of the questions; bump `RMAP_V` when it changes),
   verbal from `it.topic` → `#rules-v/<ana|sen|err|read>`. Chip `.fb-r` after a wrong answer only; never for free visitors (rules are for subscribers). The map is fetched with the set (`ruleMapLoad`).
