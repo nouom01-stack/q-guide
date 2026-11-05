@@ -642,7 +642,7 @@
   "k": "حاول مرة ثانية",
   "at": [
    "p/app.js:335",
-   "p/app.js:3562",
+   "p/app.js:3580",
    "assets/ai.js:119"
   ],
   "ctx": "<div class=\"pdact\">${payOn() ? _T('<button type=\"button\" class=\"btn gold\" id=\"pdretry\">حاول مرة ثانية</button>') : ''}<a class=\"btn ghost\" href=\"${wa}\" target=\""
@@ -844,7 +844,7 @@
   "at": [
    "p/app.js:417",
    "p/app.js:519",
-   "p/app.js:3324"
+   "p/app.js:3342"
   ],
   "ctx": "${mem ? '' : _T('<div class=\"lg-free\"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى"
  },
@@ -980,7 +980,7 @@
   "k": "بنسبة",
   "at": [
    "p/app.js:478",
-   "p/app.js:3325"
+   "p/app.js:3343"
   ],
   "ctx": "else if (R.mode === 'next') { kick = _T`خلّصت ${SET_NAME(R.prev.s.id)}${R.prev.st.best != null ? _T(' بنسبة ') + R.prev.st.best + '%' : ''} 👏`; title = _T('التا"
  },
@@ -1169,7 +1169,7 @@
   "k": "اشترك",
   "at": [
    "p/app.js:508",
-   "p/app.js:3724"
+   "p/app.js:3742"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"sp\"></span><nav class=\"tnav\"><a class=\"tn ar\" href=\"#arena\" title=\"الساحة 1v1: تحدَّ طالب مباشرة\"><span class=\"i\">⚔️</spa"
  },
@@ -1198,7 +1198,7 @@
   "k": "الساحة",
   "at": [
    "p/app.js:508",
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"sp\"></span><nav class=\"tnav\"><a class=\"tn ar\" href=\"#arena\" title=\"الساحة 1v1: تحدَّ طالب مباشرة\"><span class=\"i\">⚔️</spa"
  },
@@ -2098,7 +2098,7 @@
   "at": [
    "p/app.js:773",
    "p/app.js:866",
-   "p/app.js:3185"
+   "p/app.js:3203"
   ],
   "ctx": "${ytFor(id) ? _T`<a class=\"ytb\" href=\"${ytFor(id).url}\"${ytFor(id).tgt}${ytTip(ytFor(id), _T('شرح ') + ytFor(id).label + _T(' على يوتيوب'))}>${vIcon(ytFor(id))}"
  },
@@ -2107,7 +2107,7 @@
   "at": [
    "p/app.js:773",
    "p/app.js:1880",
-   "p/app.js:3730"
+   "p/app.js:3748"
   ],
   "ctx": "${ytFor(id) ? _T`<a class=\"ytb\" href=\"${ytFor(id).url}\"${ytFor(id).tgt}${ytTip(ytFor(id), _T('شرح ') + ytFor(id).label + _T(' على يوتيوب'))}>${vIcon(ytFor(id))}"
  },
@@ -4566,7 +4566,7 @@
   "k": "اختبار",
   "at": [
    "p/app.js:1907",
-   "p/app.js:3339"
+   "p/app.js:3357"
   ],
   "ctx": "{ id: 'mock1', i: '🧪', t: _T('أول محاكي'), d: _T('خلّصت أول اختبار محاكي'), v: S => S.mocks, n: 1, u: _T('اختبار'), uk: 't' },"
  },
@@ -4836,7 +4836,7 @@
   "k": "تدرّب",
   "at": [
    "p/app.js:1987",
-   "p/app.js:3341"
+   "p/app.js:3359"
   ],
   "ctx": "const rows = TOPIC_ORDER.filter(t => agg[t] && (agg[t].w + agg[t].r)).map(t => { const a = agg[t], n = a.w + a.r, p = Math.round(a.r * 100 / n), L = lvl(p, n); "
  },
@@ -5209,1117 +5209,1117 @@
  {
   "k": "باقي {0} يوم على اختبارك",
   "at": [
-   "p/app.js:3041"
+   "p/app.js:3059"
   ],
   "ctx": "return _T`<div class=\"cd\" data-cd=\"${at}\" role=\"timer\" aria-label=\"باقي ${p.d} يوم على اختبارك\"><span class=\"cdu\"><b data-u=\"d\">${p.d}</b><small>يوم</small></sp"
  },
  {
   "k": "ساعة",
   "at": [
-   "p/app.js:3041"
+   "p/app.js:3059"
   ],
   "ctx": "return _T`<div class=\"cd\" data-cd=\"${at}\" role=\"timer\" aria-label=\"باقي ${p.d} يوم على اختبارك\"><span class=\"cdu\"><b data-u=\"d\">${p.d}</b><small>يوم</small></sp"
  },
  {
   "k": "دقيقة",
   "at": [
-   "p/app.js:3041"
+   "p/app.js:3059"
   ],
   "ctx": "return _T`<div class=\"cd\" data-cd=\"${at}\" role=\"timer\" aria-label=\"باقي ${p.d} يوم على اختبارك\"><span class=\"cdu\"><b data-u=\"d\">${p.d}</b><small>يوم</small></sp"
  },
  {
   "k": "ثانية",
   "at": [
-   "p/app.js:3041"
+   "p/app.js:3059"
   ],
   "ctx": "return _T`<div class=\"cd\" data-cd=\"${at}\" role=\"timer\" aria-label=\"باقي ${p.d} يوم على اختبارك\"><span class=\"cdu\"><b data-u=\"d\">${p.d}</b><small>يوم</small></sp"
  },
  {
   "k": "إن شاء الله أبدعت في اختبارك 🎉 حدّث الموعد إذا عندك اختبار جديد",
   "at": [
-   "p/app.js:3048"
+   "p/app.js:3066"
   ],
   "ctx": "if (dl < 0) return _T('إن شاء الله أبدعت في اختبارك 🎉 حدّث الموعد إذا عندك اختبار جديد');"
  },
  {
   "k": "اليوم اختبارك! ثق في تدريبك، وبالتوفيق 🤲",
   "at": [
-   "p/app.js:3049"
+   "p/app.js:3067"
   ],
   "ctx": "if (dl === 0) return _T('اليوم اختبارك! ثق في تدريبك، وبالتوفيق 🤲');"
  },
  {
   "k": "بكرة اختبارك: راجع أخطاءك بهدوء ونم بدري",
   "at": [
-   "p/app.js:3050"
+   "p/app.js:3068"
   ],
   "ctx": "if (dl === 1) return _T('بكرة اختبارك: راجع أخطاءك بهدوء ونم بدري');"
  },
  {
   "k": "الأسبوع الأخير: ركّز على أخطائك والاختبارات المحاكية",
   "at": [
-   "p/app.js:3051"
+   "p/app.js:3069"
   ],
   "ctx": "if (dl <= 7) return _T('الأسبوع الأخير: ركّز على أخطائك والاختبارات المحاكية');"
  },
  {
   "k": "المرحلة المهمة: كل يوم تذاكر فيه يفرق في درجتك",
   "at": [
-   "p/app.js:3052"
+   "p/app.js:3070"
   ],
   "ctx": "if (dl <= 21) return _T('المرحلة المهمة: كل يوم تذاكر فيه يفرق في درجتك');"
  },
  {
   "k": "وقتك يكفي إذا مشيت على خطة. الاستمرار أهم من الكمية",
   "at": [
-   "p/app.js:3053"
+   "p/app.js:3071"
   ],
   "ctx": "return _T('وقتك يكفي إذا مشيت على خطة. الاستمرار أهم من الكمية');"
  },
  {
   "k": "تخلص قبل اختبارك {0}",
   "at": [
-   "p/app.js:3057"
+   "p/app.js:3075"
   ],
   "ctx": "if (gap >= 1) return { c: 'ok', gap, t: _T`تخلص قبل اختبارك ${byDays(gap)}`, s: _T`✓ قبل اختبارك ${byDays(gap)}` };"
  },
  {
   "k": "✓ قبل اختبارك {0}",
   "at": [
-   "p/app.js:3057"
+   "p/app.js:3075"
   ],
   "ctx": "if (gap >= 1) return { c: 'ok', gap, t: _T`تخلص قبل اختبارك ${byDays(gap)}`, s: _T`✓ قبل اختبارك ${byDays(gap)}` };"
  },
  {
   "k": "تخلص يوم اختبارك نفسه",
   "at": [
-   "p/app.js:3058"
+   "p/app.js:3076"
   ],
   "ctx": "if (gap === 0) return { c: 'warn', gap, t: _T('تخلص يوم اختبارك نفسه'), s: _T('⚠ تخلص يوم اختبارك') };"
  },
  {
   "k": "⚠ تخلص يوم اختبارك",
   "at": [
-   "p/app.js:3058"
+   "p/app.js:3076"
   ],
   "ctx": "if (gap === 0) return { c: 'warn', gap, t: _T('تخلص يوم اختبارك نفسه'), s: _T('⚠ تخلص يوم اختبارك') };"
  },
  {
   "k": "تخلص بعد اختبارك {0}",
   "at": [
-   "p/app.js:3059"
+   "p/app.js:3077"
   ],
   "ctx": "return { c: 'bad', gap, t: _T`تخلص بعد اختبارك ${byDays(-gap)}`, s: _T`⚠ بعد اختبارك ${byDays(-gap)}` };"
  },
  {
   "k": "⚠ بعد اختبارك {0}",
   "at": [
-   "p/app.js:3059"
+   "p/app.js:3077"
   ],
   "ctx": "return { c: 'bad', gap, t: _T`تخلص بعد اختبارك ${byDays(-gap)}`, s: _T`⚠ بعد اختبارك ${byDays(-gap)}` };"
  },
  {
   "k": "حذف الموعد",
   "at": [
-   "p/app.js:3068"
+   "p/app.js:3086"
   ],
   "ctx": "<div class=\"acts\"><button class=\"btn\" id=\"exok\">حفظ الموعد</button><button class=\"btn ghost\" id=\"exno\">إلغاء</button>${ex ? _T('<span class=\"sp\"></span><button "
  },
  {
   "k": "🎯 موعد اختبارك",
   "at": [
-   "p/app.js:3065",
-   "p/app.js:3275"
+   "p/app.js:3083",
+   "p/app.js:3293"
   ],
   "ctx": "box.innerHTML = _T`<div class=\"m exm\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"exh\"><h3 id=\"exh\">🎯 موعد اختبارك</h3>"
  },
  {
   "k": "حدّد موعد اختبار القدرات، ونعرض لك عدّاد تنازلي في الصفحة الرئيسية ونعلّم لك الخطة اللي تلحق قبله.",
   "at": [
-   "p/app.js:3065"
+   "p/app.js:3083"
   ],
   "ctx": "box.innerHTML = _T`<div class=\"m exm\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"exh\"><h3 id=\"exh\">🎯 موعد اختبارك</h3>"
  },
  {
   "k": "التاريخ",
   "at": [
-   "p/app.js:3065"
+   "p/app.js:3083"
   ],
   "ctx": "box.innerHTML = _T`<div class=\"m exm\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"exh\"><h3 id=\"exh\">🎯 موعد اختبارك</h3>"
  },
  {
   "k": "الوقت",
   "at": [
-   "p/app.js:3065",
-   "p/app.js:3348",
-   "p/app.js:3348"
+   "p/app.js:3083",
+   "p/app.js:3366",
+   "p/app.js:3366"
   ],
   "ctx": "box.innerHTML = _T`<div class=\"m exm\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"exh\"><h3 id=\"exh\">🎯 موعد اختبارك</h3>"
  },
  {
   "k": "(اختياري)",
   "at": [
-   "p/app.js:3065"
+   "p/app.js:3083"
   ],
   "ctx": "box.innerHTML = _T`<div class=\"m exm\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"exh\"><h3 id=\"exh\">🎯 موعد اختبارك</h3>"
  },
  {
   "k": "حفظ الموعد",
   "at": [
-   "p/app.js:3065"
+   "p/app.js:3083"
   ],
   "ctx": "box.innerHTML = _T`<div class=\"m exm\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"exh\"><h3 id=\"exh\">🎯 موعد اختبارك</h3>"
  },
  {
   "k": "تم حذف موعد الاختبار",
   "at": [
-   "p/app.js:3075"
+   "p/app.js:3093"
   ],
   "ctx": "const del = $('#exdel'); if (del) del.onclick = () => { lsSet(EXAM_LS, { d: '', up: Date.now() }); skillsPushSoon(1500); toast(_T('تم حذف موعد الاختبار')); clos"
  },
  {
   "k": "اختر تاريخ الاختبار",
   "at": [
-   "p/app.js:3078"
+   "p/app.js:3096"
   ],
   "ctx": "if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(d)) { toast(_T('اختر تاريخ الاختبار')); $('#exd').focus(); return; }"
  },
  {
   "k": "التاريخ اللي اخترته مضى",
   "at": [
-   "p/app.js:3079"
+   "p/app.js:3097"
   ],
   "ctx": "const at = examAt({ d, t }); if (at < Date.now() - DAYMS) { toast(_T('التاريخ اللي اخترته مضى')); return; }"
  },
  {
   "k": "تم حفظ موعد اختبارك ✓",
   "at": [
-   "p/app.js:3080"
+   "p/app.js:3098"
   ],
   "ctx": "lsSet(EXAM_LS, { d, t, up: Date.now() }); lsDel(TRIPX_LS); skillsPushSoon(1500); toast(_T('تم حفظ موعد اختبارك ✓')); close(true);"
  },
  {
   "k": "كمي Section {0}: شاهد المقطع ثم حل القسم {1}",
   "at": [
-   "p/app.js:3089"
+   "p/app.js:3107"
   ],
   "ctx": "const pq = i => ({ k: 'q', set: 'q' + i, t: _T`كمي Section ${i}: شاهد المقطع ثم حل القسم ${i}` });"
  },
  {
   "k": "لفظي Model {0}: شاهد المقطع ثم حل النموذج {1}",
   "at": [
-   "p/app.js:3090"
+   "p/app.js:3108"
   ],
   "ctx": "const pv = i => ({ k: 'v', set: 'v' + i, t: _T`لفظي Model ${i}: شاهد المقطع ثم حل النموذج ${i}` });"
  },
  {
   "k": "أخطائي في الكمي",
   "at": [
-   "p/app.js:3091"
+   "p/app.js:3109"
   ],
   "ctx": "const WQ = ['#t-wrong-q', _T('أخطائي في الكمي')], WV = ['#t-wrong-v', _T('أخطائي في اللفظي')], RULESL = ['#rules', _T('قوانين الكمي')];"
  },
  {
   "k": "أخطائي في اللفظي",
   "at": [
-   "p/app.js:3091"
+   "p/app.js:3109"
   ],
   "ctx": "const WQ = ['#t-wrong-q', _T('أخطائي في الكمي')], WV = ['#t-wrong-v', _T('أخطائي في اللفظي')], RULESL = ['#rules', _T('قوانين الكمي')];"
  },
  {
   "k": "مراجعة الكمي، الأقسام {0}: أعد حل الأسئلة اللي أخطأت فيها وراجع القوانين",
   "at": [
-   "p/app.js:3095"
+   "p/app.js:3113"
   ],
   "ctx": "const RQ = (a, b, m) => pr(_T`مراجعة الكمي، الأقسام ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها وراجع القوانين`, [WQ, RULESL], m);"
  },
  {
   "k": "مراجعة اللفظي، النماذج {0}: أعد حل الأسئلة اللي أخطأت فيها",
   "at": [
-   "p/app.js:3096"
+   "p/app.js:3114"
   ],
   "ctx": "const RV = (a, b, m) => pr(_T`مراجعة اللفظي، النماذج ${rng(a, b)}: أعد حل الأسئلة اللي أخطأت فيها`, [WV], m);"
  },
  {
   "k": "14 مقطع كمي · 14 مقطع لفظي · مراجعة للأقسام كلها آخر الخطة",
   "at": [
-   "p/app.js:3107"
+   "p/app.js:3125"
   ],
   "ctx": "const PCONT = _T('14 مقطع كمي · 14 مقطع لفظي · مراجعة للأقسام كلها آخر الخطة');"
  },
  {
   "k": "الخطة القوية",
   "at": [
-   "p/app.js:3109"
+   "p/app.js:3127"
   ],
   "ctx": "{ id: 'strong', name: _T('الخطة القوية'), days: 7, daily: _T('حوالي 4 إلى 5 ساعات يومياً'), fit: _T('للي اختباره بعد أسبوع'), content: PCONT, rev: 1,"
  },
  {
   "k": "حوالي 4 إلى 5 ساعات يومياً",
   "at": [
-   "p/app.js:3109"
+   "p/app.js:3127"
   ],
   "ctx": "{ id: 'strong', name: _T('الخطة القوية'), days: 7, daily: _T('حوالي 4 إلى 5 ساعات يومياً'), fit: _T('للي اختباره بعد أسبوع'), content: PCONT, rev: 1,"
  },
  {
   "k": "للي اختباره بعد أسبوع",
   "at": [
-   "p/app.js:3109"
+   "p/app.js:3127"
   ],
   "ctx": "{ id: 'strong', name: _T('الخطة القوية'), days: 7, daily: _T('حوالي 4 إلى 5 ساعات يومياً'), fit: _T('للي اختباره بعد أسبوع'), content: PCONT, rev: 1,"
  },
  {
   "k": "الخطة المكثفة",
   "at": [
-   "p/app.js:3112"
+   "p/app.js:3130"
   ],
   "ctx": "{ id: 'intense', name: _T('الخطة المكثفة'), days: 14, daily: _T('حوالي ساعتين إلى 3 ساعات يومياً'), fit: _T('للي اختباره قريب'), content: PCONT, rev: 2,"
  },
  {
   "k": "حوالي ساعتين إلى 3 ساعات يومياً",
   "at": [
-   "p/app.js:3112"
+   "p/app.js:3130"
   ],
   "ctx": "{ id: 'intense', name: _T('الخطة المكثفة'), days: 14, daily: _T('حوالي ساعتين إلى 3 ساعات يومياً'), fit: _T('للي اختباره قريب'), content: PCONT, rev: 2,"
  },
  {
   "k": "للي اختباره قريب",
   "at": [
-   "p/app.js:3112"
+   "p/app.js:3130"
   ],
   "ctx": "{ id: 'intense', name: _T('الخطة المكثفة'), days: 14, daily: _T('حوالي ساعتين إلى 3 ساعات يومياً'), fit: _T('للي اختباره قريب'), content: PCONT, rev: 2,"
  },
  {
   "k": "الخطة المتوازنة",
   "at": [
-   "p/app.js:3115"
+   "p/app.js:3133"
   ],
   "ctx": "{ id: 'balanced', name: _T('الخطة المتوازنة'), days: 19, daily: _T('حوالي ساعتين يومياً · يوم راحة كل أسبوع'), fit: _T('الأنسب لأغلب الطلاب'), content: PCONT, s"
  },
  {
   "k": "حوالي ساعتين يومياً · يوم راحة كل أسبوع",
   "at": [
-   "p/app.js:3115"
+   "p/app.js:3133"
   ],
   "ctx": "{ id: 'balanced', name: _T('الخطة المتوازنة'), days: 19, daily: _T('حوالي ساعتين يومياً · يوم راحة كل أسبوع'), fit: _T('الأنسب لأغلب الطلاب'), content: PCONT, s"
  },
  {
   "k": "الأنسب لأغلب الطلاب",
   "at": [
-   "p/app.js:3115",
-   "p/app.js:3229"
+   "p/app.js:3133",
+   "p/app.js:3247"
   ],
   "ctx": "{ id: 'balanced', name: _T('الخطة المتوازنة'), days: 19, daily: _T('حوالي ساعتين يومياً · يوم راحة كل أسبوع'), fit: _T('الأنسب لأغلب الطلاب'), content: PCONT, s"
  },
  {
   "k": "راحة",
   "at": [
-   "p/app.js:3117"
+   "p/app.js:3135"
   ],
   "ctx": "const study = n => { d.push({ n, tasks: [pq(k), pv(k)], w: W(n) }); k++; }, rest = n => d.push({ n, time: _T('راحة'), tasks: [{ k: 'rest', t: _T('يوم راحة: استر"
  },
  {
   "k": "يوم راحة: استرجع نشاطك",
   "at": [
-   "p/app.js:3117"
+   "p/app.js:3135"
   ],
   "ctx": "const study = n => { d.push({ n, tasks: [pq(k), pv(k)], w: W(n) }); k++; }, rest = n => d.push({ n, time: _T('راحة'), tasks: [{ k: 'rest', t: _T('يوم راحة: استر"
  },
  {
   "k": "مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع",
   "at": [
-   "p/app.js:3119"
+   "p/app.js:3137"
   ],
   "ctx": "d.push({ n: 6, tasks: [pr(_T('مراجعة: أعد حل الأسئلة اللي أخطأت فيها هالأسبوع'), [WQ, WV])], w: 1 }); rest(7);"
  },
  {
   "k": "الخطة المريحة",
   "at": [
-   "p/app.js:3123"
+   "p/app.js:3141"
   ],
   "ctx": "{ id: 'relaxed', name: _T('الخطة المريحة'), days: 28, daily: _T('حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة'), fit: _T('للي عنده دوام أو مدرسة'), content"
  },
  {
   "k": "حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة",
   "at": [
-   "p/app.js:3123"
+   "p/app.js:3141"
   ],
   "ctx": "{ id: 'relaxed', name: _T('الخطة المريحة'), days: 28, daily: _T('حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة'), fit: _T('للي عنده دوام أو مدرسة'), content"
  },
  {
   "k": "للي عنده دوام أو مدرسة",
   "at": [
-   "p/app.js:3123"
+   "p/app.js:3141"
   ],
   "ctx": "{ id: 'relaxed', name: _T('الخطة المريحة'), days: 28, daily: _T('حوالي ساعتين يومياً: يوم مذاكرة ويوم مراجعة خفيفة'), fit: _T('للي عنده دوام أو مدرسة'), content"
  },
  {
   "k": "مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك",
   "at": [
-   "p/app.js:3127"
+   "p/app.js:3145"
   ],
   "ctx": "d.push({ n: n + 1, tasks: [pr(_T('مراجعة خفيفة: أعد حل أخطاء أمس وراجع ملاحظاتك'), [WQ, WV], 30)], w: W(n + 1) }); }"
  },
  {
   "k": "كمّل {0}",
   "at": [
-   "p/app.js:3178"
+   "p/app.js:3196"
   ],
   "ctx": "const lab = p.done ? `✓ ${nm}${p.best != null ? ` <small>${p.best}%</small>` : ''}` : ans ? _T`كمّل ${nm} <small>${ans}${tot ? '/' + tot : ''}</small>` : _T`حل "
  },
  {
   "k": "حل {0}",
   "at": [
-   "p/app.js:3178"
+   "p/app.js:3196"
   ],
   "ctx": "const lab = p.done ? `✓ ${nm}${p.best != null ? ` <small>${p.best}%</small>` : ''}` : ans ? _T`كمّل ${nm} <small>${ans}${tot ? '/' + tot : ''}</small>` : _T`حل "
  },
  {
   "k": "مقطع شرح",
   "at": [
-   "p/app.js:3185"
+   "p/app.js:3203"
   ],
   "ctx": "return (y ? _T`<a class=\"go yt\" href=\"${y.url}\"${y.tgt}${ytTip(y, _T('مقطع شرح ') + y.label + _T(' على يوتيوب'))}>${vIcon(y)}<span>المقطع</span><small>${y.dur}<"
  },
  {
   "k": "المقطع",
   "at": [
-   "p/app.js:3185"
+   "p/app.js:3203"
   ],
   "ctx": "return (y ? _T`<a class=\"go yt\" href=\"${y.url}\"${y.tgt}${ytTip(y, _T('مقطع شرح ') + y.label + _T(' على يوتيوب'))}>${vIcon(y)}<span>المقطع</span><small>${y.dur}<"
  },
  {
   "k": "متى اختبارك؟",
   "at": [
-   "p/app.js:3191",
-   "p/app.js:3227"
+   "p/app.js:3209",
+   "p/app.js:3245"
   ],
   "ctx": "if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class=\"trip invite\"><span class=\"tr-i\" aria-hidden=\"true\">⏳</span><span class=\"tr-t\"><b>متى اختبارك؟<"
  },
  {
   "k": "حدّد الموعد ونعرض لك عدّاد تنازلي، ونقترح لك خطة مذاكرة تلحق قبله.",
   "at": [
-   "p/app.js:3191"
+   "p/app.js:3209"
   ],
   "ctx": "if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class=\"trip invite\"><span class=\"tr-i\" aria-hidden=\"true\">⏳</span><span class=\"tr-t\"><b>متى اختبارك؟<"
  },
  {
   "k": "حدّد الموعد",
   "at": [
-   "p/app.js:3191",
-   "p/app.js:3227",
-   "p/app.js:3275"
+   "p/app.js:3209",
+   "p/app.js:3245",
+   "p/app.js:3293"
   ],
   "ctx": "if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class=\"trip invite\"><span class=\"tr-i\" aria-hidden=\"true\">⏳</span><span class=\"tr-t\"><b>متى اختبارك؟<"
  },
  {
   "k": "خطط المذاكرة",
   "at": [
-   "p/app.js:3191"
+   "p/app.js:3209"
   ],
   "ctx": "if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class=\"trip invite\"><span class=\"tr-i\" aria-hidden=\"true\">⏳</span><span class=\"tr-t\"><b>متى اختبارك؟<"
  },
  {
   "k": "إخفاء",
   "at": [
-   "p/app.js:3191",
-   "p/app.js:3191"
+   "p/app.js:3209",
+   "p/app.js:3209"
   ],
   "ctx": "if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class=\"trip invite\"><span class=\"tr-i\" aria-hidden=\"true\">⏳</span><span class=\"tr-t\"><b>متى اختبارك؟<"
  },
  {
   "k": "موعد اختبارك وخطتك",
   "at": [
-   "p/app.js:3192"
+   "p/app.js:3210"
   ],
   "ctx": "let h = _T('<section class=\"trip\" aria-label=\"موعد اختبارك وخطتك\">');"
  },
  {
   "k": "⏳ اختبارك اليوم بعد",
   "at": [
-   "p/app.js:3195"
+   "p/app.js:3213"
   ],
   "ctx": "h += _T`<div class=\"tr-ex\"><div class=\"tr-l\"><span class=\"tr-k\">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 ال"
  },
  {
   "k": "⏳ باقي على اختبارك",
   "at": [
-   "p/app.js:3195"
+   "p/app.js:3213"
   ],
   "ctx": "h += _T`<div class=\"tr-ex\"><div class=\"tr-l\"><span class=\"tr-k\">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 ال"
  },
  {
   "k": "🤲 اليوم اختبارك",
   "at": [
-   "p/app.js:3195"
+   "p/app.js:3213"
   ],
   "ctx": "h += _T`<div class=\"tr-ex\"><div class=\"tr-l\"><span class=\"tr-k\">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 ال"
  },
  {
   "k": "🎓 كان اختبارك",
   "at": [
-   "p/app.js:3195"
+   "p/app.js:3213"
   ],
   "ctx": "h += _T`<div class=\"tr-ex\"><div class=\"tr-l\"><span class=\"tr-k\">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 ال"
  },
  {
   "k": "{0}، الساعة {1}",
   "at": [
-   "p/app.js:3195"
+   "p/app.js:3213"
   ],
   "ctx": "h += _T`<div class=\"tr-ex\"><div class=\"tr-l\"><span class=\"tr-k\">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 ال"
  },
  {
   "k": "تعديل",
   "at": [
-   "p/app.js:3195",
-   "p/app.js:3275"
+   "p/app.js:3213",
+   "p/app.js:3293"
   ],
   "ctx": "h += _T`<div class=\"tr-ex\"><div class=\"tr-l\"><span class=\"tr-k\">${live ? (dl === 0 ? _T('⏳ اختبارك اليوم بعد') : _T('⏳ باقي على اختبارك')) : dl === 0 ? _T('🤲 ال"
  },
  {
   "k": ". الحين راجع أخطاءك لين يجي اختبارك",
   "at": [
-   "p/app.js:3199"
+   "p/app.js:3217"
   ],
   "ctx": "if (!I.cur) h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">🎉</span><div class=\"tr-pt\"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now "
  },
  {
   "k": "خلّصت",
   "at": [
-   "p/app.js:3199"
+   "p/app.js:3217"
   ],
   "ctx": "if (!I.cur) h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">🎉</span><div class=\"tr-pt\"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now "
  },
  {
   "k": "كاملة{0}.",
   "at": [
-   "p/app.js:3199"
+   "p/app.js:3217"
   ],
   "ctx": "if (!I.cur) h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">🎉</span><div class=\"tr-pt\"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now "
  },
  {
   "k": "الخطة",
   "at": [
-   "p/app.js:3199"
+   "p/app.js:3217"
   ],
   "ctx": "if (!I.cur) h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">🎉</span><div class=\"tr-pt\"><span>خلّصت <b>${plan.name}</b> كاملة${ex && exT > now "
  },
  {
   "k": "😴 يوم راحة",
   "at": [
-   "p/app.js:3201"
+   "p/app.js:3219"
   ],
   "ctx": "const links = I.cur.tasks.map(t => t.k === 'rest' ? _T('<span class=\"tchip rest\">😴 يوم راحة</span>') : taskSolve(t, 'tchip')).join('');"
  },
  {
   "k": "تخلص",
   "at": [
-   "p/app.js:3203"
+   "p/app.js:3221"
   ],
   "ctx": "const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class=\"fit ${fit.c}\">${fit.s}</span>` : I.left > 0 ? "
  },
  {
   "k": "كانت تخلص",
   "at": [
-   "p/app.js:3203"
+   "p/app.js:3221"
   ],
   "ctx": "const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class=\"fit ${fit.c}\">${fit.s}</span>` : I.left > 0 ? "
  },
  {
   "k": "باقي {0}",
   "at": [
-   "p/app.js:3203",
-   "p/app.js:3251"
+   "p/app.js:3221",
+   "p/app.js:3269"
   ],
   "ctx": "const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class=\"fit ${fit.c}\">${fit.s}</span>` : I.left > 0 ? "
  },
  {
   "k": "متأخر {0} عن الجدول",
   "at": [
-   "p/app.js:3203",
-   "p/app.js:3250"
+   "p/app.js:3221",
+   "p/app.js:3268"
   ],
   "ctx": "const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class=\"fit ${fit.c}\">${fit.s}</span>` : I.left > 0 ? "
  },
  {
   "k": "حدّد موعد اختبارك",
   "at": [
-   "p/app.js:3203"
+   "p/app.js:3221"
   ],
   "ctx": "const tags = `<span>${I.left >= 0 ? _T('تخلص') : _T('كانت تخلص')} ${fmtDay(I.end)}</span>` + (fit ? `<span class=\"fit ${fit.c}\">${fit.s}</span>` : I.left > 0 ? "
  },
  {
   "k": "خلّصت مهام اليوم ✓",
   "at": [
-   "p/app.js:3205",
-   "p/app.js:3250"
+   "p/app.js:3223",
+   "p/app.js:3268"
   ],
   "ctx": "h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class=\"mut\">(الج"
  },
  {
   "k": "(الجاي: اليوم {0} من {1})",
   "at": [
-   "p/app.js:3205"
+   "p/app.js:3223"
   ],
   "ctx": "h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class=\"mut\">(الج"
  },
  {
   "k": "خطتك اليوم",
   "at": [
-   "p/app.js:3205"
+   "p/app.js:3223"
   ],
   "ctx": "h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class=\"mut\">(الج"
  },
  {
   "k": "(اليوم {0} من {1})",
   "at": [
-   "p/app.js:3205"
+   "p/app.js:3223"
   ],
   "ctx": "h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class=\"mut\">(الج"
  },
  {
   "k": "افتح الخطة",
   "at": [
-   "p/app.js:3205"
+   "p/app.js:3223"
   ],
   "ctx": "h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>${ahead ? _T`<b>خلّصت مهام اليوم ✓</b> <span class=\"mut\">(الج"
  },
  {
   "k": "ما اخترت خطة مذاكرة.",
   "at": [
-   "p/app.js:3207"
+   "p/app.js:3225"
   ],
   "ctx": "} else h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>ما اخترت خطة مذاكرة. <a href=\"#plan\">اختر خطة تلحق قبل"
  },
  {
   "k": "اختر خطة تلحق قبل اختبارك",
   "at": [
-   "p/app.js:3207"
+   "p/app.js:3225"
   ],
   "ctx": "} else h += _T`<div class=\"tr-pl\"><span class=\"tr-pi\" aria-hidden=\"true\">📅</span><div class=\"tr-pt\"><span>ما اخترت خطة مذاكرة. <a href=\"#plan\">اختر خطة تلحق قبل"
  },
  {
   "k": "خطة المذاكرة | Q-Guide",
   "at": [
-   "p/app.js:3214"
+   "p/app.js:3232"
   ],
   "ctx": "document.title = _T('خطة المذاكرة | Q-Guide');"
  },
  {
   "k": "📅 خطة المذاكرة",
   "at": [
-   "p/app.js:3217"
+   "p/app.js:3235"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">📅 خطة المذاكرة</span><span class=\"sp\"></span>`, _T`<a class=\"ib\" href=\"#\" title=\"الرئيسية\">→</a>`) + `<main class=\"w"
  },
  {
   "k": "باقي {0}. علّمنا لك بالنجمة ⭐ الخطة اللي تلحق قبله",
   "at": [
-   "p/app.js:3227"
+   "p/app.js:3245"
   ],
   "ctx": "<div class=\"exrow\"><span class=\"exi\" aria-hidden=\"true\">🎯</span><div class=\"ext\">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl"
  },
  {
   "k": "اختبارك اليوم! بالتوفيق",
   "at": [
-   "p/app.js:3227"
+   "p/app.js:3245"
   ],
   "ctx": "<div class=\"exrow\"><span class=\"exi\" aria-hidden=\"true\">🎯</span><div class=\"ext\">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl"
  },
  {
   "k": "الموعد المحفوظ مضى. حدّثه إذا عندك اختبار جديد",
   "at": [
-   "p/app.js:3227"
+   "p/app.js:3245"
   ],
   "ctx": "<div class=\"exrow\"><span class=\"exi\" aria-hidden=\"true\">🎯</span><div class=\"ext\">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl"
  },
  {
   "k": "اختبارك {0}",
   "at": [
-   "p/app.js:3227"
+   "p/app.js:3245"
   ],
   "ctx": "<div class=\"exrow\"><span class=\"exi\" aria-hidden=\"true\">🎯</span><div class=\"ext\">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl"
  },
  {
   "k": "حدّد الموعد ونعلّم لك الخطة اللي تلحق قبله، ونعرض لك عدّاد تنازلي",
   "at": [
-   "p/app.js:3227"
+   "p/app.js:3245"
   ],
   "ctx": "<div class=\"exrow\"><span class=\"exi\" aria-hidden=\"true\">🎯</span><div class=\"ext\">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl"
  },
  {
   "k": "تعديل الموعد",
   "at": [
-   "p/app.js:3227"
+   "p/app.js:3245"
   ],
   "ctx": "<div class=\"exrow\"><span class=\"exi\" aria-hidden=\"true\">🎯</span><div class=\"ext\">${ex ? _T`<b>اختبارك ${fmtDay(exT)}</b><span>${live ? (dl ? _T`باقي ${dLabel(dl"
  },
  {
   "k": "الأنسب لموعد اختبارك",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "آخر يوم",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "آخر يومين",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "{0} يوماً",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "🔁 {0} مراجعة للـ14 قسم والـ14 نموذج",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "🏁 تخلص {0}",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "ابدأ هذه الخطة",
   "at": [
-   "p/app.js:3229"
+   "p/app.js:3247"
   ],
   "ctx": "return _T`<button class=\"pcard ${star ? 'star' : ''} ${f && f.c !== 'ok' ? 'late' : ''}\" data-p=\"${p.id}\">${star ? `<span class=\"pstar\">⭐ ${rec ? _T('الأنسب لمو"
  },
  {
   "k": "أقل من يوم",
   "at": [
-   "p/app.js:3230"
+   "p/app.js:3248"
   ],
   "ctx": "${rec && dayDiff(endOf(rec), exT) < 1 ? _T`<div class=\"pverd bad\">⚠ باقي على اختبارك ${dl ? dLabel(dl) : _T('أقل من يوم')} بس، وأقصر خطة 7 أيام. ابدأ بالخطة الق"
  },
  {
   "k": "⚠ باقي على اختبارك {0} بس، وأقصر خطة 7 أيام. ابدأ بالخطة القوية وركّز على الأقسام اللي تحس إنك أضعف فيها.",
   "at": [
-   "p/app.js:3230"
+   "p/app.js:3248"
   ],
   "ctx": "${rec && dayDiff(endOf(rec), exT) < 1 ? _T`<div class=\"pverd bad\">⚠ باقي على اختبارك ${dl ? dLabel(dl) : _T('أقل من يوم')} بس، وأقصر خطة 7 أيام. ابدأ بالخطة الق"
  },
  {
   "k": "اختر الخطة اللي تناسب وقتك",
   "at": [
-   "p/app.js:3226"
+   "p/app.js:3244"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في الم"
  },
  {
   "k": "كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في المنصة، وآخر أيامها مراجعة على الأقسام والنماذج كلها. تقدر تغيّر الخطة في أي وقت.",
   "at": [
-   "p/app.js:3226"
+   "p/app.js:3244"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في الم"
  },
  {
   "k": "طريقة المذاكرة:",
   "at": [
-   "p/app.js:3226",
-   "p/app.js:3270"
+   "p/app.js:3244",
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في الم"
  },
  {
   "k": "شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة مباشرة • اقرأ شرح كل سؤال أخطأت فيه، وأخطاؤك تنحفظ لك تلقائياً في «مراجعة أخطائي» • المهام تنعلّم ✓ لحالها لما تحل القسم • إذا فاتك يوم كمّل من مكانك ولا تحاول تعوّض يومين في يوم.",
   "at": [
-   "p/app.js:3226"
+   "p/app.js:3244"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>اختر الخطة اللي تناسب وقتك</h1><p>كل خطة تمشي على مقاطع الشرح (14 كمي و14 لفظي): تشاهد المقطع ثم تحل قسمه هنا في الم"
  },
  {
   "k": "🎉 خلّصت اليوم {0}، ونزل تحت في «إنجازك»",
   "at": [
-   "p/app.js:3243",
-   "p/app.js:3309"
+   "p/app.js:3261",
+   "p/app.js:3327"
   ],
   "ctx": "if (calm && newly.length) { SN.n = SN.n.concat(newly); if (o.tick) toast(newly.length === 1 ? _T`🎉 خلّصت اليوم ${newly[0]}، ونزل تحت في «إنجازك»` : _T`🎉 خلّصت $"
  },
  {
   "k": "🎉 خلّصت {0}، ونزلت تحت في «إنجازك»",
   "at": [
-   "p/app.js:3243",
-   "p/app.js:3309"
+   "p/app.js:3261",
+   "p/app.js:3327"
   ],
   "ctx": "if (calm && newly.length) { SN.n = SN.n.concat(newly); if (o.tick) toast(newly.length === 1 ? _T`🎉 خلّصت اليوم ${newly[0]}، ونزل تحت في «إنجازك»` : _T`🎉 خلّصت $"
  },
  {
   "k": "انعلّمت لحالها لأنك حليت القسم",
   "at": [
-   "p/app.js:3248"
+   "p/app.js:3266"
   ],
   "ctx": "const autoTip = { q: _T('انعلّمت لحالها لأنك حليت القسم'), v: _T('انعلّمت لحالها لأنك حليت النموذج'), rest: _T('يوم الراحة ينحسب لحاله لما يجي تاريخه') };"
  },
  {
   "k": "انعلّمت لحالها لأنك حليت النموذج",
   "at": [
-   "p/app.js:3248"
+   "p/app.js:3266"
   ],
   "ctx": "const autoTip = { q: _T('انعلّمت لحالها لأنك حليت القسم'), v: _T('انعلّمت لحالها لأنك حليت النموذج'), rest: _T('يوم الراحة ينحسب لحاله لما يجي تاريخه') };"
  },
  {
   "k": "يوم الراحة ينحسب لحاله لما يجي تاريخه",
   "at": [
-   "p/app.js:3248"
+   "p/app.js:3266"
   ],
   "ctx": "const autoTip = { q: _T('انعلّمت لحالها لأنك حليت القسم'), v: _T('انعلّمت لحالها لأنك حليت النموذج'), rest: _T('يوم الراحة ينحسب لحاله لما يجي تاريخه') };"
  },
  {
   "k": "خلّصت كل الأيام 🎉",
   "at": [
-   "p/app.js:3250"
+   "p/app.js:3268"
   ],
   "ctx": "const lagT = !cur ? _T('خلّصت كل الأيام 🎉') : I.lag > 0 ? _T`<span class=\"fit warn\">متأخر ${I.lag === 1 && !EN ? _T('يوم') : dLabel(I.lag)} عن الجدول</span>` : "
  },
  {
   "k": "متقدم {0} عن الجدول 👏",
   "at": [
-   "p/app.js:3250"
+   "p/app.js:3268"
   ],
   "ctx": "const lagT = !cur ? _T('خلّصت كل الأيام 🎉') : I.lag > 0 ? _T`<span class=\"fit warn\">متأخر ${I.lag === 1 && !EN ? _T('يوم') : dLabel(I.lag)} عن الجدول</span>` : "
  },
  {
   "k": "ماشي على الجدول ✓",
   "at": [
-   "p/app.js:3250"
+   "p/app.js:3268"
   ],
   "ctx": "const lagT = !cur ? _T('خلّصت كل الأيام 🎉') : I.lag > 0 ? _T`<span class=\"fit warn\">متأخر ${I.lag === 1 && !EN ? _T('يوم') : dLabel(I.lag)} عن الجدول</span>` : "
  },
  {
   "k": "اليوم آخر يوم في الخطة",
   "at": [
-   "p/app.js:3251"
+   "p/app.js:3269"
   ],
   "ctx": "const leftT = I.left > 0 ? _T`باقي ${dLabel(I.left)}` : I.left === 0 ? _T('اليوم آخر يوم في الخطة') : _T`كان المفروض تخلص قبل ${dLabel(-I.left)}`;"
  },
  {
   "k": "كان المفروض تخلص قبل {0}",
   "at": [
-   "p/app.js:3251"
+   "p/app.js:3269"
   ],
   "ctx": "const leftT = I.left > 0 ? _T`باقي ${dLabel(I.left)}` : I.left === 0 ? _T('اليوم آخر يوم في الخطة') : _T`كان المفروض تخلص قبل ${dLabel(-I.left)}`;"
  },
  {
   "k": ". استغل الأيام الزيادة في مراجعة أخطائك",
   "at": [
-   "p/app.js:3253"
+   "p/app.js:3271"
   ],
   "ctx": "if (fit) verd = fit.c === 'ok' ? _T`✓ خطتك ${fit.t}${fit.gap >= 3 ? _T('. استغل الأيام الزيادة في مراجعة أخطائك') : _T('. التزم بالجدول عشان تلحق')}.`"
  },
  {
   "k": ". التزم بالجدول عشان تلحق",
   "at": [
-   "p/app.js:3253"
+   "p/app.js:3271"
   ],
   "ctx": "if (fit) verd = fit.c === 'ok' ? _T`✓ خطتك ${fit.t}${fit.gap >= 3 ? _T('. استغل الأيام الزيادة في مراجعة أخطائك') : _T('. التزم بالجدول عشان تلحق')}.`"
  },
  {
   "k": "✓ خطتك {0}{1}.",
   "at": [
-   "p/app.js:3253"
+   "p/app.js:3271"
   ],
   "ctx": "if (fit) verd = fit.c === 'ok' ? _T`✓ خطتك ${fit.t}${fit.gap >= 3 ? _T('. استغل الأيام الزيادة في مراجعة أخطائك') : _T('. التزم بالجدول عشان تلحق')}.`"
  },
  {
   "k": "⚠ خطتك تخلص يوم اختبارك نفسه. حاول تسبق الجدول بيوم أو يومين.",
   "at": [
-   "p/app.js:3254"
+   "p/app.js:3272"
   ],
   "ctx": ": fit.c === 'warn' ? _T('⚠ خطتك تخلص يوم اختبارك نفسه. حاول تسبق الجدول بيوم أو يومين.')"
  },
  {
   "k": "بدّل لـ«{0}» ({1})، أو ضاعف",
   "at": [
-   "p/app.js:3255"
+   "p/app.js:3273"
   ],
   "ctx": ": (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return _T`⚠ خط"
  },
  {
   "k": "حاول تضاعف",
   "at": [
-   "p/app.js:3255"
+   "p/app.js:3273"
   ],
   "ctx": ": (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return _T`⚠ خط"
  },
  {
   "k": "⚠ خطتك {0}. {1} بعض الأيام عشان تلحق.",
   "at": [
-   "p/app.js:3255"
+   "p/app.js:3273"
   ],
   "ctx": ": (() => { const sh = PLANS.filter(p => p.days < plan.days && dayDiff(addDays(day0(), p.days - 1), exT) >= 1).sort((a, b) => b.days - a.days)[0]; return _T`⚠ خط"
  },
  {
   "k": "الأسبوع {0}",
   "at": [
-   "p/app.js:3257"
+   "p/app.js:3275"
   ],
   "ctx": "const dayHtml = d => { const wk = plan.days > 14 && d.w !== lastW ? _T`<div class=\"wk\">الأسبوع ${d.w}</div>` : ''; lastW = d.w || lastW;"
  },
  {
   "k": "✓ خلّصته",
   "at": [
-   "p/app.js:3260"
+   "p/app.js:3278"
   ],
   "ctx": "const tag = fr ? _T('<span class=\"now ok\">✓ خلّصته</span>') : isTod ? _T`<span class=\"now${isCur ? '' : ' td'}\" title=\"تاريخ اليوم\">اليوم</span>` : isCur ? _T('"
  },
  {
   "k": "تاريخ اليوم",
   "at": [
-   "p/app.js:3260"
+   "p/app.js:3278"
   ],
   "ctx": "const tag = fr ? _T('<span class=\"now ok\">✓ خلّصته</span>') : isTod ? _T`<span class=\"now${isCur ? '' : ' td'}\" title=\"تاريخ اليوم\">اليوم</span>` : isCur ? _T('"
  },
  {
   "k": "اليوم",
   "at": [
-   "p/app.js:3260",
-   "p/app.js:3268"
+   "p/app.js:3278",
+   "p/app.js:3286"
   ],
   "ctx": "const tag = fr ? _T('<span class=\"now ok\">✓ خلّصته</span>') : isTod ? _T`<span class=\"now${isCur ? '' : ' td'}\" title=\"تاريخ اليوم\">اليوم</span>` : isCur ? _T('"
  },
  {
   "k": "أول يوم في خطتك ما خلّصته",
   "at": [
-   "p/app.js:3260"
+   "p/app.js:3278"
   ],
   "ctx": "const tag = fr ? _T('<span class=\"now ok\">✓ خلّصته</span>') : isTod ? _T`<span class=\"now${isCur ? '' : ' td'}\" title=\"تاريخ اليوم\">اليوم</span>` : isCur ? _T('"
  },
  {
   "k": "كمّل من هنا",
   "at": [
-   "p/app.js:3260"
+   "p/app.js:3278"
   ],
   "ctx": "const tag = fr ? _T('<span class=\"now ok\">✓ خلّصته</span>') : isTod ? _T`<span class=\"now${isCur ? '' : ' td'}\" title=\"تاريخ اليوم\">اليوم</span>` : isCur ? _T('"
  },
  {
   "k": "اليوم {0}",
   "at": [
-   "p/app.js:3261",
-   "p/app.js:3268"
+   "p/app.js:3279",
+   "p/app.js:3286"
   ],
   "ctx": "return wk + _T`<section class=\"day ${fr ? 'fin' : ''} ${isCur ? 'cur' : ''} ${isTod ? 'tod' : ''}\" id=\"day${d.n}\"${isTod ? ' aria-current=\"date\"' : ''}><header>"
  },
  {
   "k": "😴 راحة",
   "at": [
-   "p/app.js:3264"
+   "p/app.js:3282"
   ],
   "ctx": "if (t.k === 'rest') return _T('<span class=\"tchip rest\">😴 راحة</span>');"
  },
  {
   "k": "✓ مراجعة",
   "at": [
-   "p/app.js:3267"
+   "p/app.js:3285"
   ],
   "ctx": "return _T('<span class=\"tchip ok\">✓ مراجعة</span>'); };"
  },
  {
   "k": "شيل العلامة لو علّمته بالغلط",
   "at": [
-   "p/app.js:3268"
+   "p/app.js:3286"
   ],
   "ctx": "const finHtml = d => _T`<div class=\"dn ${planArrive.indexOf(d.n) >= 0 ? 'arrive' : ''}\" id=\"dn${d.n}\"><label class=\"dchk\" title=\"شيل العلامة لو علّمته بالغلط\"><"
  },
  {
   "k": "خلّصت {0} من {1}",
   "at": [
-   "p/app.js:3269"
+   "p/app.js:3287"
   ],
   "ctx": "const doneTxt = I.nDone ? _T`خلّصت ${dLabel(I.nDone)} من ${days.length}` : _T`ما خلّصت أي يوم من ${days.length} للحين`;"
  },
  {
   "k": "ما خلّصت أي يوم من {0} للحين",
   "at": [
-   "p/app.js:3269"
+   "p/app.js:3287"
   ],
   "ctx": "const doneTxt = I.nDone ? _T`خلّصت ${dLabel(I.nDone)} من ${days.length}` : _T`ما خلّصت أي يوم من ${days.length} للحين`;"
  },
  {
   "k": "باقي على اختبارك",
   "at": [
-   "p/app.js:3275"
+   "p/app.js:3293"
   ],
   "ctx": "<div class=\"pst ex\">${ex ? _T`<span class=\"pk\">🎯 ${live ? _T('باقي على اختبارك') : _T('موعد اختبارك')}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>"
  },
  {
   "k": "موعد اختبارك",
   "at": [
-   "p/app.js:3275"
+   "p/app.js:3293"
   ],
   "ctx": "<div class=\"pst ex\">${ex ? _T`<span class=\"pk\">🎯 ${live ? _T('باقي على اختبارك') : _T('موعد اختبارك')}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>"
  },
  {
   "k": "ما حدّدته",
   "at": [
-   "p/app.js:3275"
+   "p/app.js:3293"
   ],
   "ctx": "<div class=\"pst ex\">${ex ? _T`<span class=\"pk\">🎯 ${live ? _T('باقي على اختبارك') : _T('موعد اختبارك')}</span>${live ? cdHtml(exT, true) : `<b>${fmtDay(exT)}</b>"
  },
  {
   "k": "🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد حل الأقسام اللي درجتك فيها أقل.",
   "at": [
-   "p/app.js:3278"
+   "p/app.js:3296"
   ],
   "ctx": "<div class=\"days\">${act.length ? act.map(dayHtml).join('') : _T('<div class=\"pall\">🎉 خلّصت كل أيام الخطة! الحين راجع أخطاءك، وأعد حل الأقسام اللي درجتك فيها أقل"
  },
  {
   "k": "خلّصت {0} ·",
   "at": [
-   "p/app.js:3279"
+   "p/app.js:3297"
   ],
   "ctx": "<section class=\"pdone\" aria-labelledby=\"pdh\"><header><h2 id=\"pdh\">✅ إنجازك في الخطة</h2><span class=\"pdp\">${fin.length ? _T`خلّصت ${dLabel(fin.length)} · ` : ''"
  },
  {
   "k": "أول ما تخلّص كل مهام يوم، يتلاشى من فوق وينزل هنا ✓",
   "at": [
-   "p/app.js:3280"
+   "p/app.js:3298"
   ],
   "ctx": "${fin.length ? `<div class=\"pdl\">${fin.map(finHtml).join('')}</div>` : _T('<p class=\"pde\">أول ما تخلّص كل مهام يوم، يتلاشى من فوق وينزل هنا ✓</p>')}</section>"
  },
  {
   "k": "{0} يوماً · {1}",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "تغيير الخطة",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "يمسح علاماتك ويبدأ الخطة من اليوم",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "إعادة البدء",
   "at": [
-   "p/app.js:3270",
-   "p/app.js:3290"
+   "p/app.js:3288",
+   "p/app.js:3308"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "✅ نسبة الإنجاز",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "نسبة إنجازك في الخطة",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "🏁 نهاية الخطة",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "✅ إنجازك في الخطة",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "🔵 كمي · 🟢 لفظي · 🟠 مراجعة. المهام تنعلّم ✓ لحالها لما تحل القسم، والمراجعة علّمها أنت.",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "شاهد المقطع كاملاً ثم حل القسم نفسه هنا في المنصة، واقرأ شرح كل سؤال أخطأت فيه. إذا فاتك يوم كمّل من مكانك ولا تعوّض يومين في يوم.",
   "at": [
-   "p/app.js:3270"
+   "p/app.js:3288"
   ],
   "ctx": "W.innerHTML = _T`<div class=\"hero\"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>"
  },
  {
   "k": "هذا اليوم محسوب لك لأنك حليت أقسامه ✓",
   "at": [
-   "p/app.js:3287"
+   "p/app.js:3305"
   ],
   "ctx": "if (!c.checked) { const J = planInfo(plan, st); if (J.dayDone(J.days.find(x => x.n === d.n))) toast(_T('هذا اليوم محسوب لك لأنك حليت أقسامه ✓')); }"
  },
  {
   "k": "تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)",
   "at": [
-   "p/app.js:3289"
+   "p/app.js:3307"
   ],
   "ctx": "$('#chg').onclick = async () => { if (await QGDlg.confirm(_T('تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)'), { ok: _T('تغيير') })) { const al"
  },
  {
   "k": "تغيير",
   "at": [
-   "p/app.js:3289"
+   "p/app.js:3307"
   ],
   "ctx": "$('#chg').onclick = async () => { if (await QGDlg.confirm(_T('تغيير الخطة؟ (علاماتك الحالية تُحفظ لو رجعت لنفس الخطة لاحقاً)'), { ok: _T('تغيير') })) { const al"
  },
  {
   "k": "مسح علاماتك والبدء من اليوم 1؟ (الأقسام اللي حليتها تبقى محسوبة)",
   "at": [
-   "p/app.js:3290"
+   "p/app.js:3308"
   ],
   "ctx": "$('#rst').onclick = async () => { if (await QGDlg.confirm(_T('مسح علاماتك والبدء من اليوم 1؟ (الأقسام اللي حليتها تبقى محسوبة)'), { ok: _T('إعادة البدء'), dange"
  },
  {
   "k": "لوحة الصدارة | Q-Guide",
   "at": [
-   "p/app.js:3315"
+   "p/app.js:3333"
   ],
   "ctx": "document.title = _T('لوحة الصدارة | Q-Guide');"
  },
  {
   "k": "(كمي)",
   "at": [
-   "p/app.js:3319"
+   "p/app.js:3337"
   ],
   "ctx": "const setTitle = id => SET_NAME(id) + (id[0] === 'q' ? _T(' (كمي)') : _T(' (لفظي)'));"
  },
  {
   "k": "(لفظي)",
   "at": [
-   "p/app.js:3319"
+   "p/app.js:3337"
   ],
   "ctx": "const setTitle = id => SET_NAME(id) + (id[0] === 'q' ? _T(' (كمي)') : _T(' (لفظي)'));"
  },
  {
   "k": "🏆 لوحة الصدارة",
   "at": [
-   "p/app.js:3321",
+   "p/app.js:3339",
    "test/exam.js:133"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">🏆 لوحة الصدارة</span><span class=\"sp\"></span><button class=\"ib\" id=\"lbref\" title=\"تحديث\">⟳</button>`, _T`<a class=\"i"
@@ -6327,1302 +6327,1302 @@
  {
   "k": "تحديث",
   "at": [
-   "p/app.js:3321"
+   "p/app.js:3339"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">🏆 لوحة الصدارة</span><span class=\"sp\"></span><button class=\"ib\" id=\"lbref\" title=\"تحديث\">⟳</button>`, _T`<a class=\"i"
  },
  {
   "k": "اختر القسم:",
   "at": [
-   "p/app.js:3323"
+   "p/app.js:3341"
   ],
   "ctx": "${isSet ? _T`<div class=\"setpick\"><label>اختر القسم:</label><select id=\"lbset\">${opts.map(o => `<option value=\"${o}\" ${o === setId ? 'selected' : ''}>${setTitle"
  },
  {
   "k": "ترتيب",
   "at": [
-   "p/app.js:3324"
+   "p/app.js:3342"
   ],
   "ctx": "<p class=\"mut lbnote\">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أ"
  },
  {
   "k": "بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أكثر.",
   "at": [
-   "p/app.js:3324"
+   "p/app.js:3342"
   ],
   "ctx": "<p class=\"mut lbnote\">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أ"
  },
  {
   "k": "الترتيب بـ",
   "at": [
-   "p/app.js:3324"
+   "p/app.js:3342"
   ],
   "ctx": "<p class=\"mut lbnote\">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أ"
  },
  {
   "k": "متوسط النسبة المئوية",
   "at": [
-   "p/app.js:3324"
+   "p/app.js:3342"
   ],
   "ctx": "<p class=\"mut lbnote\">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أ"
  },
  {
   "k": "لأول محاولة في كل اختبار محاكي (نفس درجة قياس من 100)، ثم عدد الاختبارات، ثم الأسرع وقتاً.",
   "at": [
-   "p/app.js:3324"
+   "p/app.js:3342"
   ],
   "ctx": "<p class=\"mut lbnote\">${kind === 'arena' ? _T('ترتيب <b>الساحة 1v1</b> بالتصنيف: الكل يبدأ من 1000، الفوز يرفعك والخسارة تنزّلك، والفوز على خصم أقوى منك يرفعك أ"
  },
  {
   "k": "ترتيب الطلاب في",
   "at": [
-   "p/app.js:3325"
+   "p/app.js:3343"
   ],
   "ctx": ": isSet ? (EN ? `Students in <b>${setTitle(setId)}</b> are ranked by their <b>first attempt</b> score; ties go to the faster time.` : _T`ترتيب الطلاب في <b>${se"
  },
  {
   "k": "أول محاولة",
   "at": [
-   "p/app.js:3325"
+   "p/app.js:3343"
   ],
   "ctx": ": isSet ? (EN ? `Students in <b>${setTitle(setId)}</b> are ranked by their <b>first attempt</b> score; ties go to the faster time.` : _T`ترتيب الطلاب في <b>${se"
  },
  {
   "k": "فيه، وعند التساوي الأسرع وقتاً.",
   "at": [
-   "p/app.js:3325"
+   "p/app.js:3343"
   ],
   "ctx": ": isSet ? (EN ? `Students in <b>${setTitle(setId)}</b> are ranked by their <b>first attempt</b> score; ties go to the faster time.` : _T`ترتيب الطلاب في <b>${se"
  },
  {
   "k": "أفضل 100 طالب",
   "at": [
-   "p/app.js:3326"
+   "p/app.js:3344"
   ],
   "ctx": ": _T('أفضل 100 طالب <b>هذا الأسبوع</b> (من الأحد): مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الأسبوع، وعند التساوي الأسرع وقتاً. اللوحة تبدأ من ج"
  },
  {
   "k": "هذا الأسبوع",
   "at": [
-   "p/app.js:3326"
+   "p/app.js:3344"
   ],
   "ctx": ": _T('أفضل 100 طالب <b>هذا الأسبوع</b> (من الأحد): مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الأسبوع، وعند التساوي الأسرع وقتاً. اللوحة تبدأ من ج"
  },
  {
   "k": "(من الأحد): مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الأسبوع، وعند التساوي الأسرع وقتاً. اللوحة تبدأ من جديد كل أحد.",
   "at": [
-   "p/app.js:3326"
+   "p/app.js:3344"
   ],
   "ctx": ": _T('أفضل 100 طالب <b>هذا الأسبوع</b> (من الأحد): مجموع الإجابات الصحيحة في أول محاولة لكل قسم ونموذج خلال الأسبوع، وعند التساوي الأسرع وقتاً. اللوحة تبدأ من ج"
  },
  {
   "k": "📆 هذا الأسبوع",
   "at": [
-   "p/app.js:3322"
+   "p/app.js:3340"
   ],
   "ctx": "_T`<main class=\"wrap\"><div class=\"tabs lbtabs\"><button data-k=\"week\" class=\"${tabK === 'week' ? 'on' : ''}\">📆 هذا الأسبوع</button><button data-k=\"set\" class=\"${"
  },
  {
   "k": "🎯 حسب القسم",
   "at": [
-   "p/app.js:3322"
+   "p/app.js:3340"
   ],
   "ctx": "_T`<main class=\"wrap\"><div class=\"tabs lbtabs\"><button data-k=\"week\" class=\"${tabK === 'week' ? 'on' : ''}\">📆 هذا الأسبوع</button><button data-k=\"set\" class=\"${"
  },
  {
   "k": "🧪 المحاكي",
   "at": [
-   "p/app.js:3322"
+   "p/app.js:3340"
   ],
   "ctx": "_T`<main class=\"wrap\"><div class=\"tabs lbtabs\"><button data-k=\"week\" class=\"${tabK === 'week' ? 'on' : ''}\">📆 هذا الأسبوع</button><button data-k=\"set\" class=\"${"
  },
  {
   "k": "⚔️ الساحة",
   "at": [
-   "p/app.js:3322"
+   "p/app.js:3340"
   ],
   "ctx": "_T`<main class=\"wrap\"><div class=\"tabs lbtabs\"><button data-k=\"week\" class=\"${tabK === 'week' ? 'on' : ''}\">📆 هذا الأسبوع</button><button data-k=\"set\" class=\"${"
  },
  {
   "k": "تعذّر تحميل اللوحة",
   "at": [
-   "p/app.js:3333"
+   "p/app.js:3351"
   ],
   "ctx": "if (!r || !r.ok) { if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || '')); el.innerHTML = _T('<div class=\"center\">تعذّر تحميل"
  },
  {
   "k": "{0} س {1} د",
   "at": [
-   "p/app.js:3334"
+   "p/app.js:3352"
   ],
   "ctx": "const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? _T`${h} س ${m % 60} د` : m ? _T`${m} د`"
  },
  {
   "k": "{0} د",
   "at": [
-   "p/app.js:3334"
+   "p/app.js:3352"
   ],
   "ctx": "const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? _T`${h} س ${m % 60} د` : m ? _T`${m} د`"
  },
  {
   "k": "{0} ث",
   "at": [
-   "p/app.js:3334"
+   "p/app.js:3352"
   ],
   "ctx": "const fmt = s => { s = Math.max(0, Math.round(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? _T`${h} س ${m % 60} د` : m ? _T`${m} د`"
  },
  {
   "k": "مباراة",
   "at": [
-   "p/app.js:3339"
+   "p/app.js:3357"
   ],
   "ctx": "const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : "
  },
  {
   "k": "مباريات",
   "at": [
-   "p/app.js:3339"
+   "p/app.js:3357"
   ],
   "ctx": "const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : "
  },
  {
   "k": "{0} فوز من {1} {2}",
   "at": [
-   "p/app.js:3339"
+   "p/app.js:3357"
   ],
   "ctx": "const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : "
  },
  {
   "k": "اختبارات",
   "at": [
-   "p/app.js:3339"
+   "p/app.js:3357"
   ],
   "ctx": "const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : "
  },
  {
   "k": "{0}% دقة · {1}",
   "at": [
-   "p/app.js:3339"
+   "p/app.js:3357"
   ],
   "ctx": "const subHtml = x => isAr ? _T`${x.w} فوز من ${x.g} ${x.g === 1 ? _T('مباراة') : _T('مباريات')}` : kind === 'exam' ? `${x.done} ${x.done === 1 ? _T('اختبار') : "
  },
  {
   "k": "و",
   "at": [
-   "p/app.js:3340"
+   "p/app.js:3358"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "تعادل",
   "at": [
-   "p/app.js:3340",
-   "p/app.js:3420",
-   "p/app.js:3698"
+   "p/app.js:3358",
+   "p/app.js:3438",
+   "p/app.js:3716"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "ترتيبك من {0}",
   "at": [
-   "p/app.js:3340",
-   "p/app.js:3341"
+   "p/app.js:3358",
+   "p/app.js:3359"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "تصنيفك {0} · {1} فوز و{2} خسارة{3}",
   "at": [
-   "p/app.js:3340"
+   "p/app.js:3358"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "العب مباراة",
   "at": [
-   "p/app.js:3340"
+   "p/app.js:3358"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "ما لك ترتيب بعد",
   "at": [
-   "p/app.js:3340",
-   "p/app.js:3342"
+   "p/app.js:3358",
+   "p/app.js:3360"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "العب مباراة وحدة في الساحة وتظهر هنا.",
   "at": [
-   "p/app.js:3340"
+   "p/app.js:3358"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "ادخل الساحة",
   "at": [
-   "p/app.js:3340"
+   "p/app.js:3358"
   ],
   "ctx": "const mine = isAr ? (r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>تصنيفك ${r.me"
  },
  {
   "k": "% متوسط ·",
   "at": [
-   "p/app.js:3341"
+   "p/app.js:3359"
   ],
   "ctx": ": r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r"
  },
  {
   "k": "إجابة صحيحة ·",
   "at": [
-   "p/app.js:3341"
+   "p/app.js:3359"
   ],
   "ctx": ": r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r"
  },
  {
   "k": "اختبار جديد",
   "at": [
-   "p/app.js:3341"
+   "p/app.js:3359"
   ],
   "ctx": ": r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r"
  },
  {
   "k": "افتح القسم",
   "at": [
-   "p/app.js:3341"
+   "p/app.js:3359"
   ],
   "ctx": ": r.me ? _T`<div class=\"mycard\"><div class=\"myrank\">#${r.me.rank}</div><div class=\"myi\"><b>ترتيبك من ${arStu(r.total)}</b><span>${kind === 'exam' ? Math.round(r"
  },
  {
   "k": "أنهِ اختباراً محاكياً واحداً وتظهر هنا.",
   "at": [
-   "p/app.js:3342"
+   "p/app.js:3360"
   ],
   "ctx": ": _T`<div class=\"mycard none\"><div class=\"myi\"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذ"
  },
  {
   "k": "حل هذا القسم مرة واحدة وتظهر هنا.",
   "at": [
-   "p/app.js:3342"
+   "p/app.js:3360"
   ],
   "ctx": ": _T`<div class=\"mycard none\"><div class=\"myi\"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذ"
  },
  {
   "k": "حل قسماً أو نموذجاً هذا الأسبوع وتظهر هنا.",
   "at": [
-   "p/app.js:3342"
+   "p/app.js:3360"
   ],
   "ctx": ": _T`<div class=\"mycard none\"><div class=\"myi\"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذ"
  },
  {
   "k": "ابدأ اختباراً",
   "at": [
-   "p/app.js:3342"
+   "p/app.js:3360"
   ],
   "ctx": ": _T`<div class=\"mycard none\"><div class=\"myi\"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذ"
  },
  {
   "k": "ابدأ القسم",
   "at": [
-   "p/app.js:3342"
+   "p/app.js:3360"
   ],
   "ctx": ": _T`<div class=\"mycard none\"><div class=\"myi\"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذ"
  },
  {
   "k": "ابدأ قسماً",
   "at": [
-   "p/app.js:3342"
+   "p/app.js:3360"
   ],
   "ctx": ": _T`<div class=\"mycard none\"><div class=\"myi\"><b>ما لك ترتيب بعد</b><span>${kind === 'exam' ? _T('أنهِ اختباراً محاكياً واحداً وتظهر هنا.') : isSet ? _T('حل هذ"
  },
  {
   "k": "🏆 اللوحة فاضية — كن أول من يظهر هنا!",
   "at": [
-   "p/app.js:3343"
+   "p/app.js:3361"
   ],
   "ctx": "if (!r.top.length) { el.innerHTML = mine + _T`<div class=\"sum\" style=\"margin-top:12px\">🏆 اللوحة فاضية — كن أول من يظهر هنا!</div>`; return; }"
  },
  {
   "k": "التصنيف",
   "at": [
-   "p/app.js:3348"
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "الفوز",
   "at": [
-   "p/app.js:3348"
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "المباريات",
   "at": [
-   "p/app.js:3348"
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "النسبة",
   "at": [
-   "p/app.js:3348",
-   "p/app.js:3348"
+   "p/app.js:3366",
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "الاختبارات",
   "at": [
-   "p/app.js:3348"
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "الصحيحة",
   "at": [
-   "p/app.js:3348",
-   "p/app.js:3348"
+   "p/app.js:3366",
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "الدقة",
   "at": [
-   "p/app.js:3348"
+   "p/app.js:3366"
   ],
   "ctx": "const cols = isAr ? [_T('التصنيف'), _T('الفوز'), _T('المباريات')] : kind === 'exam' ? [_T('النسبة'), _T('الاختبارات'), _T('الوقت')] : isSet ? [_T('النسبة'), _T("
  },
  {
   "k": "الأقسام",
   "at": [
-   "p/app.js:3351"
+   "p/app.js:3369"
   ],
   "ctx": "<div class=\"lbr head\"><span class=\"rk\">#</span><span class=\"nm\">الطالب</span><span class=\"sc\">${cols[0]}</span><span class=\"ac\">${cols[1]}</span><span class=\"tm"
  },
  {
   "k": "أنت",
   "at": [
-   "p/app.js:3352",
-   "p/app.js:3574",
-   "p/app.js:3574"
+   "p/app.js:3370",
+   "p/app.js:3592",
+   "p/app.js:3592"
   ],
   "ctx": "${list.map(x => { const c = cells(x); return `<div class=\"lbr ${x.me ? 'me' : ''} ${x.rank <= 3 ? 'top' : ''}\"><span class=\"rk\">${x.rank <= 3 ? medal(x.rank) : "
  },
  {
   "k": "الطالب",
   "at": [
-   "p/app.js:3350"
+   "p/app.js:3368"
   ],
   "ctx": "el.innerHTML = mine + podium + _T`<div class=\"lbl-list\">"
  },
  {
   "k": "يُعرض أفضل 100 طالب، واللوحة تتحدث كل دقيقة. تقدر تغيّر اسمك وصورتك من زر اسمك في الصفحة الرئيسية.",
   "at": [
-   "p/app.js:3350"
+   "p/app.js:3368"
   ],
   "ctx": "el.innerHTML = mine + podium + _T`<div class=\"lbl-list\">"
  },
  {
   "k": "تناظر لفظي",
   "at": [
-   "p/app.js:3358"
+   "p/app.js:3376"
   ],
   "ctx": "const AR_T = { ana: _T('تناظر لفظي'), sen: _T('إكمال جمل'), err: _T('خطأ سياقي'), quant: _T('كمي') };"
  },
  {
   "k": "إكمال جمل",
   "at": [
-   "p/app.js:3358"
+   "p/app.js:3376"
   ],
   "ctx": "const AR_T = { ana: _T('تناظر لفظي'), sen: _T('إكمال جمل'), err: _T('خطأ سياقي'), quant: _T('كمي') };"
  },
  {
   "k": "خطأ سياقي",
   "at": [
-   "p/app.js:3358"
+   "p/app.js:3376"
   ],
   "ctx": "const AR_T = { ana: _T('تناظر لفظي'), sen: _T('إكمال جمل'), err: _T('خطأ سياقي'), quant: _T('كمي') };"
  },
  {
   "k": "كمي",
   "at": [
-   "p/app.js:3358",
-   "p/app.js:3570"
+   "p/app.js:3376",
+   "p/app.js:3588"
   ],
   "ctx": "const AR_T = { ana: _T('تناظر لفظي'), sen: _T('إكمال جمل'), err: _T('خطأ سياقي'), quant: _T('كمي') };"
  },
  {
   "k": "انقطع اتصالك بالساحة، فما قدرنا نكمل المباراة.",
   "at": [
-   "p/app.js:3388"
+   "p/app.js:3406"
   ],
   "ctx": "if (AR.retry >= 6) { AR.st = 'lobby'; AR.m = null; AR.err = _T('انقطع اتصالك بالساحة، فما قدرنا نكمل المباراة.'); window.onbeforeunload = null; return renderAre"
  },
  {
   "k": "انقطع الاتصال… نحاول نرجعك للمباراة",
   "at": [
-   "p/app.js:3389"
+   "p/app.js:3407"
   ],
   "ctx": "AR.retry++; arNote(_T('انقطع الاتصال… نحاول نرجعك للمباراة'), 'warn');"
  },
  {
   "k": "انقطع الاتصال بالساحة. حاول مرة ثانية.",
   "at": [
-   "p/app.js:3393"
+   "p/app.js:3411"
   ],
   "ctx": "if (['search', 'room', 'joining', 'connecting'].includes(AR.st)) { AR.st = 'lobby'; AR.err = _T('انقطع الاتصال بالساحة. حاول مرة ثانية.'); arPanel(); }"
  },
  {
   "k": "فوز",
   "at": [
-   "p/app.js:3420"
+   "p/app.js:3438"
   ],
   "ctx": "const arRes = { win: [_T('فوز'), 'win'], loss: [_T('خسارة'), 'loss'], draw: [_T('تعادل'), 'draw'] };"
  },
  {
   "k": "خسارة",
   "at": [
-   "p/app.js:3420"
+   "p/app.js:3438"
   ],
   "ctx": "const arRes = { win: [_T('فوز'), 'win'], loss: [_T('خسارة'), 'loss'], draw: [_T('تعادل'), 'draw'] };"
  },
  {
   "k": "الساحة 1v1 | Q-Guide",
   "at": [
-   "p/app.js:3425"
+   "p/app.js:3443"
   ],
   "ctx": "document.title = _T('الساحة 1v1 | Q-Guide');"
  },
  {
   "k": "⚔️ الساحة 1v1",
   "at": [
-   "p/app.js:3430"
+   "p/app.js:3448"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">⚔️ الساحة 1v1</span><span class=\"sp\"></span><nav class=\"tnav\"><a class=\"tn\" href=\"#board-arena\" title=\"لوحة ترتيب ال"
  },
  {
   "k": "لوحة ترتيب الساحة",
   "at": [
-   "p/app.js:3430"
+   "p/app.js:3448"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">⚔️ الساحة 1v1</span><span class=\"sp\"></span><nav class=\"tnav\"><a class=\"tn\" href=\"#board-arena\" title=\"لوحة ترتيب ال"
  },
  {
   "k": "الترتيب",
   "at": [
-   "p/app.js:3430"
+   "p/app.js:3448"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">⚔️ الساحة 1v1</span><span class=\"sp\"></span><nav class=\"tnav\"><a class=\"tn\" href=\"#board-arena\" title=\"لوحة ترتيب ال"
  },
  {
   "k": "تحدَّ طالب من الدورة مباشرة في 20 سؤال: 10 لفظي و10 كمي. الإجابة الصحيحة تجيب 10 نقاط، وكل ما كنت أسرع تزيد لين 20.",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "سؤال بالتناوب: لفظي ثم كمي",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "ث",
   "at": [
-   "p/app.js:3431",
-   "p/app.js:3431"
+   "p/app.js:3449",
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "وقت السؤال اللفظي ثم الكمي",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "تقريباً لكل فوز على خصم بنفس مستواك",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "الأعلى تصنيفاً",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "اللوحة كاملة",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "مبارياتك الأخيرة",
   "at": [
-   "p/app.js:3431"
+   "p/app.js:3449"
   ],
   "ctx": "_T`<main class=\"wrap arena\">"
  },
  {
   "k": "تعذّر تحميل الترتيب.",
   "at": [
-   "p/app.js:3453"
+   "p/app.js:3471"
   ],
   "ctx": "api({ op: 'leaderboard', kind: 'arena', session: auth.session }).then(b => { const el = $('#artop'); if (!el) return; el.innerHTML = b && b.ok ? arTopHtml(b) : "
  },
  {
   "k": "تصنيفك",
   "at": [
-   "p/app.js:3458",
-   "p/app.js:3701"
+   "p/app.js:3476",
+   "p/app.js:3719"
   ],
   "ctx": "<div class=\"ar-rt\"><b>${I ? I.r : 1000}</b><span>${g ? _T('تصنيفك') : _T('تصنيف البداية')}</span></div>"
  },
  {
   "k": "تصنيف البداية",
   "at": [
-   "p/app.js:3458"
+   "p/app.js:3476"
   ],
   "ctx": "<div class=\"ar-rt\"><b>${I ? I.r : 1000}</b><span>${g ? _T('تصنيفك') : _T('تصنيف البداية')}</span></div>"
  },
  {
   "k": "{0} تعادل",
   "at": [
-   "p/app.js:3459"
+   "p/app.js:3477"
   ],
   "ctx": "${g ? _T`<div class=\"ar-wl\"><span class=\"w\">${I.w} فوز</span><span class=\"l\">${I.l} خسارة</span>${I.d ? _T`<span>${I.d} تعادل</span>` : ''}</div>"
  },
  {
   "k": "ترتيبك",
   "at": [
-   "p/app.js:3460"
+   "p/app.js:3478"
   ],
   "ctx": "<p class=\"ar-rk\">${I.rank ? _T`ترتيبك <b>#${I.rank}</b> من ${arStu(I.total)}` : _T('ما تظهر في الترتيب')}${I.best > 1 ? _T` · أطول سلسلة فوز ${I.best}` : ''}</p"
  },
  {
   "k": "ما تظهر في الترتيب",
   "at": [
-   "p/app.js:3460"
+   "p/app.js:3478"
   ],
   "ctx": "<p class=\"ar-rk\">${I.rank ? _T`ترتيبك <b>#${I.rank}</b> من ${arStu(I.total)}` : _T('ما تظهر في الترتيب')}${I.best > 1 ? _T` · أطول سلسلة فوز ${I.best}` : ''}</p"
  },
  {
   "k": "· أطول سلسلة فوز {0}",
   "at": [
-   "p/app.js:3460"
+   "p/app.js:3478"
   ],
   "ctx": "<p class=\"ar-rk\">${I.rank ? _T`ترتيبك <b>#${I.rank}</b> من ${arStu(I.total)}` : _T('ما تظهر في الترتيب')}${I.best > 1 ? _T` · أطول سلسلة فوز ${I.best}` : ''}</p"
  },
  {
   "k": "{0} فوز",
   "at": [
-   "p/app.js:3459"
+   "p/app.js:3477"
   ],
   "ctx": "${g ? _T`<div class=\"ar-wl\"><span class=\"w\">${I.w} فوز</span><span class=\"l\">${I.l} خسارة</span>${I.d ? _T`<span>${I.d} تعادل</span>` : ''}</div>"
  },
  {
   "k": "{0} خسارة",
   "at": [
-   "p/app.js:3459"
+   "p/app.js:3477"
   ],
   "ctx": "${g ? _T`<div class=\"ar-wl\"><span class=\"w\">${I.w} فوز</span><span class=\"l\">${I.l} خسارة</span>${I.d ? _T`<span>${I.d} تعادل</span>` : ''}</div>"
  },
  {
   "k": "العب أول مباراة ويطلع لك تصنيف وترتيب بين الطلاب.",
   "at": [
-   "p/app.js:3461"
+   "p/app.js:3479"
   ],
   "ctx": ": _T`<p class=\"ar-rk\">العب أول مباراة ويطلع لك تصنيف وترتيب بين الطلاب.</p>`}`;"
  },
  {
   "k": "ما لعبت أي مباراة للحين. أول مباراة تبدأ من زر «ابحث عن خصم».",
   "at": [
-   "p/app.js:3465"
+   "p/app.js:3483"
   ],
   "ctx": "if (!I.hist || !I.hist.length) return _T('<p class=\"ar-empty\">ما لعبت أي مباراة للحين. أول مباراة تبدأ من زر «ابحث عن خصم».</p>');"
  },
  {
   "k": "طالب",
   "at": [
-   "p/app.js:3466"
+   "p/app.js:3484"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "تحدي صديق",
   "at": [
-   "p/app.js:3466",
-   "p/app.js:3573"
+   "p/app.js:3484",
+   "p/app.js:3591"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "خصم عشوائي",
   "at": [
-   "p/app.js:3466"
+   "p/app.js:3484"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "· انسحاب",
   "at": [
-   "p/app.js:3466"
+   "p/app.js:3484"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "· انقطاع",
   "at": [
-   "p/app.js:3466"
+   "p/app.js:3484"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "بدون تصنيف",
   "at": [
-   "p/app.js:3466"
+   "p/app.js:3484"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "نقاطك – نقاط خصمك",
   "at": [
-   "p/app.js:3466"
+   "p/app.js:3484"
   ],
   "ctx": "return `<ol class=\"ar-list\">${I.hist.map(h => _T`<li class=\"ar-hr\"><span class=\"ar-chip ${arRes[h.res][1]}\">${arRes[h.res][0]}</span>${avatarHtml(h.op.a, h.op.n"
  },
  {
   "k": "الترتيب فاضي. أول من يفوز يتصدر!",
   "at": [
-   "p/app.js:3469"
+   "p/app.js:3487"
   ],
   "ctx": "if (!b.top.length) return _T('<p class=\"ar-empty\">الترتيب فاضي. أول من يفوز يتصدر!</p>');"
  },
  {
   "k": "{0} فوز من {1}",
   "at": [
-   "p/app.js:3471"
+   "p/app.js:3489"
   ],
   "ctx": "const row = x => _T`<li class=\"ar-tr ${x.me ? 'me' : ''}\"><span class=\"rk\">${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span>${avatarHtml(x.a, x.n, 32"
  },
  {
   "k": "فيه طالب يدور خصم الحين",
   "at": [
-   "p/app.js:3478"
+   "p/app.js:3496"
   ],
   "ctx": "const liveTxt = live && live.online ? `<p class=\"ar-live\"><i></i>${live.waiting ? _T('فيه طالب يدور خصم الحين') : _T`${live.online} في الساحة الحين`}</p>` : '';"
  },
  {
   "k": "{0} في الساحة الحين",
   "at": [
-   "p/app.js:3478"
+   "p/app.js:3496"
   ],
   "ctx": "const liveTxt = live && live.online ? `<p class=\"ar-live\"><i></i>${live.waiting ? _T('فيه طالب يدور خصم الحين') : _T`${live.online} في الساحة الحين`}</p>` : '';"
  },
  {
   "k": "ندوّر لك على خصم…",
   "at": [
-   "p/app.js:3481"
+   "p/app.js:3499"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-srch\"><div class=\"ar-radar\" aria-hidden=\"true\"><i></i><i></i>${avatarHtml(arMe().a, arMe().n, 54)}</div><div><b>ندوّر لك على خص"
  },
  {
   "k": "أول طالب يضغط «ابحث عن خصم» يدخل معك مباشرة.",
   "at": [
-   "p/app.js:3481"
+   "p/app.js:3499"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-srch\"><div class=\"ar-radar\" aria-hidden=\"true\"><i></i><i></i>${avatarHtml(arMe().a, arMe().n, 54)}</div><div><b>ندوّر لك على خص"
  },
  {
   "k": "أو تحدَّ صديقك برابط",
   "at": [
-   "p/app.js:3481"
+   "p/app.js:3499"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-srch\"><div class=\"ar-radar\" aria-hidden=\"true\"><i></i><i></i>${avatarHtml(arMe().a, arMe().n, 54)}</div><div><b>ندوّر لك على خص"
  },
  {
   "k": "تحداك {0} في ساحة Q-Guide ⚔️ 20 سؤال قدرات مباشر. ادخل من الرابط: {1}",
   "at": [
-   "p/app.js:3486"
+   "p/app.js:3504"
   ],
   "ctx": "const msg = _T`تحداك ${arMe().n} في ساحة Q-Guide ⚔️ 20 سؤال قدرات مباشر. ادخل من الرابط: ${link}`;"
  },
  {
   "k": "مشاركة الرابط",
   "at": [
-   "p/app.js:3489"
+   "p/app.js:3507"
   ],
   "ctx": "<div class=\"ar-acts\">${navigator.share ? _T('<button class=\"rz-go\" id=\"arsh\">مشاركة الرابط</button>') : ''}<a class=\"ar-gh\" href=\"https://wa.me/?text=${encodeUR"
  },
  {
   "k": "أرسل الرابط لصاحبك",
   "at": [
-   "p/app.js:3487"
+   "p/app.js:3505"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-room\"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>"
  },
  {
   "k": "أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.",
   "at": [
-   "p/app.js:3487"
+   "p/app.js:3505"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-room\"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>"
  },
  {
   "k": "رابط التحدي",
   "at": [
-   "p/app.js:3487"
+   "p/app.js:3505"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-room\"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>"
  },
  {
   "k": "نسخ",
   "at": [
-   "p/app.js:3487"
+   "p/app.js:3505"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-room\"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>"
  },
  {
   "k": "واتساب",
   "at": [
-   "p/app.js:3487"
+   "p/app.js:3505"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-room\"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>"
  },
  {
   "k": "بانتظار صاحبك… الرمز",
   "at": [
-   "p/app.js:3487"
+   "p/app.js:3505"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-room\"><b>أرسل الرابط لصاحبك</b><small>أول ما يفتحه تبدأ المباراة. الرابط صالح 10 دقائق وأنت في هالصفحة.</small>"
  },
  {
   "k": "انسخ الرابط ✓",
   "at": [
-   "p/app.js:3491"
+   "p/app.js:3509"
   ],
   "ctx": "$('#arcp').onclick = async () => { const i = $('#arlk'); try { await navigator.clipboard.writeText(i.value); toast(_T('انسخ الرابط ✓')); } catch (e) { i.select("
  },
  {
   "k": "حدد الرابط وانسخه",
   "at": [
-   "p/app.js:3491"
+   "p/app.js:3509"
   ],
   "ctx": "$('#arcp').onclick = async () => { const i = $('#arlk'); try { await navigator.clipboard.writeText(i.value); toast(_T('انسخ الرابط ✓')); } catch (e) { i.select("
  },
  {
   "k": "تحدي Q-Guide",
   "at": [
-   "p/app.js:3492"
+   "p/app.js:3510"
   ],
   "ctx": "const sh = $('#arsh'); if (sh) sh.onclick = () => navigator.share({ title: _T('تحدي Q-Guide'), text: msg }).catch(() => {});"
  },
  {
   "k": "ندخلك لتحدي صاحبك…",
   "at": [
-   "p/app.js:3494"
+   "p/app.js:3512"
   ],
   "ctx": "el.innerHTML = `<div class=\"ar-srch\"><div class=\"spin\"></div><div><b>${AR.st === 'joining' ? _T('ندخلك لتحدي صاحبك…') : _T('نتصل بالساحة…')}</b></div></div>`;"
  },
  {
   "k": "نتصل بالساحة…",
   "at": [
-   "p/app.js:3494"
+   "p/app.js:3512"
   ],
   "ctx": "el.innerHTML = `<div class=\"ar-srch\"><div class=\"spin\"></div><div><b>${AR.st === 'joining' ? _T('ندخلك لتحدي صاحبك…') : _T('نتصل بالساحة…')}</b></div></div>`;"
  },
  {
   "k": "خلصت مبارياتك المجانية اليوم",
   "at": [
-   "p/app.js:3496"
+   "p/app.js:3514"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-cap\"><b>خلصت مبارياتك المجانية اليوم</b><span>ترجع لك ${FREE_GAMES} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاخ"
  },
  {
   "k": "ترجع لك {0} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاختبارات المحاكية.",
   "at": [
-   "p/app.js:3496"
+   "p/app.js:3514"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-cap\"><b>خلصت مبارياتك المجانية اليوم</b><span>ترجع لك ${FREE_GAMES} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاخ"
  },
  {
   "k": "⭐ اشترك والعب بدون حد",
   "at": [
-   "p/app.js:3496",
-   "p/app.js:3706"
+   "p/app.js:3514",
+   "p/app.js:3724"
   ],
   "ctx": "el.innerHTML = _T`<div class=\"ar-cap\"><b>خلصت مبارياتك المجانية اليوم</b><span>ترجع لك ${FREE_GAMES} مباريات بكرة. اشترك في الدورة والعب بدون حد، بكل أسئلة الاخ"
  },
  {
   "k": "ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.",
   "at": [
-   "p/app.js:3500"
+   "p/app.js:3518"
   ],
   "ctx": "el.innerHTML = _T`${err}${AR.st === 'noone' ? _T('<p class=\"ar-err\">ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.</p>') : ''}"
  },
  {
   "k": "دوّر مرة ثانية",
   "at": [
-   "p/app.js:3501"
+   "p/app.js:3519"
   ],
   "ctx": "<div class=\"ar-acts\"><button class=\"rz-go\" id=\"arfd\">⚔️ ${AR.st === 'noone' ? _T('دوّر مرة ثانية') : _T('ابحث عن خصم')}</button><button class=\"ar-gh\" id=\"arrm\">"
  },
  {
   "k": "ابحث عن خصم",
   "at": [
-   "p/app.js:3501"
+   "p/app.js:3519"
   ],
   "ctx": "<div class=\"ar-acts\"><button class=\"rz-go\" id=\"arfd\">⚔️ ${AR.st === 'noone' ? _T('دوّر مرة ثانية') : _T('ابحث عن خصم')}</button><button class=\"ar-gh\" id=\"arrm\">"
  },
  {
   "k": "باقي لك",
   "at": [
-   "p/app.js:3501",
-   "p/app.js:3707"
+   "p/app.js:3519",
+   "p/app.js:3725"
   ],
   "ctx": "<div class=\"ar-acts\"><button class=\"rz-go\" id=\"arfd\">⚔️ ${AR.st === 'noone' ? _T('دوّر مرة ثانية') : _T('ابحث عن خصم')}</button><button class=\"ar-gh\" id=\"arrm\">"
  },
  {
   "k": "من {0} مباريات مجانية اليوم",
   "at": [
-   "p/app.js:3501",
-   "p/app.js:3707"
+   "p/app.js:3519",
+   "p/app.js:3725"
   ],
   "ctx": "<div class=\"ar-acts\"><button class=\"rz-go\" id=\"arfd\">⚔️ ${AR.st === 'noone' ? _T('دوّر مرة ثانية') : _T('ابحث عن خصم')}</button><button class=\"ar-gh\" id=\"arrm\">"
  },
  {
   "k": "🔗 تحدَّ صديقك",
   "at": [
-   "p/app.js:3500"
+   "p/app.js:3518"
   ],
   "ctx": "el.innerHTML = _T`${err}${AR.st === 'noone' ? _T('<p class=\"ar-err\">ما لقينا أحد يدور خصم الحين. جرّب بعد شوي، أو أرسل رابط تحدي لصاحبك.</p>') : ''}"
  },
  {
   "k": "تعذّر الاتصال بالساحة. تأكد من الإنترنت وحاول مرة ثانية.",
   "at": [
-   "p/app.js:3509"
+   "p/app.js:3527"
   ],
   "ctx": "try { await arOpen(); } catch (e) { AR.st = 'lobby'; AR.err = _T('تعذّر الاتصال بالساحة. تأكد من الإنترنت وحاول مرة ثانية.'); arPanel(); return false; }"
  },
  {
   "k": "تعذّر الاتصال بالساحة. افتح الرابط مرة ثانية.",
   "at": [
-   "p/app.js:3514"
+   "p/app.js:3532"
   ],
   "ctx": "function arJoin(code) { AR.err = ''; AR.st = 'joining'; arPanel(); arOpen().then(() => arSend({ t: 'join', code })).catch(() => { AR.st = 'lobby'; AR.err = _T('"
  },
  {
   "k": "انتهت صلاحية رابط التحدي. سوّ رابط جديد.",
   "at": [
-   "p/app.js:3524"
+   "p/app.js:3542"
   ],
   "ctx": "case 'roomexp': AR.st = 'lobby'; AR.err = _T('انتهت صلاحية رابط التحدي. سوّ رابط جديد.'); arPanel(); return arClose();"
  },
  {
   "k": "فتحت الساحة في نافذة أو جهاز ثاني، فوقفناها هنا.",
   "at": [
-   "p/app.js:3535"
+   "p/app.js:3553"
   ],
   "ctx": "case 'replaced': AR.wantClose = true; AR.st = 'lobby'; AR.m = null; AR.err = _T('فتحت الساحة في نافذة أو جهاز ثاني، فوقفناها هنا.'); window.onbeforeunload = nul"
  },
  {
   "k": "انلغت المباراة.",
   "at": [
-   "p/app.js:3547"
+   "p/app.js:3565"
   ],
   "ctx": "case 'void': { if (m.left != null) AR.left = m.left; AR.st = 'lobby'; AR.m = null; AR.err = m.msg || _T('انلغت المباراة.'); window.onbeforeunload = null; arStop"
  },
  {
   "k": "طلبت إعادة المباراة… بانتظار موافقة خصمك.",
   "at": [
-   "p/app.js:3548"
+   "p/app.js:3566"
   ],
   "ctx": "case 'againwait': { const n = $('#aragn'); if (n) n.textContent = _T('طلبت إعادة المباراة… بانتظار موافقة خصمك.'); const b = $('#arag'); if (b) b.disabled = tru"
  },
  {
   "k": "خصمك يبي إعادة المباراة! اضغط «إعادة المباراة» لو تبي.",
   "at": [
-   "p/app.js:3549"
+   "p/app.js:3567"
   ],
   "ctx": "case 'againask': { const n = $('#aragn'); if (n) { n.textContent = _T('خصمك يبي إعادة المباراة! اضغط «إعادة المباراة» لو تبي.'); n.classList.add('hot'); } const"
  },
  {
   "k": "تعذّر تحميل الأسئلة.",
   "at": [
-   "p/app.js:3562"
+   "p/app.js:3580"
   ],
   "ctx": "catch (e) { const v = $('#arvm'); if (v) v.innerHTML = _T('تعذّر تحميل الأسئلة. <button class=\"ar-lk\" id=\"arrl\">حاول مرة ثانية</button>'); const b = $('#arrl');"
  },
  {
   "k": "بانتظار خصمك…",
   "at": [
-   "p/app.js:3565",
-   "p/app.js:3609"
+   "p/app.js:3583",
+   "p/app.js:3627"
   ],
   "ctx": "if (!m.resume || m.phase === 'prep') { arSend({ t: 'ready', m: m.m }); const v = $('#arvm'); if (v) v.textContent = _T('بانتظار خصمك…'); }"
  },
  {
   "k": "السؤال الجاي…",
   "at": [
-   "p/app.js:3568"
+   "p/app.js:3586"
   ],
   "ctx": "else if (m.phase === 'rev') { arBoard(); const q = $('#arq'); if (q) q.innerHTML = _T('<div class=\"ar-hold\"><div class=\"spin\"></div>السؤال الجاي…</div>'); }"
  },
  {
   "k": "لفظي",
   "at": [
-   "p/app.js:3570"
+   "p/app.js:3588"
   ],
   "ctx": "function arDots(who) { return AR.m.refs.map((r, j) => { const h = AR.hist[j]; const c = h ? (who === 0 ? (h.mo ? 'ok' : h.my == null ? 'na' : 'bad') : (h.oo ? '"
  },
  {
   "k": "مباراة الساحة",
   "at": [
-   "p/app.js:3573"
+   "p/app.js:3591"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">⚔️ ${m.kind === 'friend' ? _T('تحدي صديق') : _T('مباراة الساحة')}</span><span class=\"sp\"></span><button class=\"ar-qu"
  },
  {
   "k": "انسحاب",
   "at": [
-   "p/app.js:3573",
-   "p/app.js:3589"
+   "p/app.js:3591",
+   "p/app.js:3607"
   ],
   "ctx": "app.innerHTML = topbar(_T`<span class=\"ttl\">⚔️ ${m.kind === 'friend' ? _T('تحدي صديق') : _T('مباراة الساحة')}</span><span class=\"sp\"></span><button class=\"ar-qu"
  },
  {
   "k": "خصمك",
   "at": [
-   "p/app.js:3578",
-   "p/app.js:3584",
-   "p/app.js:3574"
+   "p/app.js:3596",
+   "p/app.js:3602",
+   "p/app.js:3592"
   ],
   "ctx": "<div class=\"ar-pl op\"><b class=\"ar-ps\" id=\"ars1\">${AR.sc[1]}</b><span class=\"ar-pn\"><b>${esc(op.n || _T('خصمك'))}</b><span class=\"ar-os\"><small id=\"aros\">${op.r"
  },
  {
   "k": "نبّه خصمك يستعجل",
   "at": [
-   "p/app.js:3574",
-   "p/app.js:3620"
+   "p/app.js:3592",
+   "p/app.js:3638"
   ],
   "ctx": "_T`<main class=\"wrap arena arm\">"
  },
  {
   "k": "⏰ نبّه",
   "at": [
-   "p/app.js:3574",
-   "p/app.js:3617"
+   "p/app.js:3592",
+   "p/app.js:3635"
   ],
   "ctx": "_T`<main class=\"wrap arena arm\">"
  },
  {
   "k": "تصنيف {0}",
   "at": [
-   "p/app.js:3574",
-   "p/app.js:3574"
+   "p/app.js:3592",
+   "p/app.js:3592"
   ],
   "ctx": "_T`<main class=\"wrap arena arm\">"
  },
  {
   "k": "نحمّل الأسئلة…",
   "at": [
-   "p/app.js:3574"
+   "p/app.js:3592"
   ],
   "ctx": "_T`<main class=\"wrap arena arm\">"
  },
  {
   "k": "تنسحب من المباراة؟ تنحسب لك خسارة.",
   "at": [
-   "p/app.js:3589"
+   "p/app.js:3607"
   ],
   "ctx": "$('#arqt').onclick = async () => { if (!AR.m || !AR_LIVE.includes(AR.st)) return; if (await QGDlg.confirm(_T('تنسحب من المباراة؟ تنحسب لك خسارة.'), { ok: _T('ان"
  },
  {
   "k": "المباراة تبدأ بعد",
   "at": [
-   "p/app.js:3597"
+   "p/app.js:3615"
   ],
   "ctx": "const run = () => { const s = Math.ceil((AR.goAt - arNow()) / 1000); if (s <= 0) { arStop(); return; } if (x) { x.textContent = s; x.classList.add('n'); } if (v"
  },
  {
   "k": "انقطع اتصاله…",
   "at": [
-   "p/app.js:3608"
+   "p/app.js:3626"
   ],
   "ctx": "s.textContent = AR.opGone ? _T('انقطع اتصاله…') : AR.st === 'q' ? (AR.opA ? _T('جاوب ✓') : _T('يفكر…')) : AR.m.op.r;"
  },
  {
   "k": "جاوب ✓",
   "at": [
-   "p/app.js:3608"
+   "p/app.js:3626"
   ],
   "ctx": "s.textContent = AR.opGone ? _T('انقطع اتصاله…') : AR.st === 'q' ? (AR.opA ? _T('جاوب ✓') : _T('يفكر…')) : AR.m.op.r;"
  },
  {
   "k": "يفكر…",
   "at": [
-   "p/app.js:3608"
+   "p/app.js:3626"
   ],
   "ctx": "s.textContent = AR.opGone ? _T('انقطع اتصاله…') : AR.st === 'q' ? (AR.opA ? _T('جاوب ✓') : _T('يفكر…')) : AR.m.op.r;"
  },
  {
   "k": "نكشف الإجابة…",
   "at": [
-   "p/app.js:3609"
+   "p/app.js:3627"
   ],
   "ctx": "if (AR.st === 'q' && AR.mine != null) { const st = $('#arst'); if (st) st.innerHTML = AR.opA || AR.opGone ? _T('<span class=\"spin sm\"></span> نكشف الإجابة…') : "
  },
  {
   "k": "✓ وصل",
   "at": [
-   "p/app.js:3617"
+   "p/app.js:3635"
   ],
   "ctx": "const txt = !wait ? _T('⏰ نبّه') : left >= 9 ? _T('✓ وصل') : '⏰ ' + left;"
  },
  {
   "k": "تقدر تنبّهه مرة ثانية بعد {0} ثواني",
   "at": [
-   "p/app.js:3620"
+   "p/app.js:3638"
   ],
   "ctx": "b.title = wait ? _T`تقدر تنبّهه مرة ثانية بعد ${left} ثواني` : _T('نبّه خصمك يستعجل');"
  },
  {
   "k": "⏰ {0} يستعجلك، جاوب بسرعة!",
   "at": [
-   "p/app.js:3629"
+   "p/app.js:3647"
   ],
   "ctx": "const n = $('#arndn'); if (n) { n.textContent = _T`⏰ ${(m.n || AR.m.op.n || _T('خصمك')).slice(0, 18)} يستعجلك، جاوب بسرعة!`; n.hidden = false; n.classList.remov"
  },
  {
   "k": "تعذّر عرض هذا السؤال. ننتقل للي بعده…",
   "at": [
-   "p/app.js:3642"
+   "p/app.js:3660"
   ],
   "ctx": "if (!it) { $('#arq').innerHTML = _T('<div class=\"ar-hold\">تعذّر عرض هذا السؤال. ننتقل للي بعده…</div>'); return; }"
  },
  {
   "k": "اختر إجابتك بسرعة",
   "at": [
-   "p/app.js:3649"
+   "p/app.js:3667"
   ],
   "ctx": "h += `<div class=\"ar-st\" id=\"arst\">${AR.mine != null ? '' : _T('اختر إجابتك بسرعة<span class=\"kb\">، أو اضغط 1 إلى 4 من الكيبورد</span>')}</div></div>`;"
  },
  {
   "k": "، أو اضغط 1 إلى 4 من الكيبورد",
   "at": [
-   "p/app.js:3649"
+   "p/app.js:3667"
   ],
   "ctx": "h += `<div class=\"ar-st\" id=\"arst\">${AR.mine != null ? '' : _T('اختر إجابتك بسرعة<span class=\"kb\">، أو اضغط 1 إلى 4 من الكيبورد</span>')}</div></div>`;"
  },
  {
   "k": "انتهى الوقت ⏱",
   "at": [
-   "p/app.js:3659"
+   "p/app.js:3677"
   ],
   "ctx": "if (left <= 0) { arStop(); const st = $('#arst'); if (st && AR.mine == null) st.textContent = _T('انتهى الوقت ⏱'); document.querySelectorAll('#arq .opt').forEac"
  },
  {
   "k": "اختيار خصمك",
   "at": [
-   "p/app.js:3679"
+   "p/app.js:3697"
   ],
   "ctx": "if (k === m.op.c) b.insertAdjacentHTML('beforeend', _T`<span class=\"ar-om\" title=\"اختيار خصمك\">${avatarHtml(op.a, op.n, 24)}</span>`);"
  },
  {
   "k": "صح!",
   "at": [
-   "p/app.js:3682"
+   "p/app.js:3700"
   ],
   "ctx": "if (st) st.innerHTML = `<span class=\"ar-mine ${m.me.ok ? 'ok' : 'bad'}\">${m.me.ok ? _T`صح! <bdi dir=\"ltr\">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : "
  },
  {
   "k": "ما جاوبت",
   "at": [
-   "p/app.js:3682",
-   "p/app.js:3727"
+   "p/app.js:3700",
+   "p/app.js:3745"
   ],
   "ctx": "if (st) st.innerHTML = `<span class=\"ar-mine ${m.me.ok ? 'ok' : 'bad'}\">${m.me.ok ? _T`صح! <bdi dir=\"ltr\">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : "
  },
  {
   "k": "إجابتك خطأ",
   "at": [
-   "p/app.js:3682"
+   "p/app.js:3700"
   ],
   "ctx": "if (st) st.innerHTML = `<span class=\"ar-mine ${m.me.ok ? 'ok' : 'bad'}\">${m.me.ok ? _T`صح! <bdi dir=\"ltr\">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : "
  },
  {
   "k": "صح",
   "at": [
-   "p/app.js:3682",
-   "p/app.js:3727"
+   "p/app.js:3700",
+   "p/app.js:3745"
   ],
   "ctx": "if (st) st.innerHTML = `<span class=\"ar-mine ${m.me.ok ? 'ok' : 'bad'}\">${m.me.ok ? _T`صح! <bdi dir=\"ltr\">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : "
  },
  {
   "k": "ما جاوب",
   "at": [
-   "p/app.js:3682",
-   "p/app.js:3727"
+   "p/app.js:3700",
+   "p/app.js:3745"
   ],
   "ctx": "if (st) st.innerHTML = `<span class=\"ar-mine ${m.me.ok ? 'ok' : 'bad'}\">${m.me.ok ? _T`صح! <bdi dir=\"ltr\">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : "
  },
  {
   "k": "خطأ",
   "at": [
-   "p/app.js:3682",
-   "p/app.js:3727"
+   "p/app.js:3700",
+   "p/app.js:3745"
   ],
   "ctx": "if (st) st.innerHTML = `<span class=\"ar-mine ${m.me.ok ? 'ok' : 'bad'}\">${m.me.ok ? _T`صح! <bdi dir=\"ltr\">+${m.me.p}</bdi>` : m.me.c == null ? _T('ما جاوبت') : "
  },
  {
   "k": "انتهت",
   "at": [
-   "p/app.js:3695"
+   "p/app.js:3713"
   ],
   "ctx": "AR.i = -1; arBoard(); arOpStatus(); const qc = $('#arqc'); if (qc) qc.innerHTML = `${m.done}<small>/${AR.m.refs.length}</small>`; const tm = $('#artm'); if (tm)"
  },
  {
   "k": "فزت!",
   "at": [
-   "p/app.js:3698"
+   "p/app.js:3716"
   ],
   "ctx": "const head = { win: _T('فزت!'), loss: _T('خسرت هالمرة'), draw: _T('تعادل') }[m.res];"
  },
  {
   "k": "خسرت هالمرة",
   "at": [
-   "p/app.js:3698"
+   "p/app.js:3716"
   ],
   "ctx": "const head = { win: _T('فزت!'), loss: _T('خسرت هالمرة'), draw: _T('تعادل') }[m.res];"
  },
  {
   "k": "خصمك انسحب من المباراة.",
   "at": [
-   "p/app.js:3699"
+   "p/app.js:3717"
   ],
   "ctx": "const sub = why === 'quit' ? (win ? _T('خصمك انسحب من المباراة.') : _T('انسحبت من المباراة.')) : why === 'left' ? (win ? _T('انقطع اتصال خصمك وما رجع.') : _T('ا"
  },
  {
   "k": "انسحبت من المباراة.",
   "at": [
-   "p/app.js:3699"
+   "p/app.js:3717"
   ],
   "ctx": "const sub = why === 'quit' ? (win ? _T('خصمك انسحب من المباراة.') : _T('انسحبت من المباراة.')) : why === 'left' ? (win ? _T('انقطع اتصال خصمك وما رجع.') : _T('ا"
  },
  {
   "k": "انقطع اتصال خصمك وما رجع.",
   "at": [
-   "p/app.js:3699"
+   "p/app.js:3717"
   ],
   "ctx": "const sub = why === 'quit' ? (win ? _T('خصمك انسحب من المباراة.') : _T('انسحبت من المباراة.')) : why === 'left' ? (win ? _T('انقطع اتصال خصمك وما رجع.') : _T('ا"
  },
  {
   "k": "انقطع اتصالك وما رجعت في الوقت.",
   "at": [
-   "p/app.js:3699"
+   "p/app.js:3717"
   ],
   "ctx": "const sub = why === 'quit' ? (win ? _T('خصمك انسحب من المباراة.') : _T('انسحبت من المباراة.')) : why === 'left' ? (win ? _T('انقطع اتصال خصمك وما رجع.') : _T('ا"
  },
  {
   "k": "جاوبت {0} صح من 20 وجبت نقاط أكثر من {1}.",
   "at": [
-   "p/app.js:3700"
+   "p/app.js:3718"
   ],
   "ctx": ": win ? _T`جاوبت ${m.cor[0]} صح من 20 وجبت نقاط أكثر من ${esc(op.n || _T('خصمك'))}.` : m.res === 'draw' ? _T('نفس النقاط بالضبط!') : _T`${esc(op.n || _T('خصمك')"
  },
  {
   "k": "نفس النقاط بالضبط!",
   "at": [
-   "p/app.js:3700"
+   "p/app.js:3718"
   ],
   "ctx": ": win ? _T`جاوبت ${m.cor[0]} صح من 20 وجبت نقاط أكثر من ${esc(op.n || _T('خصمك'))}.` : m.res === 'draw' ? _T('نفس النقاط بالضبط!') : _T`${esc(op.n || _T('خصمك')"
  },
  {
   "k": "{0} جاب نقاط أكثر. راجع الأسئلة تحت وارجع أقوى.",
   "at": [
-   "p/app.js:3700"
+   "p/app.js:3718"
   ],
   "ctx": ": win ? _T`جاوبت ${m.cor[0]} صح من 20 وجبت نقاط أكثر من ${esc(op.n || _T('خصمك'))}.` : m.res === 'draw' ? _T('نفس النقاط بالضبط!') : _T`${esc(op.n || _T('خصمك')"
  },
  {
   "k": "مباراة بدون تصنيف",
   "at": [
-   "p/app.js:3701"
+   "p/app.js:3719"
   ],
   "ctx": "const rt = m.rated && m.r ? _T`<p class=\"ar-rtc\">تصنيفك <b>${m.r.now}</b> <em class=\"${m.r.d >= 0 ? 'up' : 'dn'}\" dir=\"ltr\">${m.r.d >= 0 ? '+' : ''}${m.r.d}</em"
  },
  {
   "k": "رجوع للساحة",
   "at": [
-   "p/app.js:3706",
-   "p/app.js:3707"
+   "p/app.js:3724",
+   "p/app.js:3725"
   ],
   "ctx": "${isFree() && AR.left === 0 ? _T`<div class=\"ar-acts c\"><button class=\"rz-go\" data-sub>⭐ اشترك والعب بدون حد</button><button class=\"btn ghost\" id=\"arbk\">رجوع لل"
  },
  {
   "k": "هذي كانت آخر مباراة مجانية لك اليوم، وترجع لك {0} مباريات بكرة.",
   "at": [
-   "p/app.js:3706"
+   "p/app.js:3724"
   ],
   "ctx": "${isFree() && AR.left === 0 ? _T`<div class=\"ar-acts c\"><button class=\"rz-go\" data-sub>⭐ اشترك والعب بدون حد</button><button class=\"btn ghost\" id=\"arbk\">رجوع لل"
  },
  {
   "k": "إعادة المباراة",
   "at": [
-   "p/app.js:3707"
+   "p/app.js:3725"
   ],
   "ctx": ": _T`<div class=\"ar-acts c\"><button class=\"rz-go\" id=\"arag\">إعادة المباراة</button><button class=\"btn\" id=\"arnw\">خصم جديد</button><button class=\"btn ghost\" id=\""
  },
  {
   "k": "خصم جديد",
   "at": [
-   "p/app.js:3707"
+   "p/app.js:3725"
   ],
   "ctx": ": _T`<div class=\"ar-acts c\"><button class=\"rz-go\" id=\"arag\">إعادة المباراة</button><button class=\"btn\" id=\"arnw\">خصم جديد</button><button class=\"btn ghost\" id=\""
  },
  {
   "k": "{0} صح",
   "at": [
-   "p/app.js:3702",
-   "p/app.js:3702"
+   "p/app.js:3720",
+   "p/app.js:3720"
   ],
   "ctx": "$('#arq').innerHTML = _T`<section class=\"ar-end ${m.res}\">"
  },
  {
   "k": "🔒 شرح كل سؤال للمشتركين في الدورة.",
   "at": [
-   "p/app.js:3724"
+   "p/app.js:3742"
   ],
   "ctx": "return (isFree() ? _T('<p class=\"ar-exl\">🔒 شرح كل سؤال للمشتركين في الدورة. <button type=\"button\" class=\"lnk\" data-sub>اشترك</button></p>') : '') + AR.m.refs.sl"
  },
  {
   "k": "أنت صح +{0}",
   "at": [
-   "p/app.js:3727"
+   "p/app.js:3745"
   ],
   "ctx": "return _T`<article class=\"ar-ri\"><div class=\"ar-rih\"><b>سؤال ${j + 1}</b><span class=\"tag\">${AR_T[ty] || ''}</span><span class=\"ar-rir ${h.mo ? 'ok' : 'bad'}\">$"
  },
  {
   "k": "أنت خطأ",
   "at": [
-   "p/app.js:3727"
+   "p/app.js:3745"
   ],
   "ctx": "return _T`<article class=\"ar-ri\"><div class=\"ar-rih\"><b>سؤال ${j + 1}</b><span class=\"tag\">${AR_T[ty] || ''}</span><span class=\"ar-rir ${h.mo ? 'ok' : 'bad'}\">$"
  },
  {
   "k": "اختيارك",
   "at": [
-   "p/app.js:3729"
+   "p/app.js:3747"
   ],
   "ctx": "<ul class=\"ar-ro ltr\">${it.opts.map((o, k) => `<li class=\"${k === h.k ? 'k' : k === h.my ? 'w' : ''}\"><b>${LETTERS[k]}</b> ${lab(o)}${k === h.my ? _T(' <small>ا"
  },

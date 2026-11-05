@@ -2816,10 +2816,15 @@
   const PB_M = { MADA: 'مدى', VISA: 'فيزا', MASTERCARD: 'ماستركارد', MASTER: 'ماستركارد', APPLE_PAY: 'Apple Pay', APPLEPAY: 'Apple Pay', AMEX: 'أمريكان إكسبريس', AMERICAN_EXPRESS: 'أمريكان إكسبريس', STC_PAY: 'STC Pay', STCPAY: 'STC Pay', GOOGLE_PAY: 'Google Pay' };
   function payBox(PY) {
     if (!PY || (!PY.mode && !PY.rows.length)) return '';
-    const mode = PY.mode === 'live' ? '<span class="pbmode live">🟢 شغّال لكل الزوار</span>' : PY.mode === 'test' ? `<span class="pbmode test">🧪 وضع التجربة: يطلع بس لك وللمختبرين${PY.testers.length ? ` (${PY.testers.length})` : ''}</span>` : '<span class="pbmode off">⏸ متوقف: مفتاح تاب مو موجود</span>';
+    const mode = PY.mode === 'live' ? (PY.open ? '<span class="pbmode live">🟢 شغّال لكل الزوار</span>' : `<span class="pbmode wait">🔒 دفع حقيقي: يطلع بس لك وللمختبرين${PY.testers.length ? ` (${PY.testers.length})` : ''}</span>`)
+      : PY.mode === 'test' ? `<span class="pbmode test">🧪 وضع التجربة: يطلع بس لك وللمختبرين${PY.testers.length ? ` (${PY.testers.length})` : ''}</span>` : '<span class="pbmode off">⏸ متوقف: مفتاح تاب مو موجود</span>';
+    // 🚀 بالمفتاح الحقيقي: المالك يفتح الدفع لكل الزوار بعد ما يجرّبه بنفسه (أو يوقفه)
+    const openBar = PY.mode !== 'live' ? '' : PY.open ? '<div class="pbopen on"><span>الزوار يشوفون زر «💳 ادفع واشترك» في نافذة الاشتراك.</span><button type="button" class="lnk dng" id="pbclose">⏸ إيقاف الدفع للزوار</button></div>'
+      : '<div class="pbopen"><span>جرّب الدفع من حساب التجربة أول، وإذا تمام افتحه للكل.</span><button type="button" class="btn sm gold" id="pbopen">🚀 افتح الدفع لكل الزوار</button></div>';
     const L = ADM.payAll ? PY.rows : PY.rows.slice(0, 6);
     return `<section class="paybox" aria-labelledby="pbh"><div class="pbtop"><h3 id="pbh">💳 الدفع من الموقع</h3>${mode}</div>
-      <p class="pbsum">${PY.paid ? `${PY.paid === 1 ? 'عملية ناجحة وحدة' : PY.paid === 2 ? 'عمليتين ناجحة' : PY.paid + ' عمليات ناجحة'} · المجموع <b>${PY.total} ريال</b>` : 'ما فيه دفع حقيقي للحين'} · سعر الشهر <b>${PY.price} ريال</b></p>
+      ${openBar}
+      <p class="pbsum">${PY.paid ? `${PY.paid === 1 ? 'عملية ناجحة وحدة' : PY.paid === 2 ? 'عمليتين ناجحة' : PY.paid + ' عمليات ناجحة'} · المجموع <b>${PY.total} ريال</b>` : 'ما فيه دفع حقيقي للحين'} · سعر الشهر <b>${PY.price} ريال</b>${PY.test_price ? ` · حساب التجربة يدفع <b>${PY.test_price} ريال</b>` : ''}</p>
       ${PY.rows.length ? `<div class="pblist">${L.map(p => { const S = PB_ST[p.status] || ['na', esc(p.status)], m = PB_M[String(p.method || '').toUpperCase()] || p.method || '';
         return `<div class="pbrow" data-e="${esc(p.email)}" role="button" tabindex="0" title="${p.err ? esc('السبب: ' + p.err) : 'بطاقة الطالب'}"><span class="pbwho"><b>${esc(p.display || p.name || p.email.split('@')[0])}</b><small class="ltr">${esc(p.email)}</small></span><span class="pbamt">${p.amount} ريال${m ? `<small>${esc(m)}</small>` : ''}</span><span class="pbst ${S[0]}">${S[1]}${p.live ? '' : '<small>🧪 تجربة</small>'}</span><span class="pbdt">${fmtD(p.paid_at || p.created_at)}</span></div>`; }).join('')}</div>
         ${PY.rows.length > 6 ? `<button type="button" class="lnk" id="pball">${ADM.payAll ? 'عرض أقل' : `عرض كل العمليات (${PY.rows.length})`}</button>` : ''}` : '<p class="mut pbempty">أول ما يدفع أحد من الموقع يطلع هنا.</p>'}
@@ -2874,6 +2879,10 @@
     W.querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { ADM.sf = ADM.sf === b.dataset.sf ? 'all' : b.dataset.sf; paintSubs(); });
     const ab = $('#sball'); if (ab) ab.onclick = () => { ADM.sf = 'all'; paintSubs(); };
     const pa = $('#pball'); if (pa) pa.onclick = () => { ADM.payAll = !ADM.payAll; paintSubs(); };
+    const po = $('#pbopen'), pc = $('#pbclose'), payOpen = async (open, btn) => {
+      if (!await QGDlg.confirm(open ? 'تفتح الدفع الحقيقي لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، واللي يدفع ينفتح له اشتراكه على طول.' : 'توقف الدفع من الموقع للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح الدفع' } : { ok: '⏸ إيقاف', danger: true })) return;
+      btn.disabled = true; try { ADM.pay = await admCall({ op: 'adm_pay_open', open: open ? 1 : 0 }); toast(open ? '🚀 الدفع صار مفتوح لكل الزوار' : '⏸ وقّفت الدفع للزوار'); paintSubs(); } catch (e) { btn.disabled = false; toast('ما انحفظ: ' + e.message); } };
+    if (po) po.onclick = () => payOpen(true, po); if (pc) pc.onclick = () => payOpen(false, pc);
     W.querySelectorAll('.pbrow[data-e]').forEach(r => { r.onclick = () => admStudent(r.dataset.e); r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); admStudent(r.dataset.e); } }; });
     $('#sbq').oninput = e => { ADM.sq = e.target.value; const pos = e.target.selectionStart; paintSubs(); const i = $('#sbq'); i.focus(); i.setSelectionRange(pos, pos); };
     const save = async (x, patch, undo, msg) => { Object.assign(x, patch); paintSubs();
