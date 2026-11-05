@@ -1555,6 +1555,30 @@ a.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .sub-s{margin:0;padding-inline-start:20px;display:grid;gap:4px;font-size:calc(14.5px * var(--fs));line-height:1.6}
 .sub-a{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .sub-a .btn{flex:1 1 160px;font-size:calc(15px * var(--fs))}
+/* 💳 الدفع من الموقع داخل نافذة الاشتراك */
+.sub-pay{margin-top:16px;display:grid;gap:8px}
+.sub-pay .sub-paygo{width:100%;padding:14px 18px;font-size:calc(17px * var(--fs));font-weight:900;border-radius:14px}
+.sub-pay .sub-paygo:disabled{opacity:.75;cursor:progress}
+.qgdlg-box p.sub-payn{margin:0;font-size:calc(13px * var(--fs));color:var(--mut);line-height:1.6;text-align:center}
+.qgdlg-box p.sub-test{margin:0;justify-self:center;background:var(--stampbg);color:var(--stampfg);border-radius:999px;padding:3px 12px;font-size:calc(12.5px * var(--fs));font-weight:800}
+.sub-or{display:flex;align-items:center;gap:10px;margin:18px 0 8px;color:var(--mut);font-size:calc(13px * var(--fs));font-weight:800}
+.sub-or::before,.sub-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.sub-a.alt{margin-top:12px}
+.sub-a.alt .btn{padding:10px 14px;font-size:calc(14px * var(--fs))}
+/* 💳 صفحة الرجوع من الدفع (#paid) */
+.wrap.paid{display:flex;justify-content:center;padding-top:40px}
+.pdcard{width:100%;max-width:520px;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--sh);padding:32px 26px 26px;text-align:center}
+.pdic{width:78px;height:78px;margin:0 auto 14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;background:var(--dotbg);color:var(--mut)}
+.pdcard.ok .pdic{background:var(--okbg);color:var(--okt)}
+.pdcard.bad .pdic{background:var(--badbg);color:var(--badt)}
+.pdcard.wait .pdic .spin{margin:0}
+.pdcard h2{font-family:var(--disp);font-size:calc(24px * var(--fs));color:var(--ink2);margin:0 0 8px}
+.pdcard p{margin:0 auto 6px;max-width:420px;font-size:calc(15.5px * var(--fs));line-height:1.7;color:var(--ink)}
+.pdcard p.pdend{margin-top:12px;display:inline-block;background:var(--okbg);color:var(--okt);border-radius:12px;padding:8px 14px;font-weight:700}
+.pdcard p.pdend b{font-family:var(--disp)}
+.pdact{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.pdact .btn{flex:0 1 200px}
+@media (max-width:520px){.wrap.paid{padding-top:20px}.pdcard{padding:26px 18px 20px;border-radius:18px}.pdact .btn{flex:1 1 100%}}
 /* صفحة الدخول */
 .login .note{display:block;background:none;border:0;border-radius:0;padding:0}   /* .note العامة (ملاحظات الدفتر) كانت تخفي ملاحظات صفحة الدخول ورابط الدعم */
 .lg-free{margin-top:18px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
@@ -2038,6 +2062,29 @@ html.l-en .rz-week{direction:ltr}
 .sbdt b{color:var(--ink)}.sbdt.ok>span:first-child{color:var(--okt)}.sbdt.soon>span:first-child{color:var(--warnt)}.sbdt.over>span:first-child{color:var(--badt)}
 .sbdtb{display:inline-flex;gap:10px}.sbdtb .lnk{font-size:calc(12.5px * var(--fs));font-weight:800}
 .sbtiles.n6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.sbtiles.n7{grid-template-columns:repeat(4,minmax(0,1fr))}.sbtiles.n7 .sbt.vid{grid-column:span 2}
+@media (max-width:900px){.sbtiles.n7{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 💳 الدفع من الموقع (المالك): خانة النوع + صندوق العمليات */
+.sbt.pay b{color:var(--royal)}
+.sbseg.pay{padding:3px}.sbpay{display:inline-block;padding:6px 12px;border-radius:9px;background:var(--card);box-shadow:var(--sh);color:var(--royal);font-weight:800;font-size:calc(13px * var(--fs));white-space:nowrap}
+.bdg.pay{color:var(--okt)}
+.paybox{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:14px 16px 12px;margin-bottom:12px}
+.pbtop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pbtop h3{margin:0;font-size:calc(16px * var(--fs));color:var(--ink2)}
+.pbmode{font-size:calc(12.5px * var(--fs));font-weight:800;border-radius:999px;padding:4px 12px}
+.pbmode.live{background:var(--okbg);color:var(--okt)}.pbmode.test{background:var(--stampbg);color:var(--stampfg)}.pbmode.off{background:var(--dotbg);color:var(--mut)}
+.pbsum{margin:8px 0 10px;font-size:calc(13.5px * var(--fs));color:var(--mut)}.pbsum b{color:var(--ink2)}
+.pblist{display:grid;border-top:1px solid var(--line)}
+.pbrow{display:grid;grid-template-columns:minmax(0,1.6fr) 110px minmax(0,1.1fr) 110px;gap:10px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:calc(13.5px * var(--fs))}
+.pbrow:hover,.pbrow:focus-visible{background:var(--dotbg)}.pbrow:focus-visible{outline:2px solid var(--royal);outline-offset:-2px}
+.pbwho{display:flex;flex-direction:column;min-width:0}.pbwho b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.pbwho small{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(12px * var(--fs))}
+.pbamt{font-weight:800;display:flex;flex-direction:column;color:var(--ink)}.pbamt small{font-weight:600;color:var(--mut);font-size:calc(11.5px * var(--fs))}
+.pbst{font-weight:800;font-size:calc(12.5px * var(--fs));display:flex;flex-direction:column}.pbst.ok{color:var(--okt)}.pbst.bad{color:var(--badt)}.pbst.warn{color:var(--warnt)}.pbst.na{color:var(--mut)}
+.pbst small{font-weight:600;color:var(--mut);font-size:calc(11.5px * var(--fs))}
+.pbdt{color:var(--mut);font-size:calc(12px * var(--fs))}
+.paybox #pball{margin-top:8px}.paybox .pbempty{margin:2px 0 4px;font-size:calc(13px * var(--fs))}
+@media (max-width:760px){.pbrow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"w a" "s d";row-gap:4px}.pbwho{grid-area:w}.pbamt{grid-area:a;text-align:end}.pbst{grid-area:s}.pbdt{grid-area:d;text-align:end}}
 .sbt.over b{color:var(--warnt)}.sbt.over.on{background:var(--stampbg);border-color:var(--warnt);box-shadow:inset 0 0 0 1px var(--warnt)}
 @media (max-width:1100px){.sbtiles.n6{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:900px){.sbtiles.n5,.sbtiles.n6{grid-template-columns:repeat(2,minmax(0,1fr))}.sbtiles.n6 .sbt.vid{grid-column:auto}}

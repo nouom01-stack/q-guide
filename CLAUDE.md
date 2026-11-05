@@ -30,3 +30,9 @@ every item keeps `src`/`sidx` of its model question (notes, skills and the AI us
 
 ## 👑 Owner-only pages (Arabic, `i18n:off`)
 Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the report (`renderReport`, route `#admin-report/<email>`). Modals close on every route change.
+
+## 💳 Paying on the site (Tap) — student side + owner box
+- `auth.pay = {on, price, test}` comes with the free session (`login`/`me`); `payOn()` shows «💳 ادفع 140 ريال واشترك الحين» at the top of the subscribe dialog (`subDlg`), YouTube/WhatsApp stay below as «أو اشترك عن طريق يوتيوب».
+- `payGo()` → `pay_start` → Tap's page. Tap returns to `/p/?tap_id=chg_…`: the startup code saves it in `sessionStorage.qg_tap` and opens `#paid` (`renderPaid`: checking → 🎉 success with the end date / ✕ declined + try again / ⏳ pending + check again). The heartbeat is paused while a payment id is pending; after login it goes back to `#paid`.
+- Success swaps the free session for the student session (`authFrom(r.auth)`) and clears the free key/cache.
+- New subscriber type `pay` («💳 دفع إلكتروني») watches the videos in the site like free/bank (`vidSub`). Owner: tile «💳 دفع من الموقع», row chip, badge in «👥 الطلاب», and the «💳 الدفع من الموقع» box in «💳 الاشتراكات» (`payBox`, rows open the student card).
