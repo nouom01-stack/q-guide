@@ -467,7 +467,7 @@
           ${toolA('#badges', '🏅', _T('إنجازاتي'), _T`${BADGES.filter(b => lsGet(BADGE_LS, {})[b.id]).length} من ${BADGES.length} شارة`)}
           ${toolA('#board', '🏆', _T('لوحة الصدارة'), _T('ترتيبك بين طلاب الدورة'))}</div>
       </section>
-      ${auth.member === 'manual' || FR ? '' : _T`<h2 class="h2" id="wbh">📘 مذكراتك</h2>
+      ${FR ? '' : _T`<h2 class="h2" id="wbh">📘 مذكراتك</h2>
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>`}
     </main>`;
     $('#lo').onclick = async () => { if (await QGDlg.confirm(_T('تسجيل الخروج؟'), { ok: _T('خروج') })) logout('', true); };
@@ -505,13 +505,15 @@
   async function renderWorkbooks() {
     const el = $('#wb'); if (!el) return;
     if (!auth.files || !auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || auth.phone || ''; auth.member = r.member || ''; lsSet(LS.auth, auth); } } catch (e) {} }
-    if (auth.member === 'manual') { ['#wbh', '#wb'].forEach(k => { const x = $(k); if (x) x.remove(); }); return; }   // المذكرة الشخصية تنعمل من الشيت برقم الجوال
-    const f = auth.files || {}; if (!$('#wb')) return;
-    const card = (id, title, icon, desc, k) => id ? _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
-        <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a><a class="btn sm ghost" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">PDF في Drive</a></div></div>`
+    // المضاف من اللوحة (مجاني/تحويل غالباً): ما له صف في الشيت، فما له PDF في Drive — المذكرة التفاعلية والمحلولة داخل الموقع باسمه وإيميله
+    const man = auth.member === 'manual', f = auth.files || {}; if (!$('#wb')) return;
+    const drive = id => id ? _T`<a class="btn sm ghost" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">PDF في Drive</a>` : '';
+    const card = (id, title, icon, desc, k) => id || man ? _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
+        <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a>${drive(id)}</div></div>`
       : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? _T('المشرف ليس له مذكرة شخصية') : _T('تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً')}</span></div></div>`;
-    el.innerHTML = card(f.quant, _T('مذكرة الكمي'), '📐', _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') + card(f.verbal, _T('مذكرة اللفظي'), '📖', _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
-      _T`<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.<br>📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.</p>`;
+    el.innerHTML = card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
+      card(f.verbal, _T('مذكرة اللفظي'), '📖', man ? _T('نسختك الخاصة باسمك وإيميلك · 193 صفحة · 14 نموذجاً') : _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
+      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">${man ? _T('المذكرة مسجّلة باسمك وإيميلك، وتفتحها من حسابك في الموقع. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.') : _T('المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.')}<br>${_T('📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.')}</p>`;
   }
 
   // ---------- interactive workbook viewer (pages + pen) ----------
@@ -521,8 +523,7 @@
     const title = EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
     document.title = title + ' | Q-Guide';
     if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
-    if (auth.member === 'manual') { toast(_T('المذكرة الشخصية غير متاحة لحسابك')); location.hash = ''; return; }
-    if (auth.role !== 'admin' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast(_T('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق')); location.hash = ''; return; }
+    if (auth.role !== 'admin' && auth.member !== 'manual' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast(_T('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق')); location.hash = ''; return; }
     let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json')).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
     const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, lsGet(lastKey, 1)));
     WB = { kind, meta, page, cache: {}, pen: null, solved: !!solved, sp: new Set(meta.sp || []) };
@@ -552,7 +553,7 @@
     WB.cache[key] = bmp; return bmp;
   }
   function stamp(ctx, meta, n) {
-    const sc = meta.scale, S = meta.slots, local = (auth.phone || '').replace(/^966/, '0');
+    const sc = meta.scale, S = meta.slots, local = (auth.phone || '').replace(/^966/, '0') || (auth.member === 'manual' ? auth.email || '' : '');   // المضاف من اللوحة: إيميله بدل الجوال
     const who = (auth.name || '') + (local ? ' · ' + local : ''); if (!who.trim()) return;
     const txt = (x, baseline, size, align, text) => { ctx.save(); ctx.font = `${Math.round(size * sc * 1.15)}px Tajawal, "Segoe UI", Tahoma, sans-serif`; ctx.fillStyle = '#5B6675'; ctx.textAlign = align; ctx.direction = 'rtl'; ctx.fillText(text, x * sc, baseline * sc); ctx.restore(); };
     txt(S.header.x, S.header.baseline, S.header.size, 'right', who);
@@ -2902,7 +2903,7 @@
         <div class="sroles s3" role="radiogroup" aria-label="نوع اشتراكهم">${[['free', '🎁 مجاني', 'تفتح له النسخ الخاصة من المقاطع'], ['bank', '🏦 تحويل بنكي', 'تفتح له النسخ الخاصة من المقاطع'], ['yt', '▶️ يوتيوب', 'عضو في القناة: مقاطع الأعضاء']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_sub" value="${v}" ${ADM.msub === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
         <div class="acts"><button class="btn gold" type="submit" id="m_go" disabled>إضافة</button><span class="mcnt" id="m_cnt"></span></div>
         ${resHtml}
-        <p class="mnote">يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة الشخصية (باسم الطالب وجواله) تنعمل من الشيت، فما تطلع للمضافين من هنا.</p></form>
+        <p class="mnote">يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة تطلع لهم داخل الموقع (التفاعلية والمحلولة) باسمهم وإيميلهم، ونسخة PDF في Drive تنعمل من الشيت بس.</p></form>
       <h3 class="sh">المضافون من اللوحة <small>${M.length}</small></h3>
       ${M.length > 8 ? `<div class="abar"><input id="mq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.mq)}"></div>` : ''}
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${M.length ? 'لا نتائج' : 'ما أضفت أحد بعد — اكتب الإيميلات فوق واضغط «إضافة».'}</div>`}</div></div>`;
