@@ -261,6 +261,7 @@
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
     if (/^board/.test(h)) return _T('لوحة الصدارة'); if (h === 'qall' || h === 'vall') return _T('الاختبار الشامل'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك');
+    h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
     return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي') }[h.replace(/-v\d+$/, '')] || '';
   }
   function subDlg(what, from) {
@@ -379,7 +380,7 @@
     if (h === 'notes') return renderNotes();
     if (h === 'badges') return renderBadges();
     if (h === 'level') return renderLevel();
-    if (h === 'rules' || h === 'rules-v') return renderRules(h === 'rules-v' ? 'v' : 'q');
+    if (/^rules(-v)?(\/[a-z-]+)?$/.test(h)) return renderRules(/^rules-v/.test(h) ? 'v' : 'q', (h.split('/')[1] || ''));   // #rules/circles = افتح على موضوع
     if (h === 'find') return renderFind();
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
@@ -492,6 +493,17 @@
             <span class="gt"><b>${met ? '✓ ' : ''}${today}<small> من ${goal}</small></b><small>${met ? _T('حققت هدف اليوم') : _T('هدف اليوم')}</small></span></button></div>
       </div></section>`;
   }
+  // 🎯 «ركّز اليوم»: أضعف مهارة من سجل إجاباتك مع تدريب مباشر عليها، وزر المساعد — أو اختبار تحديد المستوى لو ما فيه بيانات بعد
+  function focusHtml() {
+    const P = helpProfile(), w = P.weak && P.weak[0], FR = isFree(), nW = (() => { try { const h = histGet(); let n = 0; for (const s in h.items) for (const i in h.items[s]) if (!h.items[s][i][2]) n++; return n; } catch (e) { return 0; } })();
+    const ask = _T`<button type="button" class="btn sm ghost fx-ask" id="fxask"><span class="fx-sp" aria-hidden="true">✦</span>اسأل المساعد</button>`;
+    if (w) {
+      const drill = FR ? _T`<button type="button" class="btn sm" data-lock="التدريب على نقاط ضعفك">${w.i} تدريب ${esc(w.t)}</button>` : `<a class="btn sm" href="#t-${w.k}">${w.i} ${_T('تدريب')} ${esc(w.t)}</a>`;
+      const wrong = nW >= 3 && !FR ? _T`<a class="btn sm ghost" href="#t-wrong-${TOPICS[w.k].k === 'verbal' ? 'v' : 'q'}">🔁 أعد حل أخطائك <small>${nW}</small></a>` : '';
+      return _T`<section class="focus" aria-label="ركّز اليوم"><span class="fx-i" aria-hidden="true">🎯</span><div class="fx-t"><b>ركّز اليوم على ${esc(w.t)}</b><span>دقتك فيها ${w.p}% — أضعف مهاراتك الحين${P.weak[1] ? _T`، وبعدها ${esc(P.weak[1].t)} ${P.weak[1].p}%` : ''}</span></div><div class="fx-a">${drill}${wrong}${ask}</div></section>`;
+    }
+    return _T`<section class="focus" aria-label="ركّز اليوم"><span class="fx-i" aria-hidden="true">🧭</span><div class="fx-t"><b>اعرف وين تركّز</b><span>حل كم سؤال أو اختبار تحديد المستوى، ونقولك أضعف مهاراتك ونتدرّب عليها</span></div><div class="fx-a"><a class="btn sm" href="#level">🧭 تحديد المستوى</a>${ask}</div></section>`;
+  }
   let homePulled = false;
   async function renderHome() {
     document.title = _T('منصة التدريب | Q-Guide');
@@ -509,7 +521,7 @@
     app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
-      ${FR ? '' : '<div id="trip"></div>'}
+      ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span>${RR ? `<a class="rvid" href="${RR.url}"${RR.tgt} title="${RR.site ? _T('يشتغل هنا داخل الموقع') : RR.alt ? YT_ALT_TIP : esc(RR.d)}">${vIcon(RR)}<span>${RR.t}</span>${RR.dur ? `<small>${RR.dur}</small>` : ''}</a>` : ''}<a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
       <div class="sheets" id="grid"></div>
@@ -556,7 +568,8 @@
     if (!isFree()) badgeCheckSoon(); remCtx();
     const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; };
     if (!isFree()) paintTrip();
-    if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); } }).catch(() => {}); }
+    const bindFocus = () => { const b = $('#fxask'); if (b) b.onclick = () => { if (window.QGAI) QGAI.help(); }; bindSub($('#focus')); }; bindFocus();
+    if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } } }).catch(() => {}); }
     if (!isFree()) renderWorkbooks();
     prefetchSets();
   }
@@ -1485,7 +1498,10 @@
   const HELP_AUTO = /^(exact|reorder|wording|opts_same)$/, HELP_REF = /^(?:[qv]\d{1,2}:\d{1,3}|t\d{1,2}:[1-4]:\d{1,2})$/, HELP_FREE = /^(q1|v1|t1):/;
   function helpCard(r) {
     const it = r.best, free = isFree();
-    if (!it && r.status !== 'new') return { html: _T`<div class="fd-res tip"><p>اكتب السؤال كامل مع الخيارات، أو صوّره، عشان أقدر ألقاه في الدورة.</p></div>` };
+    if (!it) {   // مو في الدورة: المساعد يحلّه بنفسه، ومعه بلاغ للمعلم وأقرب الأسئلة (مطوية)
+      const near = r.similar && r.similar.length ? _T`<details class="fd-near"><summary>أقرب الأسئلة له في الدورة</summary><div class="fd-list">${r.similar.slice(0, 3).map(fsItem).join('')}</div></details>` : '';
+      return { nf: 1, html: `<div class="fd-res no">${fsRepBox('')}${near}</div>`, bind: el => { el.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => QGAI.close(true))); bindSub(el); fsRep(el, r.lid ? { id: r.lid } : { text: r.text || '' }); } };
+    }
     const S = FS[r.status] || FS.new;
     let h = `<div class="fd-res ${S[0]}"><div class="fd-h"><span class="ic" aria-hidden="true">${S[1]}</span><div><b>${S[2]}</b><small>${S[3]}</small></div></div>`, ref = '', label = '';
     if (it) {
@@ -1518,7 +1534,35 @@
     return { ok: true, text: p.file ? r.text || '' : '', card: helpCard(r) };
   }
   // الزر العائم يطلع في الصفحات العامة بس (مو داخل حل الأسئلة، ولا الساحة، ولا صفحات المشرفين، ولا صفحة البحث نفسها)
-  const helpOn = h => h != null && (h === '' || /^(sharh|level|rules|rules-v|notes|badges|plan|skills)$/.test(h) || /^(vocab|wb-)/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
+  const helpOn = h => h != null && (h === '' || /^(sharh|level|notes|badges|plan|skills)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^(vocab|wb-)/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
+  // 👤 ملف الطالب للمساعد (من جهازه): اختباره، سلسلته، أضعف مواضيعه، مهمة اليوم من خطته، وأنسب مكان يكمل فيه
+  function helpProfile() {
+    const P = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '' };
+    try {
+      const ex = examGet(), exT = ex ? examAt(ex) : 0; if (exT) P.examIn = dayDiff(Date.now(), exT);
+      P.streak = streakOf(daysGet());
+      const agg = histAgg(histGet());
+      P.weak = TOPIC_ORDER.map(t => ({ k: t, n: agg[t].w + agg[t].r, p: agg[t].w + agg[t].r ? Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)) : 0 })).filter(r => r.n >= 8).sort((a, b) => a.p - b.p).slice(0, 2).map(r => ({ k: r.k, t: TOPICS[r.k].t, i: TOPICS[r.k].i, p: r.p }));
+      const st = planState(), plan = PLANS.find(p => p.id === st.id);
+      if (plan) { const I = planInfo(plan, st); if (I.cur) P.task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و'); }
+      if (manifest) { const r = pickResume(); P.next = SET_NAME(r.s.id); P.nextId = r.s.id; }
+    } catch (e) {}
+    return P;
+  }
+  // 🔗 روابط المساعد: {{q3}} {{v5}} {{t2}} {{rules:circles}} {{t-geo}} {{plan}}… → زر ينقل الطالب للصفحة
+  const HELP_PAGES = { rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
+    vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
+    't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'] };
+  function helpLink(tok) {
+    let m; const a = (ic, t, h) => `<a class="qgai-lk" href="${h}"><span aria-hidden="true">${ic}</span>${t}</a>`;
+    if (HELP_PAGES[tok]) return a(...HELP_PAGES[tok]);
+    if ((m = /^([qv])(\d{1,2})$/.exec(tok)) && +m[2] >= 1 && +m[2] <= (m[1] === 'v' ? 15 : 14)) return a(m[1] === 'q' ? '📘' : '📗', SET_NAME(tok), '#' + tok);
+    if ((m = /^t(\d{1,2})$/.exec(tok)) && +m[1] >= 1 && +m[1] <= 17) return a('🧪', _T`الاختبار المحاكي ${m[1]}`, '/test/');
+    if ((m = /^t-([a-z]+)$/.exec(tok)) && TOPICS[m[1]]) return a(TOPICS[m[1]].i, _T`تدريب: ${TOPICS[m[1]].t}`, '#' + tok);
+    if ((m = /^rules:([a-z]+)$/.exec(tok))) { const s = (RU_DATA.q || []).find(x => x.id === m[1]) || RU_SEC[m[1]]; return s ? a(s.icon || '📐', _T`القوانين: ${s.t}`, '#rules/' + m[1]) : a('📐', _T('ملخص القوانين'), '#rules'); }
+    return '';
+  }
+  const RU_SEC = { fractions: { icon: '➗', t: _T('الكسور') }, percent: { icon: '💯', t: _T('النسبة المئوية') }, ratio: { icon: '⚖️', t: _T('النسبة والتناسب') }, exponents: { icon: '√', t: _T('الأسس والجذور') }, algebra: { icon: '🔤', t: _T('الجبر') }, numbers: { icon: '🔢', t: _T('خصائص الأعداد') }, sequences: { icon: '🔁', t: _T('المتتابعات والأنماط') }, statistics: { icon: '📊', t: _T('الإحصاء') }, probability: { icon: '🎲', t: _T('الاحتمالات والعد') }, angles: { icon: '📐', t: _T('الزوايا والمستقيمات') }, triangles: { icon: '🔺', t: _T('المثلثات') }, quadrilaterals: { icon: '🟦', t: _T('الأشكال الرباعية والمضلعات') }, circles: { icon: '⭕', t: _T('الدائرة') }, solids: { icon: '🧊', t: _T('المجسمات') }, coordinates: { icon: '📈', t: _T('الهندسة الإحداثية') }, speed: { icon: '🚗', t: _T('السرعة والزمن والعمل') }, clock: { icon: '🕒', t: _T('الساعة والتقويم') }, ages: { icon: '🎂', t: _T('الأعمار') }, money: { icon: '💰', t: _T('المال والحسابات اليومية') }, comparison: { icon: '🆚', t: _T('المقارنات الكمية') }, units: { icon: '📏', t: _T('الوحدات والتحويلات') } };
   async function renderFind() {
     document.title = _T('ابحث عن سؤال | Q-Guide');
     let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '', imgData = '', imgLid = 0;   // imgLid = رقم بحث الصورة في الخادم (صورته محفوظة هناك)
@@ -1618,13 +1662,13 @@
     v: { hash: '#rules-v', ttl: _T('📘 قواعد اللفظي'), h1: _T('قواعد اللفظي'), file: 'rules_v.json?v=1', yt: () => ytRules('v'),
       ph: _T('ابحث: سبب ونتيجة، although، main idea…'), none: _T('ما لقينا قاعدة بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.'),
       intro: () => _T('طريقة الحل في كل نوع من أسئلة اللفظي، وأنواع العلاقات والقرائن والأسئلة اللي تكررت في أسئلة الدورة. تحت كل نوع مثال محلول وسؤال تدريبي تحل فيه بنفسك. تقدر تطبعها أو تحفظها PDF من زر 🖨️.') } };
-  async function renderRules(kind) {
+  async function renderRules(kind, goTo) {
     kind = kind === 'v' ? 'v' : 'q'; const C = RU_CFG[kind], VB = kind === 'v';
     document.title = C.h1 + ' | Q-Guide';
     const back = _T`<a class="ib" href="#" title="الرئيسية">→</a>`;
     if (!RU_DATA[kind]) { app.innerHTML = topbar(`<span class="ttl">${C.ttl}</span>`, back) + '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; bindCtl();
       try { RU_DATA[kind] = await (await fetch('/p/data/' + C.file)).json(); } catch (e) { app.innerHTML = topbar('', back) + _T('<div class="center">تعذّر التحميل. <a href="#">رجوع</a></div>'); return; } }
-    if (location.hash !== C.hash) return;
+    if (location.hash !== C.hash + (goTo ? '/' + goTo : '')) return;
     const D = RU_DATA[kind], R = C.yt(), nItems = D.reduce((a, s) => a + s.items.length, 0);
     const tx = VB ? esc : mx;   // اللفظي نص إنجليزي عادي، والكمي نرسم كسوره وأسسه
     app.innerHTML = topbar(_T`<span class="ttl">${C.ttl}</span><span class="sp"></span><button class="ib" id="prn" title="طباعة / حفظ PDF">🖨️</button>`, back) + _T`<main class="wrap rules${VB ? ' rules-v' : ''}">
@@ -1638,6 +1682,7 @@
     bindCtl();
     $('#prn').onclick = () => window.print();
     document.querySelectorAll('.ru-nav a').forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById('ru-' + a.dataset.go); if (el) el.scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); });
+    if (goTo) { const el = document.getElementById('ru-' + goTo); if (el) { requestAnimationFrame(() => { el.scrollIntoView({ behavior: 'auto', block: 'start' }); el.classList.add('ru-hi'); setTimeout(() => el.classList.remove('ru-hi'), 2600); }); } }
     // مثال محلول / سؤال تدريبي تحت كل قانون (تنبني عند الفتح فقط)
     // سؤال المقارنة: «Quantity A / Quantity B» في عمودين مثل الاختبار
     const ruQ = t => { if (VB) return `<div class="ru-qq" dir="ltr">${esc(t)}</div>`;
@@ -2731,10 +2776,11 @@
     let m = ref.match(/^q(\d+):(\d+)$/); if (m) return `الكمي · القسم ${m[1]} · سؤال ${+m[2] + 1}`;
     m = ref.match(/^v(\d+):(\d+)$/); if (m) return `اللفظي · النموذج ${m[1]} · سؤال ${+m[2] + 1}`;
     m = ref.match(/^t(\d+):(\d):(\d+)$/); if (m) return `المحاكي ${m[1]} · القسم ${m[2]} · سؤال ${+m[3] + 1}`;
+    if (ref === 'chat') return '🙋 محادثة عامة (تحتاج مساعدة؟)';
     return ref;
   }
   // 💬 السجل كمحادثات: رسائل الطالب على نفس السؤال ورا بعض (المحادثة الجديدة تبدأ لما يرجع الشرح الأول)
-  const AI_IT = { vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)' };
+  const AI_IT = { study: 'يسأل وش يذاكر', weak: 'يسأل عن مستواه وضعفه', tips: 'يبي نصايح للاختبار', solve: 'يبي حل سؤال من برا الدورة', vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)' };
   function aiConvs(logs) {
     const open = new Map(), out = [];
     for (const l of logs.slice().sort((a, b) => a.id - b.id)) {
@@ -2750,7 +2796,7 @@
     const pk = (c.msgs.find(m => m.pk != null) || {}).pk, mref = c.ref.match(/^([qv]\d+):(\d+)$/);
     const qbox = Q ? `<div class="cvq">${Q.p ? `<div class="cvp">📄 القطعة: ${esc(Q.p)}</div>` : ''}<div class="cvs" dir="ltr">${esc(Q.e || Q.a)}</div>${Q.f ? '<small class="mut">السؤال فيه رسم أو جدول</small>' : ''}
       <ol class="cvo" dir="ltr">${Q.o.map((o, i) => `<li class="${i === Q.k ? 'k' : i === pk ? 'w' : ''}"><b>${LETTERS[i]}</b> ${esc(o)}${i === Q.k ? ' <span dir="rtl">✓ الصحيحة</span>' : i === pk ? ' <span dir="rtl">✗ اختيار الطالب</span>' : ''}</li>`).join('')}</ol></div>` : '';
-    const msg = m => (m.turn > 1
+    const msg = m => (m.turn > 1 || c.ref === 'chat'
       ? `<div class="cvm u"><span class="cvl">🧑‍🎓 الطالب كتب</span><p>${esc(m.q)}</p>${AI_IT[m.it] ? `<small class="cvit">🧭 فهم المساعد إنه ${AI_IT[m.it]}</small>` : ''}</div>`
       : `<div class="cvm u sys"><span class="cvl">🧑‍🎓 الطالب</span><p>ضغط «اشرح لي أكثر»${m.pk != null && Q ? (m.pk === Q.k ? ' بعد ما جاوب صح' : ` بعد ما اختار ${LETTERS[m.pk]} وهي خطأ`) : ''}</p></div>`)
       + `<div class="cvm a${m.flag ? ' fl' : ''}"><span class="cvl">🤖 المساعد ردّ</span><div class="aian">${window.QGAI ? QGAI.render(m.a) : esc(m.a)}</div>
@@ -3795,7 +3841,7 @@
 
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
   if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800),   // i18n:skip (اسم الإحصائية بالعربي)
-    help: { find: helpFind, name: () => ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0] } });   // 🙋 المساعد العام
+    help: { find: helpFind, profile: helpProfile, link: helpLink, name: () => ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0] } });   // 🙋 المساعد العام
   applyFs(); applyTheme();
   // 💳 الرجوع من صفحة الدفع: تاب يضيف ?tap_id=chg_… لرابط الرجوع — نحفظه ونروح لصفحة التحقق
   (function () { const m = /[?&]tap_id=(chg_[A-Za-z0-9]+)/.exec(location.search); if (!m) return; try { sessionStorage.setItem(PAY_SS, m[1]); } catch (e) {} history.replaceState(null, '', location.pathname + '#paid'); })();

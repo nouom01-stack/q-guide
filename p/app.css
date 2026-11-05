@@ -797,6 +797,16 @@ a.tchip:hover{border-color:var(--royal)}
 .trip.invite .tr-t{flex:1 1 300px;font-size:calc(14.5px * var(--fs))}
 .trip.invite .tr-t b{color:var(--ink2);font-family:var(--disp);font-weight:800;font-size:1.08em;margin-inline-end:4px}
 .tr-b{display:flex;gap:8px;flex-wrap:wrap}
+/* 🎯 ركّز اليوم: أضعف مهارة + تدريب مباشر + المساعد */
+.focus{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;margin:0 0 16px;padding:13px 18px;border-radius:18px;background:linear-gradient(135deg,var(--card),var(--dotbg));border:1px solid var(--line);color:var(--ink)}
+.fx-i{font-size:calc(24px * var(--fs));line-height:1;flex:none}
+.fx-t{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fx-t b{font-family:var(--disp);font-weight:800;font-size:calc(17px * var(--fs));color:var(--ink2);line-height:1.3}
+.fx-t span{font-size:calc(13.5px * var(--fs));color:var(--mut)}
+.fx-a{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fx-a .btn small{font-size:.8em;opacity:.8;margin-inline-start:2px}
+.fx-ask{gap:6px}.fx-sp{color:var(--gold3);font-size:1.1em}
+@media (max-width:640px){.focus{padding:12px 14px;gap:10px 12px}.fx-a{flex-basis:100%}.fx-a .btn{flex:1 1 auto;justify-content:center}}
 .tr-x{position:absolute;inset-inline-end:10px;top:12px;width:30px;height:30px;border-radius:8px;color:var(--mut);font-size:13px}
 .tr-x:hover{background:var(--dotbg);color:var(--ink)}
 @media (max-width:640px){
@@ -1143,6 +1153,8 @@ button.tool:hover{background:var(--dotbg)}
 .ru-nav a:hover{border-color:var(--royal);color:var(--royal)}
 .ru-cols{display:flex;flex-direction:column;gap:14px}
 .ru-s{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px 8px;scroll-margin-top:80px}
+.ru-s.ru-hi{animation:ru-hi 2.4s ease-out}
+@keyframes ru-hi{0%,45%{box-shadow:0 0 0 3px var(--gold),0 10px 30px rgba(233,162,59,.3)}100%{box-shadow:none}}
 .ru-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));column-gap:22px}
 .ru-s h2{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-family:var(--disp);font-weight:800;font-size:calc(19px * var(--fs));color:var(--ink2)}
 .ru-s h2 .ic{font-size:1.05em}

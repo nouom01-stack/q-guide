@@ -43,7 +43,10 @@ Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the 
 - `QGAI.help()` opens the same panel as «اشرح لي» in help mode: the student snaps (📷, or pastes an image) or types the question → `helpFind` (op `find`, no kind) → `helpCard` (same card as the search page).
   Found (exact / reorder / wording / opts_same) → the explanation starts at once (`/ai` with that ref) · similar (numbers / opts_diff) → «اشرح لي طريقة الحل» button · new → report + nearest questions. Free visitors: only q1 / v1 / t1 refs are explained.
 - Typed text after an explanation is a follow-up on that question (thread `H.tk`); «سؤال جديد», the camera, or pasting a full question with A) B) options starts a new search.
-- Test: `site/help_e2e.js`.
+- Anything else (Arabic text, concept questions, "what should I study", tips) → chat mode (`/ai {chat: 1}`): the coach solves/explains/advises using the student's profile; a searched question that is not in the course falls through to chat too (slim «مو من أسئلة الدورة» bar + report). `helpProfile()` (exam countdown, streak, weakest topics from `histAgg`, today's plan task, resume set) feeds the welcome card's status chips and suggestion chips, and `ctx` of every chat request.
+- Link tokens in answers (`{{q3}}`, `{{rules:circles}}`, `{{t-geo}}`, `{{plan}}`…) → `helpLink()` page chips (`.qgai-lk`); `#rules/<section id>` deep-links a rules section (highlighted).
+- Home «ركّز اليوم» strip (`focusHtml`): weakest skill + drill `#t-<topic>` + «أعد حل أخطائك» + «اسأل المساعد»; placement-test nudge when there is no data yet.
+- Test: `site/help_e2e.js` (the dev server multiplies per-minute rate limits ×10: `RATE_X`).
 
 ## 🗑 Ended students: delete from the lists · 🎓 all-time count (owner)
 Ended rows in «👥 الطلاب» show «🗑 حذف» instead of «حظر» (ban stays in the student card); also «🗑 حذف من القائمة» in the card and «🗑 حذف» next to «↩️ إرجاع الاشتراك» in «💳 الاشتراكات» (`subGoneOne` → `adm_sub_gone`). First owner tile «🎓 كل اللي اشتركوا» = `ADM.ever` from `adm_students`.
