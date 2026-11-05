@@ -774,8 +774,9 @@
   let P = null; // player state
   async function renderPlayer(id, start) {
     app.innerHTML = topbar(_T`<span class="ttl">جارٍ التحميل…</span>`, _T`<a class="ib" href="#" title="رجوع">→</a>`) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>');
+    if (RULES_ON && !isFree()) ruleMapLoad();   // خريطة «راجع القاعدة» تنزل مع الأسئلة
     let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + _T('<div class="center">تعذّر فتح الأسئلة (') + esc(e.message) + _T('). <a href="#">رجوع</a></div>'); return; }
-    if (set.kind === 'verbal') await loadVocab();
+    if (set.kind === 'verbal') await loadVocab(); else if (rmapP) await rmapP;
     const items = flatItems(set); const prog = progGet(id);
     if (!items.length) { const star = /^t-star-/.test(id); app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, _T`<a class="ib" href="${star ? '#notes' : '#skills'}" title="رجوع">→</a>`) + (star ? _T`<div class="center"><div style="font-size:40px">⭐</div><p>ما حفظت أسئلة في هذا القسم من دفترك.<br><span class="mut">اضغط ⭐ على أي سؤال وأنت تحل عشان ينحفظ هنا وتتدرّب عليه.</span></p><a class="btn" href="#notes">📒 دفتري</a></div>` : _T`<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`); bindCtl(); return; }
     if (!prog.started) prog.started = Date.now();
@@ -864,6 +865,7 @@
     // الشرح المكتوب انشال: الشرح صار من المساعد الذكي بس (زر «اشرح لي أكثر»)
     return `<div class="fb ${ok ? 'ok' : 'bad'}"><div class="h">${ok ? OKS[(it.n || 0) % OKS.length] : _T('❌ إجابة خاطئة')}</div>
       ${ok ? '' : _T`<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(corr.replace(/^[A-D]\)\s*/, ''))}</b></div>`}
+      ${fbMeta(it, a)}
       ${aiSlot(it, a)}
       ${ok ? '' : ytLink(it)}
       ${P && P.set.kind === 'verbal' ? trHtml(it, ok) : ''}</div>`;
@@ -1023,12 +1025,24 @@
     if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; progSet(P.id, prog); setTimeout(badgeCheck, 2200); remCtx();
     document.onkeydown = null;
     const nm = /^([qv])(\d{1,2})$/.exec(set.id), nx = nm && +nm[2] < 14 ? nm[1] + (+nm[2] + 1) : null;
+    // ⏱ متوسط وقت السؤال (الأسئلة اللي وقتها معروف فقط) مقارنة بوقت قياس
+    const timed = Object.values(prog.a).filter(a => a.ms > 0 && a.ms < Q_CAP), pc = timed.length >= 5 ? paceOf(timed.reduce((s, a) => s + a.ms, 0) / timed.length) : null;
+    const paceHtml = pc ? _T`<p class="s-pace ${pc.k}"><span aria-hidden="true">⏱</span>متوسط وقتك للسؤال <b dir="ltr">${fmtDur(pc.s)}</b> — ${pc.k === 'fast' ? _T('أسرع من وقت الاختبار 👌') : pc.k === 'ok' ? _T('مناسب لوقت الاختبار (دقيقة تقريباً للسؤال)') : _T('أبطأ من وقت الاختبار (دقيقة تقريباً للسؤال) — تدرّب على السرعة')}</p>` : '';
+    // 📐 القواعد اللي تجمّعت فيها أخطاؤه في هذا القسم (كل قاعدة مرة واحدة، الأكثر تكراراً أولاً)
+    const rulesHtml = (() => {
+      if (!wrong.length) return ''; const m = new Map();
+      wrong.forEach(i => { const r = ruleFor(items[i].it, i); if (r) { const o = m.get(r.href) || Object.assign({ n: 0 }, r); o.n++; m.set(r.href, o); } });
+      const L = [...m.values()].sort((a, b) => b.n - a.n).slice(0, 6); if (!L.length) return '';
+      return `<div class="s-rules"><h3>${set.kind === 'quant' ? _T('📐 قوانين تراجعها قبل ما تكمّل') : _T('📘 قواعد تراجعها قبل ما تكمّل')}</h3><div class="s-rl">${L.map(r => `<a class="fb-r" href="${r.href}"><span aria-hidden="true">${r.icon}</span>${esc(r.t)}${r.n > 1 ? `<small>${r.n}</small>` : ''}</a>`).join('')}</div></div>`;
+    })();
     $('#pm').innerHTML = _T`<div class="sum"><div class="ring" id="ring" style="--p:0"><b><span id="rp">0</span><small>%</small></b></div>
       <h2>${pct >= 85 ? _T('ممتاز! 🌟') : pct >= 70 ? _T('جيد جداً 👏') : pct >= 50 ? _T('جيد، كمّل تدريب 💪') : _T('راجع الشرح وأعد المحاولة 📘')}</h2>
       <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
+      ${paceHtml}
       <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? _T`<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : _T`<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? _T`<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? _T`<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
       <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
+      ${rulesHtml}
       ${wrong.length ? _T`<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
@@ -1655,6 +1669,24 @@
 
   // ---------- 📐 قوانين الكمي · 📘 قواعد اللفظي (من أسئلة الدورة) ----------
   const RULES_V = 4, RULES_ON = true, RU_DATA = {};
+  // 📐 أي قاعدة تناسب السؤال؟ الكمي من خريطة p/data/rulemap.json (مرجع السؤال → قسم في ملخص القوانين؛ تُبنى في مستودع الـ API بـ tools/rulemap.mjs
+  // وتترك السؤال بدون قاعدة لو ما كانت واضحة)، واللفظي من نوع السؤال نفسه (تناظر/إكمال/خطأ/استيعاب)
+  const RMAP_V = 1; let RMAP = null, rmapP = null;
+  function ruleMapLoad() { if (RMAP) return Promise.resolve(RMAP); if (rmapP) return rmapP; rmapP = fetch('/p/data/rulemap.json?v=' + RMAP_V, { cache: 'force-cache' }).then(r => r.json()).then(j => (RMAP = j)).catch(() => (RMAP = {})); return rmapP; }
+  function ruleFor(it, i) {
+    if (!RULES_ON || !P || isFree()) return null;
+    const src = it.src || P.id, idx = it.sidx != null ? it.sidx : i;
+    if (P.set.kind === 'verbal') { const t = it.topic; return t && TOPICS[t] && TOPICS[t].k === 'verbal' ? { href: '#rules-v/' + t, icon: TOPICS[t].i, t: TOPICS[t].t } : null; }
+    const id = RMAP && /^q\d{1,2}$/.test(src) ? RMAP[src + ':' + idx] : '', s = id && RU_SEC[id];
+    return s ? { href: '#rules/' + id, icon: s.icon, t: s.t } : null;
+  }
+  // ⏱ وقت السؤال مقارنة بوقت قياس (دقيقة تقريباً لكل سؤال): سريع · ضمن الوقت · أبطأ
+  function paceOf(ms) { if (!(ms > 0) || ms >= Q_CAP) return null; const s = ms / 1000; return { s, k: s <= 40 ? 'fast' : s <= 75 ? 'ok' : 'slow', t: s <= 40 ? _T('سريع') : s <= 75 ? _T('ضمن وقت الاختبار') : _T('أبطأ من وقت الاختبار') }; }
+  // شريط بعد الإجابة: وقتك في السؤال + القاعدة اللي تراجعها (بعد الإجابة الخاطئة)
+  function fbMeta(it, a) {
+    const p = paceOf(a.ms), r = a.s !== it.ans ? ruleFor(it, P.cur) : null; if (!p && !r) return '';
+    return `<div class="fb-meta">${r ? _T`<a class="fb-r" href="${r.href}"><span aria-hidden="true">${r.icon}</span>راجع القاعدة: <b>${esc(r.t)}</b><span class="go" aria-hidden="true">${EN ? '→' : '←'}</span></a>` : ''}${p ? _T`<span class="fb-t ${p.k}" title="في قياس عندك تقريباً دقيقة لكل سؤال"><span aria-hidden="true">⏱</span><b dir="ltr">${fmtDur(p.s)}</b>${p.t}</span>` : ''}</div>`;
+  }
   const RU_CFG = {
     q: { hash: '#rules', ttl: _T('📐 قوانين الكمي'), h1: _T('قوانين الكمي'), file: 'rules.json?v=' + RULES_V, yt: () => ytRules('q'),
       ph: _T('ابحث عن قانون: مساحة، نسبة، زاوية، area…'), none: _T('ما لقينا قانون بهالكلمة. جرّب كلمة ثانية بالعربي أو الإنجليزي.'),

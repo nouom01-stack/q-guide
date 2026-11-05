@@ -48,5 +48,12 @@ Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the 
 - Home «ركّز اليوم» strip (`focusHtml`): weakest skill + drill `#t-<topic>` + «أعد حل أخطائك» + «اسأل المساعد»; placement-test nudge when there is no data yet.
 - Test: `site/help_e2e.js` (the dev server multiplies per-minute rate limits ×10: `RATE_X`).
 
+## ⏱📐 After every answer: pace + «راجع القاعدة» (`fbMeta` in `p/app.js`)
+- `paceOf(ms)` compares the question's own time (`a.ms`, capped at `Q_CAP`) with the GAT pace (~1 min/question): `fast` ≤ 40 s · `ok` ≤ 75 s · `slow`; chip `.fb-t` after every answer, hidden when the time is unknown/capped.
+- `ruleFor(it, i)` → `{href, icon, t}` of the rules section to review: quant from `p/data/rulemap.json` (`"q4:29": "fractions"`, built in the API repo by `tools/rulemap.mjs` from the bank — only confident matches, ~70 % of the questions; bump `RMAP_V` when it changes),
+  verbal from `it.topic` → `#rules-v/<ana|sen|err|read>`. Chip `.fb-r` after a wrong answer only; never for free visitors (rules are for subscribers). The map is fetched with the set (`ruleMapLoad`).
+- Set summary (`finish`): `.s-pace` = average time per question (≥ 5 timed answers) + verdict; `.s-rules` = the distinct rules of the wrong questions, most frequent first (count badge), max 6.
+- Keyboard hints `.q .kbd` are hidden on touch devices (CSS `hover:none and pointer:coarse`). Test: `site/player_e2e.js`.
+
 ## 🗑 Ended students: delete from the lists · 🎓 all-time count (owner)
 Ended rows in «👥 الطلاب» show «🗑 حذف» instead of «حظر» (ban stays in the student card); also «🗑 حذف من القائمة» in the card and «🗑 حذف» next to «↩️ إرجاع الاشتراك» in «💳 الاشتراكات» (`subGoneOne` → `adm_sub_gone`). First owner tile «🎓 كل اللي اشتركوا» = `ADM.ever` from `adm_students`.

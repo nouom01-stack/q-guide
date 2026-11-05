@@ -2194,3 +2194,22 @@ html.l-en .rz-week{direction:ltr}
   .rpr.head{display:none}.rpr{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;text-align:start;padding:12px}.rpr>span:first-child{grid-column:1/-1}
   .rpr>span[data-l]:before{content:attr(data-l);display:block;font-size:calc(11px * var(--fs));color:var(--mut);font-weight:700;margin-bottom:1px}}
 @media print{header.top,.rpsb,#rpprint,#rpref{display:none!important}body{background:#fff}.rpcard,.rphead,.rptiles>div{box-shadow:none;break-inside:avoid}.rpt{gap:10px}}
+
+/* ⏱📐 بعد الإجابة: وقتك في السؤال + «راجع القاعدة» · وفي النتيجة: متوسط الوقت + القواعد اللي تراجعها */
+.fb-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:2px 0 10px}
+.fb-t,.fb-r{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:calc(13.5px * var(--fs));line-height:1.5;min-height:30px}
+.fb-t{background:rgba(255,255,255,.78);border:1px solid rgba(23,33,58,.08);color:var(--mut);font-weight:600}
+.fb-t b{color:var(--ink);font-family:var(--disp);font-weight:800;font-variant-numeric:tabular-nums}
+.fb-t.fast b{color:var(--ok)}.fb-t.slow{background:#FFF6E0;border-color:#F0D48E;color:#8A5A00}.fb-t.slow b{color:#B8700A}
+.fb-r{background:#fff;border:1px solid #D4DCF0;color:var(--navy2);font-weight:700;text-decoration:none;transition:.15s}
+.fb-r:hover{border-color:var(--royal);background:#F3F6FF}.fb-r b{font-weight:800}.fb-r .go{opacity:.55}.fb-r small{background:var(--dotbg);color:var(--mut);border-radius:999px;padding:0 7px;font-weight:800;font-size:calc(12px * var(--fs))}
+.s-pace{margin:-6px 0 16px;font-size:calc(14.5px * var(--fs));color:var(--mut)}.s-pace>span{margin-inline-end:6px}.s-pace b{color:var(--ink);font-family:var(--disp);font-weight:800;font-variant-numeric:tabular-nums;margin:0 3px}
+.s-pace.fast b{color:var(--ok)}.s-pace.slow{color:#8A5A00}.s-pace.slow b{color:#B8700A}
+.s-rules{text-align:start;margin-top:18px;background:var(--dotbg);border-radius:14px;padding:12px 14px}
+.s-rules h3{font-size:calc(15px * var(--fs));color:var(--navy2);margin:0 0 8px;font-family:var(--disp);font-weight:800}
+.s-rl{display:flex;flex-wrap:wrap;gap:8px}
+[data-theme="dark"] .fb-t,[data-theme="dark"] .fb-r{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14);color:#C8D2E8}[data-theme="dark"] .fb-t b,[data-theme="dark"] .s-pace b{color:#fff}
+[data-theme="dark"] .fb-t.slow,[data-theme="dark"] .s-pace.slow{background:#3A2D10;border-color:#6B5320;color:#F3D08A}[data-theme="dark"] .fb-t.slow b,[data-theme="dark"] .s-pace.slow b{color:#FFD27A}
+[data-theme="dark"] .s-pace.slow{background:none}
+[data-theme="dark"] .fb-r:hover{background:rgba(255,255,255,.13);border-color:var(--gold3)}[data-theme="dark"] .fb-r small{background:rgba(255,255,255,.1);color:#C8D2E8}
+@media (hover:none) and (pointer:coarse){.q .kbd{display:none}}   /* تلميحات الكيبورد ما لها معنى على اللمس */
