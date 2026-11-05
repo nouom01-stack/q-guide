@@ -36,3 +36,6 @@ Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the 
 - `payGo()` → `pay_start` → Tap's page. Tap returns to `/p/?tap_id=chg_…`: the startup code saves it in `sessionStorage.qg_tap` and opens `#paid` (`renderPaid`: checking → 🎉 success with the end date / ✕ declined + try again / ⏳ pending + check again). The heartbeat is paused while a payment id is pending; after login it goes back to `#paid`.
 - Success swaps the free session for the student session (`authFrom(r.auth)`) and clears the free key/cache.
 - New subscriber type `pay` («💳 دفع إلكتروني») watches the videos in the site like free/bank (`vidSub`). Owner: tile «💳 دفع من الموقع», row chip, badge in «👥 الطلاب», and the «💳 الدفع من الموقع» box in «💳 الاشتراكات» (`payBox`, rows open the student card).
+
+## 🗑 Ended students: delete from the lists · 🎓 all-time count (owner)
+Ended rows in «👥 الطلاب» show «🗑 حذف» instead of «حظر» (ban stays in the student card); also «🗑 حذف من القائمة» in the card and «🗑 حذف» next to «↩️ إرجاع الاشتراك» in «💳 الاشتراكات» (`subGoneOne` → `adm_sub_gone`). First owner tile «🎓 كل اللي اشتركوا» = `ADM.ever` from `adm_students`.
