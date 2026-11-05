@@ -126,6 +126,8 @@
       (cache[id].groups || []).forEach(g => { if (g.kind === 'part' && g.title) g.title = String(g.title).split(' – ')[0]; }); }   // «Analogies – التناظر اللفظي» → Analogies
     return cache[id];
   }
+  // 👤 الاسم الأول للترحيب: الأسماء المركّبة (عبد الله، عبد العزيز، أبو فهد، Abdul Rahman) تبقى كاملة
+  function firstName(s) { const w = String(s || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return ''; return w.length > 1 && /^(عبد|عبدال|أبو|ابو|أم|ام|abd|abdul|abdel|abdol|abu)$/i.test(w[0]) ? w[0] + ' ' + w[1] : w[0]; }
   function progGet(id) { return lsGet(LS.prog + id, { a: {}, best: null, started: 0, last: 0, done: 0 }); }
   function progSet(id, p) { lsSet(LS.prog + id, p); }
   function flatItems(set) {
@@ -470,7 +472,7 @@
   const cols = (n, max) => Math.max(1, Math.ceil(n / Math.ceil(n / max)));   // صفوف متساوية بدون فقاعات يتيمة
   const dLabel = n => EN ? enN(n, 'day', 'days') : n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';   // i18n:skip
   function rzHtml() {
-    const first = (auth.display || auth.name || '').trim().split(/\s+/)[0] || '';
+    const first = firstName(auth.display || auth.name);
     const R = pickResume(), rs = R.s, st = R.st;
     const D = daysGet(), streak = streakOf(D), today = D[dayKey()] || 0, goal = goalGet();
     const wk = []; for (let k = 6; k >= 0; k--) { const t = new Date(); t.setDate(t.getDate() - k); wk.push({ l: _T('حنثرخجس')[t.getDay()], n: D[dayKey(t)] || 0, today: k === 0 }); }
@@ -1551,7 +1553,7 @@
   const helpOn = h => h != null && (h === '' || /^(sharh|level|notes|badges|plan|skills)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^(vocab|wb-)/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
   // 👤 ملف الطالب للمساعد (من جهازه): اختباره، سلسلته، أضعف مواضيعه، مهمة اليوم من خطته، وأنسب مكان يكمل فيه
   function helpProfile() {
-    const P = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '' };
+    const P = { name: firstName(auth && (auth.display || auth.name)), free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '' };
     try {
       const ex = examGet(), exT = ex ? examAt(ex) : 0; if (exT) P.examIn = dayDiff(Date.now(), exT);
       P.streak = streakOf(daysGet());
@@ -1777,7 +1779,7 @@
       const D = daysGet(), keys = Object.keys(D).filter(k => D[k] > 0).sort(), ex = examGet(), st = planState(), plan = PLANS.find(p => p.id === st.id);
       let task = ''; if (plan) { const I = planInfo(plan, st); if (I.cur) task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و'); }
       let next = ''; try { if (manifest) next = SET_NAME(pickResume().s.id); } catch (e) {}
-      const c = { name: ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0], streak: streakOf(D), last: keys[keys.length - 1] || '', exam: ex ? examAt(ex) : 0, task, next, at: Date.now(), lang: EN ? 'en' : 'ar' };
+      const c = { name: firstName(auth && (auth.display || auth.name)), streak: streakOf(D), last: keys[keys.length - 1] || '', exam: ex ? examAt(ex) : 0, task, next, at: Date.now(), lang: EN ? 'en' : 'ar' };
       caches.open('qg-meta').then(cc => cc.put('/__rem', new Response(JSON.stringify(c), { headers: { 'content-type': 'application/json' } }))).catch(() => {});
     } catch (e) {}
   }
@@ -3873,7 +3875,7 @@
 
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
   if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800),   // i18n:skip (اسم الإحصائية بالعربي)
-    help: { find: helpFind, profile: helpProfile, link: helpLink, name: () => ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0] } });   // 🙋 المساعد العام
+    help: { find: helpFind, profile: helpProfile, link: helpLink, name: () => firstName(auth && (auth.display || auth.name)) } });   // 🙋 المساعد العام
   applyFs(); applyTheme();
   // 💳 الرجوع من صفحة الدفع: تاب يضيف ?tap_id=chg_… لرابط الرجوع — نحفظه ونروح لصفحة التحقق
   (function () { const m = /[?&]tap_id=(chg_[A-Za-z0-9]+)/.exec(location.search); if (!m) return; try { sessionStorage.setItem(PAY_SS, m[1]); } catch (e) {} history.replaceState(null, '', location.pathname + '#paid'); })();
