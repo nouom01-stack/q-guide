@@ -1,18 +1,24 @@
-/* 🤖 مساعد Q-Guide «اشرح لي» — نافذة شرح بالذكاء الاصطناعي (مشتركة بين منصة التدريب والاختبارات المحاكية)
-   الاستخدام: QGAI.init({ api, session, fmt, free, onSub, onAuth }) ثم QGAI.slot({ ref, pick, label }) داخل الصفحة و QGAI.fill(root) بعد الرسم */
+/* 🤖 مساعد Q-Guide — نافذة شرح بالذكاء الاصطناعي (مشتركة بين منصة التدريب والاختبارات المحاكية)
+   1) «اشرح لي» على سؤال معيّن: QGAI.init({ api, session, fmt, free, onSub, onAuth }) ثم QGAI.slot({ ref, pick, label }) داخل الصفحة و QGAI.fill(root) بعد الرسم
+   2) 🙋 المساعد العام «تحتاج مساعدة؟»: زر عائم (QGAI.fab(true/false)) يفتح محادثة: الطالب يصوّر السؤال أو يكتبه ← الصفحة تدوّره في الدورة
+      (init({ help: { find, name } }) — find({ text } | { file }) يرجّع { ok, text, card: { html, ref, label, auto, bind } }) ← الشرح على نفس السؤال، وأسئلة متابعة */
 (function () {
   'use strict';
-  const CFG = { api: '', session: () => '', fmt: null, free: () => false, onSub: null, onAuth: null };
+  const CFG = { api: '', session: () => '', fmt: null, free: () => false, onSub: null, onAuth: null, help: null };
   const CONV = new Map();          // محادثة كل سؤال تبقى في نفس الجلسة (فتحها مرة ثانية ما ينحسب)
   let ST = null, W = null;         // ST: رصيد اليوم · W: النافذة المفتوحة
+  // 🙋 محادثة المساعد العام (تبقى طول الجلسة): ref = السؤال اللي نشرحه الحين · tk = خيط الشرح (كل شرح جديد له خيط)
+  const H = { help: true, ref: '', label: '', tk: '', tn: 0, pick: null, msgs: [], cid: '', follow: 5, busy: false };
   // 🌐 لغة رد المساعد: عربي (الافتراضي) أو English — اختيار الطالب ينحفظ له ويصير الافتراضي دايم (كل أجهزته)
   const LG_LS = 'qg_ai_lang';
   let LANG = (() => { try { return localStorage.getItem(LG_LS) === 'en' ? 'en' : 'ar'; } catch (e) { return 'ar'; } })();
   const lgSave = l => { LANG = l === 'en' ? 'en' : 'ar'; try { localStorage.setItem(LG_LS, LANG); } catch (e) {} };
+  const EN = () => !!(window.QGL && QGL.en);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const L = i => 'ABCD'[i] || '';
   const SPARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2.6l1.95 5.45 5.45 1.95-5.45 1.95L11 17.4l-1.95-5.45L3.6 10l5.45-1.95z" fill="currentColor"/><path d="M18.6 14.2l.85 2.15 2.15.85-2.15.85-.85 2.15-.85-2.15-2.15-.85 2.15-.85z" fill="currentColor" opacity=".75"/></svg>';
   const SEND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H5m0 0l6-6m-6 6l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const CAM = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.6A2.6 2.6 0 0 1 6.6 6h1.5l1.25-1.85c.3-.45.8-.7 1.3-.7h2.7c.5 0 1 .25 1.3.7L15.9 6h1.5A2.6 2.6 0 0 1 20 8.6v7.8a2.6 2.6 0 0 1-2.6 2.6H6.6A2.6 2.6 0 0 1 4 16.4z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="12.3" r="3.3" fill="none" stroke="currentColor" stroke-width="1.9"/></svg>';
   const leftTxt = n => window.QGL && QGL.en ? (n <= 0 ? 'No explanations left today' : n === 1 ? '1 explanation left today' : n + ' explanations left today')   // i18n:skip
     : n <= 0 ? 'خلص رصيد الشرح لليوم' : n === 1 ? 'باقي لك شرح واحد اليوم' : n === 2 ? 'باقي لك شرحين اليوم' : `باقي لك ${n} ${n <= 10 ? 'شروحات' : 'شرح'} اليوم`;   // i18n:skip
 
@@ -58,37 +64,56 @@
   function open(o) {
     close(true);
     let C = CONV.get(o.ref); if (!C) { C = { ref: o.ref, pick: o.pick, wrong: !!o.wrong, msgs: [], cid: '', follow: 5, busy: false }; CONV.set(o.ref, C); }
-    const ov = document.createElement('div'); ov.className = 'qgai'; ov.setAttribute('dir', window.QGL && QGL.en ? 'ltr' : 'rtl');
-    ov.innerHTML = _T`<section class="qgai-p" role="dialog" aria-modal="true" aria-labelledby="qgai-t">
-      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">مساعد Q-Guide</b><small>يشرح لك السؤال على طريقة شرح الدورة</small></div>${lgHtml()}<button type="button" class="qgai-x" aria-label="إغلاق">✕</button></header>
-      <div class="qgai-ctx">${String(o.label || '').split(' · ').filter(Boolean).map((t, i) => `<span class="${/✗/.test(t) ? 'bad' : /الصحيحة|correct/i.test(t) ? 'ok' : ''}">${esc(t)}</span>`).join('')}</div>
+    mount(C, o.from, String(o.label || ''));
+    if (!C.msgs.length) ask(null);
+  }
+  // نفس النافذة للوضعين: شرح سؤال معيّن، أو المساعد العام (help) اللي فيه زر الكاميرا وسطر «تسأل عن…»
+  function mount(C, from, label) {
+    const help = !!C.help, ov = document.createElement('div'); ov.className = 'qgai' + (help ? ' qgh-p' : ''); ov.setAttribute('dir', EN() ? 'ltr' : 'rtl');
+    const camL = _T('صوّر السؤال أو ارفع صورته');
+    ov.innerHTML = `<section class="qgai-p" role="dialog" aria-modal="true" aria-labelledby="qgai-t">
+      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">${_T('مساعد Q-Guide')}</b><small>${help ? _T('صوّر سؤالك أو اكتبه، وأشرحه لك') : _T('يشرح لك السؤال على طريقة شرح الدورة')}</small></div>${lgHtml()}<button type="button" class="qgai-x" aria-label="${_T('إغلاق')}">✕</button></header>
+      <div class="qgai-ctx">${label.split(' · ').filter(Boolean).map(t => `<span class="${/✗/.test(t) ? 'bad' : /الصحيحة|correct/i.test(t) ? 'ok' : ''}">${esc(t)}</span>`).join('')}</div>
       <div class="qgai-log" aria-live="polite"></div>
-      <form class="qgai-f" autocomplete="off"><textarea rows="1" maxlength="300" placeholder="اسأل عن هذا السؤال…" aria-label="اكتب سؤالك عن هذا السؤال"></textarea><button type="submit" class="qgai-s" aria-label="أرسل">${SEND}</button></form>
-      <div class="qgai-ft"><span class="qgai-left"></span><span>المساعد ذكاء اصطناعي وممكن يغلط، والإجابة المعتمدة هي إجابة الدورة.</span></div>
+      ${help ? '<div class="qgh-ctx" hidden></div>' : ''}
+      <form class="qgai-f" autocomplete="off">${help ? `<button type="button" class="qgh-cam" aria-label="${camL}" title="${camL}">${CAM}</button><input type="file" accept="image/*" hidden>` : ''}<textarea rows="1" maxlength="${help ? 1500 : 300}" aria-label="${help ? _T('اكتب سؤالك') : _T('اكتب سؤالك عن هذا السؤال')}"></textarea><button type="submit" class="qgai-s" aria-label="${_T('أرسل')}">${SEND}</button></form>
+      <div class="qgai-ft"><span class="qgai-left"></span><span>${_T('المساعد ذكاء اصطناعي وممكن يغلط، والإجابة المعتمدة هي إجابة الدورة.')}</span></div>
     </section>`;
     document.body.appendChild(ov);
-    W = { ov, C, from: o.from || document.activeElement, log: ov.querySelector('.qgai-log'), ta: ov.querySelector('textarea'), stick: true };
+    W = { ov, C, from: from || document.activeElement, log: ov.querySelector('.qgai-log'), ta: ov.querySelector('textarea'), stick: true };
     // مفاتيح النافذة ما توصل لاختصارات الصفحة (Enter = التالي، A–D = اختيار…)، و Tab يدور داخل النافذة
     ov.addEventListener('keydown', e => {
       e.stopPropagation();
       if (e.key === 'Escape') { e.preventDefault(); close(); return; }
-      if (e.key === 'Tab') { const f = [...ov.querySelectorAll('button:not([disabled]),textarea:not([disabled]),a[href]')].filter(x => x.offsetParent !== null); if (!f.length) return;
+      if (e.key === 'Tab') { const f = [...ov.querySelectorAll('button:not([disabled]),textarea:not([disabled]),a[href],summary')].filter(x => x.offsetParent !== null); if (!f.length) return;
         const a = f[0], z = f[f.length - 1]; if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); } }
     });
     const onK = e => { if (e.key === 'Escape' && W && !W.ov.contains(e.target)) close(); }; W.onK = onK; document.addEventListener('keydown', onK);
+    if (help) { W.onH = () => close(true); window.addEventListener('hashchange', W.onH); }   // «افتح السؤال» ينقله لصفحة ثانية
     ov.addEventListener('click', e => { if (e.target === ov) close(); });
     ov.querySelector('.qgai-x').onclick = () => close();
     ov.querySelectorAll('.qgai-lg [data-lg]').forEach(b => b.onclick = () => setLang(b.dataset.lg));
-    const ta = W.ta; ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
+    const ta = W.ta, fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; };
+    ta.addEventListener('input', fit);
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); const f = ov.querySelector('form'); f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event('submit', { cancelable: true })); } });
-    ov.querySelector('form').onsubmit = e => { e.preventDefault(); const t = ta.value.trim(); if (!t || C.busy) return; ta.value = ''; ta.style.height = 'auto'; ask(t); };
+    ov.querySelector('form').onsubmit = e => { e.preventDefault(); const t = ta.value.trim(); if (!t || C.busy) return; ta.value = ''; fit();
+      if (!help) return ask(t);
+      // سؤال متابعة على السؤال اللي نشرحه، إلا لو لصق سؤال كامل بخياراته (A) … B) …) أو خلصت أسئلة المتابعة → نبحث عنه كسؤال جديد
+      if (C.ref && turns(C) < C.follow && !OPTS.test(t)) ask(t); else seek({ text: t }); };
+    if (help) {
+      const inp = ov.querySelector('input[type=file]'); W.cam = () => { if (!C.busy) inp.click(); };
+      ov.querySelector('.qgh-cam').onclick = W.cam;
+      inp.onchange = () => { const f = inp.files && inp.files[0]; inp.value = ''; if (f && /^image\//.test(f.type)) seek({ file: f }); };
+      ta.addEventListener('paste', e => { const f = [...((e.clipboardData && e.clipboardData.files) || [])].find(x => /^image\//.test(x.type)); if (f && !C.busy) { e.preventDefault(); seek({ file: f }); } });   // لصق صورة (لقطة شاشة)
+    }
     document.documentElement.classList.add('qgai-lock');
-    requestAnimationFrame(() => { ov.classList.add('in'); ov.querySelector('.qgai-x').focus({ preventScroll: true }); });
-    paint(); if (!C.msgs.length) ask(null);
+    const fine = !window.matchMedia || matchMedia('(pointer:fine)').matches;   // في الجوال ما نفتح الكيبورد غصب
+    requestAnimationFrame(() => { ov.classList.add('in'); (help && fine ? ta : ov.querySelector('.qgai-x')).focus({ preventScroll: true }); });
+    paint();
   }
   function close(quiet) {
     if (!W) return; const w = W; W = null;   // الشرح اللي قاعد ينكتب يكمل بالخلفية، ولو فتح السؤال مرة ثانية يلقاه
-    document.removeEventListener('keydown', w.onK); document.documentElement.classList.remove('qgai-lock');
+    document.removeEventListener('keydown', w.onK); if (w.onH) window.removeEventListener('hashchange', w.onH); document.documentElement.classList.remove('qgai-lock');
     if (quiet) { w.ov.remove(); return; }
     w.ov.classList.remove('in'); w.ov.classList.add('out'); setTimeout(() => w.ov.remove(), 180);
     if (w.from && w.from.focus && document.body.contains(w.from)) w.from.focus({ preventScroll: true });
@@ -104,29 +129,37 @@
     reLang();
   }
   function reLang() {
-    if (!W) return; const C = W.C, last = [...C.msgs].reverse().find(m => m.r === 'a' && m.t);
+    if (!W) return; const C = W.C; if (C.help && !C.ref) return;
+    const last = [...C.msgs].reverse().find(m => m.r === 'a' && m.t && (!C.help || m.x === C.tk));
     if (!last || (last.lg || 'ar') === LANG) return;   // ما فيه شرح، أو آخر شرح أصلاً بنفس اللغة
     if (C.busy) { C.wantLg = LANG; return; }           // يخلص الشرح اللي ينكتب وبعدها نطلبه باللغة الجديدة
-    if (C.msgs.some(m => m.r === 'lim') || C.msgs.filter(m => m.r === 'u').length >= C.follow) return;
+    if (C.msgs.some(m => m.r === 'lim' && (!C.help || m.x === C.tk)) || turns(C) >= C.follow) return;
     ask(LANG === 'en' ? 'Explain it in English, please.' : 'اشرحه بالعربي لو سمحت.');   // i18n:skip
   }
+  // كم سؤال متابعة سأل الطالب على السؤال الحالي (في المساعد العام: بس خيط الشرح الحالي، مو الأسئلة اللي بحث عنها)
+  const turns = C => C.msgs.filter(m => m.r === 'u' && (!C.help || m.x === C.tk)).length;
+  const OPTS = /(^|\s)A\s*[).:-]\s*\S[\s\S]*(^|\s)B\s*[).:-]\s*\S/i;
+
+  // رسالة وحدة (مشتركة بين الوضعين)
+  function rm(m, i, help) {
+    if (m.r === 'u') return `<div class="qgai-m u"><div class="qgai-tx" dir="auto">${esc(m.t)}</div></div>`;
+    if (m.r === 'lim') return `<div class="qgai-lim"><span class="qgai-li" aria-hidden="true">🔒</span><b>${m.free ? _T('خلصت شروحاتك المجانية اليوم') : _T('خلص رصيد اليوم')}</b><p>${esc(m.t)}</p>${m.free && CFG.onSub ? _T('<button type="button" class="qgai-sub">اشترك في الدورة</button>') : ''}</div>`;
+    if (m.r === 'e') return `<div class="qgai-m e"><span>${esc(m.t)}</span>${m.retry ? _T`<button type="button" class="qgai-rt" data-i="${i}">حاول مرة ثانية</button>` : ''}</div>`;
+    const typing = m.live && !m.t;
+    return `<div class="qgai-m a${m.live ? ' live' : ''}">${help && m.first ? `<div class="qgh-lead">${SPARK}<span>${_T('الشرح')}</span></div>` : ''}${typing ? _T('<div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>المساعد يكتب الشرح…</div>') : `<div class="qgai-tx" dir="${m.lg === 'en' ? 'ltr' : 'rtl'}" lang="${m.lg === 'en' ? 'en' : 'ar'}">${render(m.t)}</div>`}${!m.live && m.id ? `<div class="qgai-ma">${m.flag ? _T('<span class="qgai-fl ok">✓ وصل بلاغك، بنراجع الشرح</span>') : _T`<button type="button" class="qgai-fl" data-i="${i}">🚩 الشرح فيه غلط؟</button>`}</div>` : ''}</div>`;
+  }
   function paint() {
-    if (!W) return; const { C, log } = W;
+    if (!W) return; if (W.C.help) return paintHelp();
+    const { C, log } = W;
     const atEnd = W.stick || log.scrollHeight - log.scrollTop - log.clientHeight < 60;   // الطالب يقرأ فوق؟ لا ننزله غصب
-    log.innerHTML = C.msgs.map((m, i) => {
-      if (m.r === 'u') return `<div class="qgai-m u"><div class="qgai-tx" dir="auto">${esc(m.t)}</div></div>`;
-      if (m.r === 'lim') return `<div class="qgai-lim"><span class="qgai-li" aria-hidden="true">🔒</span><b>${m.free ? _T('خلصت شروحاتك المجانية اليوم') : _T('خلص رصيد اليوم')}</b><p>${esc(m.t)}</p>${m.free && CFG.onSub ? _T('<button type="button" class="qgai-sub">اشترك في الدورة</button>') : ''}</div>`;
-      if (m.r === 'e') return `<div class="qgai-m e"><span>${esc(m.t)}</span>${m.retry ? _T`<button type="button" class="qgai-rt" data-i="${i}">حاول مرة ثانية</button>` : ''}</div>`;
-      const typing = m.live && !m.t;
-      return `<div class="qgai-m a${m.live ? ' live' : ''}">${typing ? _T('<div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>المساعد يكتب الشرح…</div>') : `<div class="qgai-tx" dir="${m.lg === 'en' ? 'ltr' : 'rtl'}" lang="${m.lg === 'en' ? 'en' : 'ar'}">${render(m.t)}</div>`}${!m.live && m.id ? `<div class="qgai-ma">${m.flag ? _T('<span class="qgai-fl ok">✓ وصل بلاغك، بنراجع الشرح</span>') : _T`<button type="button" class="qgai-fl" data-i="${i}">🚩 الشرح فيه غلط؟</button>`}</div>` : ''}</div>`;
-    }).join('');
+    log.innerHTML = C.msgs.map((m, i) => rm(m, i)).join('');
     log.querySelectorAll('.qgai-fl[data-i]').forEach(b => b.onclick = () => flag(+b.dataset.i));
     log.querySelectorAll('.qgai-rt').forEach(b => b.onclick = () => { const i = +b.dataset.i, m = C.msgs[i]; C.msgs.splice(i, 1);
       if (m.q) { const u = C.msgs.map(x => x.r === 'u' && x.t === m.q).lastIndexOf(true); if (u >= 0) C.msgs.splice(u, 1); } ask(m.q); });
     const sb = log.querySelector('.qgai-sub'); if (sb) sb.onclick = () => { close(true); CFG.onSub && CFG.onSub('المساعد الذكي'); };   // i18n:skip (اسم الإحصائية بالعربي)
     if (atEnd) log.scrollTop = log.scrollHeight; W.stick = false;
-    const turns = C.msgs.filter(m => m.r === 'u').length;
-    const blocked = C.msgs.some(m => m.r === 'lim'), full = turns >= C.follow, any = C.msgs.some(m => m.r === 'a' && !m.live && m.t);
+    const t = turns(C);
+    const blocked = C.msgs.some(m => m.r === 'lim'), full = t >= C.follow, any = C.msgs.some(m => m.r === 'a' && !m.live && m.t);
     W.ta.disabled = C.busy || blocked || full || !any;
     W.ta.placeholder = full ? _T('وصلت لحد الأسئلة على هذا السؤال') : blocked ? _T('خلص رصيد اليوم') : _T('اسأل عن هذا السؤال…');
     W.ov.querySelector('.qgai-s').disabled = W.ta.disabled;
@@ -134,22 +167,105 @@
   }
   let raf = 0; const paintSoon = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); };
 
+  // ---------- 🙋 المساعد العام: رسم المحادثة بدون ما نعيد رسم البطاقات (عشان البلاغ والصور والتفاصيل المفتوحة تبقى) ----------
+  function hm(m, i) {
+    if (m.r === 'w') { const n = CFG.help && CFG.help.name ? CFG.help.name() : '';
+      return `<div class="qgai-m a qgh-w"><div class="qgai-tx"><b>${n ? _T`هلا ${esc(n)} 👋` : _T('هلا 👋')}</b><div class="qgai-l">${_T('أنا مساعدك في القدرات. أرسل لي السؤال اللي واقف عنده، وأدوّره لك في الدورة وأشرحه لك خطوة بخطوة.')}</div></div>
+        <div class="qgh-go"><button type="button" class="qgh-gb" data-go="cam"><span class="i" aria-hidden="true">📷</span><b>${_T('صوّر السؤال')}</b><small>${_T('من الكاميرا أو الصور')}</small></button><button type="button" class="qgh-gb" data-go="txt"><span class="i" aria-hidden="true">✍️</span><b>${_T('اكتب السؤال')}</b><small>${_T('بالإنجليزي مع الخيارات')}</small></button></div>
+        <p class="qgh-tip">${_T('💡 صوّر السؤال كامل مع الخيارات، والرسم لو فيه رسم.')}</p></div>`; }
+    if (m.r === 'ui') return `<div class="qgai-m u qgh-ui"><img src="${m.src}" alt="${_T('صورة السؤال')}">${m.ocr ? `<small dir="ltr">${esc(m.ocr.length > 240 ? m.ocr.slice(0, 240) + '…' : m.ocr)}</small>` : ''}</div>`;
+    if (m.r === 'f') return m.wait ? `<div class="qgai-m a"><div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>${m.img ? _T('أقرأ الصورة وأدوّر السؤال في الدورة…') : _T('أدوّر سؤالك في الدورة…')}</div></div>`
+      : `<div class="qgai-m a qgh-f">${m.html}${m.ex && !m.exd ? `<div class="qgh-exw"><button type="button" class="qgh-exb">${SPARK}<span>${_T('اشرح لي طريقة الحل')}</span></button></div>` : ''}</div>`;
+    return rm(m, i, true);
+  }
+  function hBind(m, n) {
+    const C = H;
+    if (m.r === 'w') { n.querySelector('[data-go="cam"]').onclick = () => W && W.cam(); n.querySelector('[data-go="txt"]').onclick = () => W && W.ta.focus(); }
+    if (m.r === 'f' && !m.wait) { if (m.bind) try { m.bind(n); } catch (e) {} const b = n.querySelector('.qgh-exb'); if (b) b.onclick = () => { if (C.busy) return; m.exd = 1; begin(m.ex, m.label); }; }
+    const fl = n.querySelector('.qgai-fl[data-i]'); if (fl) fl.onclick = () => flag(C.msgs.indexOf(m));
+    const sb = n.querySelector('.qgai-sub'); if (sb) sb.onclick = () => { close(true); CFG.onSub && CFG.onSub('المساعد الذكي'); };   // i18n:skip (اسم الإحصائية بالعربي)
+    const rt = n.querySelector('.qgai-rt'); if (rt) rt.onclick = () => { if (C.busy) return; const i = C.msgs.indexOf(m); if (i >= 0) C.msgs.splice(i, 1);
+      if (m.seek) return seek(m.seek, true);
+      C.ref = m.ref; C.tk = m.tk; C.label = m.label || '';
+      if (m.q) { const u = C.msgs.map(x => x.r === 'u' && x.x === m.tk && x.t === m.q).lastIndexOf(true); if (u >= 0) C.msgs.splice(u, 1); }
+      ask(m.q); };
+  }
+  const CHIPS = () => [[_T('🤔 ما فهمت'), _T('ما فهمت، وضّحه أكثر')], [_T('📌 وش القاعدة؟'), _T('وش القاعدة اللي أحفظها لهالنوع من الأسئلة؟')], [_T('✏️ سؤال مشابه'), _T('أعطني سؤال مشابه مع حله')]];
+  function paintHelp() {
+    const { C, log } = W, atEnd = W.stick || log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+    const keep = new Set(); let prev = null;
+    C.msgs.forEach((m, i) => {
+      const html = hm(m, i).trim();
+      if (!m.el || m.h !== html || !log.contains(m.el)) {
+        const t = document.createElement('template'); t.innerHTML = html; const n = t.content.firstElementChild;
+        if (m.el && log.contains(m.el)) m.el.replaceWith(n); else if (prev) prev.after(n); else log.prepend(n);
+        m.el = n; m.h = html; hBind(m, n);
+      } else if (prev ? prev.nextElementSibling !== m.el : log.firstElementChild !== m.el) (prev ? prev.after(m.el) : log.prepend(m.el));
+      keep.add(m.el); prev = m.el;
+    });
+    // أزرار سريعة بعد الشرح: ما فهمت · القاعدة · سؤال مشابه (السؤال الجديد: زر «سؤال جديد» تحت وزر الكاميرا)
+    const last = C.msgs[C.msgs.length - 1], more = turns(C) < C.follow;
+    const chips = more && !C.busy && C.ref && last && last.r === 'a' && !last.live && last.t && last.x === C.tk;
+    let ch = log.querySelector(':scope > .qgh-chips');
+    if (chips) {
+      const k = C.tk + ':' + turns(C);
+      if (!ch || ch.dataset.k !== k) {
+        const n = document.createElement('div'); n.className = 'qgh-chips'; n.dataset.k = k; n.setAttribute('role', 'group'); n.setAttribute('aria-label', _T('أسئلة سريعة'));
+        n.innerHTML = CHIPS().map(([a, q]) => `<button type="button" data-q="${esc(q)}">${esc(a)}</button>`).join('');
+        n.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (!C.busy && C.ref) ask(b.dataset.q); });
+        if (ch) ch.replaceWith(n); else log.appendChild(n); ch = n;
+      }
+      keep.add(ch); if (prev && prev.nextElementSibling !== ch) prev.after(ch);
+    }
+    [...log.children].forEach(n => { if (!keep.has(n)) n.remove(); });
+    if (atEnd) log.scrollTop = log.scrollHeight; W.stick = false;
+    const busy = C.busy, active = C.ref && more;
+    W.ta.disabled = busy; W.ov.querySelector('.qgai-s').disabled = busy; W.ov.querySelector('.qgh-cam').disabled = busy;
+    W.ta.placeholder = active ? _T('اسأل عن هذا السؤال…') : C.ref ? _T('خلصت أسئلة المتابعة على هذا السؤال — أرسل سؤال جديد') : _T('اكتب السؤال هنا أو صوّره…');
+    const cx = W.ov.querySelector('.qgh-ctx');
+    if (C.ref && C.label) { if (cx.dataset.k !== C.tk) { cx.dataset.k = C.tk; cx.innerHTML = `<span>${_T('تسأل عن:')} <b>${C.label}</b></span><button type="button" class="qgh-nw">${_T('سؤال جديد')}</button>`;
+        cx.querySelector('button').onclick = () => { if (C.busy) return; C.ref = ''; C.label = ''; paint(); W && W.ta.focus(); }; } cx.hidden = false; }
+    else { cx.hidden = true; cx.dataset.k = ''; }
+    const lf = W.ov.querySelector('.qgai-left'); lf.textContent = ST && ST.on && ST.limit && ST.left != null ? leftTxt(ST.left) : '';
+  }
+  // الطالب أرسل سؤال (نص أو صورة): ندوّره في الدورة، وإذا لقيناه نبدأ الشرح على طول
+  async function seek(p, again) {
+    if (!W || !W.C.help || !CFG.help) return; const C = W.C; if (C.busy) return;
+    if (!again) C.msgs.push(p.file ? { r: 'ui', src: URL.createObjectURL(p.file) } : { r: 'u', t: p.text });
+    const u = [...C.msgs].reverse().find(m => m.r === 'ui' || m.r === 'u');
+    const f = { r: 'f', wait: 1, img: !!p.file }; C.msgs.push(f); C.busy = true; C.ref = ''; C.label = ''; W.stick = true; paint();
+    let res = null; try { res = await CFG.help.find(p); } catch (e) {}
+    C.busy = false; const i = C.msgs.indexOf(f);
+    if (!res || !res.ok) { if (i >= 0) C.msgs.splice(i, 1, { r: 'e', t: (res && res.msg) || _T('تعذّر الاتصال، تأكد من النت وحاول مرة ثانية.'), retry: !res || !!res.retry, seek: p }); if (W && W.C === C) paint(); return; }
+    if (p.file && res.text && u && u.r === 'ui') u.ocr = res.text;
+    const c = res.card || {}; Object.assign(f, { wait: 0, html: c.html || '', bind: c.bind });
+    const s = c.ref ? await status() : null;
+    if (c.ref && s && s.on) { if (c.auto) { f.exd = 1; return begin(c.ref, c.label); } f.ex = c.ref; f.label = c.label; }
+    if (W && W.C === C) paint();
+  }
+  function begin(ref, label) {   // شرح جديد على سؤال من الدورة (خيط جديد، يبدأ من أول)
+    const C = H; C.ref = ref; C.label = label || ''; C.tk = ref + '#' + (++C.tn); C.cid = ''; C.follow = (ST && ST.follow) || 5;
+    if (W && W.C === C) { W.stick = true; ask(null); }
+  }
+
   async function ask(text) {
     if (!W) return; const C = W.C; if (C.busy) return;
     const show = () => { if (W && W.C === C) paint(); }, showSoon = () => { if (W && W.C === C) paintSoon(); };
-    if (text) C.msgs.push({ r: 'u', t: text });
-    const hist = C.msgs.filter(m => (m.r === 'a' && !m.live && m.t) || m.r === 'u').map(m => ({ r: m.r, t: m.t }));
-    const am = { r: 'a', t: '', live: true, lg: LANG }; C.msgs.push(am); C.busy = true; W.stick = true; paint();
-    const fail = (msg, canRetry) => { const i = C.msgs.indexOf(am); if (i >= 0) C.msgs.splice(i, 1); C.msgs.push({ r: 'e', t: msg, retry: canRetry, q: text }); };
+    const tk = C.tk, ref = C.ref, label = C.label;
+    if (text) C.msgs.push({ r: 'u', t: text, x: tk });
+    const hist = C.msgs.filter(m => (!C.help || m.x === tk) && ((m.r === 'a' && !m.live && m.t) || m.r === 'u')).map(m => ({ r: m.r, t: m.t }));
+    const am = { r: 'a', t: '', live: true, lg: LANG, x: tk, first: !hist.length }; C.msgs.push(am); C.busy = true; W.stick = true; paint();
+    const fail = (msg, canRetry) => { const i = C.msgs.indexOf(am); if (i >= 0) C.msgs.splice(i, 1); C.msgs.push({ r: 'e', t: msg, retry: canRetry, q: text, x: tk, tk, ref, label }); };
+    const drop = () => { if (C.help && C.tk === tk) { C.ref = ''; C.label = ''; } };   // المساعد العام: ما نقدر نكمل على هذا السؤال → اللي يكتبه بعدها يصير بحث
     try {
       const r = await fetch(CFG.api.replace(/\/?$/, '/') + 'ai', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ session: CFG.session(), ref: C.ref, pick: C.pick, msgs: hist.length > 0 ? hist : [], cid: C.cid, lang: am.lg }) });
+        body: JSON.stringify({ session: CFG.session(), ref, pick: C.pick, msgs: hist.length > 0 ? hist : [], cid: C.cid, lang: am.lg }) });
       if (!/event-stream/.test(r.headers.get('content-type') || '')) {
         const j = await r.json().catch(() => ({ msg: _T('صار خطأ، حاول مرة ثانية.') })); if (j && typeof j.msg === 'string') j.msg = _T(j.msg);   // 🌐
         const i = C.msgs.indexOf(am); if (i >= 0) C.msgs.splice(i, 1);
-        if (j.error === 'limit') { if (ST) ST.left = 0; C.msgs.push({ r: 'lim', t: j.msg || '', free: !!j.free }); }
+        if (j.error === 'limit') { if (ST) ST.left = 0; C.msgs.push({ r: 'lim', t: j.msg || '', free: !!j.free, x: tk }); drop(); }
         else if (j.error === 'session' || j.error === 'kicked') { C.msgs.push({ r: 'e', t: j.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.') }); CFG.onAuth && CFG.onAuth(j); }
-        else C.msgs.push({ r: 'e', t: j.msg || _T('صار خطأ، حاول مرة ثانية.'), retry: !/^(locked|soon|off|noq|maxturns)$/.test(j.error || ''), q: text });
+        else { C.msgs.push({ r: 'e', t: j.msg || _T('صار خطأ، حاول مرة ثانية.'), retry: !/^(locked|soon|off|noq|maxturns)$/.test(j.error || ''), q: text, x: tk, tk, ref, label }); if (/^(locked|soon|off|noq)$/.test(j.error || '')) drop(); }
         return;
       }
       const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
@@ -177,6 +293,40 @@
     try { await post({ op: 'ai_flag', session: CFG.session(), id: m.id }); } catch (e) {}
   }
   function init(o) { Object.assign(CFG, o || {}); }
+
+  // ---------- 🙋 الزر العائم «تحتاج مساعدة؟» + فقاعة ترحيب مرة باليوم ----------
+  let FAB = null;
+  const HI_LS = 'qg_hlp_hi', today = () => new Date(Date.now() + 108e5).toISOString().slice(0, 10);   // يوم الرياض
+  const lsG = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, lsS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  function fab(on) {
+    if (FAB && (!on || FAB.en !== EN())) { clearTimeout(FAB.t); FAB.el.remove(); FAB = null; }
+    document.documentElement.classList.toggle('qgh-on', !!(on && CFG.help));   // مسافة تحت الصفحة عشان الزر ما يغطي آخرها
+    if (!on || !CFG.help || FAB) return;
+    const el = document.createElement('div'); el.className = 'qgh'; el.setAttribute('dir', EN() ? 'ltr' : 'rtl');
+    el.innerHTML = `<button type="button" class="qgh-fab" aria-label="${_T('مساعد Q-Guide: تحتاج مساعدة؟')}" title="${_T('تحتاج مساعدة؟')}">${SPARK}</button>`;
+    document.body.appendChild(el); FAB = { el, en: EN(), t: 0 };
+    el.querySelector('.qgh-fab').onclick = () => help();
+    if (lsG(HI_LS) !== today()) FAB.t = setTimeout(hiShow, 1600);
+  }
+  function hiShow() {
+    if (!FAB || W || FAB.el.querySelector('.qgh-bub')) return;
+    lsS(HI_LS, today());
+    const b = document.createElement('div'); b.className = 'qgh-bub';
+    b.innerHTML = `<button type="button" class="qgh-bo"><b>${_T('تحتاج مساعدة؟ 👋')}</b><span>${_T('صوّر السؤال أو اكتبه، وأشرحه لك خطوة بخطوة.')}</span></button><button type="button" class="qgh-bx" aria-label="${_T('إخفاء')}">✕</button>`;
+    FAB.el.prepend(b); requestAnimationFrame(() => b.classList.add('in'));
+    const bye = () => { b.classList.remove('in'); setTimeout(() => b.remove(), 220); };
+    b.querySelector('.qgh-bo').onclick = () => { bye(); help(); };
+    b.querySelector('.qgh-bx').onclick = bye;
+    FAB.t = setTimeout(bye, 12000);
+  }
+  function help() {
+    if (!CFG.help) return;
+    if (FAB) { clearTimeout(FAB.t); const b = FAB.el.querySelector('.qgh-bub'); if (b) b.remove(); lsS(HI_LS, today()); }
+    close(true);
+    if (!H.msgs.length) H.msgs.push({ r: 'w' });
+    mount(H, FAB && FAB.el.querySelector('.qgh-fab'), '');
+    status().then(() => { if (W && W.C === H) paint(); });   // رصيد الشرح اليوم
+  }
 
   const css = document.createElement('style'); css.textContent = `
 :root{--ai:#2350C4;--ai2:#0E2458;--aibg:#F0F4FF;--aibd:#D5E0FB;--aihv:#E4ECFF;--aigold:#F2B33D}
@@ -251,9 +401,70 @@ html.qgai-lock,html.qgai-lock body{overflow:hidden}
 .qgai-s{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--ai2);color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .15s}
 [data-theme="dark"] .qgai-s{background:#2F4FA6}
 .qgai-s svg{width:22px;height:22px}.qgai-s:disabled{opacity:.4;cursor:default}
+.qgai[dir="ltr"] .qgai-s svg{transform:scaleX(-1)}
 .qgai-ft{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;padding:0 16px 12px;color:var(--mut,#6B7590);font-size:calc(11.5px * var(--fs,1))}
 .qgai-left{font-weight:700;color:var(--ai)}
 bdi{unicode-bidi:isolate}
+/* 🙋 المساعد العام: الترحيب، صورة السؤال، بطاقة النتيجة، الأزرار السريعة، وسطر «تسأل عن» */
+.qgh-w .qgai-tx>b{display:block;font-family:var(--disp,"Tajawal"),sans-serif;font-size:calc(19px * var(--fs,1));color:var(--ai2);margin-bottom:4px}
+.qgh-go{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.qgh-gb{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px;border-radius:16px;border:1px solid var(--aibd);background:var(--aibg);color:var(--ai2);font:inherit;text-align:start;cursor:pointer;transition:background .15s,border-color .15s}
+.qgh-gb:hover{background:var(--aihv);border-color:var(--ai)}
+.qgh-gb:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
+.qgh-gb .i{font-size:24px;line-height:1;margin-bottom:6px}
+.qgh-gb b{font-size:calc(15.5px * var(--fs,1));font-weight:800}
+.qgh-gb small{color:var(--mut,#6B7590);font-size:calc(12.5px * var(--fs,1));font-weight:500;line-height:1.45}
+.qgh-tip{margin:12px 0 0;color:var(--mut,#6B7590);font-size:calc(13px * var(--fs,1));line-height:1.6}
+.qgai-m.u.qgh-ui{padding:6px;max-width:min(80%,330px);white-space:normal}
+.qgh-ui img{display:block;max-width:100%;max-height:240px;border-radius:12px;background:#fff;object-fit:contain}
+.qgh-ui small{display:block;margin:7px 6px 3px;font-family:"Segoe UI",Roboto,Arial,sans-serif;font-size:calc(12.5px * var(--fs,1));line-height:1.55;opacity:.9;white-space:pre-wrap;overflow-wrap:anywhere;text-align:left}
+.qgh-f .fd-res{box-shadow:none;border-radius:16px;padding:14px}
+.qgh-f .fd-h{margin-bottom:10px}.qgh-f .fd-h .ic{width:36px;height:36px;font-size:17px}
+.qgh-f .fd-h b{font-size:calc(16.5px * var(--fs,1))}
+.qgh-f .fd-locs{margin-bottom:10px}
+.qgh-f .fd-diff{margin-bottom:10px}
+.qgh-ans{margin:0 0 8px;font-size:calc(14.5px * var(--fs,1));line-height:1.7;color:var(--ink,#17213A)}
+.qgh-pv summary{cursor:pointer;color:var(--ai);font-weight:700;font-size:calc(14px * var(--fs,1));padding:4px 0;width:max-content}
+.qgh-pv summary:focus-visible{outline:2px solid var(--ai);outline-offset:2px;border-radius:6px}
+.qgh-pv .fd-pv{margin-top:6px}
+.qgh-f .fd-acts{margin-top:10px}
+.qgh-f .fd-res.tip{text-align:start}
+.qgh-exw{margin-top:10px}
+.qgh-exb{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:10px 18px;background:linear-gradient(135deg,#15337A,#2F62E0);color:#fff;font:inherit;font-weight:800;font-size:calc(15px * var(--fs,1));cursor:pointer;box-shadow:0 6px 16px rgba(35,80,196,.26);transition:filter .15s}
+.qgh-exb svg{width:18px;height:18px}.qgh-exb svg path+path{fill:var(--aigold)}
+.qgh-exb:hover{filter:brightness(1.1)}
+.qgh-lead{display:flex;align-items:center;gap:6px;color:var(--ai);font-weight:800;font-size:calc(13px * var(--fs,1));margin-bottom:4px}
+.qgh-lead svg{width:16px;height:16px}.qgh-lead svg path+path{fill:var(--aigold)}
+.qgh-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:-4px}
+.qgh-chips button{border:1px solid var(--aibd);background:var(--aibg);color:var(--ai2);border-radius:999px;padding:7px 14px;font:inherit;font-weight:700;font-size:calc(13.5px * var(--fs,1));cursor:pointer;transition:background .15s,border-color .15s}
+.qgh-chips button:hover{background:var(--aihv);border-color:var(--ai)}
+.qgh-ctx{display:flex;align-items:center;gap:10px;padding:9px 16px 0;font-size:calc(13px * var(--fs,1));color:var(--mut,#6B7590)}
+.qgh-ctx[hidden]{display:none}
+.qgh-ctx span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qgh-ctx b{color:var(--ai2);font-weight:800}
+.qgh-nw{margin-inline-start:auto;flex:none;border:1px solid var(--aibd);background:transparent;color:var(--ai);border-radius:999px;padding:4px 12px;font:inherit;font-weight:700;font-size:calc(12.5px * var(--fs,1));cursor:pointer}
+.qgh-nw:hover{background:var(--aibg)}
+.qgh-cam{flex:none;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--aibd);background:var(--aibg);color:var(--ai2);display:grid;place-items:center;cursor:pointer;transition:border-color .15s,background .15s}
+.qgh-cam svg{width:22px;height:22px}.qgh-cam:hover{border-color:var(--ai);background:var(--aihv)}.qgh-cam:disabled{opacity:.4;cursor:default}
+/* 🙋 الزر العائم + فقاعة «تحتاج مساعدة؟» */
+.qgh{position:fixed;z-index:65;bottom:calc(20px + env(safe-area-inset-bottom,0px));inset-inline-end:20px;display:flex;flex-direction:column;align-items:flex-end;gap:12px;pointer-events:none;font-family:"Tajawal","Segoe UI",Tahoma,sans-serif}
+.qgh>*{pointer-events:auto}
+.qgh-fab{width:60px;height:60px;border-radius:50%;border:0;padding:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#15337A,#2F62E0);box-shadow:0 10px 24px rgba(21,51,122,.34),0 2px 6px rgba(0,0,0,.16);transition:transform .18s,box-shadow .18s;animation:qgh-in .35s ease-out both}
+.qgh-fab svg{width:30px;height:30px}.qgh-fab svg path+path{fill:var(--aigold)}
+.qgh-fab:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(21,51,122,.42),0 3px 8px rgba(0,0,0,.18)}
+.qgh-fab:focus-visible{outline:3px solid var(--aigold);outline-offset:3px}
+@keyframes qgh-in{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+.qgh-bub{position:relative;display:flex;align-items:flex-start;gap:4px;width:max-content;max-width:min(290px,calc(100vw - 40px));background:var(--card,#fff);color:var(--ink,#17213A);border:1px solid var(--aibd);border-radius:16px;box-shadow:0 14px 34px rgba(10,20,50,.18);padding:12px 14px;padding-inline-end:6px;opacity:0;transform:translateY(8px);transition:opacity .22s,transform .22s}
+.qgh-bub.in{opacity:1;transform:none}
+.qgh-bub:after{content:"";position:absolute;bottom:-7px;inset-inline-end:24px;width:12px;height:12px;background:var(--card,#fff);border-right:1px solid var(--aibd);border-bottom:1px solid var(--aibd);transform:rotate(45deg)}
+.qgh-bo{flex:1;border:0;background:none;color:inherit;font:inherit;text-align:start;cursor:pointer;padding:0;display:flex;flex-direction:column;gap:3px}
+.qgh-bo b{font-size:calc(15.5px * var(--fs,1));font-weight:800;color:var(--ai2)}
+.qgh-bo span{font-size:calc(13.5px * var(--fs,1));color:var(--mut,#6B7590);line-height:1.55}
+.qgh-bx{flex:none;width:28px;height:28px;margin-top:-4px;border-radius:50%;border:0;background:transparent;color:var(--mut,#6B7590);font-size:13px;cursor:pointer}
+.qgh-bx:hover{background:var(--aibg);color:var(--ink,#17213A)}
+.qgh-bo:focus-visible,.qgh-bx:focus-visible{outline:2px solid var(--ai);outline-offset:2px;border-radius:8px}
+html.qgh-on body:after{content:"";display:block;height:92px}
+@media print{.qgh{display:none}}
 @media (max-width:640px){
   .qgai{align-items:flex-end;padding:0}
   .qgai-p{width:100%;height:min(88vh,100%);height:88dvh;border-radius:22px 22px 0 0;transform:translateY(40px)}
@@ -262,8 +473,13 @@ bdi{unicode-bidi:isolate}
   .qgai-log{padding:12px 14px 6px}
   .qgai-h{gap:10px}.qgai-ht small{display:none}.qgai-lg button{padding:6px 10px}
   .qgai-ft{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .qgai-f{padding:10px 10px 8px;gap:6px}
+  .qgh-ctx{padding:8px 14px 0}
+  .qgh{bottom:calc(14px + env(safe-area-inset-bottom,0px));inset-inline-end:14px}
+  .qgh-fab{width:54px;height:54px}.qgh-fab svg{width:27px;height:27px}
+  .qgh-bub:after{inset-inline-end:21px}
 }
-@media (prefers-reduced-motion:reduce){.qgai,.qgai-p{transition:none}.qgai-dots i,.qgai-m.a.live .qgai-tx>:last-child:after{animation:none}}`;
+@media (prefers-reduced-motion:reduce){.qgai,.qgai-p,.qgh-bub{transition:none}.qgai-dots i,.qgai-m.a.live .qgai-tx>:last-child:after,.qgh-fab{animation:none}}`;
   document.head.appendChild(css);
-  window.QGAI = { init, status, slot, fill, open, close, render, _conv: CONV };
+  window.QGAI = { init, status, slot, fill, open, close, render, fab, help, _conv: CONV, _help: H };
 })();

@@ -357,7 +357,7 @@
   function route() {
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
-    if (!auth) return renderLogin();
+    if (!auth) { if (window.QGAI) QGAI.fab(false); return renderLogin(); }
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
@@ -367,6 +367,7 @@
     if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
       H.dir = adm ? 'rtl' : 'ltr'; H.lang = adm ? 'ar' : 'en'; H.classList.toggle('l-en', !adm); H.classList.toggle('l-ar', adm); }
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
+    if (window.QGAI) QGAI.fab(helpOn(isFree() && !freeRoute(h) ? '' : h));   // 🙋 زر «تحتاج مساعدة؟»
     if (isFree() && !freeRoute(h)) { const nm = lockName(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? _T('الاختبارات المحاكية') : ''); }   // 🔒 للمشتركين
     if (isFree() && window.QGT) QGT.page(h === '' ? 'home' : /^duel-/.test(h) ? 'duel' : h.replace(/@\d+$/, ''));   // 👀 وش فتح الزائر
     if (h === 'paid') return renderPaid();
@@ -1401,7 +1402,11 @@
     if (d.qx && d.qx.length && /^opts_/.test(r.status)) rows.push(['🔤', _T`${d.qx.length === 1 ? _T('خيار في سؤالك مو موجود') : _T('خيارات في سؤالك مو موجودة')} في سؤال الدورة: ${d.qx.map(i => `<b><bdi dir="ltr">${LETTERS[i]}) ${fsTxt(it, q.opts[i] || '')}</bdi></b>`).join(_T('، '))}`]);
     return rows.length ? `<ul class="fd-diff">${rows.map(x => `<li><span aria-hidden="true">${x[0]}</span><p>${x[1]}</p></li>`).join('')}</ul>` : '';
   }
-  function fsAns(r, it) {   // الإجابة (مخفية لين يضغط) — بحرف سؤاله هو لو نقدر
+  function fsAns(r, it) {   // الإجابة (مخفية لين يضغط)
+    const a = fsAnsLine(r, it);
+    return a ? _T`<div class="fd-ans"><button type="button" class="btn ghost sm" data-ans aria-expanded="false">👁️ اعرض الإجابة</button><p hidden>${a}</p></div>` : '';
+  }
+  function fsAnsLine(r, it) {   // سطر الإجابة الصحيحة — بحرف سؤاله هو لو نقدر
     if (it.k == null || !it.o || !it.o.length) return '';
     const d = it.d || {}, q = r.q, same = /^(exact|reorder|wording|opts_same)$/.test(r.status);
     let a;
@@ -1409,7 +1414,7 @@
       const o = q.opts[d.ansAt] && !/^\s*[a-d]\s*$/i.test(q.opts[d.ansAt]) ? q.opts[d.ansAt] : it.o[d.ansAt];   // خيارات المقارنة المختصرة (A / B) نعرضها بنص الدورة
       a = _T`الإجابة الصحيحة في سؤالك: <b><bdi dir="ltr">${LETTERS[d.ansAt]}) ${fsTxt(it, o)}</bdi></b>${d.ansAt !== it.k && !d.swap ? _T` <small>(في الدورة حرفها ${LETTERS[it.k]})</small>` : ''}`;
     } else a = `${r.status === 'numbers' ? _T('إجابة سؤال الدورة (بأرقامه هو)') : _T('إجابة سؤال الدورة')}: <b><bdi dir="ltr">${LETTERS[it.k]}) ${fsTxt(it, it.o[it.k])}</bdi></b>${r.status === 'opts_diff' ? _T(' — ومو موجودة بين خياراتك') : ''}`;
-    return _T`<div class="fd-ans"><button type="button" class="btn ghost sm" data-ans aria-expanded="false">👁️ اعرض الإجابة</button><p hidden>${a}</p></div>`;
+    return a;
   }
   function fsItem(it) {   // سطر في «أسئلة قريبة»
     const L = it.refs.map(fsLoc), l = L.find(x => x.set), more = it.refs.length > 1 ? `<small>${fsMore(it.refs.length - 1)}</small>` : '';
@@ -1475,6 +1480,45 @@
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
     return c.toDataURL('image/jpeg', 0.86);
   }
+  // ---------- 🙋 مساعد Q-Guide العام (زر «تحتاج مساعدة؟» في assets/ai.js): يدوّر سؤال الطالب (نص أو صورة) في الدورة ويرجّع بطاقة النتيجة ----------
+  // موجود (بالضبط، أو بترتيب/صياغة/خيارات مختلفة والإجابة بينها) → الشرح يبدأ على طول · قريب (أرقام أو خيارات مختلفة) → زر «اشرح لي طريقة الحل» · جديد → بلاغ + أقرب الأسئلة
+  const HELP_AUTO = /^(exact|reorder|wording|opts_same)$/, HELP_REF = /^(?:[qv]\d{1,2}:\d{1,3}|t\d{1,2}:[1-4]:\d{1,2})$/, HELP_FREE = /^(q1|v1|t1):/;
+  function helpCard(r) {
+    const it = r.best, free = isFree();
+    if (!it && r.status !== 'new') return { html: _T`<div class="fd-res tip"><p>اكتب السؤال كامل مع الخيارات، أو صوّره، عشان أقدر ألقاه في الدورة.</p></div>` };
+    const S = FS[r.status] || FS.new;
+    let h = `<div class="fd-res ${S[0]}"><div class="fd-h"><span class="ic" aria-hidden="true">${S[1]}</span><div><b>${S[2]}</b><small>${S[3]}</small></div></div>`, ref = '', label = '';
+    if (it) {
+      label = (it.refs.map(fsLoc)[0] || {}).t || '';
+      h += `<div class="fd-locs">${fsLocs(it.refs)}</div>${fsDiff(r, it)}`;
+      if (free) h += fsFreeLoc(it) ? '' : _T`<p class="fd-lkn">🔒 حله وشرحه للمشتركين في الدورة.</p>`;
+      else { const a = fsAnsLine(r, it); h += (a ? `<p class="qgh-ans">${a}</p>` : '') + _T`<details class="qgh-pv"><summary>سؤال الدورة</summary>${fsPreview(it)}</details>`; }
+      h += `<div class="fd-acts">${fsOpen(it, true)}</div>`;
+      ref = (free ? it.refs.find(x => HELP_FREE.test(x)) : it.refs.find(x => /^[qv]\d/.test(x)) || it.refs[0]) || '';
+      if (!HELP_REF.test(ref)) ref = '';
+      if (S[0] !== 'ok') h += fsRepBox(_T('مو نفس سؤالك؟ بلّغنا عنه:'), 0, 1);
+    } else {
+      h += fsRepBox('');
+      if (r.similar && r.similar.length) h += `<div class="fd-near"><h4>${_T('أقرب الأسئلة له في الدورة — يمكن تفيدك')}</h4><div class="fd-list">${r.similar.slice(0, 3).map(fsItem).join('')}</div></div>`;
+    }
+    return { html: h + '</div>', ref, label, auto: !!ref && HELP_AUTO.test(r.status),
+      bind: el => { el.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => QGAI.close(true))); bindSub(el); fdImgs(el); fdRepCtx = () => ({}); fsRep(el, r.lid ? { id: r.lid } : { text: r.text || '' });
+        el.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', () => QGAI.close())); } };
+  }
+  async function helpFind(p) {   // p = { text } أو { file }
+    const body = { op: 'find', session: auth.session };
+    if (p.file) { let d = null; try { d = await fsImgData(p.file); } catch (e) {} if (!d) return { ok: false, msg: _T('تعذّرت قراءة الصورة. جرّب صورة ثانية أو اكتب السؤال.') }; body.img = d; }
+    else body.text = p.text;
+    const r = await api(body).catch(() => null);
+    if (!r) return { ok: false, retry: 1, msg: _T('تعذّر الاتصال، تأكد من النت وحاول مرة ثانية.') };
+    if (r.error === 'kicked' || r.error === 'session') { setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800); return { ok: false, msg: r.msg || '' }; }
+    if (!r.ok) return { ok: false, retry: /^(busy|vision)$/.test(r.error || '') ? 1 : 0, msg: r.msg || _T('صار خطأ، حاول مرة ثانية.') };
+    if (!p.file) r.text = p.text;
+    if (window.QGT) QGT.ev('find', FS_EV[r.status] || 'ما لقاه في الدورة', p.file ? 1 : 0);
+    return { ok: true, text: p.file ? r.text || '' : '', card: helpCard(r) };
+  }
+  // الزر العائم يطلع في الصفحات العامة بس (مو داخل حل الأسئلة، ولا الساحة، ولا صفحات المشرفين، ولا صفحة البحث نفسها)
+  const helpOn = h => h != null && (h === '' || /^(sharh|level|rules|rules-v|notes|badges|plan|skills)$/.test(h) || /^(vocab|wb-)/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
   async function renderFind() {
     document.title = _T('ابحث عن سؤال | Q-Guide');
     let kind = lsGet('qg_find_k', 'q'), usedImg = false, ocrTxt = '', imgData = '', imgLid = 0;   // imgLid = رقم بحث الصورة في الخادم (صورته محفوظة هناك)
@@ -3750,7 +3794,8 @@
   }
 
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
-  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800) });   // i18n:skip (اسم الإحصائية بالعربي)
+  if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800),   // i18n:skip (اسم الإحصائية بالعربي)
+    help: { find: helpFind, name: () => ((auth && (auth.display || auth.name)) || '').trim().split(/\s+/)[0] } });   // 🙋 المساعد العام
   applyFs(); applyTheme();
   // 💳 الرجوع من صفحة الدفع: تاب يضيف ?tap_id=chg_… لرابط الرجوع — نحفظه ونروح لصفحة التحقق
   (function () { const m = /[?&]tap_id=(chg_[A-Za-z0-9]+)/.exec(location.search); if (!m) return; try { sessionStorage.setItem(PAY_SS, m[1]); } catch (e) {} history.replaceState(null, '', location.pathname + '#paid'); })();

@@ -38,5 +38,12 @@ Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the 
 - With the live key the owner opens payments for every visitor from the payments box («🚀 افتح الدفع لكل الزوار» / «⏸ إيقاف الدفع للزوار»); until then only testers see the button (testers may have their own price).
 - New subscriber type `pay` («💳 دفع إلكتروني») watches the videos in the site like free/bank (`vidSub`). Owner: tile «💳 دفع من الموقع», row chip, badge in «👥 الطلاب», and the «💳 الدفع من الموقع» box in «💳 الاشتراكات» (`payBox`, rows open the student card).
 
+## 🙋 «تحتاج مساعدة؟» — the general assistant (`assets/ai.js` help mode + `helpFind` / `helpCard` in `p/app.js`)
+- Floating button `QGAI.fab(on)`: `route()` shows it via `helpOn(h)` (home and general pages); hidden while solving questions, in the arena, admin pages, `#find`, `#paid`. A greeting bubble shows once a day (`qg_hlp_hi`).
+- `QGAI.help()` opens the same panel as «اشرح لي» in help mode: the student snaps (📷, or pastes an image) or types the question → `helpFind` (op `find`, no kind) → `helpCard` (same card as the search page).
+  Found (exact / reorder / wording / opts_same) → the explanation starts at once (`/ai` with that ref) · similar (numbers / opts_diff) → «اشرح لي طريقة الحل» button · new → report + nearest questions. Free visitors: only q1 / v1 / t1 refs are explained.
+- Typed text after an explanation is a follow-up on that question (thread `H.tk`); «سؤال جديد», the camera, or pasting a full question with A) B) options starts a new search.
+- Test: `site/help_e2e.js`.
+
 ## 🗑 Ended students: delete from the lists · 🎓 all-time count (owner)
 Ended rows in «👥 الطلاب» show «🗑 حذف» instead of «حظر» (ban stays in the student card); also «🗑 حذف من القائمة» in the card and «🗑 حذف» next to «↩️ إرجاع الاشتراك» in «💳 الاشتراكات» (`subGoneOne` → `adm_sub_gone`). First owner tile «🎓 كل اللي اشتركوا» = `ADM.ever` from `adm_students`.
