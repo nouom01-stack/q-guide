@@ -36,6 +36,7 @@ every item keeps `src`/`sidx` of its model question (notes, skills and the AI us
 ## 🔑 Sign-in inside the installed app (home screen / standalone)
 `QG.GSI_REDIRECT` (standalone, set in `p/index.html` / `test/index.html`) → GSI `ux_mode: 'redirect'` with one `login_uri` for both pages: `<API>/gsi`.
 It must be in Google Cloud → APIs & Services → Credentials → the OAuth client in `QG.CLIENT_ID` → **Authorized redirect URIs** = `https://q-guide-api.nouom01.workers.dev/gsi`, otherwise the student gets «Error 400: redirect_uri_mismatch» (popups don't work in iOS home-screen apps, and their storage is separate from Safari, so they must sign in inside the app).
+Registered by the owner on Nov 6 2026 (verified: Google shows the account chooser, not the error). The OAuth client (project number 248349599429) lives in the Google Cloud of the account that owns the students sheet and the Forms — not the Cloudflare/GitHub account and not the YouTube channel account. Never change `login_uri` without adding the new address there first.
 `POST /gsi` (API) bounces to `/p/#gsi=<credential>`; `/test/` saves `qg_gsi_to` before the redirect and `/p/` (`gsiBack`, read before `renderLogin` clears it) sends him back after login. Test: `site/gsi_e2e.js`.
 
 ## 👑 Owner-only pages (Arabic, `i18n:off`)
