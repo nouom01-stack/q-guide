@@ -248,7 +248,7 @@
       const r = await api({ op: 'me', session: auth.session });
       if (r && !r.ok && r.error === 'upgraded') logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1);   // 🎉 الزائر اشترك
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
-      else if (r && r.ok && auth.role === 'admin' && r.staff && r.staff !== auth.staff) { auth.staff = r.staff; lsSet(LS.auth, auth); }
+      else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.adv || '') !== (auth.adv || ''))) { auth.staff = r.staff || auth.staff; auth.adv = r.adv || ''; lsSet(LS.auth, auth); }   // 🧑‍🏫 صار مرشد؟
       if (r && r.ok && auth && auth.role === 'free' && JSON.stringify(r.pay || null) !== JSON.stringify(auth.pay || null)) { auth.pay = r.pay || null; lsSet(LS.auth, auth); }   // 💳 الدفع انفتح/انقفل
       if (r && r.ok && auth && auth.role !== 'free' && Array.isArray(r.vids) && JSON.stringify(r.vids) !== JSON.stringify(auth.vids || [])) {   // 🎬 مقاطع جديدة انرفعت للموقع
         auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-abdullah)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
@@ -259,13 +259,13 @@
   setInterval(heartbeat, 3 * 60 * 1000);
 
   // ---------- 🆓 الزائر: المسارات المفتوحة + نافذة الاشتراك ----------
-  const freeRoute = h => h === '' || h === 'paid' || h === 'sharh' || h === 'sharh-abdullah' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
+  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || h === 'sharh-abdullah' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
     if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
-    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي') }[h.replace(/-v\d+$/, '')] || '';
+    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
   function subDlg(what, from) {
     if (isFree() && window.QGT) QGT.ev('sub', what || from || 'زر الاشتراك');   // 👀 فتح نافذة الاشتراك (وش اللي فتحها)
@@ -347,7 +347,7 @@
     const ag = $('#pdagain'); if (ag) ag.onclick = () => renderPaid();
   }
   // أي زر فيه data-lock أو data-sub يفتح نافذة الاشتراك
-  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w); }); }
+  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w && _T(w)); }); }   // 🌐 اسم المقفول بالإنجليزي لو له ترجمة
   const lockTool = (i, b, s) => _T`<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
@@ -388,7 +388,9 @@
     if (h === 'find') return renderFind();
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
+    if (/^wb-t[qv](@\d{1,3})?$/.test(h)) return renderWorkbook(h.slice(3, 5), false, +(h.split('@')[1] || 0));   // 🧱 مذكرات التأسيس (قواعد الكمي/اللفظي)
     if (/^watch-([qv]|af)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af = تأسيس عبدالله الشمراني
+    if (h === 'me') return renderProfile();   // 👤 ملفي
     if (h === 'sharh') return renderSharh();
     if (h === 'sharh-abdullah') return renderSharhAbd();
     if (h === 'board' || h === 'board-week' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'week');   // 🏆 الافتراضي: هذا الأسبوع
@@ -399,6 +401,7 @@
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
+    if (h === 'admin-adv') { if (auth.role === 'admin') return renderAdv(); location.hash = ''; return; }   // 🧑‍🏫 المرشدين / طلابي
     if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-regs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : h === 'admin-regs' ? renderRegs() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
@@ -442,7 +445,7 @@
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
-  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null });
+  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, adv: r.adv || '' });
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
@@ -519,13 +522,13 @@
     document.title = _T('منصة التدريب | Q-Guide');
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = _T('<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'); return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
-    const adminLinks = auth.role === 'admin' ? _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    const adminLinks = auth.role === 'admin' ? (auth.adv ? _T`<a class="tn" href="#admin-adv" title="طلابي: كلّمهم بالواتس"><span class="i">💬</span><span class="l">طلابي</span></a>` : '') + _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
     if (!isFree()) badgeCheck();
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
     const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
     const toolA = (href, i, b, s, tag, free) => FR && !free ? lockTool(i, b, s) : `<a class="tool" href="${href}"><span class="ti">${i}</span><span class="tx"><b>${b}${tag || ''}</b><small>${s}</small></span></a>`;
     const toolB = (id, i, b, s) => FR ? lockTool(i, b, s) : `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
-    app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: الاسم والصورة">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
+    app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: اشتراكك واسمك وصورتك">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
       ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
@@ -555,7 +558,7 @@
       <div class="wb" id="wb"><div class="mut">جارٍ تحميل مذكراتك…</div></div>`}
     </main>`;
     $('#lo').onclick = async () => { if (await QGDlg.confirm(_T('تسجيل الخروج؟'), { ok: _T('خروج') })) logout('', true); };
-    $('#me').onclick = () => renderProfile();
+    $('#me').onclick = () => { location.hash = 'me'; };
     bindCtl();
     document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { lsSet(LS.tab, b.dataset.t); renderHome(); });
     const grid = $('#grid');
@@ -596,7 +599,13 @@
     const card = (id, title, icon, desc, k) => id || man ? _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a>${drive(id)}</div></div>`
       : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? _T('المشرف ليس له مذكرة شخصية') : _T('تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً')}</span></div></div>`;
-    el.innerHTML = card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
+    // 🧱 مذكرات التأسيس (لكل المشتركين): تنقرا وينكتب عليها بالقلم داخل الموقع، وما تتحمّل
+    const fcard = (k, icon, desc, more) => _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]}</b><span class="mut">${desc}</span></div>
+        <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة (مع القلم)</a>${more || ''}</div></div>`;
+    el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 207 صفحة · كل قانون مع أمثلة محلولة من أسئلة الدورة')) +
+      fcard('tv', '📖', _T('قواعد اللفظي · طريقة حل كل نوع من أسئلة اللفظي'), _T('<a class="btn sm ghost" href="#sharh-abdullah">🎬 دروس عبدالله الشمراني</a>')) +
+      _T('<h3 class="wbg">🏋️ التدريب</h3>') +
+      card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
       card(f.verbal, _T('مذكرة اللفظي'), '📖', man ? _T('نسختك الخاصة باسمك وإيميلك · 193 صفحة · 14 نموذجاً') : _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
       `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">${man ? _T('المذكرة مسجّلة باسمك وإيميلك، وتفتحها من حسابك في الموقع. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.') : _T('المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.')}<br>${_T('📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.')}</p>`;
   }
@@ -604,15 +613,19 @@
   // ---------- interactive workbook viewer (pages + pen) ----------
   let WB = null;
   // solved = 📗 النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته (meta.sp = الصفحات اللي فيها أسئلة، والباقي نفس الأصلية)
-  async function renderWorkbook(kind, solved) {
-    const title = EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
+  // 🧱 مذكرات التأسيس: نفس العارض (القلم، بدون تحميل) لكل المشتركين — tq = قواعد الكمي · tv = قواعد اللفظي (صفحة كل درس من دروس عبدالله الشمراني: TV_PAGE)
+  const WB_T = { tq: [_T('تأسيس الكمي'), '📐'], tv: [_T('تأسيس اللفظي'), '📖'] }, TV_PAGE = { 1: 2, 2: 3, 3: 3, 4: 4 };
+  const WB_V = 2;   // ⬆️ ارفعه لو تغيّرت meta.json لأي مذكرة
+  async function renderWorkbook(kind, solved, startPage) {
+    const found = !!WB_T[kind];
+    const title = found ? WB_T[kind][0] : EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
     document.title = title + ' | Q-Guide';
     if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
-    if (auth.role !== 'admin' && auth.member !== 'manual' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast(_T('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق')); location.hash = ''; return; }
-    let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json')).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
-    const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, lsGet(lastKey, 1)));
+    if (!found && auth.role !== 'admin' && auth.member !== 'manual' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast(_T('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق')); location.hash = ''; return; }
+    let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json?v=' + WB_V)).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
+    const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, startPage || lsGet(lastKey, 1)));
     WB = { kind, meta, page, cache: {}, pen: null, solved: !!solved, sp: new Set(meta.sp || []) };
-    app.innerHTML = topbar(_T`<span class="ttl wbttl">${title}</span><a class="chip wbsw${solved ? ' on' : ''}" href="#wb-${kind}${solved ? '' : 's'}" title="${solved ? _T('ارجع للمذكرة بدون حل') : _T('النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته')}" aria-label="${solved ? _T('المذكرة بدون حل') : _T('النسخة المحلولة')}">${solved ? '📘' : '📗'}<span class="tx"> ${solved ? _T('بدون حل') : _T('المحلولة')}</span></a><span class="sp"></span>
+    app.innerHTML = topbar(_T`<span class="ttl wbttl">${found ? WB_T[kind][1] + ' ' : ''}${title}</span>${found ? '' : _T`<a class="chip wbsw${solved ? ' on' : ''}" href="#wb-${kind}${solved ? '' : 's'}" title="${solved ? _T('ارجع للمذكرة بدون حل') : _T('النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته')}" aria-label="${solved ? _T('المذكرة بدون حل') : _T('النسخة المحلولة')}">${solved ? '📘' : '📗'}<span class="tx"> ${solved ? _T('بدون حل') : _T('المحلولة')}</span></a>`}<span class="sp"></span>
       <button class="ib" id="pgprev" title="الصفحة السابقة">‹</button><span class="chip cnt" dir="ltr"><input id="pgin" type="number" min="1" max="${meta.pages}" value="${page}" style="width:54px;border:0;background:transparent;color:#fff;font-weight:700;text-align:center;font-size:15px"> / ${meta.pages}</span><button class="ib" id="pgnext" title="الصفحة التالية">›</button>`,
       _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wbmain">${solved ? _T('<div class="wbwarn" role="note">⚠️ نسخة محلولة للمساعدة: لا تعتمد عليها 100%، ممكن يكون فيها أخطاء. إذا شكّيت في إجابة راجع شرح المقطع.</div>') : ''}<div class="wbwrap" id="wbwrap"><div class="wbpage" id="wbpage"><div class="center" style="padding:60px 0"><div class="spin" style="margin:0 auto"></div></div></div></div>
@@ -641,8 +654,8 @@
     const sc = meta.scale, S = meta.slots, local = (auth.phone || '').replace(/^966/, '0') || (auth.member === 'manual' ? auth.email || '' : '');   // المضاف من اللوحة: إيميله بدل الجوال
     const who = (auth.name || '') + (local ? ' · ' + local : ''); if (!who.trim()) return;
     const txt = (x, baseline, size, align, text) => { ctx.save(); ctx.font = `${Math.round(size * sc * 1.15)}px Tajawal, "Segoe UI", Tahoma, sans-serif`; ctx.fillStyle = '#5B6675'; ctx.textAlign = align; ctx.direction = 'rtl'; ctx.fillText(text, x * sc, baseline * sc); ctx.restore(); };
-    txt(S.header.x, S.header.baseline, S.header.size, 'right', who);
-    const owners = (S.owner.pages || []).map(p => Array.isArray(p) ? p : [p, S.owner.baseline]);
+    txt(S.header.x, S.header.baseline, S.header.size, S.header.align || 'right', who);
+    const owners = (S.owner && S.owner.pages || []).map(p => Array.isArray(p) ? p : [p, S.owner.baseline]);
     const o = owners.find(p => p[0] === n - 1); if (o) txt(S.owner.x, o[1], S.owner.size, 'right', who);
     if (S.cover && S.cover.page === n - 1) txt(S.cover.x, S.cover.baseline, S.cover.size, 'center', who);
   }
@@ -677,7 +690,7 @@
     document.title = (af ? _T('التأسيس: ') : _T('شرح ')) + cur.label + ' | Q-Guide';
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
     // 🧱 التأسيس (عبدالله الشمراني): ما له أسئلة يحلها هنا، فالزر يرجّعه لصفحة المدرس · شرح سلمان: «حل القسم/النموذج»
-    const solve = af ? _T`<a class="btn sm" href="#sharh-abdullah">🧱 دروس التأسيس</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
+    const solve = af ? _T`<a class="btn sm" href="#wb-tv@${TV_PAGE[n]}">📘 قواعد الدرس</a><a class="btn sm ghost" href="#sharh-abdullah">🧱 دروس التأسيس</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
     const teach = af ? TEACHERS[1].name : TEACHERS[0].name, sub = af ? _T`الدرس ${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
     const head = af ? _T`<h2 class="h2">🧱 تأسيس اللفظي</h2><span class="wvhl"><a class="lnk2" href="#sharh-abdullah">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
       : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`;
@@ -787,7 +800,7 @@
         </div>
         <section class="tppane" id="tp-f" role="tabpanel" aria-labelledby="tpt-f">
           <div class="tpbar"><div class="tpbt"><b>تأسيس اللفظي</b><span>${free ? _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي') : seen ? _T`شاهدت ${seen} من 4` : _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة')}</span></div>
-            ${free ? '' : `<i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>`}</div>
+            ${free ? '' : `<i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>`}${free ? _T('<button type="button" class="btn sm ghost" data-lock="تأسيس اللفظي">📘 مذكرة التأسيس 🔒</button>') : _T('<a class="btn sm ghost" href="#wb-tv">📘 مذكرة التأسيس</a>')}</div>
           <div class="tles">${ABD.found.map(lesson).join('')}</div>
         </section>
         <section class="tppane" id="tp-t" role="tabpanel" aria-labelledby="tpt-t">
@@ -1593,7 +1606,7 @@
     return { ok: true, text: p.file ? r.text || '' : '', card: helpCard(r) };
   }
   // الزر العائم يطلع في الصفحات العامة بس (مو داخل حل الأسئلة، ولا الساحة، ولا صفحات المشرفين، ولا صفحة البحث نفسها)
-  const helpOn = h => h != null && (h === '' || /^(sharh|sharh-abdullah|level|notes|badges|plan|skills)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^(vocab|wb-)/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
+  const helpOn = h => h != null && (h === '' || /^(sharh|sharh-abdullah|level|notes|badges|plan|skills)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^vocab/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
   // 👤 ملف الطالب للمساعد (من جهازه): اختباره، سلسلته، أضعف مواضيعه، مهمة اليوم من خطته، وأنسب مكان يكمل فيه
   function helpProfile() {
     const P = { name: firstName(auth && (auth.display || auth.name)), free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '' };
@@ -2307,7 +2320,8 @@
   }
   // i18n:on
   // ---------- avatar / profile ----------
-  const PRESETS = ['adventurer', 'adventurer-neutral', 'avataaars', 'bottts-neutral', 'fun-emoji', 'thumbs', 'lorelei', 'notionists'];
+  // 🎭 أشكال جاهزة (DiceBear): بذرة عشوائية (مو الإيميل — الرابط يطلع للطلاب في لوحة الصدارة) و«🔀 أشكال ثانية» يغيّرها
+  const PRESETS = ['adventurer', 'avataaars', 'big-smile', 'bottts', 'fun-emoji', 'lorelei', 'micah', 'miniavs', 'notionists', 'personas', 'pixel-art', 'thumbs'];
   function avatarHtml(url, name, size) {
     const nm = String(name || '').replace(/[?؟]/g, '').trim(); const init = esc(nm.charAt(0) || '👤'); const sz = size || 40;
     let hsh = 0; for (const ch of nm) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0; const hue = hsh % 360;
@@ -2315,36 +2329,84 @@
     return url ? `<img class="av" src="${esc(url)}" width="${sz}" height="${sz}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'av ini',textContent:'${init}',style:'${st}'}))">`
       : `<span class="av ini" style="${st}">${init}</span>`;
   }
-  function presetUrl(style, seed) { return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&radius=50`; }
+  function presetUrl(style, seed) { return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&radius=50&backgroundType=solid&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`; }
+  const newSeed = () => 'qg' + Math.random().toString(36).slice(2, 8);
+  // 👤 «ملفي» (#me): موعد انتهاء الاشتراك · الاسم · المدرسة · الصورة
+  const SUB_LBL = { yt: ['▶️', _T('عضوية يوتيوب')], free: ['🎁', _T('اشتراك مجاني')], bank: ['🏦', _T('تحويل بنكي')], pay: ['💳', _T('دفع إلكتروني')] };
+  const meDay = (t, wd) => new Date(t).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', Object.assign({ day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }, wd ? { weekday: 'long' } : {}));
+  const ME = { seeds: null };
   async function renderProfile() {
-    let prof = { name: auth.display || auth.name, avatar: auth.avatar || '', yt: '' };
-    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="m ar"><div class="center"><div class="spin" style="margin:20px auto"></div></div></div>`; document.body.appendChild(box);
-    try { const r = await api({ op: 'profile', session: auth.session }); if (r.ok) prof = { name: r.name, avatar: r.avatar, yt: r.yt, handle: r.handle }; } catch (e) {}
-    const seed = auth.email; let chosen = prof.avatar || '';
-    const draw = () => {
-      box.innerHTML = _T`<div class="m"><h3>ملفي الشخصي</h3>
-        <div class="pf-top">${avatarHtml(chosen, prof.name, 72)}<div><label class="lbl">الاسم المعروض في لوحة الصدارة</label><input id="pf-name" maxlength="30" value="${esc(prof.name || '')}"></div></div>
-        <label class="lbl">الصورة</label>
-        <div class="pf-av">
-          ${prof.yt ? _T`<button class="pf-opt ${chosen === prof.yt ? 'on' : ''}" data-u="${esc(prof.yt)}" title="صورة قناتك في يوتيوب">${avatarHtml(prof.yt, 'Y', 48)}<small>يوتيوب</small></button>` : ''}
-          ${PRESETS.map(st => { const u = presetUrl(st, seed); return `<button class="pf-opt ${chosen === u ? 'on' : ''}" data-u="${esc(u)}">${avatarHtml(u, '?', 48)}</button>`; }).join('')}
-          <label class="pf-opt up" title="رفع صورة من جهازك">📷<small>رفع صورة</small><input type="file" id="pf-file" accept="image/*" hidden></label>
-          <button class="pf-opt ${chosen === '' ? 'on' : ''}" data-u="" title="بدون صورة"><span class="av ini" style="width:48px;height:48px">${esc((prof.name || '?').charAt(0))}</span><small>بدون</small></button>
-        </div>
-        <p class="mut" style="font-size:12.5px">${prof.yt ? '' : (prof.handle ? _T('ما قدرنا نجيب صورة قناتك (') + esc(prof.handle) + _T(') — اختر صورة من هنا.') : '')} الاسم والصورة يظهران للطلاب الآخرين في لوحة الصدارة فقط.</p>
-        <div class="acts"><button class="btn ghost" id="pf-x">إلغاء</button><span class="sp"></span><button class="btn" id="pf-save">حفظ</button></div></div>`;
-      box.querySelectorAll('.pf-opt[data-u]').forEach(b => b.onclick = () => { chosen = b.dataset.u; photo = null; draw(); });
-      $('#pf-x').onclick = () => box.remove();
-      $('#pf-file').onchange = async e => { const f = e.target.files[0]; if (!f) return; photo = await shrinkImage(f, 160); chosen = photo; draw(); };
-      $('#pf-save').onclick = async () => {
-        const name = $('#pf-name').value.trim(); if (name.length < 2) return toast(_T('اكتب اسماً أطول'));
-        $('#pf-save').disabled = true;
-        const body = { op: 'profile_set', session: auth.session, name }; if (photo) body.photo = photo; else body.avatar = chosen;
-        try { const r = await api(body); if (!r.ok) { toast(r.msg || _T('تعذّر الحفظ')); $('#pf-save').disabled = false; return; }
-          auth.display = r.name; auth.avatar = r.avatar; lsSet(LS.auth, auth); box.remove(); toast(_T('تم الحفظ ✓')); renderHome(); } catch (e) { toast(_T('تعذّر الاتصال')); $('#pf-save').disabled = false; }
-      };
-    };
-    let photo = null; draw();
+    document.title = _T('ملفي | Q-Guide');
+    app.innerHTML = topbar(_T`<span class="ttl">👤 ملفي</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + '<main class="wrap mepage"><div class="center" style="padding:60px 0"><div class="spin" style="margin:0 auto"></div></div></main>';
+    bindCtl();
+    let P;
+    try { P = await api({ op: 'profile', session: auth.session }); } catch (e) { P = null; }
+    if (location.hash !== '#me') return;
+    if (!P || !P.ok) { $('.mepage').innerHTML = `<div class="sum">${esc((P && P.msg) || _T('تعذّر تحميل ملفك، تأكد من النت وحدّث الصفحة.'))}</div>`; return; }
+    if (!ME.seeds) ME.seeds = PRESETS.map(newSeed);
+    meDraw(P);
+  }
+  function meDraw(P) {
+    const W = $('.mepage'); if (!W) return;
+    const S = P.sub || {}, now = P.now || Date.now(), name = P.name || auth.display || auth.name || '';
+    // 📅 الاشتراك: الأيام الباقية بتقويم الرياض + شريط من البداية للنهاية
+    let subHtml = '', chip = '';
+    if (S.state === 'staff') { chip = S.role === 'owner' ? _T('👑 المالك') : _T('🛡 مشرف'); subHtml = _T`<p class="msubtx">${S.role === 'owner' ? _T('أنت مالك الموقع، ما تحتاج اشتراك.') : _T('حسابك مشرف، ما يحتاج اشتراك.')}</p>`; }
+    else if (S.state === 'free') { chip = _T('🆓 حساب مجاني'); subHtml = _T`<p class="msubtx">حسابك مجاني: تقدر تجرّب القسم 1 والنموذج 1 والاختبار المحاكي 1. اشترك عشان تنفتح لك الدورة كاملة.</p><div class="msubact"><button type="button" class="btn gold" data-sub>⭐ اشترك في الدورة</button></div>`; }
+    else if (S.state === 'ended') { chip = _T('⛔ اشتراك منتهي'); subHtml = _T`<p class="msubtx">انتهى اشتراكك في الدورة. جدّده وترجع لك كل الأقسام والنماذج مع تقدّمك.</p><div class="msubact"><button type="button" class="btn gold" data-sub>↻ جدّد اشتراكك</button></div>`; }
+    else {
+      const L = SUB_LBL[S.t] || SUB_LBL.yt; chip = L[0] + ' ' + L[1];
+      if (S.until) {
+        const left = rDay(S.until) - rDay(now), span = Math.max(1, S.until - (S.start || S.until - 30 * 864e5)), pct = Math.min(100, Math.max(0, Math.round((now - (S.start || S.until - span)) * 100 / span)));
+        const tone = left < 0 ? 'bad' : left <= 3 ? 'warn' : left <= 7 ? 'mid' : 'ok';
+        const big = left < 0 ? _T('انتهت المدة') : left === 0 ? _T('آخر يوم') : EN ? enN(left, 'day', 'days') + ' left' : left === 1 ? _T('باقي يوم') : left === 2 ? _T('باقي يومين') : _T`باقي ${left} ${left <= 10 ? _T('أيام') : _T('يوم')}`;
+        const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أبي أجدد اشتراكي في دورة Q-Guide') + _T('\nإيميلي في الموقع: ') + (P.email || auth.email));
+        subHtml = _T`<div class="msub ${tone}"><div class="msubn"><b>${big}</b><span>${left < 0 ? _T`كان آخر يوم ${meDay(S.until)}` : _T`ينتهي اشتراكك ${meDay(S.until, 1)}`}</span></div>
+          <i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>
+          <div class="msubm"><span>${S.start ? _T`بدأ ${meDay(S.start)}` : ''}</span><span>${L[0]} ${L[1]}</span></div></div>
+          ${left <= 3 ? _T`<div class="msubact"><p>${left < 0 ? _T('جدّد اشتراكك عشان ما ينقفل حسابك.') : _T('اشتراكك قرب يخلص. جدّده عشان تكمّل بدون انقطاع.')}</p><a class="btn gold" href="${wa}"${TGT}>↻ جدّد اشتراكك</a></div>` : ''}`;
+      } else subHtml = _T`<p class="msubtx">✓ اشتراكك فعّال (${L[0]} ${L[1]}).</p>`;
+    }
+    // 🖼 الصورة: ارفع صورة · صورة قناتك في يوتيوب · أشكال جاهزة · بدون صورة — تتغيّر على طول
+    const cur = P.avatar || '', opt = (u, inner, t, cls) => `<button type="button" class="meopt${cls ? ' ' + cls : ''}${u === cur ? ' on' : ''}" data-u="${esc(u)}" title="${t}" aria-label="${t}" aria-pressed="${u === cur}">${inner}</button>`;
+    const avs = `<label class="meopt up" title="${_T('ارفع صورة من جهازك')}"><span aria-hidden="true">📷</span><small>${_T('ارفع صورة')}</small><input type="file" id="me-file" accept="image/*" hidden></label>`
+      + (P.yt ? opt(P.yt, avatarHtml(P.yt, 'Y', 56), _T('صورة قناتك في يوتيوب')) : '')
+      + PRESETS.map((st, i) => { const u = presetUrl(st, ME.seeds[i]); return opt(u, avatarHtml(u, '?', 56), _T('شكل جاهز')); }).join('')
+      + (cur && cur.indexOf('dicebear') >= 0 && !PRESETS.some((st, i) => presetUrl(st, ME.seeds[i]) === cur) ? opt(cur, avatarHtml(cur, '?', 56), _T('صورتك الحالية')) : '')
+      + (cur && cur.indexOf('/avatar/') >= 0 ? opt(cur, avatarHtml(cur, '?', 56), _T('صورتك المرفوعة')) : '')
+      + opt('', `<span class="av ini" style="width:56px;height:56px;font-size:24px">${esc((name || '?').charAt(0))}</span>`, _T('بدون صورة'), 'none');
+    W.innerHTML = _T`<section class="mehd">
+        <div class="meav">${avatarHtml(cur, name, 96)}<a class="meavb" href="#me-av" title="غيّر صورتك" aria-label="غيّر صورتك">✎</a></div>
+        <div class="mehx"><h1>${esc(name)}</h1><span class="memail" dir="ltr">${esc(P.email || auth.email || '')}</span>
+          <div class="mechips"><span class="mechip s-${S.state || 'active'}">${chip}</span>${P.school ? `<span class="mechip">🏫 ${esc(P.school)}</span>` : ''}</div></div>
+      </section>
+      <section class="mecard" aria-labelledby="me-h1"><h2 id="me-h1">📅 اشتراكك</h2>${subHtml}</section>
+      <section class="mecard" aria-labelledby="me-h2"><h2 id="me-h2">✏️ بياناتك</h2>
+        <div class="mefields"><label class="mef"><span>اسمك في لوحة الصدارة</span><input id="me-name" maxlength="30" autocomplete="nickname" value="${esc(name)}"></label>
+          <label class="mef"><span>مدرستك</span><input id="me-school" maxlength="60" placeholder="مثال: ثانوية الملك فهد" value="${esc(P.school || '')}"></label></div>
+        <p class="mut menote">الاسم والصورة يشوفها الطلاب في لوحة الصدارة والساحة. المدرسة ما يشوفها إلا أنت ومرشدك.</p>
+        <div class="meact"><button type="button" class="btn" id="me-save" disabled>حفظ</button><span class="mut" id="me-st" aria-live="polite"></span></div></section>
+      <section class="mecard" id="me-av" aria-labelledby="me-h3"><div class="mecardh"><h2 id="me-h3">🖼 صورتك</h2><button type="button" class="lnk2" id="me-shuf">🔀 أشكال ثانية</button></div>
+        <div class="meavs">${avs}</div>
+        <p class="mut menote">اضغط على أي صورة وتتغيّر على طول.</p></section>`;
+    bindSub(W);
+    // ✏️ الاسم والمدرسة: زر الحفظ يشتغل لما يتغيّر شي
+    const nm = $('#me-name'), sc = $('#me-school'), sv = $('#me-save'), stt = $('#me-st');
+    const dirty = () => { sv.disabled = nm.value.trim() === name && sc.value.trim() === (P.school || ''); stt.textContent = ''; };
+    nm.oninput = dirty; sc.oninput = dirty;
+    const save = async (body, okMsg) => {
+      try { const r = await api(Object.assign({ op: 'profile_set', session: auth.session }, body)); if (!r.ok) { toast(r.msg || _T('تعذّر الحفظ')); return false; }
+        P.name = r.name; P.avatar = r.avatar; P.school = r.school; auth.display = r.name; auth.avatar = r.avatar; lsSet(LS.auth, auth);
+        const y = scrollY; meDraw(P); scrollTo({ top: y }); toast(okMsg); return true; } catch (e) { toast(_T('تعذّر الاتصال')); return false; } };
+    sv.onclick = async () => { const n2 = nm.value.trim(); if (n2.length < 2) { toast(_T('اكتب اسماً أطول')); nm.focus(); return; }
+      sv.disabled = true; stt.textContent = _T('جاري الحفظ…'); if (!await save({ name: n2, school: sc.value.trim() }, _T('تم الحفظ ✓'))) dirty(); };
+    [nm, sc].forEach(i => i.onkeydown = e => { if (e.key === 'Enter' && !sv.disabled) sv.click(); });
+    // 🖼 الصورة تتغيّر على طول
+    W.querySelectorAll('.meopt[data-u]').forEach(b => b.onclick = () => { if (b.dataset.u === cur) return; W.querySelectorAll('.meopt').forEach(x => x.classList.add('dis')); save({ avatar: b.dataset.u }, _T('✓ تغيّرت صورتك')); });
+    $('#me-file').onchange = async e => { const f = e.target.files[0]; if (!f) return; if (!/^image\//.test(f.type)) { toast(_T('اختر صورة')); return; }
+      const ph = await shrinkImage(f, 160); save({ photo: ph }, _T('✓ تغيّرت صورتك')); };
+    $('#me-shuf').onclick = () => { ME.seeds = PRESETS.map(newSeed); const y = scrollY; meDraw(P); scrollTo({ top: y }); };
+    const ab = $('.meavb'); if (ab) ab.onclick = e => { e.preventDefault(); $('#me-av').scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); };
   }
   function shrinkImage(file, size) {
     return new Promise(res => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'); const s = Math.min(img.width, img.height); x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size); res(c.toDataURL('image/jpeg', .82)); }; img.src = URL.createObjectURL(file); });
@@ -2401,7 +2463,7 @@
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
   function admTop(tab) {
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}">${regTabLabel()}</a>` : ''}${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-subs" class="${tab === 'subs' ? 'on' : ''}">💳 الاشتراكات</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
+      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}">${regTabLabel()}</a>` : ''}${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-subs" class="${tab === 'subs' ? 'on' : ''}">💳 الاشتراكات</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}${isOwner() || auth.adv || (ADM.staff && ADM.staff.myAdv) ? `<a href="#admin-adv" class="${tab === 'adv' ? 'on' : ''}">${advTab()}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
   }
   async function admLoadStaff(force) { if (ADM.staff && !force) { regsSoon(); return ADM.staff; } const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } regsSoon(); return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
@@ -2465,7 +2527,7 @@
       ${d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ محظور منذ ${fmtD(d.ban.at)} بواسطة ${esc(d.ban.by_email)}${d.ban.reason ? ' — ' + esc(d.ban.reason) : ''}</div>` : ''}
       ${d.ended && !d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ اشتراكه منتهي منذ ${fmtD(d.ended.at)}: يدخل بالحساب المجاني بس.${isOwner() ? ' <button class="lnk" id="a_srest">↩️ إرجاع الاشتراك</button> <button class="lnk dng" id="a_gone">🗑 حذف من القائمة</button>' : ''}</div>` : ''}
       ${mb ? `<div class="sum mbox">${mb.added_by === 'tap' ? '💳 اشترك بالدفع من الموقع' : '➕ مشترك أُضيف من اللوحة بواسطة ' + esc((mb.added_by || '').split('@')[0])} · ${fmtD(mb.added_at)}${isOwner() ? ' <button class="lnk" id="a_mrm">حذف الاشتراك</button>' : ''}</div>` : ''}
-      <div class="kv"><div><span>${mb ? 'الاسم' : 'الاسم في الشيت'}</span><b>${esc((mb ? mb.name : st.name) || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
+      <div class="kv"><div><span>${mb ? 'الاسم' : 'الاسم في الشيت'}</span><b>${esc((mb ? mb.name : st.name) || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>المدرسة</span><b>${esc(pf.school || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
       ${isOwner() && (d.student || d.member) && !d.ban ? (() => { const D = d.dates || {}, L = subLeft(D.until);
         return `<div class="sdbox ${d.ended ? 'na' : L.c}"><div class="sdl"><span>📅 بداية الاشتراك <b>${D.start ? admDay(D.start, 1) : '—'}</b></span><span>⏰ ينتهي <b>${D.until ? admDay(D.until, 1) : '—'}</b>${d.ended ? '' : ` <em>${L.t}</em>`}</span></div>
           <div class="sdb"><button class="btn sm" id="a_sm">＋ شهر</button><button class="btn sm ghost" id="a_sd">تعديل التاريخ</button></div></div>`; })() : ''}
@@ -3211,6 +3273,66 @@
     };
     const mq = $('#mq'); if (mq) mq.oninput = e => { ADM.mq = e.target.value; const pos = e.target.selectionStart; paintMembers(res); const i = $('#mq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-mrm]').forEach(b => b.onclick = async () => { if (await admMemberRemove(b.dataset.mrm)) { ADM.list = null; renderMembers(); } });
+  }
+
+  // ---------- 🧑‍🏫 المرشدين الأكاديميين: «💬 طلابي» — كل مرشد يشوف طلابه ويكلمهم بالواتس برسالة جاهزة باسمه ----------
+  // الطالبات للعنود (مرشدة الطالبات)، والطلاب بالتساوي بين عبدالله الشمراني وسلمان الفرج (adv.js في الـ API). المالك يشوف الكل ويغيّر المرشد.
+  const ADV_IDLE = 7 * 864e5;   // «ما دخل من أسبوع»
+  const advMsg = (adv, s, nm) => { const f = nm || firstName(s.display || s.name) || '';   // رسالة الواتس الوحيدة: «أنا مرشدك الأكاديمي» باسم المرشد (nm = للمعاينة)
+    return adv.adv === 'f' ? `السلام عليكم ${f} 👋\nأنا ${adv.name}، مرشدتك الأكاديمية في دورة Q-Guide.\nأي سؤال عن الدورة أو المذاكرة كلميني هنا، وبتابع معك تقدّمك إن شاء الله.`
+      : `السلام عليكم ${f} 👋\nأنا ${adv.name}، مرشدك الأكاديمي في دورة Q-Guide.\nأي سؤال عن الدورة أو المذاكرة كلمني هنا، وبتابع معك تقدّمك إن شاء الله.`; };
+  const advTab = () => isOwner() ? '🧑‍🏫 المرشدين' : '💬 طلابي';
+  async function renderAdv(force) {
+    document.title = (isOwner() ? 'المرشدين' : 'طلابي') + ' | Q-Guide';
+    app.innerHTML = admTop('adv'); bindCtl(); $('#admref').onclick = () => renderAdv(true);
+    try { if (!ADM.adv || force) ADM.adv = await admCall({ op: 'adv_mine' }); await admLoadStaff(); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-adv') return;
+    app.innerHTML = admTop('adv'); bindCtl(); $('#admref').onclick = () => renderAdv(true);
+    paintAdv();
+  }
+  function paintAdv() {
+    const W = $('#adm'), D = ADM.adv; if (!W || !D) return;
+    const owner = !!D.owner, advs = D.advs || [], A = {}; advs.forEach(a => A[a.email] = a);
+    if (ADM.ap == null) ADM.ap = owner ? (D.me ? D.me.email : (advs[0] || {}).email || '') : '';   // المالك: أي مرشد يعرض ('' = بدون مرشد)
+    ADM.af = ADM.af || 'all'; ADM.aq = ADM.aq || '';
+    const who = owner ? A[ADM.ap] || null : D.me, base = owner ? D.students.filter(s => s.adv === ADM.ap) : D.students;
+    const now = Date.now(), idle = s => !s.last || now - s.last > ADV_IDLE, q = ADM.aq.trim().toLowerCase();
+    const n = { all: base.length, todo: base.filter(s => !s.wa_at).length, done: base.filter(s => s.wa_at).length, idle: base.filter(idle).length };
+    const list = base.filter(s => (ADM.af === 'todo' ? !s.wa_at : ADM.af === 'done' ? !!s.wa_at : ADM.af === 'idle' ? idle(s) : true)
+      && (!q || [s.name, s.display, s.email, s.phone, s.school].some(v => String(v || '').toLowerCase().includes(q))))
+      .sort((a, b) => (!a.wa_at - !b.wa_at) * -1 || (a.last || 0) - (b.last || 0));   // اللي ما تواصلت معه أول، ثم الأقل نشاطاً
+    const nm = s => s.display || s.name || s.email.split('@')[0];
+    const gl = (g, n2) => g === 'f' ? (n2 === 1 ? 'طالبة' : 'طالبات') : (n2 === 1 ? 'طالب' : 'طلاب');
+    const tile = (k, ic, b, t) => `<button type="button" class="sbt${ADM.af === k ? ' on' : ''}" data-af="${k}" aria-pressed="${ADM.af === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
+    const meta = s => [s.wa ? `<span dir="ltr">📱 ${esc(s.phone)}</span>` : '<span class="rgbad">بدون جوال</span>', s.until ? `📅 ينتهي ${admDay(s.until)}` : '', s.last ? `آخر نشاط ${fmtD(s.last)}` : '<span class="rgbad">ما دخل الموقع</span>', `حلّ ${s.sets} من ${D.sets}`, s.school ? esc(s.school) : ''].filter(Boolean).join(' · ');
+    const move = s => owner ? `<select class="advmv" data-mv="${esc(s.email)}" aria-label="مرشد ${esc(nm(s))}">${advs.map(a => `<option value="${esc(a.email)}"${a.email === s.adv ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value=""${!s.adv ? ' selected' : ''}>بدون مرشد</option></select>` : '';
+    const row = s => { const adv = A[s.adv] || D.me;
+      const wa = !owner && s.wa && adv ? `<a class="btn sm advwa" href="https://wa.me/${s.wa}?text=${encodeURIComponent(advMsg(adv, s))}" target="_blank" rel="noopener" data-wa="${esc(s.email)}">💬 واتساب</a>` : '';
+      return `<div class="srow advrow${s.wa_at ? ' done' : ''}" data-e="${esc(s.email)}">
+        <span class="c-st">${avatarHtml('', nm(s), 40)}<span class="who"><b>${esc(nm(s))}</b><small class="rgmeta">${meta(s)}</small></span></span>
+        <span class="advact">${s.wa_at ? `<span class="advok">✓ تواصلت ${fmtD(s.wa_at)}</span>` : ''}${move(s)}${wa}</span></div>`; };
+    const pick = owner ? `<div class="advpick" role="tablist" aria-label="المرشد">${advs.map(a => `<button type="button" role="tab" data-ap="${esc(a.email)}" class="${ADM.ap === a.email ? 'on' : ''}" aria-selected="${ADM.ap === a.email}">${a.adv === 'f' ? '👩‍🏫' : '👨‍🏫'} ${esc(a.name)} <small>${a.n}</small></button>`).join('')}<button type="button" role="tab" data-ap="" class="${ADM.ap === '' ? 'on' : ''}" aria-selected="${ADM.ap === ''}">بدون مرشد <small>${D.students.filter(s => !s.adv).length}</small></button></div>` : '';
+    const setup = owner ? `<details class="advset"${advs.length ? '' : ' open'}><summary>⚙️ مين المرشدين؟</summary><p class="mut">الطالبات كلهن للمرشدة، والطلاب يتقسّمون بالتساوي بين مرشدي الطلاب. الاسم هنا هو اللي يطلع في رسالة الواتس.</p>
+        ${(D.staff || []).map(s => `<div class="advsr" data-se="${esc(s.email)}"><span class="ltr">${esc(s.email)}</span><input type="text" maxlength="40" value="${esc(s.adv_name || s.name)}" aria-label="اسم المرشد في الرسالة" placeholder="الاسم في الرسالة"><select aria-label="دوره">${[['', 'مو مرشد'], ['m', '👨‍🏫 مرشد الطلاب'], ['f', '👩‍🏫 مرشدة الطالبات']].map(([v, t]) => `<option value="${v}"${(s.adv || '') === v ? ' selected' : ''}>${t}</option>`).join('')}</select><button type="button" class="btn sm ghost" data-ss>حفظ</button></div>`).join('') || '<p class="mut">أضف المرشدين من «🛡 المشرفون» أول.</p>'}</details>` : '';
+    const head = who ? `<div class="advhd"><b>${who.adv === 'f' ? '👩‍🏫' : '👨‍🏫'} ${esc(who.name)}</b><span>${who.adv === 'f' ? 'مرشدة الطالبات' : 'مرشد الطلاب'} · ${n.all} ${gl(who.adv, n.all)}</span></div>`
+      : owner && ADM.ap === '' ? '<div class="advhd"><b>بدون مرشد</b><span>ما نعرف جنسهم من الشيت، أو شلتهم بيدك. اختر لكل واحد مرشده.</span></div>' : '';
+    const msgBox = who ? `<details class="advmsg"><summary>✉️ نص الرسالة</summary><pre>${esc(advMsg(who, null, who.adv === 'f' ? '(اسم الطالبة)' : '(اسم الطالب)'))}</pre></details>` : '';
+    W.innerHTML = `<div class="stf advp">${setup}${pick}${head}
+      ${ADM.ap === '' && owner ? '' : `<div class="sbtiles">${tile('all', '👥', n.all, 'الكل')}${tile('todo', '💬', n.todo, 'ما تواصلت معهم')}${tile('done', '✅', n.done, 'تواصلت معهم')}${tile('idle', '😴', n.idle, 'ما دخلوا من أسبوع')}</div>`}
+      ${msgBox}
+      <div class="abar"><input id="advq" type="search" placeholder="ابحث بالاسم أو الجوال أو الإيميل…" value="${esc(ADM.aq)}"></div>
+      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : ADM.af === 'todo' && n.all ? 'تواصلت مع الكل 👍' : 'ما فيه أحد هنا'}</div>`}</div>
+      <p class="mut sbnote">${owner ? 'كل مرشد يكلّم طلابه بالواتس من صفحته «💬 طلابي» برسالة جاهزة باسمه، وأنت تشوف هنا مين تواصل معه («✓ تواصلت») وتقدر تنقل أي طالب لمرشد ثاني.' : '«💬 واتساب» يفتح محادثة الطالب برسالة جاهزة باسمك، وتقدر تعدّلها قبل الإرسال. نعلّم الطالب «✓ تواصلت» أول ما تفتح محادثته.'}</p></div>`;
+    W.querySelectorAll('[data-af]').forEach(b => b.onclick = () => { ADM.af = b.dataset.af; paintAdv(); });
+    W.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { ADM.ap = b.dataset.ap; ADM.af = 'all'; paintAdv(); });
+    $('#advq').oninput = e => { ADM.aq = e.target.value; const pos = e.target.selectionStart; paintAdv(); const i = $('#advq'); i.focus(); i.setSelectionRange(pos, pos); };
+    W.querySelectorAll('[data-wa]').forEach(a => a.addEventListener('click', () => { const s = D.students.find(x => x.email === a.dataset.wa); if (!s) return;
+      s.wa_at = Date.now(); admCall({ op: 'adv_wa', email: s.email }).catch(() => {}); setTimeout(paintAdv, 300); }));
+    W.querySelectorAll('[data-mv]').forEach(sel => sel.onchange = async () => { const s = D.students.find(x => x.email === sel.dataset.mv); if (!s) return;
+      try { ADM.adv = await admCall({ op: 'adm_adv_set', email: s.email, adv: sel.value }); toast(`✓ ${nm(s)} صار عند ${sel.value ? (A[sel.value] || {}).name || '' : 'بدون مرشد'}`); paintAdv(); } catch (e) { toast('ما انحفظ: ' + e.message); paintAdv(); } });
+    W.querySelectorAll('.advsr').forEach(r => { r.querySelector('[data-ss]').onclick = async () => {
+      try { ADM.adv = await admCall({ op: 'adm_staff_adv', email: r.dataset.se, adv: r.querySelector('select').value, adv_name: r.querySelector('input').value }); toast('✓ انحفظ، وانوزّع الطلاب'); ADM.ap = null; paintAdv(); } catch (e) { toast('ما انحفظ: ' + e.message); } }; });
   }
 
   // i18n:on
