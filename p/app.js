@@ -399,11 +399,14 @@
   }
   window.addEventListener('hashchange', route);
 
-  // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...)
+  // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...) — التطبيق المضاف للشاشة الرئيسية (standalone) يدخل بهذا الوضع.
+  // رابط الرجوع واحد: <API>/gsi ولازم يكون مسجّل في Google Cloud (OAuth client → Authorized redirect URIs)، وإلا يطلع للطالب redirect_uri_mismatch.
+  // Google يرجّعه دايماً لـ /p/؛ صفحة الاختبارات المحاكية تحفظ qg_gsi_to قبل الدخول فنرجّعه لها بعده (gsiBack)
+  function gsiBack() { const v = lsGet('qg_gsi_to', null); lsDel('qg_gsi_to'); return v && v.to === '/test/' && Date.now() - (v.t || 0) < 20 * 60e3 ? '/test/' : ''; }
   function gsiFromHash() {
     const m = location.hash.match(/[#&]gsi=([^&]+)/); if (!m) { if (/gsierr=1/.test(location.hash)) { history.replaceState(null, '', location.pathname); renderLogin(_T('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى.')); return true; } return false; }
-    const cred = decodeURIComponent(m[1]); history.replaceState(null, '', location.pathname);
-    renderLogin(); onCredential({ credential: cred }); return true;
+    const cred = decodeURIComponent(m[1]), back = gsiBack(); history.replaceState(null, '', location.pathname);   // نقرأ الحفظ قبل renderLogin (اللي يمسحه)
+    renderLogin(); onCredential({ credential: cred, back }); return true;
   }
   // ---------- login ----------
   function renderLogin(err, good) {
@@ -428,7 +431,8 @@
     const host = $('#gbtn'); if (!host) return;
     if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.innerHTML = _T('<span style="color:var(--bad)">تعذّر تحميل تسجيل الدخول، حدّث الصفحة.</span>'); return; }
     try {
-      google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi?to=/p/' } : { ux_mode: 'popup' }));
+      if (window.QG.GSI_REDIRECT) lsDel('qg_gsi_to');   // الدخول من هنا نفسها: بعد الرجوع من Google يبقى في /p/
+      google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi' } : { ux_mode: 'popup' }));
       host.innerHTML = '';
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
@@ -443,7 +447,9 @@
         return renderLogin(esc(msg) + _T('<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>'));
       }
       auth = authFrom(r);
-      lsSet(LS.auth, auth); location.hash = payPending() ? 'paid' : ''; route();   // 💳 رجع من صفحة الدفع وجلسته منتهية: نكمل التحقق بعد الدخول
+      lsSet(LS.auth, auth);
+      if (resp.back && !payPending()) return location.replace(resp.back);   // دخل من صفحة الاختبارات المحاكية: نرجّعه لها
+      location.hash = payPending() ? 'paid' : ''; route();   // 💳 رجع من صفحة الدفع وجلسته منتهية: نكمل التحقق بعد الدخول
     } catch (e) { renderLogin(_T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')); }
   }
 

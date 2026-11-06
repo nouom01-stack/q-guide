@@ -79,7 +79,8 @@
   function mountGoogle() {
     const host = $('#gbtn'); if (!host) return;
     if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 60) return setTimeout(mountGoogle, 150); host.textContent = _T('تعذّر تحميل تسجيل الدخول، حدّث الصفحة.'); return; }
-    google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi?to=/test/' } : { ux_mode: 'popup' }));
+    if (window.QG.GSI_REDIRECT) lsSet('qg_gsi_to', { to: '/test/', t: Date.now() });   // رابط الرجوع المسجّل في Google واحد (<API>/gsi → /p/)، و/p/ يرجّعه هنا بعد الدخول
+    google.accounts.id.initialize(Object.assign({ client_id: window.QG.CLIENT_ID, callback: onCredential, auto_select: false, itp_support: true }, window.QG.GSI_REDIRECT ? { ux_mode: 'redirect', login_uri: window.QG.API.replace(/\/$/, '') + '/gsi' } : { ux_mode: 'popup' }));
     host.innerHTML = ''; google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: window.QGL && QGL.en ? 'en' : 'ar', width: 280 });
   }
   async function onCredential(resp) {

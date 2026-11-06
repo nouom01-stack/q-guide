@@ -33,6 +33,11 @@ every item keeps `src`/`sidx` of its model question (notes, skills and the AI us
 - The rules summary pages «📐 قوانين الكمي» (`#rules`) and «📘 قواعد اللفظي» (`#rules-v`): `RULES_ON = false` hides the home links/tools, the routes (old links go home), the «راجع القاعدة» chips + the summary's rules box, the assistant's `{{rules…}}` chips and the plan's «قوانين الكمي» link. Code, CSS and `p/data/rules*.json` / `rulemap.json` stay dormant — flip the flag only if the owner asks.
 - «🏁 الاختبار الشامل» (`#qall` / `#vall`): no home tool, no route — old links go home (`route()`). Old qall/vall progress is still folded into the skills history and shown in the owner report.
 
+## 🔑 Sign-in inside the installed app (home screen / standalone)
+`QG.GSI_REDIRECT` (standalone, set in `p/index.html` / `test/index.html`) → GSI `ux_mode: 'redirect'` with one `login_uri` for both pages: `<API>/gsi`.
+It must be in Google Cloud → APIs & Services → Credentials → the OAuth client in `QG.CLIENT_ID` → **Authorized redirect URIs** = `https://q-guide-api.nouom01.workers.dev/gsi`, otherwise the student gets «Error 400: redirect_uri_mismatch» (popups don't work in iOS home-screen apps, and their storage is separate from Safari, so they must sign in inside the app).
+`POST /gsi` (API) bounces to `/p/#gsi=<credential>`; `/test/` saves `qg_gsi_to` before the redirect and `/p/` (`gsiBack`, read before `renderLogin` clears it) sends him back after login. Test: `site/gsi_e2e.js`.
+
 ## 👑 Owner-only pages (Arabic, `i18n:off`)
 Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the report (`renderReport`, route `#admin-report/<email>`). Modals close on every route change.
 
