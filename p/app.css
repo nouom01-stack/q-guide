@@ -2213,3 +2213,50 @@ html.l-en .rz-week{direction:ltr}
 [data-theme="dark"] .s-pace.slow{background:none}
 [data-theme="dark"] .fb-r:hover{background:rgba(255,255,255,.13);border-color:var(--gold3)}[data-theme="dark"] .fb-r small{background:rgba(255,255,255,.1);color:#C8D2E8}
 @media (hover:none) and (pointer:coarse){.q .kbd{display:none}}   /* تلميحات الكيبورد ما لها معنى على اللمس */
+
+/* 👨‍🏫 صفحة المدرس (عبدالله الشمراني): رأس + تبويبين (🧱 التأسيس / 🏋️ التدريب) + بطاقات دروس التأسيس */
+.tch.go{text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
+.tch.go:hover{border-color:var(--navy3);box-shadow:var(--sh)}
+.tch.go .tst{color:var(--navy);background:#EEF3FF}
+[data-theme="dark"] .tch.go .tst{color:#C9D6FF;background:#1B2A52}
+.tphead{display:flex;align-items:center;gap:16px;margin:8px 0 18px}
+.tphead .tav{width:64px;height:64px;font-size:calc(28px * var(--fs));background:var(--navy)}
+.tphx{min-width:0}
+.tphx h1{margin:0;font-family:var(--disp);font-weight:800;font-size:calc(27px * var(--fs));line-height:1.25;color:var(--ink2)}
+.tphx p{margin:4px 0 0;color:var(--mut);max-width:62ch;line-height:1.65}
+.tptabs button{display:inline-flex;align-items:baseline;gap:8px;font-family:var(--disp)}
+.tptabs button small{font-family:var(--font, inherit);font-weight:600;font-size:calc(12.5px * var(--fs));opacity:.8}
+.tppane{margin-top:16px}
+.tpbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
+.tpbt{display:flex;flex-direction:column;min-width:0}
+.tpbt b{font-family:var(--disp);font-weight:800;font-size:calc(17px * var(--fs));color:var(--ink2)}
+.tpbt span{font-size:calc(13.5px * var(--fs));color:var(--mut)}
+.tpbar .pg{flex:0 1 220px;display:block;height:8px;border-radius:99px;background:var(--dotbg);overflow:hidden}
+.tpbar .pg span{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}
+.tles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
+.tle{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;color:var(--ink);text-decoration:none;text-align:start;font:inherit;transition:border-color .15s,box-shadow .15s}
+a.tle:hover,button.tle:hover{border-color:var(--navy3);box-shadow:var(--sh)}
+.tln{flex:none;width:42px;height:42px;border-radius:12px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:800;font-size:calc(19px * var(--fs))}
+.tlx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.tlx b{font-family:var(--disp);font-weight:800;font-size:calc(18px * var(--fs));line-height:1.3;color:var(--ink2)}
+.tlx small{font-size:calc(13px * var(--fs));color:var(--mut);text-align:right}
+.tls{flex:none;white-space:nowrap;border-radius:999px;padding:4px 12px;font-weight:800;font-size:calc(13px * var(--fs));background:#EEF3FF;color:var(--navy)}
+.tle.ok .tln{background:var(--ok)}
+.tle.ok .tls{background:var(--okbg);color:#0E7A4F}
+.tle.soon{border-style:dashed}
+.tle.soon .tln,.tle.lock .tln{background:var(--dotbg);color:var(--mut)}
+.tle.soon .tls{background:var(--stampbg);color:var(--stampfg);border:1px solid var(--gold3)}
+.tle.lock .tls{background:var(--dotbg);color:var(--mut)}
+.tpsoon{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-radius:14px;background:var(--stampbg);border:1px solid var(--gold3);color:var(--stampfg)}
+.tpsoon b{font-family:var(--disp);font-weight:800;font-size:calc(16px * var(--fs))}
+.tpsoon span{font-size:calc(13.5px * var(--fs));line-height:1.6}
+.tpsoon a{color:inherit;font-weight:800}
+.wvi.dis{border-style:dashed;cursor:default;opacity:.7}
+.wvi.dis small{direction:rtl}
+.vgh{grid-column:1/-1;margin:10px 2px 0;font-size:calc(14px * var(--fs));color:var(--navy2)}
+.vgh small{color:var(--mut);font-weight:600}
+[data-theme="dark"] .tls{background:#1B2A52;color:#C9D6FF}
+[data-theme="dark"] .tle.ok .tls{background:#173A2C;color:#7BD6A8}
+[data-theme="dark"] .vgh{color:#DCE4FF}
+html.l-en .tlx small{text-align:left}
+@media (max-width:640px){.tles{grid-template-columns:1fr}.tphead{gap:12px}.tphead .tav{width:54px;height:54px}.tle{padding:14px}.tpbar .pg{flex-basis:100%}}
