@@ -22,7 +22,8 @@
   const payOn = () => !!(auth && auth.role === 'free' && auth.pay && auth.pay.on);
   const payPending = () => { try { return sessionStorage.getItem(PAY_SS) || ''; } catch (e) { return ''; } };
   const payDone = () => { try { sessionStorage.removeItem(PAY_SS); } catch (e) {} };
-  // 🛍 الدفع عن طريق سلة: الزائر يشتري من متجر المالك في سلة ويكتب إيميله في خانة المنتج ← سلة تبلغ الخادم ← نتحقق هنا ونبدّل جلسته — auth.salla = {on, url, price}
+  // 🛍 الدفع عن طريق سلة: الزائر يشتري من متجر المالك في سلة ← يلصق رقم الطلب هنا (salla_claim) ← نبدّل جلسته بجلسة المشترك — auth.salla = {on, url, price}
+  //    (ولو إيميله في سلة نفس إيميله هنا، الخادم يفتح له لحاله ونلقطه بـ salla_check)
   const SAL_SS = 'qg_salla';   // متى فتح صفحة الدفع في سلة (نتحقق من طلبه لين 45 دقيقة)
   const sallaOn = () => !!(auth && auth.role === 'free' && auth.salla && auth.salla.on && auth.salla.url);
   const sallaPending = () => { try { const t = +sessionStorage.getItem(SAL_SS) || 0; return t && Date.now() - t < 45 * 60e3 ? t : 0; } catch (e) { return 0; } };
@@ -251,7 +252,7 @@
     if (!auth || hbBusy || payPending()) return; hbBusy = true;   // 💳 أثناء التحقق من الدفع ما نلمس الجلسة
     try {
       const r = await api({ op: 'me', session: auth.session });
-      if (r && !r.ok && r.error === 'upgraded') { if (!(await sallaPoll())) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
+      if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.adv || '') !== (auth.adv || ''))) { auth.staff = r.staff || auth.staff; auth.adv = r.adv || ''; lsSet(LS.auth, auth); }   // 🧑‍🏫 صار مرشد؟
       if (r && r.ok && auth && auth.role === 'free' && (JSON.stringify(r.pay || null) !== JSON.stringify(auth.pay || null) || JSON.stringify(r.salla || null) !== JSON.stringify(auth.salla || null))) { auth.pay = r.pay || null; auth.salla = r.salla || null; lsSet(LS.auth, auth); }   // 💳🛍 الدفع انفتح/انقفل
@@ -284,7 +285,8 @@
       <h3 id="subh">اشترك في دورة Q-Guide</h3>
       <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>الساحة 1v1 بدون حد، ولوحات الصدارة</li><li>المذكرات وخطة المذاكرة ونقاط ضعفك</li></ul>
       ${SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">💳 ادفع ${SL.price || PRICE} ريال واشترك الحين</button>
-        <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. الدورة كاملة تنفتح لك تلقائياً لمدة شهر.</p></div>
+        <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.</p>
+        <button type="button" class="lnk sub-have" id="slhave">دفعت؟ فعّل اشتراكك برقم الطلب</button></div>
       <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">💳 ادفع ${PAY.price || PRICE} ريال واشترك الحين</button>
         <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>
       <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : _T('<h4>طريقة الاشتراك</h4>')}
@@ -299,70 +301,87 @@
     ov.querySelector('.sub-x').onclick = close; (ov.querySelector('#sallago') || ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
     const pg = ov.querySelector('#paygo'); if (pg) pg.onclick = () => payGo(pg);
     const sg = ov.querySelector('#sallago'); if (sg) sg.onclick = () => sallaSteps(ov, what, close);
+    const sh = ov.querySelector('#slhave'); if (sh) sh.onclick = () => sallaSteps(ov, what, close, 1);   // دفع قبل (أو أبوه دفع عنه): على طول لخانة رقم الطلب
     ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { if (isFree() && window.QGT) { QGT.ev('subgo', a.classList.contains('wa') ? 'واتساب' : 'يوتيوب'); QGT.flush(true); } }));
     if (SL && sallaPending() && !stay) sallaSteps(ov, what, close);   // رجع للنافذة وهو فاتح صفحة الدفع: نكمل من خطوات سلة
   }
-  // 🛍 خطوات الدفع عن طريق سلة (داخل نفس النافذة): انسخ إيميلك ← افتح صفحة المنتج والصق الإيميل ← ادفع وارجع (نتحقق تلقائياً)
-  function sallaSteps(ov, what, close) {
+  // 🛍 خطوات الدفع عن طريق سلة (داخل نفس النافذة): ① افتح صفحة الدفع وادفع ② الصق رقم الطلب هنا ← يتفعّل اشتراكه على حسابه
+  //    ref = جا من «دفعت؟ فعّل اشتراكك برقم الطلب» (أو أبوه دفع عنه): نركّز على خانة الرقم على طول
+  const slWa = () => 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت عن طريق سلة وما تفعّل اشتراكي') + '\n' + ((auth && auth.email) || ''));
+  const enDigits = s => String(s || '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6f0);
+  function sallaSteps(ov, what, close, ref) {
     const SL = auth && auth.salla; if (!SL || !SL.url) return;
     const box = ov.querySelector('.sub-box'); if (!box) return;
-    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت عن طريق سلة وما تفعّل اشتراكي') + '\n' + (auth.email || ''));
     box.classList.add('slp');
     box.innerHTML = _T`<button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       <button type="button" class="lnk slp-back">→ رجوع</button>
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
       <ol class="slp-s">
-        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>انسخ إيميلك</b><div class="slp-em"><bdi dir="ltr">${esc(auth.email || '')}</bdi><button type="button" class="btn sm ghost" id="slcopy">📋 انسخ</button></div></div></li>
-        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b>افتح صفحة الدفع والصق إيميلك</b><small>في خانة «إيميل Google» اللي في صفحة المنتج، عشان نعرف حسابك.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
-        <li><span class="slp-n" aria-hidden="true">3</span><div class="slp-t"><b>ادفع وارجع هنا</b><small>بمدى أو Apple Pay أو البطاقة. اشتراكك يتفعّل هنا تلقائياً خلال ثواني من الدفع.</small></div></li>
+        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
+        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b>الصق رقم الطلب هنا</b><small>يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small>
+          <form class="slp-ref" novalidate><input id="slref" type="text" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="60" placeholder="#218402731" aria-label="رقم الطلب"><button type="submit" class="btn" id="slclaim">✓ فعّل اشتراكي</button></form>
+          <div class="slp-st" role="status" aria-live="polite"></div></div></li>
       </ol>
-      <div class="slp-st" role="status" aria-live="polite"></div>
-      <div class="slp-a"><button type="button" class="btn ghost" id="slcheck">🔄 تحقّق من الدفع</button></div>
-      <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${wa}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>`;
+      <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>`;
     box.querySelector('.sub-x').onclick = close;
     box.querySelector('.slp-back').onclick = () => { close(); subDlg(what, '', 1); };
-    const em = box.querySelector('.slp-em bdi');
-    const copy = async quiet => {
-      try { await navigator.clipboard.writeText(auth.email || ''); if (!quiet) toast(_T('✓ نسخنا إيميلك')); return true; }
-      catch (e) { try { const rg = document.createRange(); rg.selectNodeContents(em); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); } catch (x) {} if (!quiet) toast(_T('ظلّل الإيميل وانسخه')); return false; } };
-    box.querySelector('#slcopy').onclick = () => copy(false);
-    box.querySelector('#slopen').addEventListener('click', () => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — وهنا ننسخ الإيميل ونبدأ ننتظر الدفع
-      copy(true); try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
-      slStatus({ wait: 1 }); if (window.QGT) { QGT.ev('subgo', 'سلة'); QGT.flush(true); } });
-    const ck = box.querySelector('#slcheck');
-    ck.onclick = async () => { ck.disabled = true; slStatus({ busy: 1 }); const r = await sallaPoll(); ck.disabled = false; if (!(r && r.paid)) slStatus(r || { err: 1 }, 1); };
-    if (sallaPending()) slStatus({ wait: 1 });
-    ck.focus({ preventScroll: true });
+    const go = box.querySelector('#slopen');
+    go.addEventListener('click', () => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — ولو إيميله في سلة نفس إيميله هنا يتفعّل لحاله (نتحقق بالخلفية)
+      try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
+      if (window.QGT) { QGT.ev('subgo', 'سلة'); QGT.flush(true); } });
+    const f = box.querySelector('.slp-ref'), inp = f.querySelector('#slref'), btn = f.querySelector('#slclaim');
+    inp.addEventListener('input', () => { const st = box.querySelector('.slp-st'); if (st && /\b(bad|na)\b/.test(st.className)) slStatus({}); });
+    f.onsubmit = async e => {
+      e.preventDefault(); if (btn.disabled) return;
+      const v = inp.value.trim();
+      if (!/\d{4,}/.test(enDigits(v))) { slStatus({ ok: false, error: 'ref' }); inp.focus(); return; }
+      btn.disabled = true; inp.readOnly = true; slStatus({ busy: 1 });
+      let r = null; try { r = await api({ op: 'salla_claim', session: auth.session, ref: v.slice(0, 60), ua: navigator.userAgent.slice(0, 120) }); } catch (x) { r = null; }
+      btn.disabled = false; inp.readOnly = false;
+      if (r && r.ok && r.paid) { if (window.QGT) QGT.ev('subgo', 'رقم طلب سلة'); return sallaWin(r); }
+      if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); return logout(esc(r.msg || '')); }
+      slStatus(r || { ok: false, error: 'net' });
+      if (!(r && r.ok && r.pending)) inp.focus();
+    };
+    (ref || sallaPending() ? inp : go).focus({ preventScroll: true });   // رجع من سلة: على خانة الرقم · أول مرة: على زر الدفع (بدون ما يطلع الكيبورد في الجوال)
   }
-  // حالة الدفع تحت خطوات سلة
-  function slStatus(r, manual) {
+  // حالة رقم الطلب تحت الخانة
+  function slStatus(r) {
     const el = document.querySelector('.slp-st'); if (!el) return;
-    const set = (cls, html) => { el.className = 'slp-st ' + cls; el.innerHTML = html; };
-    if (r.busy) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> نتحقق من طلبك…'));
-    if (r.pending) return set('wait', _T`⏳ طلبك${r.ref ? ' <bdi>#' + esc(r.ref) + '</bdi>' : ''} وصلنا وينتظر تأكيد الدفع. يتفعّل اشتراكك أول ما يتأكد.`);
-    if (r.error === 'busy') return set('bad', esc(r.msg || _T('محاولات كثيرة، حاول بعد دقيقة.')));
-    if (r.err || (r.ok === false)) return set('bad', esc(r.msg || _T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')));
-    if (r.none && manual) return set('na', _T('ما وصلنا طلب بإيميلك للحين. لو دفعت تو، انتظر دقيقة وتحقّق مرة ثانية.'));
-    if (r.wait || r.none) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر الدفع… أول ما تدفع يتفعّل اشتراكك هنا تلقائياً.'));
+    const set = (cls, html) => { el.className = 'slp-st' + (cls ? ' ' + cls : ''); el.innerHTML = html; };
+    if (r.busy) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> نتحقق من رقم الطلب…'));
+    if (r.pending) return set('wait', _T`⏳ طلبك${r.ref ? ' <bdi>#' + esc(r.ref) + '</bdi>' : ''} وصلنا وينتظر تأكيد الدفع (مثل التحويل البنكي). اشتراكك يتفعّل لحاله أول ما يتأكد.`);
+    if (r.none) return set('na', _T('ما لقينا طلب بهذا الرقم. تأكد منه، ولو توك دفعت انتظر دقيقة وجرّب مرة ثانية.'));
+    if (r.taken) return set('bad', _T`رقم الطلب هذا مستخدم في حساب ثاني. لو هو طلبك <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a>.`);
+    if (r.canceled) return set('bad', _T('الطلب هذا ملغي أو مسترجع.'));
+    if (r.blocked) return set('bad', _T`الطلب هذا موقوف. <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a>.`);
+    if (r.used) return set('na', _T('الطلب هذا تفعّل قبل على حسابك وانتهت مدته.'));
+    if (r.error === 'ref') return set('bad', _T('اكتب رقم الطلب (أرقام بس).'));
+    if (r.error === 'busy') return set('bad', _T('محاولات كثيرة. انتظر شوي وجرّب.'));
+    if (r.error === 'staff') return set('bad', _T('حساب المشرف ما يحتاج اشتراك.'));
+    if (r.ok === false) return set('bad', esc(r.msg || _T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')));
+    set('', '');
   }
-  // نسأل الخادم: انفتح اشتراكه من سلة؟ لو إيه نبدّل جلسة الزائر بجلسة المشترك ونعرض «تم الاشتراك» (يرجّع الرد، أو null)
+  // نسأل الخادم: انفتح اشتراكه من سلة لحاله؟ (إيميله في سلة نفس إيميله هنا، أو المالك ربطه) — يرجّع الرد، أو null
   let salBusy = false;
   async function sallaPoll() {
     if (salBusy || !auth || !auth.session || auth.role === 'admin') return null; salBusy = true;
     try {
       const r = await api({ op: 'salla_check', session: auth.session, ua: navigator.userAgent.slice(0, 120) });
-      if (r && r.ok && r.paid) {
-        sallaDone();
-        if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
-        document.querySelectorAll('.subdlg').forEach(x => x.remove());
-        PAID_OK = { until: r.until || 0, months: r.months || 1 };
-        if (location.hash === '#paid') renderPaid(); else location.hash = 'paid';
-        return r;
-      }
+      if (r && r.ok && r.paid) { sallaWin(r); return r; }
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); logout(esc(r.msg || '')); return null; }
-      if (r && r.ok && document.querySelector('.slp-st') && sallaPending()) slStatus(r);
+      const st = document.querySelector('.slp-st');
+      if (r && r.ok && r.pending && st && !st.innerHTML) slStatus(r);   // طلب على إيميله ينتظر التحويل — وما نغطّي رسالة رقم الطلب
       return r;
     } catch (e) { return { ok: false, error: 'net' }; } finally { salBusy = false; }
+  }
+  // انفتح اشتراكه (برقم الطلب أو لحاله): جلسة المشترك بدل جلسة الزائر + صفحة «تم الاشتراك» مرة وحدة
+  function sallaWin(r) {
+    sallaDone();
+    if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
+    document.querySelectorAll('.subdlg').forEach(x => x.remove());
+    PAID_OK = { until: r.until || 0, months: r.months || 1 };
+    if (location.hash === '#paid') renderPaid(); else location.hash = 'paid';
   }
   // ⏳ فاتح صفحة سلة: نتحقق كل 5 ثواني أول 5 دقايق، وبعدها كل 20 ثانية — ولما يرجع للتبويب نتحقق على طول
   { let tick = 0; setInterval(() => { const t = sallaPending(); if (!t || document.hidden || !auth || auth.role !== 'free') return; tick++; if (Date.now() - t < 300e3 || tick % 4 === 0) sallaPoll(); }, 5000);
@@ -3142,10 +3161,12 @@
   }
   // 🛍 الدفع عن طريق سلة: حالة الربط (السر · المتجر · رابط المنتج) + فتحه للزوار + الطلبات (اللي بدون إيميل تربطه أنت بالطالب)
   const SL_PM = { credit_card: 'بطاقة', mada: 'مدى', apple_pay: 'Apple Pay', stc_pay: 'STC Pay', google_pay: 'Google Pay', bank: 'تحويل بنكي', cod: 'عند الاستلام', tabby_installment: 'تابي', tamara_installment: 'تمارا', paypal: 'PayPal', free: 'مجاني' };
-  const SL_SRC = { field: '✍️ من خانة المنتج', customer: '📧 إيميل حسابه في سلة', owner: '👤 ربطته أنت' };
-  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات' };
+  const SL_SRC = { field: '✍️ من خانة المنتج', customer: '📧 إيميل حسابه في سلة', owner: '👤 ربطته أنت', claim: '🔢 كتب رقم الطلب' };
+  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات', claim: 'تفعيل برقم الطلب' };
   const slState = o => o.applied_at ? (o.bad ? ['warn', '⚠️ انلغى بعد التفعيل', 'راجعه وأنهِ اشتراكه لو لازم'] : ['ok', '✅ تفعّل', o.until ? `لين ${admDay(o.until)}${o.months > 1 ? ` · ${o.months} شهور` : ''}` : ''])
-    : o.paid === 1 ? (!o.email ? ['warn', '⚠️ دفع بدون إيميل', 'اربطه بالطالب'] : ['warn', '⚠️ ما تفعّل', o.note || '']) : o.paid === -1 ? ['na', '↩️ ملغي أو مسترجع', o.stn || ''] : ['na', '⏳ بانتظار الدفع', o.stn || ''];
+    : o.paid === 1 ? (!o.email || o.note === SL_WAIT ? (slStuck(o) ? ['warn', '⚠️ ما فعّله صاحبه للحين', 'كلّمه على جواله، أو اضغط «🔗 ربط»'] : ['na', '⏳ ينتظر رقم الطلب', 'الطالب يفعّله بنفسه من الموقع']) : ['warn', '⚠️ ما تفعّل', o.note || ''])
+    : o.paid === -1 ? ['na', '↩️ ملغي أو مسترجع', o.stn || ''] : ['na', '⏳ بانتظار الدفع', o.stn || ''];
+  const SL_WAIT = 'ينتظر الطالب يكتب رقم الطلب', slStuck = o => o.paid === 1 && !o.applied_at && (!o.email || o.note === SL_WAIT) && Date.now() - (o.created_at || 0) > 3 * 3600e3;   // مدفوع من أكثر من 3 ساعات وما كتب أحد رقمه
   function sallaBox(SL) {
     if (!SL || !SL.ok) return '';
     const st = SL.store, linked = st && !st.gone;
@@ -3158,8 +3179,8 @@
       ${chk(!!SL.url, '🔗', 'رابط المنتج', SL.url ? 'محفوظ: الزر يفتح صفحة المنتج' : 'حطه تحت عشان يطلع زر الدفع')}</ul>`;
     const ready = SL.secret && SL.url;
     const openBar = !ready ? '' : SL.open ? '<div class="pbopen on"><span>الزوار يشوفون زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في سلة.</span><button type="button" class="lnk dng" id="slclose">⏸ إيقاف سلة للزوار</button></div>'
-      : '<div class="pbopen"><span>اشترِ مرة بنفسك من حساب تجربة (مو حساب المشرف) وتأكد إنه تفعّل، وبعدها افتحه للكل.</span><button type="button" class="btn sm gold" id="slopen1">🚀 افتح سلة لكل الزوار</button></div>';
-    const rows = SL.rows || [], miss = rows.filter(o => o.paid === 1 && !o.applied_at && !o.email).length, L = ADM.sallaAll ? rows : rows.slice(0, 6);
+      : '<div class="pbopen"><span>جرّبه قبل: ادخل الموقع بحساب Gmail ثاني (مو حساب المشرف)، اشترِ من الزر، والصق رقم الطلب. لو تفعّل اشتراكه، افتحه للكل.</span><button type="button" class="btn sm gold" id="slopen1">🚀 افتح سلة لكل الزوار</button></div>';
+    const rows = SL.rows || [], miss = rows.filter(slStuck).length, L = ADM.sallaAll ? rows : rows.slice(0, 6);
     const last = (SL.events || []).find(e => e.ok && e.ev !== 'pull'), bad = (SL.events || []).find(e => !e.ok);
     return `<section class="paybox slbox" aria-labelledby="slh"><div class="pbtop"><h3 id="slh">🛍 الدفع عن طريق سلة</h3>${mode}</div>
       ${conn}
@@ -3169,9 +3190,9 @@
       ${openBar}
       <p class="pbsum">${SL.paid ? `${SL.paid === 1 ? 'طلب واحد تفعّل' : SL.paid === 2 ? 'طلبين تفعّلت' : SL.paid + ' طلبات تفعّلت'} · المجموع <b>${SL.total} ريال</b>` : 'ما تفعّل أي طلب للحين'} · ${last ? `آخر إشعار من سلة ${fmtD(last.at)} (${esc(SL_EV[last.ev] || last.ev)})` : 'ما وصل أي إشعار من سلة للحين'}</p>
       ${bad && (!last || bad.at > last.at) ? `<div class="rgsync warn">⚠️ ${esc(bad.note || bad.ev)} · ${fmtD(bad.at)}</div>` : ''}
-      ${miss ? `<div class="rgsync warn">⚠️ ${miss === 1 ? 'فيه طلب مدفوع بدون إيميل' : `فيه ${miss} طلبات مدفوعة بدون إيميل`}: اضغط «🔗 ربط» واكتب إيميل الطالب.</div>` : ''}
+      ${miss ? `<div class="rgsync warn">⚠️ ${miss === 1 ? 'فيه طلب مدفوع من أكثر من 3 ساعات وما فعّله صاحبه' : `فيه ${miss} طلبات مدفوعة من أكثر من 3 ساعات وما فعّلها أصحابها`}: كلّمه على جواله (تحت رقم الطلب)، أو اضغط «🔗 ربط» واكتب إيميله.</div>` : ''}
       ${rows.length ? `<div class="pblist">${L.map(o => { const S = slState(o), who = o.display || o.cname || '—', em = o.applied_email || o.email;
-        return `<div class="pbrow slrow" data-id="${esc(o.id)}"${em ? ` data-e="${esc(em)}" role="button" tabindex="0" title="بطاقة الطالب"` : ''}><span class="pbwho"><b>${esc(who)}</b><small class="ltr">${em ? esc(em) : o.ftxt ? `«${esc(o.ftxt)}»` : 'بدون إيميل'}</small><small>#<bdi>${esc(o.ref || o.id)}</bdi>${o.esrc && SL_SRC[o.esrc] ? ' · ' + SL_SRC[o.esrc] : ''}${o.cphone ? ` · <bdi dir="ltr">${esc(o.cphone)}</bdi>` : ''}</small></span>
+        return `<div class="pbrow slrow" data-id="${esc(o.id)}"${em ? ` data-e="${esc(em)}" role="button" tabindex="0" title="بطاقة الطالب"` : ''}><span class="pbwho"><b${o.display && o.cname && o.cname !== o.display ? ` title="اسمه في حساب سلة: ${esc(o.cname)}"` : ''}>${esc(who)}</b><small class="ltr">${em ? esc(em) : o.ftxt ? `«${esc(o.ftxt)}»` : 'بدون إيميل'}</small><small>#<bdi>${esc(o.ref || o.id)}</bdi>${o.esrc && SL_SRC[o.esrc] ? ' · ' + SL_SRC[o.esrc] : ''}${o.cphone ? ` · <bdi dir="ltr">${esc(o.cphone)}</bdi>` : ''}</small></span>
           <span class="pbamt">${o.total ? o.total + ' ريال' : '—'}<small>${esc(SL_PM[o.pm] || o.pm || '')}</small></span>
           <span class="pbst ${S[0]}">${S[1]}${S[2] ? `<small>${esc(S[2])}</small>` : ''}${!o.applied_at ? `<span class="slact"><button type="button" class="lnk" data-link="${esc(o.id)}">🔗 ربط</button><button type="button" class="lnk" data-hide="${esc(o.id)}" title="إخفاء الطلب من القائمة">🙈 إخفاء</button></span>` : ''}</span>
           <span class="pbdt">${fmtD(o.created_at)}</span></div>`; }).join('')}</div>
@@ -3187,7 +3208,7 @@
         if (url && !/^https:\/\/\S+$/.test(url)) { toast('الرابط لازم يبدأ بـ https://'); u.focus(); return; }
         sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140 }); toast('✓ انحفظ'); paintSubs(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
     const op1 = W.querySelector('#slopen1'), cl = W.querySelector('#slclose'), setOpen = async (open, btn) => {
-      if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يتفعّل اشتراكه تلقائياً.' : 'توقف الدفع عن طريق سلة للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
+      if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
       btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); paintSubs(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
     if (op1) op1.onclick = () => setOpen(true, op1); if (cl) cl.onclick = () => setOpen(false, cl);
     const al = W.querySelector('#slall'); if (al) al.onclick = () => { ADM.sallaAll = !ADM.sallaAll; paintSubs(); };
@@ -3198,7 +3219,7 @@
       const o = (SL.rows || []).find(x => x.id === r.dataset.id); if (!o) return;
       if (r.dataset.e) { r.onclick = e => { if (!e.target.closest('button')) admStudent(r.dataset.e); }; r.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === r) { e.preventDefault(); admStudent(r.dataset.e); } }; }
       const lk = r.querySelector('[data-link]'); if (lk) lk.onclick = async () => {
-        const v = await QGDlg.prompt(`طلب #${o.ref || o.id}${o.cname ? ' · ' + o.cname : ''}${o.cphone ? ' · ' + o.cphone : ''}\n${o.ftxt ? `كتب في الخانة: «${o.ftxt}»\n` : ''}\nاكتب إيميل Google اللي يدخل فيه الطالب الموقع${o.paid === 1 ? '، ويتفعّل اشتراكه على طول:' : '، ويتفعّل أول ما يندفع الطلب:'}`, o.email || '', { ok: '🔗 اربط', placeholder: 'name@gmail.com' });
+        const v = await QGDlg.prompt(`طلب #${o.ref || o.id}${o.cname ? ' · ' + o.cname : ''}${o.cphone ? ' · ' + o.cphone : ''}\n${o.ftxt ? `كتب في الخانة: «${o.ftxt}»\n` : ''}\nاكتب إيميل Google اللي يدخل فيه الطالب الموقع${o.paid === 1 ? '، ويتفعّل اشتراكه على طول:' : '، ويتفعّل أول ما يندفع الطلب:'}\n(أو خلّ الطالب يلصق رقم الطلب في الموقع بنفسه)`, o.email || '', { ok: '🔗 اربط', placeholder: 'name@gmail.com' });
         if (v === null) return; const em = v.trim();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('اكتب إيميل صحيح'); return; }
         try { const x = await admCall({ op: 'adm_salla_link', id: o.id, email: em }); ADM.salla = x; toast(/تفعّل/.test(x.note || '') ? `✅ تفعّل اشتراك ${em}` : `انربط الطلب بـ ${em}${x.note ? ' · ' + x.note : ''}`); ADM.subs = null; ADM.list = null; renderSubs(); }

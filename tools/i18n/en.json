@@ -1438,5 +1438,22 @@
  "⏳ طلبك{0} وصلنا وينتظر تأكيد الدفع. يتفعّل اشتراكك أول ما يتأكد.": "⏳ We got your order{0} and it is waiting for the payment to be confirmed. Your subscription opens as soon as it is.",
  "ما وصلنا طلب بإيميلك للحين. لو دفعت تو، انتظر دقيقة وتحقّق مرة ثانية.": "No order with your email has reached us yet. If you just paid, wait a minute and check again.",
  "ننتظر الدفع… أول ما تدفع يتفعّل اشتراكك هنا تلقائياً.": "Waiting for your payment… As soon as you pay, your subscription opens here automatically.",
- "اشتراكك مفعّل وينتهي": "Your subscription is active and ends on"
+ "اشتراكك مفعّل وينتهي": "Your subscription is active and ends on",
+ "افتح صفحة الدفع وادفع": "Open the payment page and pay",
+ "اكتب رقم الطلب (أرقام بس).": "Type your order number (digits only).",
+ "الصق رقم الطلب هنا": "Paste your order number here",
+ "الطلب هذا تفعّل قبل على حسابك وانتهت مدته.": "This order was already used on your account, and its month has ended.",
+ "الطلب هذا ملغي أو مسترجع.": "This order was canceled or refunded.",
+ "الطلب هذا موقوف.": "This order is on hold.",
+ "بمدى أو Apple Pay أو البطاقة.": "With mada, Apple Pay or a card.",
+ "دفعت؟ فعّل اشتراكك برقم الطلب": "Already paid? Activate with your order number",
+ "رقم الطلب": "Order number",
+ "رقم الطلب هذا مستخدم في حساب ثاني. لو هو طلبك": "This order number is already used on another account. If it's your order,",
+ "ما لقينا طلب بهذا الرقم. تأكد منه، ولو توك دفعت انتظر دقيقة وجرّب مرة ثانية.": "We couldn't find an order with this number. Check it, and if you just paid, wait a minute and try again.",
+ "محاولات كثيرة. انتظر شوي وجرّب.": "Too many tries. Wait a bit and try again.",
+ "مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.": "mada · Apple Pay · Visa and Mastercard, through our Salla store. After paying, paste your order number here and the full course opens for one month.",
+ "نتحقق من رقم الطلب…": "Checking your order number…",
+ "يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.": "You'll see it on the order page after paying, and Salla texts it to your phone.",
+ "⏳ طلبك{0} وصلنا وينتظر تأكيد الدفع (مثل التحويل البنكي). اشتراكك يتفعّل لحاله أول ما يتأكد.": "⏳ We got your order{0}. It's waiting for the payment to be confirmed (for example, a bank transfer). Your subscription opens by itself once it's confirmed.",
+ "✓ فعّل اشتراكي": "✓ Activate"
 }
