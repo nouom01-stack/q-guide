@@ -84,3 +84,10 @@ Subscription dates (`subLeft`, `subCell`, `subDatesDlg`, `subAddMonth`) and the 
 
 ## 🗑 Ended students: delete from the lists · 🎓 all-time count (owner)
 Ended rows in «👥 الطلاب» show «🗑 حذف» instead of «حظر» (ban stays in the student card); also «🗑 حذف من القائمة» in the card and «🗑 حذف» next to «↩️ إرجاع الاشتراك» in «💳 الاشتراكات» (`subGoneOne` → `adm_sub_gone`). First owner tile «🎓 كل اللي اشتركوا» = `ADM.ever` from `adm_students`.
+
+## 🛍 Paying through Salla — student side + owner box (API: `src/salla.js`)
+- `auth.salla = {on, url, price}` (free session, `login`/`me`, refreshed by the heartbeat). When `sallaOn()`, the subscribe dialog shows «💳 ادفع 140 ريال واشترك الحين» for Salla (the Tap button is hidden then); YouTube/WhatsApp stay below.
+- `sallaSteps()` turns the dialog into 3 steps: copy your email (`.slp-em`) · open the product page (`#slopen`, new tab; also copies the email and sets `sessionStorage.qg_salla`) · pay and come back. «→ رجوع» = the main view (`subDlg(what, '', 1)`).
+- While `qg_salla` is set (45 min): `salla_check` every 5 s for 5 min, then every 20 s, and on focus/visibility (`sallaPoll`). Paid → `authFrom(r.auth)` + clear the key cache → `PAID_OK` → `#paid` success (`paidOk`). Pending (bank transfer) / none → `.slp-st`. The heartbeat's «upgraded» tries `salla_check` before logging out.
+- Owner «💳 الاشتراكات» → `sallaBox` / `sallaBind`: 3 checks (secret · app on the store · product link), link + button price form, «🚀 افتح سلة لكل الزوار» / «⏸ إيقاف», orders (paid without email → «🔗 ربط» + email, «🙈 إخفاء»), «🔄 جلب طلبات آخر 7 أيام من سلة», events log. Badges «🛍 دفع عن طريق سلة» (`added_by = 'salla'`). The Tap box is `.paybox:not(.slbox)`.
+- Tests: `site/salla_ui_e2e.js` (+ `salla_api_e2e.js`).

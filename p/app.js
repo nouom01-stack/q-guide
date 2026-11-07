@@ -22,6 +22,11 @@
   const payOn = () => !!(auth && auth.role === 'free' && auth.pay && auth.pay.on);
   const payPending = () => { try { return sessionStorage.getItem(PAY_SS) || ''; } catch (e) { return ''; } };
   const payDone = () => { try { sessionStorage.removeItem(PAY_SS); } catch (e) {} };
+  // 🛍 الدفع عن طريق سلة: الزائر يشتري من متجر المالك في سلة ويكتب إيميله في خانة المنتج ← سلة تبلغ الخادم ← نتحقق هنا ونبدّل جلسته — auth.salla = {on, url, price}
+  const SAL_SS = 'qg_salla';   // متى فتح صفحة الدفع في سلة (نتحقق من طلبه لين 45 دقيقة)
+  const sallaOn = () => !!(auth && auth.role === 'free' && auth.salla && auth.salla.on && auth.salla.url);
+  const sallaPending = () => { try { const t = +sessionStorage.getItem(SAL_SS) || 0; return t && Date.now() - t < 45 * 60e3 ? t : 0; } catch (e) { return 0; } };
+  const sallaDone = () => { try { sessionStorage.removeItem(SAL_SS); } catch (e) {} };
   // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات) · مقطعا القواعد (الكمي واللفظي) انشالوا من الموقع بطلب المالك
   const YT = {
     q: { name: _T('القسم'), list: 'PLNdATbln9B4k',
@@ -246,10 +251,10 @@
     if (!auth || hbBusy || payPending()) return; hbBusy = true;   // 💳 أثناء التحقق من الدفع ما نلمس الجلسة
     try {
       const r = await api({ op: 'me', session: auth.session });
-      if (r && !r.ok && r.error === 'upgraded') logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1);   // 🎉 الزائر اشترك
+      if (r && !r.ok && r.error === 'upgraded') { if (!(await sallaPoll())) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.adv || '') !== (auth.adv || ''))) { auth.staff = r.staff || auth.staff; auth.adv = r.adv || ''; lsSet(LS.auth, auth); }   // 🧑‍🏫 صار مرشد؟
-      if (r && r.ok && auth && auth.role === 'free' && JSON.stringify(r.pay || null) !== JSON.stringify(auth.pay || null)) { auth.pay = r.pay || null; lsSet(LS.auth, auth); }   // 💳 الدفع انفتح/انقفل
+      if (r && r.ok && auth && auth.role === 'free' && (JSON.stringify(r.pay || null) !== JSON.stringify(auth.pay || null) || JSON.stringify(r.salla || null) !== JSON.stringify(auth.salla || null))) { auth.pay = r.pay || null; auth.salla = r.salla || null; lsSet(LS.auth, auth); }   // 💳🛍 الدفع انفتح/انقفل
       if (r && r.ok && auth && auth.role !== 'free' && Array.isArray(r.vids) && JSON.stringify(r.vids) !== JSON.stringify(auth.vids || [])) {   // 🎬 مقاطع جديدة انرفعت للموقع
         auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-abdullah)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
       if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
@@ -267,32 +272,102 @@
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
     return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
-  function subDlg(what, from) {
+  function subDlg(what, from, stay) {
     if (isFree() && window.QGT) QGT.ev('sub', what || from || 'زر الاشتراك');   // 👀 فتح نافذة الاشتراك (وش اللي فتحها)
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
     const ov = document.createElement('div'); ov.className = 'qgdlg subdlg'; ov.setAttribute('dir', EN ? 'ltr' : 'rtl');
     const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أبي أشترك في دورة Q-Guide') + (auth && auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
-    const PAY = payOn() ? auth.pay : null;   // 💳 زر الدفع من الموقع (لو مفعّل لهذا الحساب)
+    const SL = sallaOn() ? auth.salla : null, PAY = !SL && payOn() ? auth.pay : null;   // 🛍 سلة أول (لو المالك شغّلها)، وإلا 💳 الدفع من الموقع (تاب)
     ov.innerHTML = _T`<div class="qgdlg-box sub-box" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       ${what ? _T`<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
       <h3 id="subh">اشترك في دورة Q-Guide</h3>
       <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>الساحة 1v1 بدون حد، ولوحات الصدارة</li><li>المذكرات وخطة المذاكرة ونقاط ضعفك</li></ul>
-      ${PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">💳 ادفع ${PAY.price || PRICE} ريال واشترك الحين</button>
+      ${SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">💳 ادفع ${SL.price || PRICE} ريال واشترك الحين</button>
+        <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. الدورة كاملة تنفتح لك تلقائياً لمدة شهر.</p></div>
+      <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">💳 ادفع ${PAY.price || PRICE} ريال واشترك الحين</button>
         <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>
       <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : _T('<h4>طريقة الاشتراك</h4>')}
       <ol class="sub-s"><li>انتسب لقناة Q-guide1 في يوتيوب بـ <b>${PRICE} ريال</b></li><li>أرسل لنا على واتساب إيميلك اللي دخلت فيه هنا</li><li>نفعّل لك الدورة كاملة على نفس حسابك</li></ol>
-      <div class="sub-a${PAY ? ' alt' : ''}"><a class="btn ${PAY ? 'ghost' : 'gold'}" href="${JOIN_URL}" target="_blank" rel="noopener">اشترك من يوتيوب</a><a class="btn wa" href="${wa}" target="_blank" rel="noopener">راسلنا على واتساب</a></div>
+      <div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'}" href="${JOIN_URL}" target="_blank" rel="noopener">اشترك من يوتيوب</a><a class="btn wa" href="${wa}" target="_blank" rel="noopener">راسلنا على واتساب</a></div>
     </div>`;
     document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
     const close = () => { ov.remove(); document.removeEventListener('keydown', onK); };
     const onK = e => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onK);
     ov.addEventListener('click', e => { if (e.target === ov) close(); });
-    ov.querySelector('.sub-x').onclick = close; (ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
+    ov.querySelector('.sub-x').onclick = close; (ov.querySelector('#sallago') || ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
     const pg = ov.querySelector('#paygo'); if (pg) pg.onclick = () => payGo(pg);
+    const sg = ov.querySelector('#sallago'); if (sg) sg.onclick = () => sallaSteps(ov, what, close);
     ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { if (isFree() && window.QGT) { QGT.ev('subgo', a.classList.contains('wa') ? 'واتساب' : 'يوتيوب'); QGT.flush(true); } }));
+    if (SL && sallaPending() && !stay) sallaSteps(ov, what, close);   // رجع للنافذة وهو فاتح صفحة الدفع: نكمل من خطوات سلة
   }
+  // 🛍 خطوات الدفع عن طريق سلة (داخل نفس النافذة): انسخ إيميلك ← افتح صفحة المنتج والصق الإيميل ← ادفع وارجع (نتحقق تلقائياً)
+  function sallaSteps(ov, what, close) {
+    const SL = auth && auth.salla; if (!SL || !SL.url) return;
+    const box = ov.querySelector('.sub-box'); if (!box) return;
+    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت عن طريق سلة وما تفعّل اشتراكي') + '\n' + (auth.email || ''));
+    box.classList.add('slp');
+    box.innerHTML = _T`<button class="sub-x" type="button" aria-label="إغلاق">✕</button>
+      <button type="button" class="lnk slp-back">→ رجوع</button>
+      <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
+      <ol class="slp-s">
+        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>انسخ إيميلك</b><div class="slp-em"><bdi dir="ltr">${esc(auth.email || '')}</bdi><button type="button" class="btn sm ghost" id="slcopy">📋 انسخ</button></div></div></li>
+        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b>افتح صفحة الدفع والصق إيميلك</b><small>في خانة «إيميل Google» اللي في صفحة المنتج، عشان نعرف حسابك.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
+        <li><span class="slp-n" aria-hidden="true">3</span><div class="slp-t"><b>ادفع وارجع هنا</b><small>بمدى أو Apple Pay أو البطاقة. اشتراكك يتفعّل هنا تلقائياً خلال ثواني من الدفع.</small></div></li>
+      </ol>
+      <div class="slp-st" role="status" aria-live="polite"></div>
+      <div class="slp-a"><button type="button" class="btn ghost" id="slcheck">🔄 تحقّق من الدفع</button></div>
+      <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${wa}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>`;
+    box.querySelector('.sub-x').onclick = close;
+    box.querySelector('.slp-back').onclick = () => { close(); subDlg(what, '', 1); };
+    const em = box.querySelector('.slp-em bdi');
+    const copy = async quiet => {
+      try { await navigator.clipboard.writeText(auth.email || ''); if (!quiet) toast(_T('✓ نسخنا إيميلك')); return true; }
+      catch (e) { try { const rg = document.createRange(); rg.selectNodeContents(em); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); } catch (x) {} if (!quiet) toast(_T('ظلّل الإيميل وانسخه')); return false; } };
+    box.querySelector('#slcopy').onclick = () => copy(false);
+    box.querySelector('#slopen').addEventListener('click', () => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — وهنا ننسخ الإيميل ونبدأ ننتظر الدفع
+      copy(true); try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
+      slStatus({ wait: 1 }); if (window.QGT) { QGT.ev('subgo', 'سلة'); QGT.flush(true); } });
+    const ck = box.querySelector('#slcheck');
+    ck.onclick = async () => { ck.disabled = true; slStatus({ busy: 1 }); const r = await sallaPoll(); ck.disabled = false; if (!(r && r.paid)) slStatus(r || { err: 1 }, 1); };
+    if (sallaPending()) slStatus({ wait: 1 });
+    ck.focus({ preventScroll: true });
+  }
+  // حالة الدفع تحت خطوات سلة
+  function slStatus(r, manual) {
+    const el = document.querySelector('.slp-st'); if (!el) return;
+    const set = (cls, html) => { el.className = 'slp-st ' + cls; el.innerHTML = html; };
+    if (r.busy) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> نتحقق من طلبك…'));
+    if (r.pending) return set('wait', _T`⏳ طلبك${r.ref ? ' <bdi>#' + esc(r.ref) + '</bdi>' : ''} وصلنا وينتظر تأكيد الدفع. يتفعّل اشتراكك أول ما يتأكد.`);
+    if (r.error === 'busy') return set('bad', esc(r.msg || _T('محاولات كثيرة، حاول بعد دقيقة.')));
+    if (r.err || (r.ok === false)) return set('bad', esc(r.msg || _T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')));
+    if (r.none && manual) return set('na', _T('ما وصلنا طلب بإيميلك للحين. لو دفعت تو، انتظر دقيقة وتحقّق مرة ثانية.'));
+    if (r.wait || r.none) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر الدفع… أول ما تدفع يتفعّل اشتراكك هنا تلقائياً.'));
+  }
+  // نسأل الخادم: انفتح اشتراكه من سلة؟ لو إيه نبدّل جلسة الزائر بجلسة المشترك ونعرض «تم الاشتراك» (يرجّع الرد، أو null)
+  let salBusy = false;
+  async function sallaPoll() {
+    if (salBusy || !auth || !auth.session || auth.role === 'admin') return null; salBusy = true;
+    try {
+      const r = await api({ op: 'salla_check', session: auth.session, ua: navigator.userAgent.slice(0, 120) });
+      if (r && r.ok && r.paid) {
+        sallaDone();
+        if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
+        document.querySelectorAll('.subdlg').forEach(x => x.remove());
+        PAID_OK = { until: r.until || 0, months: r.months || 1 };
+        if (location.hash === '#paid') renderPaid(); else location.hash = 'paid';
+        return r;
+      }
+      if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); logout(esc(r.msg || '')); return null; }
+      if (r && r.ok && document.querySelector('.slp-st') && sallaPending()) slStatus(r);
+      return r;
+    } catch (e) { return { ok: false, error: 'net' }; } finally { salBusy = false; }
+  }
+  // ⏳ فاتح صفحة سلة: نتحقق كل 5 ثواني أول 5 دقايق، وبعدها كل 20 ثانية — ولما يرجع للتبويب نتحقق على طول
+  { let tick = 0; setInterval(() => { const t = sallaPending(); if (!t || document.hidden || !auth || auth.role !== 'free') return; tick++; if (Date.now() - t < 300e3 || tick % 4 === 0) sallaPoll(); }, 5000);
+    const back = () => { if (!document.hidden && sallaPending() && auth && auth.role === 'free') sallaPoll(); };
+    document.addEventListener('visibilitychange', back); window.addEventListener('focus', back); }
   // 💳 «ادفع واشترك»: الخادم ينشئ العملية عند تاب ويرجّع رابط صفحة الدفع (مدى، أبل باي، البطاقات) — بيانات البطاقة ما تمر علينا
   async function payGo(btn) {
     if (!btn || btn.disabled) return; btn.disabled = true; const label = btn.innerHTML; btn.innerHTML = _T('⏳ نجهّز صفحة الدفع…');
@@ -306,15 +381,23 @@
     btn.disabled = false; btn.innerHTML = label;
   }
   // 💳 الرجوع من صفحة الدفع (#paid): نتحقق من العملية عند تاب — لو انخصمت تنفتح الدورة على طول بجلسة المشترك الجديدة
+  let PAID_OK = null;   // 🛍 دفع سلة تفعّل: صفحة «تم الاشتراك» تطلع مرة وحدة
+  function paidOk(show, until, months) {
+    const end = until ? new Date(until).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }) : '';
+    show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
+      <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
+    confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع');
+  }
   async function renderPaid() {
     document.title = _T('الاشتراك في الدورة | Q-Guide');
-    const id = payPending(); if (!id) { location.hash = ''; return; }
-    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت في موقع Q-Guide وعندي استفسار') + '\n' + (auth.email || '') + '\n' + id);
     const show = (ic, cls, body) => {
       app.innerHTML = topbar(_T`<span class="ttl">💳 الاشتراك في الدورة</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
         `<main class="wrap paid"><div class="pdcard ${cls}" role="status" aria-live="polite"><div class="pdic" aria-hidden="true">${ic}</div>${body}</div></main>`;
       bindCtl();
     };
+    if (PAID_OK) { const K = PAID_OK; PAID_OK = null; return paidOk(show, K.until, K.months); }
+    const id = payPending(); if (!id) { location.hash = ''; return; }
+    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت في موقع Q-Guide وعندي استفسار') + '\n' + (auth.email || '') + '\n' + id);
     show('<div class="spin"></div>', 'wait', _T('<h2>نتحقق من عملية الدفع…</h2><p>لا تسكّر الصفحة، ثواني بس.</p>'));
     let r = null;
     for (let i = 0; i < 8; i++) {   // تاب أحياناً يتأخر ثواني قبل ما تتأكد العملية
@@ -327,11 +410,7 @@
     if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));   // بعد الدخول نرجع هنا ونكمل
     if (r && r.ok && r.paid) {
       payDone(); if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
-      const end = r.until ? new Date(r.until).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }) : '';
-      show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.</p>${end ? _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>` : ''}
-        <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
-      confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع');
-      return;
+      return paidOk(show, r.until, 1);
     }
     if (r && r.ok && r.failed) {
       payDone();
@@ -445,7 +524,7 @@
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
-  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, adv: r.adv || '' });
+  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, adv: r.adv || '' });
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
@@ -2488,7 +2567,7 @@
       <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل']].concat(OW ? [['over', '⏰ مر عليه شهر']] : [], [['banned', 'محظور']]).map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
       ${ADM.f === 'over' ? `<div class="rgsync warn overnote">⏰ هذول مر على اشتراكهم شهر كامل (من وقت تسجيلهم). لو جدّد الطالب اضغط «＋ شهر» تحت تاريخه، ولو ما جدّد اضغط «⛔ إنهاء».</div>` : ''}
       <div class="atable${OW ? ' dt' : ''}"><div class="arow head"><span class="c-st">الطالب</span><span class="c-ph">الجوال</span><span class="c-n">الأقسام</span><span class="c-n">المحاكي</span><span class="c-dt">آخر دخول</span>${OW ? '<span class="c-sub">ينتهي الاشتراك</span>' : ''}<span class="c-act">إجراءات</span></div>
-      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}${OW && subOver(s) ? ' hasx' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.typed || s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.manual ? (s.added_by === 'tap' ? ' · <span class="bdg pay">💳 دفع من الموقع</span>' : ' · <span class="bdg man">➕ من اللوحة</span>') : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.ended ? ' · <span class="bdg">⛔ اشتراكه منتهي</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small>${OW && !s.banned && !s.ended && s.until ? (() => { const L = subLeft(s.until); return `<small class="sdm ${L.c}">⏰ ينتهي ${admDay(s.until)} · ${L.t}</small>`; })() : ''}</span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span>${OW ? `<span class="c-sub">${subCell(s)}${subOverBtns(s)}</span>` : ''}<span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${OW ? `<a class="btn sm ghost rpb" href="#admin-report/${encodeURIComponent(s.email)}" title="التقرير الشامل" aria-label="التقرير الشامل لـ${esc(s.display || s.name || s.email)}">📊</a>` : ''}${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : OW && s.ended ? `<button class="btn sm gone" data-gone="${esc(s.email)}" title="اشتراكه منتهي: احذفه من القائمة">🗑 حذف</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span>${OW && subOver(s) ? `<div class="sdxrow"><small class="sdt over"><b>⏰ ${admDay(s.until)}</b> · ${subLeft(s.until).t}</small>${subOverBtns(s)}</div>` : ''}</div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
+      ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}${OW && subOver(s) ? ' hasx' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.typed || s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.manual ? (s.added_by === 'salla' ? ' · <span class="bdg pay">🛍 دفع عن طريق سلة</span>' : s.added_by === 'tap' ? ' · <span class="bdg pay">💳 دفع من الموقع</span>' : ' · <span class="bdg man">➕ من اللوحة</span>') : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.ended ? ' · <span class="bdg">⛔ اشتراكه منتهي</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small>${OW && !s.banned && !s.ended && s.until ? (() => { const L = subLeft(s.until); return `<small class="sdm ${L.c}">⏰ ينتهي ${admDay(s.until)} · ${L.t}</small>`; })() : ''}</span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span>${OW ? `<span class="c-sub">${subCell(s)}${subOverBtns(s)}</span>` : ''}<span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${OW ? `<a class="btn sm ghost rpb" href="#admin-report/${encodeURIComponent(s.email)}" title="التقرير الشامل" aria-label="التقرير الشامل لـ${esc(s.display || s.name || s.email)}">📊</a>` : ''}${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : OW && s.ended ? `<button class="btn sm gone" data-gone="${esc(s.email)}" title="اشتراكه منتهي: احذفه من القائمة">🗑 حذف</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span>${OW && subOver(s) ? `<div class="sdxrow"><small class="sdt over"><b>⏰ ${admDay(s.until)}</b> · ${subLeft(s.until).t}</small>${subOverBtns(s)}</div>` : ''}</div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
       <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. ${isOwner() ? 'لإضافة مشتركين استخدم تبويب «➕ المشتركون» أو الشيت، وبيانات طلاب الشيت تتعدّل من الشيت.' : 'لإضافة طالب أو تعديل بياناته استخدم الشيت.'}</p>`;
     $('#aq').oninput = e => { ADM.q = e.target.value; const pos = e.target.selectionStart; paintAdmin(); const i = $('#aq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { ADM.f = b.dataset.f; paintAdmin(); });
@@ -2526,7 +2605,7 @@
     m.querySelector('.m').innerHTML = `<h3 style="display:flex;align-items:center;gap:10px">${avatarHtml(pf.avatar || st.yt, pf.name || st.name, 44)}<span>${esc(pf.name || st.name || (mb && mb.name) || email)}<small class="mut" style="display:block;font-weight:400;font-size:13px">${esc((mb && mb.typed) || email)}</small></span></h3>
       ${d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ محظور منذ ${fmtD(d.ban.at)} بواسطة ${esc(d.ban.by_email)}${d.ban.reason ? ' — ' + esc(d.ban.reason) : ''}</div>` : ''}
       ${d.ended && !d.ban ? `<div class="sum bad" style="padding:10px 14px;margin-bottom:10px">⛔ اشتراكه منتهي منذ ${fmtD(d.ended.at)}: يدخل بالحساب المجاني بس.${isOwner() ? ' <button class="lnk" id="a_srest">↩️ إرجاع الاشتراك</button> <button class="lnk dng" id="a_gone">🗑 حذف من القائمة</button>' : ''}</div>` : ''}
-      ${mb ? `<div class="sum mbox">${mb.added_by === 'tap' ? '💳 اشترك بالدفع من الموقع' : '➕ مشترك أُضيف من اللوحة بواسطة ' + esc((mb.added_by || '').split('@')[0])} · ${fmtD(mb.added_at)}${isOwner() ? ' <button class="lnk" id="a_mrm">حذف الاشتراك</button>' : ''}</div>` : ''}
+      ${mb ? `<div class="sum mbox">${mb.added_by === 'salla' ? '🛍 اشترك بالدفع عن طريق سلة' : mb.added_by === 'tap' ? '💳 اشترك بالدفع من الموقع' : '➕ مشترك أُضيف من اللوحة بواسطة ' + esc((mb.added_by || '').split('@')[0])} · ${fmtD(mb.added_at)}${isOwner() ? ' <button class="lnk" id="a_mrm">حذف الاشتراك</button>' : ''}</div>` : ''}
       <div class="kv"><div><span>${mb ? 'الاسم' : 'الاسم في الشيت'}</span><b>${esc((mb ? mb.name : st.name) || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>المدرسة</span><b>${esc(pf.school || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
       ${isOwner() && (d.student || d.member) && !d.ban ? (() => { const D = d.dates || {}, L = subLeft(D.until);
         return `<div class="sdbox ${d.ended ? 'na' : L.c}"><div class="sdl"><span>📅 بداية الاشتراك <b>${D.start ? admDay(D.start, 1) : '—'}</b></span><span>⏰ ينتهي <b>${D.until ? admDay(D.until, 1) : '—'}</b>${d.ended ? '' : ` <em>${L.t}</em>`}</span></div>
@@ -3061,12 +3140,78 @@
         ${PY.rows.length > 6 ? `<button type="button" class="lnk" id="pball">${ADM.payAll ? 'عرض أقل' : `عرض كل العمليات (${PY.rows.length})`}</button>` : ''}` : '<p class="mut pbempty">أول ما يدفع أحد من الموقع يطلع هنا.</p>'}
     </section>`;
   }
+  // 🛍 الدفع عن طريق سلة: حالة الربط (السر · المتجر · رابط المنتج) + فتحه للزوار + الطلبات (اللي بدون إيميل تربطه أنت بالطالب)
+  const SL_PM = { credit_card: 'بطاقة', mada: 'مدى', apple_pay: 'Apple Pay', stc_pay: 'STC Pay', google_pay: 'Google Pay', bank: 'تحويل بنكي', cod: 'عند الاستلام', tabby_installment: 'تابي', tamara_installment: 'تمارا', paypal: 'PayPal', free: 'مجاني' };
+  const SL_SRC = { field: '✍️ من خانة المنتج', customer: '📧 إيميل حسابه في سلة', owner: '👤 ربطته أنت' };
+  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات' };
+  const slState = o => o.applied_at ? (o.bad ? ['warn', '⚠️ انلغى بعد التفعيل', 'راجعه وأنهِ اشتراكه لو لازم'] : ['ok', '✅ تفعّل', o.until ? `لين ${admDay(o.until)}${o.months > 1 ? ` · ${o.months} شهور` : ''}` : ''])
+    : o.paid === 1 ? (!o.email ? ['warn', '⚠️ دفع بدون إيميل', 'اربطه بالطالب'] : ['warn', '⚠️ ما تفعّل', o.note || '']) : o.paid === -1 ? ['na', '↩️ ملغي أو مسترجع', o.stn || ''] : ['na', '⏳ بانتظار الدفع', o.stn || ''];
+  function sallaBox(SL) {
+    if (!SL || !SL.ok) return '';
+    const st = SL.store, linked = st && !st.gone;
+    const mode = !SL.secret ? '<span class="pbmode off">⏸ متوقف: سر سلة مو موجود</span>' : !SL.url ? '<span class="pbmode wait">🔗 باقي رابط المنتج</span>'
+      : SL.open ? '<span class="pbmode live">🟢 شغّال لكل الزوار</span>' : `<span class="pbmode wait">🔒 يطلع بس لك وللمختبرين${SL.testers ? ` (${SL.testers})` : ''}</span>`;
+    const chk = (ok, ic, b, t) => `<li class="${ok ? 'ok' : 'no'}"><span aria-hidden="true">${ok ? '✓' : ic}</span><span><b>${b}</b><small>${t}</small></span></li>`;
+    const conn = `<ul class="slconn" aria-label="حالة الربط">
+      ${chk(SL.secret, '🔐', 'سر الإشعارات', SL.secret ? 'محفوظ في Cloudflare' : 'حط SALLA_WEBHOOK_SECRET في Cloudflare (Variables and Secrets)')}
+      ${chk(linked, st && st.gone ? '⛔' : '🏪', 'تطبيق Q-Guide على متجرك', linked ? `مربوط · متجر رقم <bdi>${esc(st.merchant)}</bdi>${st.err ? ` · <span class="slerr">${esc(st.err)}</span>` : ''}` : st && st.gone ? 'انشال من المتجر: ثبّته من جديد' : 'ما انربط للحين: ثبّت التطبيق على متجرك')}
+      ${chk(!!SL.url, '🔗', 'رابط المنتج', SL.url ? 'محفوظ: الزر يفتح صفحة المنتج' : 'حطه تحت عشان يطلع زر الدفع')}</ul>`;
+    const ready = SL.secret && SL.url;
+    const openBar = !ready ? '' : SL.open ? '<div class="pbopen on"><span>الزوار يشوفون زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في سلة.</span><button type="button" class="lnk dng" id="slclose">⏸ إيقاف سلة للزوار</button></div>'
+      : '<div class="pbopen"><span>اشترِ مرة بنفسك من حساب تجربة (مو حساب المشرف) وتأكد إنه تفعّل، وبعدها افتحه للكل.</span><button type="button" class="btn sm gold" id="slopen1">🚀 افتح سلة لكل الزوار</button></div>';
+    const rows = SL.rows || [], miss = rows.filter(o => o.paid === 1 && !o.applied_at && !o.email).length, L = ADM.sallaAll ? rows : rows.slice(0, 6);
+    const last = (SL.events || []).find(e => e.ok && e.ev !== 'pull'), bad = (SL.events || []).find(e => !e.ok);
+    return `<section class="paybox slbox" aria-labelledby="slh"><div class="pbtop"><h3 id="slh">🛍 الدفع عن طريق سلة</h3>${mode}</div>
+      ${conn}
+      <form class="slset" id="slform"><label class="slu"><span>رابط المنتج في سلة</span><input id="slurl" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url || '')}" autocomplete="off"></label>
+        <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || 140))}"><small>ريال</small></span></label>
+        <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
+      ${openBar}
+      <p class="pbsum">${SL.paid ? `${SL.paid === 1 ? 'طلب واحد تفعّل' : SL.paid === 2 ? 'طلبين تفعّلت' : SL.paid + ' طلبات تفعّلت'} · المجموع <b>${SL.total} ريال</b>` : 'ما تفعّل أي طلب للحين'} · ${last ? `آخر إشعار من سلة ${fmtD(last.at)} (${esc(SL_EV[last.ev] || last.ev)})` : 'ما وصل أي إشعار من سلة للحين'}</p>
+      ${bad && (!last || bad.at > last.at) ? `<div class="rgsync warn">⚠️ ${esc(bad.note || bad.ev)} · ${fmtD(bad.at)}</div>` : ''}
+      ${miss ? `<div class="rgsync warn">⚠️ ${miss === 1 ? 'فيه طلب مدفوع بدون إيميل' : `فيه ${miss} طلبات مدفوعة بدون إيميل`}: اضغط «🔗 ربط» واكتب إيميل الطالب.</div>` : ''}
+      ${rows.length ? `<div class="pblist">${L.map(o => { const S = slState(o), who = o.display || o.cname || '—', em = o.applied_email || o.email;
+        return `<div class="pbrow slrow" data-id="${esc(o.id)}"${em ? ` data-e="${esc(em)}" role="button" tabindex="0" title="بطاقة الطالب"` : ''}><span class="pbwho"><b>${esc(who)}</b><small class="ltr">${em ? esc(em) : o.ftxt ? `«${esc(o.ftxt)}»` : 'بدون إيميل'}</small><small>#<bdi>${esc(o.ref || o.id)}</bdi>${o.esrc && SL_SRC[o.esrc] ? ' · ' + SL_SRC[o.esrc] : ''}${o.cphone ? ` · <bdi dir="ltr">${esc(o.cphone)}</bdi>` : ''}</small></span>
+          <span class="pbamt">${o.total ? o.total + ' ريال' : '—'}<small>${esc(SL_PM[o.pm] || o.pm || '')}</small></span>
+          <span class="pbst ${S[0]}">${S[1]}${S[2] ? `<small>${esc(S[2])}</small>` : ''}${!o.applied_at ? `<span class="slact"><button type="button" class="lnk" data-link="${esc(o.id)}">🔗 ربط</button><button type="button" class="lnk" data-hide="${esc(o.id)}" title="إخفاء الطلب من القائمة">🙈 إخفاء</button></span>` : ''}</span>
+          <span class="pbdt">${fmtD(o.created_at)}</span></div>`; }).join('')}</div>
+        ${rows.length > 6 ? `<button type="button" class="lnk" id="slall">${ADM.sallaAll ? 'عرض أقل' : `عرض كل الطلبات (${rows.length})`}</button>` : ''}` : `<p class="mut pbempty">${linked ? 'أول ما يشتري أحد من متجرك يطلع هنا.' : 'بعد ما تثبّت التطبيق على متجرك، الطلبات تطلع هنا.'}</p>`}
+      <div class="slfoot">${linked ? '<button type="button" class="lnk" id="slpull" title="لو فات إشعار: نجيب طلبات آخر 7 أيام من سلة نفسها">🔄 جلب طلبات آخر 7 أيام من سلة</button>' : ''}${(SL.events || []).length ? `<details class="slevs"><summary>📜 سجل الإشعارات</summary><ul>${SL.events.map(e => `<li class="${e.ok ? '' : 'bad'}"><span>${esc(SL_EV[e.ev] || e.ev)}${e.oid ? ` <bdi>#${esc(e.oid)}</bdi>` : ''}</span><small>${esc(e.note || '')}</small><time>${fmtD(e.at)}</time></li>`).join('')}</ul></details>` : ''}</div>
+    </section>`;
+  }
+  function sallaBind(W) {
+    const SL = ADM.salla; if (!SL || !SL.ok) return;
+    const f = W.querySelector('#slform'), u = W.querySelector('#slurl'), pr = W.querySelector('#slprice'), sv = W.querySelector('#slsave');
+    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140); }; u.oninput = dirty; pr.oninput = dirty;
+      f.onsubmit = async e => { e.preventDefault(); const url = u.value.trim();
+        if (url && !/^https:\/\/\S+$/.test(url)) { toast('الرابط لازم يبدأ بـ https://'); u.focus(); return; }
+        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140 }); toast('✓ انحفظ'); paintSubs(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
+    const op1 = W.querySelector('#slopen1'), cl = W.querySelector('#slclose'), setOpen = async (open, btn) => {
+      if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يتفعّل اشتراكه تلقائياً.' : 'توقف الدفع عن طريق سلة للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
+      btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); paintSubs(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
+    if (op1) op1.onclick = () => setOpen(true, op1); if (cl) cl.onclick = () => setOpen(false, cl);
+    const al = W.querySelector('#slall'); if (al) al.onclick = () => { ADM.sallaAll = !ADM.sallaAll; paintSubs(); };
+    const pl = W.querySelector('#slpull'); if (pl) pl.onclick = async () => { pl.disabled = true; const t = pl.textContent; pl.textContent = '⏳ نجيب الطلبات من سلة…';
+      try { const r = await admCall({ op: 'adm_salla_pull' }); ADM.salla = r; const P = r.pulled || {}; toast(`جبنا ${P.n || 0} طلب من سلة${P.done ? ` · تفعّل منها ${P.done}` : ''}`); if (P.done) { ADM.subs = null; renderSubs(); } else paintSubs(); }
+      catch (x) { pl.disabled = false; pl.textContent = t; toast(x.message); } };
+    W.querySelectorAll('.slrow').forEach(r => {
+      const o = (SL.rows || []).find(x => x.id === r.dataset.id); if (!o) return;
+      if (r.dataset.e) { r.onclick = e => { if (!e.target.closest('button')) admStudent(r.dataset.e); }; r.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === r) { e.preventDefault(); admStudent(r.dataset.e); } }; }
+      const lk = r.querySelector('[data-link]'); if (lk) lk.onclick = async () => {
+        const v = await QGDlg.prompt(`طلب #${o.ref || o.id}${o.cname ? ' · ' + o.cname : ''}${o.cphone ? ' · ' + o.cphone : ''}\n${o.ftxt ? `كتب في الخانة: «${o.ftxt}»\n` : ''}\nاكتب إيميل Google اللي يدخل فيه الطالب الموقع${o.paid === 1 ? '، ويتفعّل اشتراكه على طول:' : '، ويتفعّل أول ما يندفع الطلب:'}`, o.email || '', { ok: '🔗 اربط', placeholder: 'name@gmail.com' });
+        if (v === null) return; const em = v.trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('اكتب إيميل صحيح'); return; }
+        try { const x = await admCall({ op: 'adm_salla_link', id: o.id, email: em }); ADM.salla = x; toast(/تفعّل/.test(x.note || '') ? `✅ تفعّل اشتراك ${em}` : `انربط الطلب بـ ${em}${x.note ? ' · ' + x.note : ''}`); ADM.subs = null; ADM.list = null; renderSubs(); }
+        catch (x) { toast(x.message); } };
+      const hd = r.querySelector('[data-hide]'); if (hd) hd.onclick = async () => { hd.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_hide', id: o.id }); toast('🙈 انخفى الطلب'); paintSubs(); } catch (x) { hd.disabled = false; toast(x.message); } };
+    });
+  }
   async function renderSubs() {
     document.title = 'الاشتراكات | Q-Guide';
     const top = () => { app.innerHTML = admTop('subs'); bindCtl(); $('#admref').onclick = () => { ADM.subs = null; renderSubs(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
-      if (!ADM.subs) { const [r, v, py] = await Promise.all([admCall({ op: 'adm_subs' }), admCall({ op: 'adm_vids' }).catch(() => null), admCall({ op: 'adm_pay' }).catch(() => null)]); ADM.subs = r.rows; ADM.subsBatch = r.batch || null; ADM.vids = v; ADM.pay = py; } }
+      if (!ADM.subs) { const [r, v, py, sl] = await Promise.all([admCall({ op: 'adm_subs' }), admCall({ op: 'adm_vids' }).catch(() => null), admCall({ op: 'adm_pay' }).catch(() => null), admCall({ op: 'adm_salla' }).catch(() => null)]); ADM.subs = r.rows; ADM.subsBatch = r.batch || null; ADM.vids = v; ADM.pay = py; ADM.salla = sl; } }
     catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#admin-subs') return;
     top(); paintSubs();
@@ -3076,7 +3221,7 @@
     if (ADM.sf === 'need') ADM.sf = 'all';
     const all = ADM.subs, f = ADM.sf, q = ADM.sq.trim().toLowerCase(), alt = x => x.t !== 'yt', on = x => !x.end;
     const n = { yt: all.filter(x => on(x) && x.t === 'yt').length, free: all.filter(x => on(x) && x.t === 'free').length, bank: all.filter(x => on(x) && x.t === 'bank').length, pay: all.filter(x => on(x) && x.t === 'pay').length, end: all.filter(x => x.end).length, over: all.filter(subOver).length };
-    const PY = ADM.pay, payT = !!(n.pay || (PY && PY.mode));   // 💳 خانة «دفع من الموقع» تطلع لو الدفع مفعّل أو فيه أحد دفع
+    const PY = ADM.pay, payT = !!(n.pay || (PY && PY.mode) || (ADM.salla && ADM.salla.secret));   // 💳 خانة «دفع من الموقع» تطلع لو الدفع (تاب أو سلة) مفعّل أو فيه أحد دفع
     if (f === 'end' && !n.end) ADM.sf = 'all';
     let list = all.filter(x => !q || [x.name, x.display, x.email, x.typed, x.user].some(v => String(v || '').toLowerCase().includes(q)));
     if (ADM.sf === 'end') list = list.filter(x => x.end); else if (ADM.sf === 'over') list = list.filter(subOver); else if (ADM.sf !== 'all') list = list.filter(x => on(x) && x.t === ADM.sf);
@@ -3090,13 +3235,14 @@
     const tile = (k, ic, b, t) => `<button type="button" class="sbt ${k}${f === k ? ' on' : ''}" data-sf="${k}" aria-pressed="${f === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
     const B = ADM.subsBatch;   // آخر «إنهاء الكل» (للتراجع)
     const row = x => `<div class="srow sbrow${x.end ? ' ended' : ''}" data-e="${esc(x.email)}">
-      <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.via === 'tap' ? '💳 اشترك بالدفع من الموقع' : x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
+      <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.via === 'salla' ? '🛍 اشترك بالدفع عن طريق سلة' : x.via === 'tap' ? '💳 اشترك بالدفع من الموقع' : x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
       ${x.t === 'pay' ? `<span class="sbseg pay" aria-label="نوع اشتراك ${esc(nm(x))}: دفع إلكتروني"><span class="sbpay">💳 دفع إلكتروني</span></span>` : `<span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}"${x.end ? ' aria-disabled="true"' : ''}>${['yt', 'free', 'bank'].map(t => `<button type="button" role="radio" data-t="${t}" class="${x.t === t ? 'on ' + t : ''}" aria-checked="${x.t === t}"${x.end ? ' disabled' : ''}>${SUB_N[t][0]} ${SUB_N[t][1]}</button>`).join('')}</span>`}
       <span class="sbsh">${x.end ? `<small class="sbendst">⛔ انتهى اشتراكه ${fmtD(x.end)}</small>` : alt(x) ? '<small class="sbin">🎬 يشوف المقاطع داخل الموقع</small>' : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}${x.end ? '' : (() => { const L = subLeft(x.until);
         return `<span class="sbdt ${L.c}"><span>📅 ينتهي <b>${x.until ? admDay(x.until) : '—'}</b> · ${L.t}</span><span class="sbdtb"><button type="button" class="lnk" data-add title="يمدّد الاشتراك شهر من موعد نهايته (أو من اليوم لو خلص)">＋ شهر</button><button type="button" class="lnk" data-dates>تعديل</button></span></span>`; })()}</span>
       <span class="sbend">${x.end ? '<button type="button" class="btn sm ghost" data-restore>↩️ إرجاع الاشتراك</button><button type="button" class="btn sm gone" data-gone title="احذفه من القوائم">🗑 حذف</button>' : '<button type="button" class="btn sm ghost dang" data-end>⛔ إنهاء الاشتراك</button>'}</span></div>`;
     W.innerHTML = `<div class="stf subs">
       <div class="sbtiles n${5 + (n.end ? 1 : 0) + (payT ? 1 : 0)}">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${payT ? tile('pay', '💳', n.pay, 'دفع من الموقع') : ''}${tile('over', '⏰', n.over, 'مر عليهم شهر')}${n.end ? tile('end', '⛔', n.end, 'اشتراك منتهي') : ''}<div class="sbt vid" aria-label="المقاطع داخل الموقع"><span class="i" aria-hidden="true">🎬</span><b><bdi>${up}/${tot}</bdi></b><span>مقطع داخل الموقع</span></div></div>
+      ${sallaBox(ADM.salla)}
       ${payBox(PY)}
       ${B && B.n ? `<div class="rgsync warn sbundo"><span>⛔ أنهيت كل الاشتراكات ${fmtD(B.at)}، واللي باقي اشتراكهم منتهي منها ${nStu(B.n)}.</span><button type="button" class="lnk" id="sbundo">↩️ تراجع وأرجعهم</button></div>` : ''}
       ${vidLine}
@@ -3136,7 +3282,7 @@
       if (!await QGDlg.confirm(`ترجع اشتراك ${B.n === 1 ? 'الطالب' : B.n === 2 ? 'الطالبين' : 'الـ' + nStu(B.n)} اللي انتهى اشتراكهم في «إنهاء الكل»؟\nيقدرون يدخلون مشتركين من جديد.`, { ok: '↩️ أرجعهم' })) return;
       try { const r = await admCall({ op: 'adm_sub_restore_all', batch: B.batch }); toast(`↩️ رجع اشتراك ${nStu(r.n)}`); ADM.subs = null; ADM.list = null; renderSubs(); }
       catch (e) { toast('ما انحفظ: ' + e.message); } };
-    vupBind(W);
+    sallaBind(W); vupBind(W);
   }
   // ⛔ إنهاء اشتراك طالب / ↩️ إرجاعه (المالك) — من «💳 الاشتراكات» ومن بطاقة الطالب
   const nStu = n => n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n >= 3 && n <= 10 ? n + ' طلاب' : n + ' طالب';

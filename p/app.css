@@ -2004,6 +2004,7 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 html.l-en .set,html.l-en .pcard,html.l-en .sheet,html.l-en .wl,html.l-en .sum.bad,html.l-en .rz-goal,html.l-en .ar-rv,html.l-en .sum.mbox{text-align:left}
 html.l-en .set .num{left:auto;right:-6px}
 html.l-en .sub-x{left:auto;right:10px}
+html.l-en .subdlg .qgdlg-box{text-align:left}   /* نافذة الاشتراك بالإنجليزي: من اليسار (كانت تاخذ محاذاة اليمين من QGDlg) */
 html.l-en .ar-srch #arel{text-align:left}
 html.l-en .wvi small{text-align:left}
 html.l-en .arc,html.l-en .qt-ar,html.l-en .trq,html.l-en .ru-cols,html.l-en .ru-fb p,html.l-en .fd-ex,html.l-en .tr-ex{direction:rtl;text-align:right}
@@ -2347,3 +2348,52 @@ html.l-en .tlx small{text-align:left}
 html.l-en .memail{text-align:left}
 @media (max-width:640px){.mehd{flex-direction:column;text-align:center}.mehx{align-items:center}.memail{text-align:center}.mechips{justify-content:center}.mefields{grid-template-columns:1fr}.mecard{padding:16px}.meavs{grid-template-columns:repeat(4,1fr)}.meopt{min-height:74px}.meopt .av{width:48px;height:48px}}
 @media (prefers-reduced-motion:reduce){.meopt{transition:none}}
+/* 🛍 الدفع عن طريق سلة — الخطوات داخل نافذة الاشتراك */
+.sub-box.slp{padding-top:16px}
+.slp .slp-back{display:inline-flex;margin:0 0 6px;padding:4px 0;font-size:calc(13.5px * var(--fs));color:var(--mut);text-decoration:none}
+.slp .slp-back:hover{color:var(--navy);text-decoration:underline}
+.slp-s{list-style:none;margin:4px 0 0;padding:0;display:grid}
+.slp-s li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;padding:12px 0}
+.slp-s li+li{border-top:1px dashed var(--line)}
+.slp-n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--royal);color:#fff;font-family:var(--disp);font-weight:900;font-size:calc(15px * var(--fs))}
+.slp-t{display:flex;flex-direction:column;gap:6px;min-width:0}
+.slp-t b{font-size:calc(15.5px * var(--fs));color:var(--ink2);line-height:1.5}
+.slp-t small{color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.6}
+.slp-em{display:flex;align-items:center;gap:8px;background:var(--dotbg);border:1px solid var(--line);border-radius:12px;padding:7px 8px 7px 12px}
+.slp-em bdi{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-weight:800;color:var(--ink);font-size:calc(14.5px * var(--fs));text-align:left;user-select:all}
+.slp-em .btn{flex:none}
+.slp .slp-go{justify-content:center;text-align:center;padding:12px 16px;font-size:calc(16px * var(--fs));font-weight:900;border-radius:14px}
+.slp-st{margin:6px 0 0;border-radius:12px;padding:10px 12px;font-size:calc(14px * var(--fs));line-height:1.6;font-weight:700}
+.slp-st:empty{display:none}
+.slp-st.wait{background:var(--stampbg);color:var(--stampfg)}.slp-st.bad{background:var(--badbg);color:var(--badt)}.slp-st.na{background:var(--dotbg);color:var(--mut)}
+.slp-st .spin.sm{border-color:color-mix(in srgb,currentColor 25%,transparent);border-top-color:currentColor}
+.slp-a{display:flex;gap:10px;margin-top:12px}.slp-a .btn{flex:1 1 auto}
+.qgdlg-box p.slp-help{margin:12px 0 0;text-align:center;font-size:calc(13px * var(--fs));color:var(--mut)}
+.slp-help a{color:var(--navy);font-weight:800}
+@media (prefers-reduced-motion:reduce){.slp-st .spin.sm{animation-duration:2.4s}}
+/* 🛍 صندوق سلة في «💳 الاشتراكات» (المالك) */
+.slconn{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.slconn li{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.slconn li>span:first-child{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12.5px;font-weight:900}
+.slconn li.ok>span:first-child{background:var(--okbg);color:var(--okt)}.slconn li.no>span:first-child{background:var(--stampbg);color:var(--stampfg)}
+.slconn li>span:last-child{display:flex;flex-direction:column;gap:1px;min-width:0}
+.slconn b{font-size:calc(13.5px * var(--fs));color:var(--ink2)}
+.slconn small{font-size:calc(12px * var(--fs));color:var(--mut);line-height:1.5;overflow-wrap:anywhere}
+.slconn .slerr{color:var(--badt)}
+.slset{display:grid;grid-template-columns:minmax(0,1fr) 140px auto;gap:10px;align-items:end;margin-top:12px}
+.slset label{display:flex;flex-direction:column;gap:4px;font-size:calc(12.5px * var(--fs));color:var(--mut);font-weight:700}
+.slset input{width:100%;font:inherit;font-size:calc(14px * var(--fs));font-weight:600;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.slset input:focus-visible{outline:2px solid var(--royal);outline-offset:1px;border-color:transparent}
+.slpi{display:flex;align-items:center;gap:6px}.slpi small{color:var(--mut);font-weight:600}
+.slset .btn{min-height:38px}
+.slrow:not([data-e]){cursor:default}.slrow:not([data-e]):hover{background:none}
+.slact{display:flex;gap:12px;margin-top:3px}.slact .lnk{font-size:calc(12px * var(--fs))}
+.slfoot{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px}
+.slbox #slall{margin-top:8px}
+.slevs{font-size:calc(12.5px * var(--fs));color:var(--mut);min-width:0;flex:1 1 280px}
+.slevs summary{cursor:pointer;font-weight:700;color:var(--navy);list-style-position:inside}
+.slevs ul{list-style:none;margin:8px 0 0;padding:0;display:grid;max-height:230px;overflow:auto}
+.slevs li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;border-bottom:1px solid var(--line);padding:5px 0}
+.slevs li span{color:var(--ink);font-weight:700}.slevs li small{grid-column:1;color:var(--mut)}.slevs li time{grid-row:1;grid-column:2;color:var(--mut);white-space:nowrap}
+.slevs li.bad span{color:var(--badt)}
+@media (max-width:760px){.slconn{grid-template-columns:1fr}.slset{grid-template-columns:minmax(0,1fr) auto}.slset .slu{grid-column:1/-1}}
