@@ -40,6 +40,21 @@
   // 👨‍🏫 عبدالله الشمراني (اللفظي): «التأسيس» 4 مقاطع داخل الموقع لكل المشتركين (af:1–4، المالك يرفعها من «⬆️ رفع المقاطع») + «التدريب» على النماذج الـ14 (قريباً)
   //    بنفس ترتيب «قواعد القسم اللفظي» (مذكرة التأسيس): 1 التناظر · 2 إكمال الجمل · 3 الخطأ السياقي · 4 استيعاب المقروء (أسماؤها من PART_AR)
   const ABD = { found: [1, 2, 3, 4], models: 14, en: { 1: 'Analogy', 2: 'Sentence Completion', 3: 'Contextual Error', 4: 'Reading Comprehension' } };
+  //    تدريبه على النماذج = at:1–14 (داخل الموقع لكل المشتركين، يرفعها من «🎬 مقاطعي»)
+  // 👨‍🏫 سلمان الفرج: «التأسيس» = دروس «قواعد الكمي» الـ24 (sf:1–24، بنفس ترتيب مذكرة تأسيس الكمي) · «التدريب» = شرح الأقسام والنماذج (q/v)
+  //    كل درس: [عربي، إنجليزي، صفحته في مذكرة التأسيس #wb-tq، الوحدة] — بالإنجليزي يطلع الاسم الإنجليزي
+  // i18n:off
+  const QR_U = [['أساسيات الحساب', 'Arithmetic Foundations'], ['الأعداد والأنماط والجبر', 'Numbers, Patterns & Algebra'], ['النسب والنسبة المئوية وتطبيقاتها', 'Ratios, Percentages & Applications'], ['الهندسة', 'Geometry']];
+  const QR_L = [['الجمع والطرح', 'Addition & Subtraction', 4, 1], ['الضرب والقسمة', 'Multiplication & Division', 11, 1], ['الأعداد العشرية والتقريب', 'Decimals & Approximation', 21, 1],
+    ['الكسور', 'Fractions', 28, 1], ['الأسس', 'Exponents', 36, 1], ['الجذور', 'Roots', 44, 1],
+    ['المضاعفات والقواسم والأعداد الأولية', 'Multiples, Divisors & Primes', 60, 2], ['الأعداد المتتالية والأرقام والعد', 'Consecutive Numbers, Digits & Counting', 68, 2], ['الأنماط والدوريات', 'Patterns & Cycles', 77, 2],
+    ['المعادلات والمسائل اللفظية', 'Equations & Word Problems', 87, 2], ['المقادير الجبرية والمتطابقات', 'Algebraic Expressions & Identities', 94, 2], ['المتباينات والمقارنات بمتغيرات', 'Inequalities & Comparisons with Variables', 100, 2],
+    ['النسبة والتناسب', 'Ratio & Proportion', 116, 3], ['النسبة المئوية', 'Percentages', 127, 3], ['الربح والخسارة والخصم', 'Profit, Loss & Discount', 136, 3],
+    ['السرعة والمسافة والزمن', 'Speed, Distance & Time', 143, 3], ['الأعمار والمتوسط الحسابي', 'Ages & Averages', 149, 3], ['الإحصاء وقراءة الرسوم البيانية', 'Statistics & Reading Charts', 155, 3],
+    ['الزوايا والمستقيمات المتوازية', 'Angles & Parallel Lines', 174, 4], ['المثلث', 'Triangles', 186, 4], ['الأشكال الرباعية والمضلعات', 'Quadrilaterals & Polygons', 200, 4],
+    ['الدائرة والساعة', 'Circles & Clocks', 210, 4], ['المساحات المظللة والأشكال المركّبة', 'Shaded Areas & Composite Shapes', 225, 4], ['المجسمات والإحداثيات والاتجاهات', '3D Shapes, Coordinates & Directions', 240, 4]];
+  // i18n:on
+  const qrName = n => QR_L[n - 1][EN ? 1 : 0];
   const ytUrl = id => 'https://youtu.be/' + id;
   // 🎬 المشترك المجاني أو بالتحويل: المقاطع تشتغل هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميله · مشترك يوتيوب يكمل على يوتيوب (مقاطع الأعضاء)
   // auth.vids = المقاطع المرفوعة للموقع · لو مقطع ما انرفع للحين يفتح نسخته الخاصة في يوتيوب (auth.yt) مثل قبل
@@ -254,10 +269,10 @@
       const r = await api({ op: 'me', session: auth.session });
       if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
-      else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.adv || '') !== (auth.adv || ''))) { auth.staff = r.staff || auth.staff; auth.adv = r.adv || ''; lsSet(LS.auth, auth); }   // 🧑‍🏫 صار مرشد؟
+      else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.adv || '') !== (auth.adv || '') || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.adv = r.adv || ''; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 🧑‍🏫 صار مرشد؟ · 👨‍🏫 صار يرفع مقاطعه؟
       if (r && r.ok && auth && auth.role === 'free' && (JSON.stringify(r.pay || null) !== JSON.stringify(auth.pay || null) || JSON.stringify(r.salla || null) !== JSON.stringify(auth.salla || null))) { auth.pay = r.pay || null; auth.salla = r.salla || null; lsSet(LS.auth, auth); }   // 💳🛍 الدفع انفتح/انقفل
       if (r && r.ok && auth && auth.role !== 'free' && Array.isArray(r.vids) && JSON.stringify(r.vids) !== JSON.stringify(auth.vids || [])) {   // 🎬 مقاطع جديدة انرفعت للموقع
-        auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-abdullah)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
+        auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-(salman|abdullah)(\/[ft])?)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
       if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
         auth.sub = r.sub; auth.yt = r.yt || null; lsSet(LS.auth, auth); if (!location.hash || location.hash === '#') renderHome(); }
     } catch (e) {} finally { hbBusy = false; }
@@ -265,11 +280,11 @@
   setInterval(heartbeat, 3 * 60 * 1000);
 
   // ---------- 🆓 الزائر: المسارات المفتوحة + نافذة الاشتراك ----------
-  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || h === 'sharh-abdullah' || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
+  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || /^sharh-(salman|abdullah)(\/[ft])?$/.test(h) || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
-    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي');
+    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-sf/.test(h)) return _T('تأسيس الكمي'); if (/^watch-at/.test(h)) return _T('تدريب اللفظي');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
     return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
@@ -487,10 +502,10 @@
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
     if (/^wb-t[qv](@\d{1,3})?$/.test(h)) return renderWorkbook(h.slice(3, 5), false, +(h.split('@')[1] || 0));   // 🧱 مذكرات التأسيس (قواعد الكمي/اللفظي)
-    if (/^watch-([qv]|af)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af = تأسيس عبدالله الشمراني
+    if (/^watch-([qv]|af|at|sf)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af/at = تأسيس وتدريب عبدالله الشمراني · sf = تأسيس سلمان الفرج
     if (h === 'me') return renderProfile();   // 👤 ملفي
     if (h === 'sharh') return renderSharh();
-    if (h === 'sharh-abdullah') return renderSharhAbd();
+    const tm = /^sharh-(salman|abdullah)(?:\/([ft]))?$/.exec(h); if (tm) return renderTeach(tm[1], tm[2]);   // 👨‍🏫 صفحة المدرس: /f التأسيس · /t التدريب
     if (h === 'board' || h === 'board-week' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'week');   // 🏆 الافتراضي: هذا الأسبوع
     if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
     if (h === 'plan') return renderPlan();
@@ -500,6 +515,7 @@
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { if (auth.role === 'admin') return renderAdv(); location.hash = ''; return; }   // 🧑‍🏫 المرشدين / طلابي
+    if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
     if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-regs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : h === 'admin-regs' ? renderRegs() : renderMembers(); location.hash = ''; return; }
     renderHome();
   }
@@ -543,7 +559,7 @@
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
-  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, adv: r.adv || '' });
+  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, adv: r.adv || '', teach: r.teach || '' });
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
@@ -620,7 +636,7 @@
     document.title = _T('منصة التدريب | Q-Guide');
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = _T('<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'); return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
-    const adminLinks = auth.role === 'admin' ? (auth.adv ? _T`<a class="tn" href="#admin-adv" title="طلابي: كلّمهم بالواتس"><span class="i">💬</span><span class="l">طلابي</span></a>` : '') + _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    const adminLinks = auth.role === 'admin' ? (auth.teach ? _T`<a class="tn" href="#my-vids" title="مقاطعي: ارفعها للموقع"><span class="i">🎬</span><span class="l">مقاطعي</span></a>` : '') + (auth.adv ? _T`<a class="tn" href="#admin-adv" title="طلابي: كلّمهم بالواتس"><span class="i">💬</span><span class="l">طلابي</span></a>` : '') + _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
     if (!isFree()) badgeCheck();
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
     const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
@@ -700,8 +716,8 @@
     // 🧱 مذكرات التأسيس (لكل المشتركين): تنقرا وينكتب عليها بالقلم داخل الموقع، وما تتحمّل
     const fcard = (k, icon, desc, more) => _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]}</b><span class="mut">${desc}</span></div>
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة (مع القلم)</a>${more || ''}</div></div>`;
-    el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 207 صفحة · كل قانون مع أمثلة محلولة من أسئلة الدورة')) +
-      fcard('tv', '📖', _T('قواعد اللفظي · طريقة حل كل نوع من أسئلة اللفظي'), _T('<a class="btn sm ghost" href="#sharh-abdullah">🎬 دروس عبدالله الشمراني</a>')) +
+    el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 257 صفحة · 24 درس، كل قانون مع أمثلة محلولة وترجمة عربية')) +
+      fcard('tv', '📖', _T('قواعد اللفظي · طريقة حل كل نوع من أسئلة اللفظي')) +
       _T('<h3 class="wbg">🏋️ التدريب</h3>') +
       card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
       card(f.verbal, _T('مذكرة اللفظي'), '📖', man ? _T('نسختك الخاصة باسمك وإيميلك · 193 صفحة · 14 نموذجاً') : _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
@@ -713,7 +729,7 @@
   // solved = 📗 النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته (meta.sp = الصفحات اللي فيها أسئلة، والباقي نفس الأصلية)
   // 🧱 مذكرات التأسيس: نفس العارض (القلم، بدون تحميل) لكل المشتركين — tq = قواعد الكمي · tv = قواعد اللفظي (صفحة كل درس من دروس عبدالله الشمراني: TV_PAGE)
   const WB_T = { tq: [_T('تأسيس الكمي'), '📐'], tv: [_T('تأسيس اللفظي'), '📖'] }, TV_PAGE = { 1: 2, 2: 3, 3: 3, 4: 4 };
-  const WB_V = 2;   // ⬆️ ارفعه لو تغيّرت meta.json لأي مذكرة
+  const WB_V = 3;   // ⬆️ ارفعه لو تغيّرت meta.json لأي مذكرة (3 = قواعد الكمي الجديدة: 257 صفحة)
   async function renderWorkbook(kind, solved, startPage) {
     const found = !!WB_T[kind];
     const title = found ? WB_T[kind][0] : EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
@@ -741,7 +757,8 @@
   }
   async function pageBitmap(kind, n) {
     const dir = WB.solved && WB.sp.has(n) ? kind + 's' : kind, key = dir + n; if (WB.cache[key]) return WB.cache[key];
-    const r = await fetch(`/p/wb/${dir}/${String(n).padStart(3, '0')}.bin${dir !== kind ? '?v=' + (WB.meta.sv || 1) : ''}`, { cache: 'force-cache' }); if (!r.ok) throw new Error('page ' + r.status);
+    const ver = dir !== kind ? WB.meta.sv || 1 : WB.meta.v || 0;   // v = نسخة المذكرة (لما تنبدّل صفحاتها، ما نقرأ القديمة من كاش المتصفح)
+    const r = await fetch(`/p/wb/${dir}/${String(n).padStart(3, '0')}.bin${ver ? '?v=' + ver : ''}`, { cache: 'force-cache' }); if (!r.ok) throw new Error('page ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer()); const k = await getKey();
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
     const bmp = await createImageBitmap(new Blob([plain], { type: 'image/jpeg' }));
@@ -764,7 +781,7 @@
       const bmp = await pageBitmap(kind, n); if (!WB || WB.page !== n) return;
       let cv = el.querySelector('canvas'); if (!cv) { el.innerHTML = ''; cv = document.createElement('canvas'); el.appendChild(cv); }
       cv.width = meta.w; cv.height = meta.h; const ctx = cv.getContext('2d'); ctx.drawImage(bmp, 0, 0); stamp(ctx, meta, n);
-      WB.pen.setKey('qg_wb_' + kind + '_' + n); WB.pen.resize();
+      WB.pen.setKey('qg_wb_' + kind + (WB.meta.v ? 'v' + WB.meta.v : '') + '_' + n); WB.pen.resize();   // نسخة جديدة من المذكرة = صفحات جديدة، فكتابة القلم القديمة ما تنحط عليها
       window.scrollTo({ top: 0 });
       pageBitmap(kind, Math.min(meta.pages, n + 1)).catch(() => {});
     } catch (e) { if (String(e.message).indexOf('page') < 0) logout(); el.innerHTML = _T('<div class="center">تعذّر تحميل الصفحة</div>'); }
@@ -774,8 +791,14 @@
   // الرابط مؤقت (4 ساعات) وموقّع، ويشتغل من الموقع بس. إيميل الطالب ورقمه يتحركون فوق المقطع (حتى في ملء الشاشة).
   const VW_LS = 'qg_vw';   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
   let VID = null;
+  // 👨‍🏫 مقاطع المدرسين اللي ما لها يوتيوب (داخل الموقع لكل المشتركين): مين المدرس، وصفحته وقسمها، ورابط قواعد الدرس في مذكرة التأسيس
+  const TK = { af: { t: 1, page: 'abdullah', tab: 'f', head: _T('🧱 تأسيس اللفظي'), wb: n => '#wb-tv@' + TV_PAGE[n] },
+    at: { t: 1, page: 'abdullah', tab: 't', head: _T('🏋️ تدريب اللفظي') },
+    sf: { t: 0, page: 'salman', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_L[n - 1][2] } };
   function vidList(k) {
     if (k === 'af') return ABD.found.map(n => ({ key: 'af:' + n, h: 'af' + n, n, label: PART_AR[n], dur: '' }));   // 🧱 تأسيس عبدالله الشمراني
+    if (k === 'at') return Array.from({ length: ABD.models }, (_, i) => ({ key: 'at:' + (i + 1), h: 'at' + (i + 1), n: i + 1, label: vLabel('v', i + 1), dur: '' }));   // 🏋️ تدريبه على النماذج
+    if (k === 'sf') return QR_L.map((x, i) => ({ key: 'sf:' + (i + 1), h: 'sf' + (i + 1), n: i + 1, label: qrName(i + 1), dur: '' }));   // 🧱 تأسيس سلمان الفرج (قواعد الكمي)
     const L = [];
     YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: vLabel(k, i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
@@ -783,35 +806,39 @@
   function vidStop() { if (!VID) return; clearInterval(VID.wm); clearInterval(VID.sv); document.removeEventListener('fullscreenchange', VID.fs); try { VID.v.pause(); VID.v.removeAttribute('src'); VID.v.load(); } catch (e) {} VID = null; }
   async function renderWatch(h) {
     vidStop();
-    const hm = /^(af|q|v)(\d{1,2})$/.exec(h) || [], k = hm[1], n = +hm[2], af = k === 'af', L = k ? vidList(k) : [], cur = L.find(x => x.n === n);
+    const hm = /^(af|at|sf|q|v)(\d{1,2})$/.exec(h) || [], k = hm[1], n = +hm[2], X = TK[k], fd = !!(X && X.tab === 'f'), L = k ? vidList(k) : [], cur = L.find(x => x.n === n);
     if (!cur) { location.replace('#sharh'); return; }
-    document.title = (af ? _T('التأسيس: ') : _T('شرح ')) + cur.label + ' | Q-Guide';
+    // اسم المقطع: التأسيس = اسم الدرس · تدريب عبدالله = «تدريب النموذج 3» · سلمان = «شرح القسم 3»
+    const what = fd ? esc(cur.label) : X ? _T`تدريب ${esc(cur.label)}` : _T`شرح ${esc(cur.label)}`;
+    document.title = (fd ? _T('التأسيس: ') + cur.label : X ? _T('تدريب ') + cur.label : _T('شرح ') + cur.label) + ' | Q-Guide';
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
-    // 🧱 التأسيس (عبدالله الشمراني): ما له أسئلة يحلها هنا، فالزر يرجّعه لصفحة المدرس · شرح سلمان: «حل القسم/النموذج»
-    const solve = af ? _T`<a class="btn sm" href="#wb-tv@${TV_PAGE[n]}">📘 قواعد الدرس</a><a class="btn sm ghost" href="#sharh-abdullah">🧱 دروس التأسيس</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
-    const teach = af ? TEACHERS[1].name : TEACHERS[0].name, sub = af ? _T`الدرس ${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
-    const head = af ? _T`<h2 class="h2">🧱 تأسيس اللفظي</h2><span class="wvhl"><a class="lnk2" href="#sharh-abdullah">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
-      : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`;
-    app.innerHTML = topbar(_T`<span class="ttl">🎬 ${af ? '' : _T('شرح ')}${esc(cur.label)}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+    // 🧱 التأسيس: «📘 قواعد الدرس» في مذكرة التأسيس + رجعة لدروسه · التدريب والشرح: «حل النموذج/القسم»
+    const tpH = X ? '#sharh-' + X.page + '/' + X.tab : '';
+    const solve = fd ? _T`<a class="btn sm" href="${X.wb(n)}">📘 قواعد الدرس</a><a class="btn sm ghost" href="${tpH}">🧱 دروس التأسيس</a>`
+      : X ? _T`<a class="btn sm" href="#v${n}">✍️ حل ${vLabel('v', n)}</a><a class="btn sm ghost" href="${tpH}">🏋️ التدريب</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
+    const teach = TEACHERS[X ? X.t : 0].name, sub = fd ? _T`الدرس ${n} من ${L.length}` : X ? _T`${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
+    const head = X ? _T`<h2 class="h2">${X.head}</h2><span class="wvhl"><a class="lnk2" href="${tpH}">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
+      : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh-salman/t">👨‍🏫 صفحة المدرس</a></span>`;
+    app.innerHTML = topbar(_T`<span class="ttl">🎬 ${what}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wrap watch">
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
           <div class="wvwm" id="wvwm" aria-hidden="true"></div><div class="wvmsg" id="wvmsg"><div class="spin"></div></div>
           <button type="button" class="wvfs" id="wvfs" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
-        <div class="wvbar"><div class="wvt"><b>${af ? '' : _T('شرح ')}${esc(cur.label)}</b><span class="mut"><span class="wvteach">👨‍🏫 ${teach}</span> · ${sub}</span></div>
+        <div class="wvbar"><div class="wvt"><b>${what}</b><span class="mut"><span class="wvteach">👨‍🏫 ${teach}</span> · ${sub}</span></div>
           <div class="wvact">${solve}${prev ? _T`<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? _T`<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
         <div class="wvhead">${head}</div>
-        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${af ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : af ? (vidHas(x.key) ? _T('لم تشاهده') : _T('⏳ قريباً')) : esc(x.dur || '')}</small></a>`; }).join('')}</div>
+        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : X ? (vidHas(x.key) ? _T('لم تشاهده') : _T('⏳ قريباً')) : esc(x.dur || '')}</small></a>`; }).join('')}</div>
       </main>`;
     bindCtl(); window.scrollTo({ top: 0 });
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب · التأسيس ما له يوتيوب
-    const toYT = t => { if (af) { say(t); $('#wvfs').hidden = true; return; } const A = ytAlt(), alt = A && A[k] && A[k].v && A[k].v[n - 1];
+    const toYT = t => { if (X) { say(t); $('#wvfs').hidden = true; return; } const A = ytAlt(), alt = A && A[k] && A[k].v && A[k].v[n - 1];
       const raw = YT[k].v[n - 1].split(':')[0];
       say(t, _T`<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
-    if (af && isFree()) { say(_T('مقاطع التأسيس للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
-    if (!af && !(vidSub() || auth.role === 'admin')) { toYT(_T('مقاطع الشرح عندك تفتح في يوتيوب (عضوية القناة).')); return; }
+    if (X && isFree()) { say(fd ? _T('مقاطع التأسيس للمشتركين في الدورة.') : _T('مقاطع التدريب للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
+    if (!X && !(vidSub() || auth.role === 'admin')) { toYT(_T('مقاطع الشرح عندك تفتح في يوتيوب (عضوية القناة).')); return; }
     VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
     box.oncontextmenu = e => { e.preventDefault(); return false; };
     // 💧 العلامة: إيميله ورقمه، تتنقّل كل شوي بين أماكن ما تغطي أزرار المشغّل
@@ -839,74 +866,92 @@
     const load = async () => {
       let r; try { r = await api({ op: 'vid_url', session: auth.session, v: cur.key }); } catch (e) { r = null; }
       if (!VID || VID.v !== v) return;
-      if (r && r.error === 'missing') { toYT(af ? _T('الدرس هذا ينزل قريباً.') : _T('المقطع هذا ما انرفع للموقع للحين.')); return; }
+      if (r && r.error === 'missing') { toYT(fd ? _T('الدرس هذا ينزل قريباً.') : X ? _T('التدريب هذا ينزل قريباً.') : _T('المقطع هذا ما انرفع للموقع للحين.')); return; }
       if (!r || !r.ok) { say(esc((r && r.msg) || _T('تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.'))); return; }
       v.src = r.url; v.load();
     };
     load();
   }
 
-  // ---------- 👨‍🏫 الشرح والمدرسين: الشرح مقسّم بين أكثر من مدرس (المتاح الحين سلمان الفرج) ----------
+  // ---------- 👨‍🏫 الشرح والمدرسين: كل مدرس له صفحة بقسمين — 🧱 التأسيس و🏋️ التدريب ----------
   const TEACHERS = [
-    { id: 'salman', name: _T('سلمان الفرج'), s: ['q', 'v'], on: 1 },
+    { id: 'salman', name: _T('سلمان الفرج'), s: ['q', 'v'], on: 1, href: '#sharh-salman', note: _T('تأسيس وتدريب') },
     { id: 'abdullah', name: _T('عبدالله الشمراني'), s: ['v'], on: 1, href: '#sharh-abdullah', note: _T('تأسيس وتدريب') },
     { id: 'talal', name: _T('طلال العنزي'), s: ['q', 'v'], on: 0 },
   ];
   const SUBJ = { q: _T('الكمي'), v: _T('اللفظي') };
   function renderSharh() {
     document.title = _T('الشرح والمدرسين | Q-Guide');
-    const W = lsGet(VW_LS, {});
-    // كل مقطع: داخل الموقع (المجاني والتحويل لو انرفع) أو يوتيوب (مشترك يوتيوب، أو مقطع ما انرفع للحين)
-    const item = (k, n) => { const y = ytFor(k + n); if (!y) return '';
-      const label = vLabel(k, n), dur = y.dur, w = W[k + ':' + n] && W[k + ':' + n].w;
-      return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${label}</span></b><small>${w ? _T('✓ شاهدته') : `<bdi dir="ltr">${esc(dur || '')}</bdi>`}</small></a>`; };
-    // المدرس اللي له صفحة (عبدالله الشمراني) بطاقته رابط لصفحته
+    // بطاقة المدرس اللي له صفحة: رابط لصفحته (التأسيس والتدريب)
     const tcard = t => { const tag = t.href ? 'a' : 'div';
       return `<${tag} class="tch${t.on ? ' on' : ' soon'}${t.href ? ' go' : ''}"${t.href ? ` href="${t.href}"` : ''}><span class="tav" aria-hidden="true">${t.name[0]}</span>
-      <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? _T('الكمي واللفظي') : SUBJ[t.s[0]] + (t.note ? ' · ' + t.note : _T(' فقط'))}</span></span><span class="tst">${t.href ? _T('افتح ‹') : t.on ? _T('✓ موجود') : _T('⏳ قريباً')}</span></${tag}>`; };
-    const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
+      <span class="ttx"><b>${t.name}</b><span>${t.s.length > 1 ? _T('الكمي واللفظي') : SUBJ[t.s[0]]}${t.note ? ' · ' + t.note : ''}</span></span><span class="tst">${t.href ? _T('افتح ‹') : t.on ? _T('✓ موجود') : _T('⏳ قريباً')}</span></${tag}>`; };
     app.innerHTML = topbar(_T`<span class="ttl">👨‍🏫 الشرح والمدرسين</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wrap sharh">
-        <div class="hero"><div><h1>الشرح والمدرسين</h1><p>الشرح مقسّم بين أكثر من مدرس: سلمان الفرج يشرح الكمي واللفظي، وعبدالله الشمراني يأسّسك في اللفظي ويدرّبك على النماذج.</p></div></div>
-        <div class="tchs">${TEACHERS.map(tcard).join('')}</div>
-        <section class="tsec" aria-labelledby="tsh"><h2 class="h2" id="tsh">${EN ? 'Explained by ' + TEACHERS[0].name : 'شرح ' + TEACHERS[0].name}</h2>
-          <h3 class="tsub">📐 الكمي</h3><div class="wvlist">${qn.map(n => item('q', n)).join('')}</div>
-          <h3 class="tsub">📖 اللفظي</h3><div class="wvlist">${vn.map(n => item('v', n)).join('')}</div>
-        </section></main>`;
+        <div class="hero"><div><h1>الشرح والمدرسين</h1><p>كل مدرس له صفحة فيها قسمين: 🧱 التأسيس يبدأ معك من القواعد، و🏋️ التدريب يشرح لك الأسئلة. سلمان الفرج للكمي واللفظي، وعبدالله الشمراني للفظي.</p></div></div>
+        <div class="tchs">${TEACHERS.map(tcard).join('')}</div></main>`;
     bindCtl(); window.scrollTo({ top: 0 });
   }
-  // 👨‍🏫 صفحة عبدالله الشمراني: قسمين — 🧱 التأسيس (4 دروس داخل الموقع) و🏋️ التدريب (النماذج الـ14، قريباً)
-  const TP_LS = 'qg_tp_abd';   // آخر قسم فتحه (f = التأسيس · t = التدريب)
-  function renderSharhAbd() {
-    const t = TEACHERS[1]; document.title = t.name + ' | Q-Guide';
-    const W = lsGet(VW_LS, {}), free = isFree(), seen = ABD.found.filter(n => W['af:' + n] && W['af:' + n].w).length;
-    let tab = lsGet(TP_LS, 'f') === 't' ? 't' : 'f';
+  // 👨‍🏫 صفحة المدرس (سلمان الفرج · عبدالله الشمراني): قسمين — 🧱 التأسيس (دروس داخل الموقع لكل المشتركين) و🏋️ التدريب
+  //    سلمان: التأسيس = دروس «قواعد الكمي» الـ24 (sf) · التدريب = شرح الأقسام والنماذج (يوتيوب أو داخل الموقع مثل قبل)
+  //    عبدالله: التأسيس = 4 دروس اللفظي (af) · التدريب = النماذج الـ14 (at)
+  const TP = {
+    salman: { t: 0, ls: 'qg_tp_sal', fk: 'sf', fn: QR_L.length, wb: 'tq', ft: _T('تأسيس الكمي'), desc: _T('مدرس الكمي واللفظي. يأسّسك في قواعد الكمي درس درس، ويشرح لك أقسام الكمي ونماذج اللفظي.') },
+    abdullah: { t: 1, ls: 'qg_tp_abd', fk: 'af', fn: ABD.found.length, wb: 'tv', ft: _T('تأسيس اللفظي'), desc: _T('مدرس اللفظي. يبدأ معك من الأساس بطريقة حل كل نوع من أسئلة اللفظي الأربعة، وبعدها يدرّبك على النماذج.') },
+  };
+  function renderTeach(id, tabHint) {
+    const C = TP[id], t = TEACHERS[C.t]; document.title = t.name + ' | Q-Guide';
+    const W = lsGet(VW_LS, {}), free = isFree(), adm = auth.role === 'admin', seen = k => W[k] && W[k].w;
+    const fkeys = Array.from({ length: C.fn }, (_, i) => C.fk + ':' + (i + 1)), fUp = fkeys.filter(vidHas).length, fSeen = fkeys.filter(seen).length;
     // حالة كل درس: الزائر 🔒 (يفتح نافذة الاشتراك) · شاهده ✓ · انرفع ▶ · ما انرفع ⏳
-    const lesson = n => { const key = 'af:' + n, w = W[key] && W[key].w, has = vidHas(key) || auth.role === 'admin';
-      const body = `<span class="tln" aria-hidden="true">${n}</span><span class="tlx"><b>${PART_AR[n]}</b>${EN ? '' : `<small dir="ltr">${ABD.en[n]}</small>`}</span>`;
-      if (free) return _T`<button type="button" class="tle lock" data-lock="تأسيس اللفظي">${body}<span class="tls">🔒 للمشتركين</span></button>`;
+    const lesson = n => { const key = C.fk + ':' + n, w = seen(key), has = vidHas(key) || adm;
+      const ar = id === 'salman' ? QR_L[n - 1][0] : PART_AR[n], en = id === 'salman' ? QR_L[n - 1][1] : ABD.en[n];
+      const body = `<span class="tln" aria-hidden="true">${n}</span><span class="tlx"><b>${EN ? en : ar}</b>${EN ? '' : `<small dir="ltr">${en}</small>`}</span>`;
+      if (free) return _T`<button type="button" class="tle lock" data-lock="${C.ft}">${body}<span class="tls">🔒 للمشتركين</span></button>`;
       if (!has) return _T`<div class="tle soon" aria-disabled="true">${body}<span class="tls">⏳ قريباً</span></div>`;
-      return _T`<a class="tle${w ? ' ok' : ''}" href="#watch-af${n}">${body}<span class="tls">${w ? _T('✓ شاهدته') : _T('▶ شاهد الدرس')}</span></a>`; };
-    const pct = Math.round(seen * 100 / ABD.found.length);
+      return _T`<a class="tle${w ? ' ok' : ''}" href="#watch-${C.fk}${n}">${body}<span class="tls">${w ? _T('✓ شاهدته') : _T('▶ شاهد الدرس')}</span></a>`; };
+    const lessons = id === 'salman'
+      ? QR_U.map((u, ui) => `<h3 class="tpu"><span class="tpun" aria-hidden="true">${ui + 1}</span>${EN ? u[1] : u[0]}<small>${EN ? 'Unit ' + (ui + 1) : _T`الوحدة ${ui + 1}`}</small></h3>
+          <div class="tles">${QR_L.map((x, i) => x[3] === ui + 1 ? lesson(i + 1) : '').join('')}</div>`).join('')
+      : `<div class="tles">${ABD.found.map(lesson).join('')}</div>`;
+    const pct = Math.round(fSeen * 100 / C.fn), fN = EN ? enN(C.fn, 'lesson', 'lessons') : C.fn + (C.fn <= 10 ? ' دروس' : ' درس');   // i18n:skip
+    const fSoon = !fUp && !adm ? _T`<div class="tpsoon"><b>⏳ التأسيس ينزل قريباً</b><span>${t.name} يشرح ${C.ft} درس درس (${fN}). لين ينزل، ابدأ من <a href="#wb-${C.wb}">مذكرة التأسيس</a>.</span></div>` : '';
+    const fBar = _T`<div class="tpbar"><div class="tpbt"><b>${C.ft}</b><span>${free ? (id === 'salman' ? _T`${fN}: كل قواعد الكمي من الأساس` : _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي')) : fSeen ? _T`شاهدت ${fSeen} من ${C.fn}` : fUp ? _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة') : _T`${fN} بنفس ترتيب مذكرة التأسيس`}</span></div>
+      ${free || !fUp ? '' : `<i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>`}${free ? _T`<button type="button" class="btn sm ghost" data-lock="${C.ft}">📘 مذكرة التأسيس 🔒</button>` : _T`<a class="btn sm ghost" href="#wb-${C.wb}">📘 مذكرة التأسيس</a>`}</div>`;
+    // 🏋️ التدريب — سلمان: الأقسام والنماذج · عبدالله: النماذج الـ14 داخل الموقع (at)
+    let tN, tPane;
+    if (id === 'salman') {
+      const item = (k, n) => { const y = ytFor(k + n); if (!y) return '';
+        const w = seen(k + ':' + n);
+        return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${vLabel(k, n)}</span></b><small>${w ? _T('✓ شاهدته') : `<bdi dir="ltr">${esc(y.dur || '')}</bdi>`}</small></a>`; };
+      const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
+      tN = EN ? enN(qn.length + vn.length, 'video', 'videos') : (qn.length + vn.length) + ' مقطع';   // i18n:skip
+      tPane = _T`<h3 class="tsub">📐 الكمي <small>14 قسم</small></h3><div class="wvlist">${qn.map(n => item('q', n)).join('')}</div>
+          <h3 class="tsub">📖 اللفظي <small>14 نموذج + الأسئلة الجديدة</small></h3><div class="wvlist">${vn.map(n => item('v', n)).join('')}</div>`;
+    } else {
+      const tUp = Array.from({ length: ABD.models }, (_, i) => 'at:' + (i + 1)).filter(vidHas).length;
+      const mod = n => { const key = 'at:' + n, w = seen(key), lab = vLabel('v', n);
+        if (free) return _T`<button type="button" class="wvi lock" data-lock="تدريب اللفظي"><b>${lab}</b><small>🔒 للمشتركين</small></button>`;
+        if (!vidHas(key) && !adm) return _T`<div class="wvi dis" aria-disabled="true"><b>${lab}</b><small>⏳ قريباً</small></div>`;
+        return _T`<a class="wvi${w ? ' ok' : ''}" href="#watch-at${n}"><b>${lab}</b><small>${w ? _T('✓ شاهدته') : _T('▶ شاهد التدريب')}</small></a>`; };
+      tN = EN ? enN(ABD.models, 'model', 'models') : ABD.models + ' نموذج';   // i18n:skip
+      tPane = (!tUp && !adm ? _T`<div class="tpsoon"><b>⏳ التدريب ينزل قريباً</b><span>تدريب الأستاذ عبدالله على النماذج الـ14. لين ينزل، شرح النماذج موجود عند <a href="#sharh-salman/t">سلمان الفرج</a>.</span></div>` : '')
+        + `<div class="wvlist tpmods">${Array.from({ length: ABD.models }, (_, i) => mod(i + 1)).join('')}</div>`;
+    }
+    // القسم: من الرابط (/f أو /t) · وإلا آخر واحد فتحه · وإلا التأسيس (سلمان: التدريب لين ينزل تأسيسه)
+    const last = lsGet(C.ls, ''); let tab = tabHint || (last === 'f' || last === 't' ? last : id === 'salman' && !fUp ? 't' : 'f');
     app.innerHTML = topbar(_T`<span class="ttl">👨‍🏫 ${t.name}</span><span class="sp"></span>`, _T`<a class="ib" href="#sharh" title="المدرسين">→</a>`) +
       _T`<main class="wrap sharh tpage">
         <div class="tphead"><span class="tav" aria-hidden="true">${t.name[0]}</span>
-          <div class="tphx"><h1>${t.name}</h1><p>مدرس اللفظي. يبدأ معك من الأساس بطريقة حل كل نوع من أسئلة اللفظي الأربعة، وبعدها يدرّبك على النماذج.</p></div></div>
+          <div class="tphx"><h1>${t.name}</h1><p>${C.desc}</p></div></div>
         <div class="tabs tptabs" role="tablist" aria-label="أقسام المدرس">
-          <button type="button" role="tab" id="tpt-f" aria-controls="tp-f">🧱 التأسيس <small>${EN ? enN(4, 'lesson', 'lessons') : '4 دروس'}</small></button>
-          <button type="button" role="tab" id="tpt-t" aria-controls="tp-t">🏋️ التدريب <small>${EN ? '14 models' : '14 نموذج'}</small></button>
+          <button type="button" role="tab" id="tpt-f" aria-controls="tp-f">🧱 التأسيس <small>${fN}</small></button>
+          <button type="button" role="tab" id="tpt-t" aria-controls="tp-t">🏋️ التدريب <small>${tN}</small></button>
         </div>
-        <section class="tppane" id="tp-f" role="tabpanel" aria-labelledby="tpt-f">
-          <div class="tpbar"><div class="tpbt"><b>تأسيس اللفظي</b><span>${free ? _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي') : seen ? _T`شاهدت ${seen} من 4` : _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة')}</span></div>
-            ${free ? '' : `<i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>`}${free ? _T('<button type="button" class="btn sm ghost" data-lock="تأسيس اللفظي">📘 مذكرة التأسيس 🔒</button>') : _T('<a class="btn sm ghost" href="#wb-tv">📘 مذكرة التأسيس</a>')}</div>
-          <div class="tles">${ABD.found.map(lesson).join('')}</div>
-        </section>
-        <section class="tppane" id="tp-t" role="tabpanel" aria-labelledby="tpt-t">
-          <div class="tpsoon"><b>⏳ التدريب ينزل قريباً</b><span>تدريب الأستاذ عبدالله على النماذج الـ14. لين ينزل، شرح النماذج موجود عند <a href="#sharh">سلمان الفرج</a>.</span></div>
-          <div class="wvlist tpmods">${Array.from({ length: ABD.models }, (_, i) => _T`<div class="wvi dis" aria-disabled="true"><b>النموذج ${i + 1}</b><small>⏳ قريباً</small></div>`).join('')}</div>
-        </section></main>`;
+        <section class="tppane" id="tp-f" role="tabpanel" aria-labelledby="tpt-f">${fSoon}${fBar}${lessons}</section>
+        <section class="tppane" id="tp-t" role="tabpanel" aria-labelledby="tpt-t">${tPane}</section></main>`;
     bindCtl(); bindSub(app); window.scrollTo({ top: 0 });
-    const show = x => { tab = x; lsSet(TP_LS, x); ['f', 't'].forEach(k => { const on = k === x, b = $('#tpt-' + k); b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; $('#tp-' + k).hidden = !on; }); };
+    const show = x => { tab = x; lsSet(C.ls, x); ['f', 't'].forEach(k => { const on = k === x, b = $('#tpt-' + k); b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; $('#tp-' + k).hidden = !on; }); };
     $('#tpt-f').onclick = () => show('f'); $('#tpt-t').onclick = () => show('t');
     $('.tptabs').onkeydown = e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const x = tab === 'f' ? 't' : 'f'; show(x); $('#tpt-' + x).focus(); e.preventDefault(); } };
     show(tab);
@@ -1721,7 +1766,7 @@
   }
   // 🔗 روابط المساعد: {{q3}} {{v5}} {{t2}} {{rules:circles}} {{t-geo}} {{plan}}… → زر ينقل الطالب للصفحة
   const HELP_PAGES = { rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
-    vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
+    vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], 'wb-tq': ['🧱', _T('تأسيس الكمي'), '#wb-tq'], 'wb-tv': ['🧱', _T('تأسيس اللفظي'), '#wb-tv'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
     't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'] };
   function helpLink(tok) {
     if (!RULES_ON && /^rules/.test(tok)) return '';   // ملخص القوانين/القواعد انشال: الرمز ينشال من الرد
@@ -2660,7 +2705,8 @@
   // ---------- 📊 التقرير الشامل للطالب (المالك): كل اللي يبين هل ذاكر فعلاً ----------
   const RP_TYPE = { yt: '▶️ مشترك يوتيوب', free: '🎁 اشتراك مجاني', bank: '🏦 تحويل بنكي', pay: '💳 دفع من الموقع' };
   const rpSet = id => id === 'qall' ? 'الشامل كمي' : id === 'vall' ? 'الشامل لفظي' : id === 'v15' ? 'الأسئلة الجديدة' : /^q\d+$/.test(id) ? 'القسم ' + id.slice(1) : /^v\d+$/.test(id) ? 'النموذج ' + id.slice(1) : id;
-  const rpVid = k => { const m = /^([qv]):(.+)$/.exec(k || ''); if (!m) return k; return m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2]; };
+  const rpVid = k => { const m = /^([a-z]+):(.+)$/.exec(k || ''); if (!m) return k; if (m[1] === 'sf') return 'تأسيس الكمي: ' + (QR_L[+m[2] - 1] || [k])[0]; if (m[1] === 'af') return 'تأسيس اللفظي: ' + (PART_AR[+m[2]] || k); if (m[1] === 'at') return 'تدريب عبدالله: النموذج ' + m[2];
+    return m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2]; };
   const rpDur = x => { x = Math.max(0, Math.round(x || 0)); const h = Math.floor(x / 3600), m = Math.round(x % 3600 / 60); return h ? h + ' س' + (m ? ' ' + m + ' د' : '') : m ? m + ' د' : x ? 'أقل من دقيقة' : '—'; };
   const rpN = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? n + ' ' + few : n + ' ' + many;
   const pctC = p => p == null ? 'none' : p >= 80 ? 'hi' : p >= 60 ? 'mid' : 'lo';
@@ -3019,7 +3065,7 @@
     return ref;
   }
   // 💬 السجل كمحادثات: رسائل الطالب على نفس السؤال ورا بعض (المحادثة الجديدة تبدأ لما يرجع الشرح الأول)
-  const AI_IT = { study: 'يسأل وش يذاكر', weak: 'يسأل عن مستواه وضعفه', tips: 'يبي نصايح للاختبار', solve: 'يبي حل سؤال من برا الدورة', vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)' };
+  const AI_IT = { memo: 'يسأل عن الحفظ (يكفي؟ أحفظ ولا أفهم؟)', study: 'يسأل وش يذاكر', weak: 'يسأل عن مستواه وضعفه', tips: 'يبي نصايح للاختبار', solve: 'يبي حل سؤال من برا الدورة', vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)' };
   function aiConvs(logs) {
     const open = new Map(), out = [];
     for (const l of logs.slice().sort((a, b) => a.id - b.id)) {
@@ -3250,9 +3296,11 @@
     const nm = x => x.display || x.name || x.email.split('@')[0];
     // 🎬 المقاطع داخل الموقع: كم مقطع مرفوع + المشاهدات آخر 30 يوم
     const V = ADM.vids, up = V && V.files ? V.files.length : 0, tot = (V && V.total) || 29, views = V && V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0;
+    // شرح سلمان (q/v): اللي ما انرفع يفتح في يوتيوب · التأسيس وتدريب عبدالله (sf/af/at): يطلع للطلاب «قريباً» لين يرتفع
+    const yv = V && V.files ? V.files.filter(k => /^[qv]:/.test(k)).length : 0, yt = V && V.map ? Object.keys(V.map).filter(k => /^[qv]:/.test(k)).length : 29;
     const vidLine = !V ? '<div class="rgsync warn">⚠️ تعذّر قراءة حالة المقاطع داخل الموقع. حدّث الصفحة.</div>'
-      : up >= tot ? `<div class="rgsync">🎬 المجاني والتحويل يشوفون المقاطع داخل الموقع: كل الـ${tot} مقطع مرفوعة · ${views} مشاهدة آخر 30 يوم</div>`
-      : `<div class="rgsync warn">⏳ انرفع ${up} من ${tot} مقطع للموقع. اللي ما انرفع للحين يفتح لهم نسخته الخاصة في يوتيوب.</div>`;
+      : up >= tot ? `<div class="rgsync">🎬 كل الـ${tot} مقطع مرفوعة للموقع · ${views} مشاهدة آخر 30 يوم</div>`
+      : `<div class="rgsync${yv < yt ? ' warn' : ''}">${yv < yt ? `⏳ انرفع ${yv} من ${yt} من شرح سلمان (الأقسام والنماذج)، واللي ما انرفع يفتح لهم نسخته في يوتيوب.` : `🎬 شرح سلمان كله مرفوع (${yt}).`} دروس التأسيس وتدريب عبدالله: انرفع ${up - yv} من ${tot - yt}، والباقي يطلع للطلاب «⏳ قريباً». · ${views} مشاهدة آخر 30 يوم</div>`;
     const tile = (k, ic, b, t) => `<button type="button" class="sbt ${k}${f === k ? ' on' : ''}" data-sf="${k}" aria-pressed="${f === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
     const B = ADM.subsBatch;   // آخر «إنهاء الكل» (للتراجع)
     const row = x => `<div class="srow sbrow${x.end ? ' ended' : ''}" data-e="${esc(x.email)}">
@@ -3267,7 +3315,7 @@
       ${payBox(PY)}
       ${B && B.n ? `<div class="rgsync warn sbundo"><span>⛔ أنهيت كل الاشتراكات ${fmtD(B.at)}، واللي باقي اشتراكهم منتهي منها ${nStu(B.n)}.</span><button type="button" class="lnk" id="sbundo">↩️ تراجع وأرجعهم</button></div>` : ''}
       ${vidLine}
-      ${vupHtml()}
+      ${vupHtml(ADM.vids)}
       <p class="sbhelp">المجاني والتحويل البنكي يشوفون مقاطع الشرح هنا داخل الموقع: رابط مؤقت يشتغل من الموقع بس، وإيميل الطالب ظاهر على المقطع. مشترك يوتيوب تفتح له مقاطع الأعضاء في القناة مثل قبل.</p>
       <div class="abar"><input id="sbq" type="search" placeholder="ابحث بالاسم أو الإيميل أو اليوزر…" value="${esc(ADM.sq)}">${f !== 'all' ? `<button type="button" class="btn sm ghost" id="sball">عرض الكل (${all.length})</button>` : ''}</div>
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : 'ما فيه طلاب هنا'}</div>`}</div>
@@ -3303,7 +3351,7 @@
       if (!await QGDlg.confirm(`ترجع اشتراك ${B.n === 1 ? 'الطالب' : B.n === 2 ? 'الطالبين' : 'الـ' + nStu(B.n)} اللي انتهى اشتراكهم في «إنهاء الكل»؟\nيقدرون يدخلون مشتركين من جديد.`, { ok: '↩️ أرجعهم' })) return;
       try { const r = await admCall({ op: 'adm_sub_restore_all', batch: B.batch }); toast(`↩️ رجع اشتراك ${nStu(r.n)}`); ADM.subs = null; ADM.list = null; renderSubs(); }
       catch (e) { toast('ما انحفظ: ' + e.message); } };
-    sallaBind(W); vupBind(W);
+    sallaBind(W); vupBind(W, '');
   }
   // ⛔ إنهاء اشتراك طالب / ↩️ إرجاعه (المالك) — من «💳 الاشتراكات» ومن بطاقة الطالب
   const nStu = n => n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n >= 3 && n <= 10 ? n + ' طلاب' : n + ' طالب';
@@ -3319,59 +3367,97 @@
   async function subRestoreOne(email, name) {
     try { await admCall({ op: 'adm_sub_restore', email }); toast(`↩️ رجع اشتراك ${name}`); ADM.list = null; return true; } catch (e) { toast('ما انحفظ: ' + e.message); return false; }
   }
-  // ---------- ⬆️ رفع المقاطع للموقع (المالك): ملف MP4 لكل قسم/نموذج، بالأجزاء مع نسبة التقدّم ----------
-  const VUP = { busy: 0, st: {}, miss: [] };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها
-  // المجموعات: شرح سلمان الفرج (الكمي/اللفظي) · تأسيس عبدالله الشمراني (af)
-  const VUP_G = { q: '📐 سلمان الفرج · الكمي', v: '📖 سلمان الفرج · اللفظي', af: '🧱 عبدالله الشمراني · التأسيس' }, VUP_O = { q: 0, v: 100, af: 200 };
-  function vupSlots() { const V = ADM.vids || {}, M = V.map || {}, objs = V.objects || [];
-    return Object.keys(M).map(k => { const f = M[k], o = objs.find(x => x.key === f), m = /^([a-z]+):(.+)$/.exec(k);
+  // ---------- ⬆️ رفع المقاطع للموقع: المالك (كل المقاطع، في «💳 الاشتراكات») والمدرس (مقاطعه هو، «🎬 مقاطعي») — ملف MP4 لكل مقطع، بالأجزاء مع نسبة التقدّم ----------
+  const VUP = { busy: 0, st: {}, miss: [], open: 0 };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها · open = صندوق المالك مفتوح
+  // المجموعات بالترتيب: سلمان الفرج — تأسيس الكمي sf · تدريب الكمي q · تدريب اللفظي v | عبدالله الشمراني — تأسيس اللفظي af · التدريب على النماذج at
+  const VUP_G = { sf: '🧱 سلمان الفرج · التأسيس (قواعد الكمي)', q: '📐 سلمان الفرج · تدريب الكمي', v: '📖 سلمان الفرج · تدريب اللفظي', af: '🧱 عبدالله الشمراني · التأسيس', at: '🏋️ عبدالله الشمراني · التدريب (النماذج)' };
+  const VUP_GT = { sf: '🧱 التأسيس · دروس قواعد الكمي', q: '📐 التدريب · أقسام الكمي', v: '📖 التدريب · نماذج اللفظي', af: '🧱 التأسيس · دروس اللفظي', at: '🏋️ التدريب · النماذج' };   // «🎬 مقاطعي» (بدون اسم المدرس)
+  const VUP_O = { sf: 0, q: 100, v: 200, af: 300, at: 400 };
+  const vupLabel = (g, n) => g === 'sf' ? n + '. ' + QR_L[n - 1][0] : g === 'af' ? n + '. ' + PART_AR[n] : g === 'v' && n === 15 ? 'الأسئلة الجديدة' : (g === 'q' ? 'القسم ' : 'النموذج ') + n;
+  function vupSlots(V) { const M = (V && V.map) || {}, objs = (V && V.objects) || [];
+    return Object.keys(M).map(k => { const f = M[k], o = objs.find(x => x.key === f), m = /^([a-z]+):(\d+)$/.exec(k);
       if (!m || VUP_O[m[1]] == null) return null;
-      const label = m[1] === 'af' ? m[2] + '. ' + PART_AR[+m[2]] : m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2];
-      return { k, f, g: m[1], label, size: o ? o.size : 0, ord: VUP_O[m[1]] + (m[2] === 'rules' ? 0 : +m[2]) }; }).filter(Boolean).sort((a, b) => a.ord - b.ord); }
-  // نعرف المقطع من اسم الملف: Section 3 / Model 7 / Extra Questions (الأسئلة الجديدة)…
-  function vupGuess(name) { const n = name.toLowerCase().replace(/[_\-–|｜⧸/]+/g, ' ');
+      return { k, f, g: m[1], label: vupLabel(m[1], +m[2]), size: o ? o.size : 0, ord: VUP_O[m[1]] + +m[2] }; }).filter(Boolean).sort((a, b) => a.ord - b.ord); }
+  // نعرف المقطع من اسم الملف: Lesson 7 (تأسيس الكمي) / Section 3 / Model 7 / Extra Questions… — teach = المدرس في «🎬 مقاطعي»؛ عند المالك «عبدالله/الشمراني» في الاسم = مقاطع عبدالله
+  const VUP_AF = [[/analog|تناظر/, 1], [/sentence|completion|إكمال|اكمال|الجمل/, 2], [/contextual|context|سياق|الخطأ|الخطا/, 3], [/reading|comprehension|استيعاب|المقروء|مقروء/, 4]];
+  function vupGuess(name, teach) { const n = name.toLowerCase().replace(/[_\-–|｜⧸/]+/g, ' ');
+    const abd = teach ? teach === 'abdullah' : /shamrani|shmrani|shamrany|الشمراني|عبدالله|abdullah|abdallah/.test(n); let m;
+    if (abd) {   // 👨‍🏫 عبدالله: Model 3 = تدريبه على النموذج · Analogy… = دروس التأسيس
+      m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'shamrani/m' + m[1].padStart(2, '0') + '.mp4';
+      for (const [re, i] of VUP_AF) if (re.test(n)) return 'shamrani/f' + i + '.mp4';
+      return ''; }
     if (/(extra|new)\s*(questions?|15)\b|الأسئلة الجديدة|الاسئلة الجديدة|أسئلة جديدة|اسئلة جديدة|(?:model|نموذج)\s*15\b/.test(n)) return 'v/m15.mp4';
-    let m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
+    m = /(?:lesson|درس)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= QR_L.length) return 'salman/f' + m[1].padStart(2, '0') + '.mp4';   // 🧱 تأسيس الكمي: Lesson 7
+    m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
     m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'v/m' + m[1].padStart(2, '0') + '.mp4';
-    // 🧱 تأسيس عبدالله الشمراني: من اسم الدرس (Analogy / إكمال الجمل / Contextual Error / استيعاب المقروء…)
-    const F = [[/analog|تناظر/, 1], [/sentence|completion|إكمال|اكمال|الجمل/, 2], [/contextual|context|سياق|الخطأ|الخطا/, 3], [/reading|comprehension|استيعاب|المقروء|مقروء/, 4]];
-    for (const [re, i] of F) if (re.test(n)) return 'shamrani/f' + i + '.mp4';
+    if (!teach) for (const [re, i] of VUP_AF) if (re.test(n)) return 'shamrani/f' + i + '.mp4';   // المالك: دروس تأسيس اللفظي باسمها (مثل قبل)
     return ''; }
   const vupMB = b => '<bdi dir="ltr">' + (b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e7 ? Math.round(b / 1e6) + ' MB' : (b / 1e6).toFixed(1) + ' MB') + '</bdi>';
-  function vupHtml() {
-    if (!ADM.vids || !ADM.vids.map) return '';
-    const S = vupSlots(), up = S.filter(x => x.size).length;
+  // 👑 مين يرفع مقاطع كل مدرس (حساب واحد لكل مدرس من المشرفين) — يطلع له «🎬 مقاطعي»
+  function vupTeachSet(V) {
+    const L = V.staff || [], sel = t => `<select data-teach="${t}" aria-label="حساب ${TEACHERS.find(x => x.id === t).name}"><option value="">— محد</option>${L.map(x => `<option value="${esc(x.email)}"${x.teach === t ? ' selected' : ''}>${esc(x.name || x.email.split('@')[0])} · ${esc(x.email)}</option>`).join('')}</select>`;
+    return `<div class="vteach"><div><b>👨‍🏫 المدرسين يرفعون مقاطعهم بأنفسهم</b><span class="mut">اختر حساب كل مدرس من المشرفين: يطلع له «🎬 مقاطعي» ويرفع مقاطعه هو بس (التأسيس والتدريب).</span></div>
+      <label><span>سلمان الفرج</span>${sel('salman')}</label><label><span>عبدالله الشمراني</span>${sel('abdullah')}</label></div>`;
+  }
+  function vupHtml(V, mine) {
+    if (!V || !V.map) return '';
+    const S = vupSlots(V), up = S.filter(x => x.size).length, G = mine ? VUP_GT : VUP_G;
     const cell = x => { const st = VUP.st[x.f] || {}, run = st.p != null && st.p < 1 && !st.err;
-      return `<div class="vslot${x.size ? ' ok' : ''}${run ? ' run' : ''}${st.err ? ' bad' : ''}" data-f="${x.f}"><b>${x.label}</b>
+      return `<div class="vslot${x.size ? ' ok' : ''}${run ? ' run' : ''}${st.err ? ' bad' : ''}" data-f="${x.f}"><b title="${esc(x.label)}">${x.label}</b>
         <small>${st.err ? '⚠️ ' + esc(st.err) : run ? 'يرتفع… ' + Math.round(st.p * 100) + '%' : x.size ? '✓ ' + vupMB(x.size) : 'ناقص'}</small>
         <i class="pg" aria-hidden="true"><span style="width:${run ? Math.round(st.p * 100) : x.size ? 100 : 0}%"></span></i>
         <label class="vpick" title="${x.size ? 'استبدل الملف' : 'اختر ملف المقطع'}">${x.size ? 'تغيير' : 'اختر'}<input type="file" accept="video/mp4,.mp4" hidden data-one="${x.f}"${VUP.busy ? ' disabled' : ''}></label></div>`; };
-    return `<details class="vup"${up < S.length ? ' open' : ''}><summary>⬆️ رفع المقاطع للموقع <small><bdi>${up}/${S.length}</bdi></small></summary>
-      <p class="mut">اختر ملفات المقاطع (MP4) من جهازك، ونعرف كل ملف من اسمه (Section 3، Model 7، Analogy، استيعاب المقروء…)، أو اختر لكل مقطع ملفه. خلّ الصفحة مفتوحة لين يخلص الرفع.</p>
-      <div class="vupbar"><label class="btn sm${VUP.busy ? ' dis' : ''}">📁 اختر عدة ملفات<input type="file" accept="video/mp4,.mp4" multiple hidden id="vupmany"${VUP.busy ? ' disabled' : ''}></label><span class="mut${VUP.miss.length && !VUP.busy ? ' vmiss' : ''}" id="vupst">${VUP.busy ? 'جاري الرفع…' : VUP.miss.length ? '⚠️ ما عرفت مقطع: ' + esc(VUP.miss.slice(0, 3).join('، ')) + (VUP.miss.length > 3 ? '…' : '') + '. ارفعه من زر «اختر» حق مقطعه.' : ''}</span></div>
-      <div class="vupgrid">${S.map((x, i) => (i === 0 || S[i - 1].g !== x.g ? `<h4 class="vgh">${VUP_G[x.g]} <small><bdi>${S.filter(y => y.g === x.g && y.size).length}/${S.filter(y => y.g === x.g).length}</bdi></small></h4>` : '') + cell(x)).join('')}</div></details>`;
+    const bar = `<div class="vupbar"><label class="btn sm${VUP.busy ? ' dis' : ''}">📁 اختر عدة ملفات<input type="file" accept="video/mp4,.mp4" multiple hidden id="vupmany"${VUP.busy ? ' disabled' : ''}></label><span class="mut${VUP.miss.length && !VUP.busy ? ' vmiss' : ''}" id="vupst">${VUP.busy ? 'جاري الرفع…' : VUP.miss.length ? '⚠️ ما عرفت مقطع: ' + esc(VUP.miss.slice(0, 3).join('، ')) + (VUP.miss.length > 3 ? '…' : '') + '. ارفعه من زر «اختر» حق مقطعه.' : ''}</span></div>`;
+    const grid = `<div class="vupgrid">${S.map((x, i) => (i === 0 || S[i - 1].g !== x.g ? `<h4 class="vgh">${G[x.g]} <small><bdi>${S.filter(y => y.g === x.g && y.size).length}/${S.filter(y => y.g === x.g).length}</bdi></small></h4>` : '') + cell(x)).join('')}</div>`;
+    if (mine) return `<section class="vup mine"><p class="mut">اختر ملفات مقاطعك (MP4)، ونعرف كل ملف من اسمه (${mine === 'salman' ? 'Lesson 3، Section 7، Model 2…' : 'Analogy، Reading، Model 5…'})، أو اختر لكل مقطع ملفه. المقطع يطلع للطلاب أول ما يخلص رفعه، فخلّ الصفحة مفتوحة لين يخلص.</p>${bar}${grid}</section>`;
+    return `<details class="vup"${VUP.open || VUP.busy ? ' open' : ''}><summary>⬆️ رفع المقاطع للموقع <small><bdi>${up}/${S.length}</bdi></small></summary>${vupTeachSet(V)}
+      <p class="mut">اختر ملفات المقاطع (MP4) من جهازك، ونعرف كل ملف من اسمه (Lesson 3 = تأسيس الكمي، Section 3، Model 7، Analogy… ومقاطع عبدالله لو اسمه في الملف)، أو اختر لكل مقطع ملفه. خلّ الصفحة مفتوحة لين يخلص الرفع.</p>${bar}${grid}</details>`;
   }
-  function vupBind(W) {
+  function vupBind(W, teach) {
+    const V = teach ? MYV : ADM.vids;
+    const det = W.querySelector('details.vup'); if (det) det.ontoggle = () => { VUP.open = det.open ? 1 : 0; };
     const many = W.querySelector('#vupmany'); if (many) many.onchange = () => { const L = [...many.files], plan = [], miss = [];
-      const ok = new Set(vupSlots().map(x => x.f));
-      L.forEach(f => { const g = vupGuess(f.name); if (g && ok.has(g)) plan.push([f, g]); else miss.push(f.name); });
-      VUP.miss = miss; if (!plan.length) { paintSubs(); if (miss.length) toast('ما عرفت مقطع هالملفات من أسمائها. ارفع كل واحد من زر «اختر» حق مقطعه.'); return; }
-      vupRun(plan); };
-    W.querySelectorAll('[data-one]').forEach(i => i.onchange = () => { if (i.files[0]) { VUP.miss = []; vupRun([[i.files[0], i.dataset.one]]); } });
+      const ok = new Set(vupSlots(V).map(x => x.f));
+      L.forEach(f => { const g = vupGuess(f.name, teach); if (g && ok.has(g)) plan.push([f, g]); else miss.push(f.name); });
+      VUP.miss = miss; if (!plan.length) { vupRepaint(); if (miss.length) toast('ما عرفت مقطع هالملفات من أسمائها. ارفع كل واحد من زر «اختر» حق مقطعه.'); return; }
+      vupRun(plan, V); };
+    W.querySelectorAll('[data-one]').forEach(i => i.onchange = () => { if (i.files[0]) { VUP.miss = []; vupRun([[i.files[0], i.dataset.one]], V); } });
+    W.querySelectorAll('select[data-teach]').forEach(sel => sel.onchange = async () => {   // 👑 حساب المدرس
+      sel.disabled = true;
+      try { const r = await admCall({ op: 'adm_staff_teach', teach: sel.dataset.teach, email: sel.value }); if (ADM.vids) ADM.vids.staff = r.staff; toast(sel.value ? '✓ انحفظ: يطلع له «🎬 مقاطعي» أول ما يحدّث الصفحة' : '✓ انحفظ'); }
+      catch (e) { toast('ما انحفظ: ' + e.message); }
+      vupRepaint(); });
   }
-  async function vupRun(plan) {
-    if (!plan.length || VUP.busy) return; VUP.busy = 1;
-    const repaint = () => { if (location.hash === '#admin-subs') paintSubs(); };
-    plan.forEach(([, f]) => VUP.st[f] = { p: 0 }); repaint();
+  const vupRepaint = () => { if (location.hash === '#admin-subs') paintSubs(); else if (location.hash === '#my-vids') paintMyVids(); };
+  async function vupRun(plan, V) {
+    if (!plan.length || VUP.busy) return; VUP.busy = 1; VUP.open = 1;
+    plan.forEach(([, f]) => VUP.st[f] = { p: 0 }); vupRepaint();
     let ok = 0;
     for (const [file, key] of plan) {
       try { const size = await vupFile(file, key, p => { VUP.st[key].p = p; const c = document.querySelector(`.vslot[data-f="${key}"]`); if (c) { c.classList.add('run'); c.querySelector('small').textContent = 'يرتفع… ' + Math.round(p * 100) + '%'; c.querySelector('.pg span').style.width = Math.round(p * 100) + '%'; } });
         VUP.st[key] = { p: 1 }; ok++;
-        const V = ADM.vids; V.objects = (V.objects || []).filter(o => o.key !== key).concat([{ key, size }]); const sk = Object.keys(V.map).find(k => V.map[k] === key); if (sk && V.files.indexOf(sk) < 0) V.files.push(sk);
+        V.objects = (V.objects || []).filter(o => o.key !== key).concat([{ key, size }]); const sk = Object.keys(V.map).find(k => V.map[k] === key); if (sk && (V.files || (V.files = [])).indexOf(sk) < 0) V.files.push(sk);
       } catch (e) { VUP.st[key] = { err: String(e.message || e).slice(0, 60) }; }
-      repaint();
+      vupRepaint();
     }
-    VUP.busy = 0; repaint(); toast((ok === plan.length ? `✓ انرفع ${ok === 1 ? 'مقطع واحد' : ok === 2 ? 'مقطعين' : ok + ' مقاطع'}` : `انرفع ${ok} من ${plan.length}. اللي ما انرفع جرّبه مرة ثانية.`) + (VUP.miss.length ? ` · وفيه ${VUP.miss.length === 1 ? 'ملف' : VUP.miss.length + ' ملفات'} ما عرفت مقطعه` : ''));
+    VUP.busy = 0; vupRepaint(); toast((ok === plan.length ? `✓ انرفع ${ok === 1 ? 'مقطع واحد' : ok === 2 ? 'مقطعين' : ok + ' مقاطع'}` : `انرفع ${ok} من ${plan.length}. اللي ما انرفع جرّبه مرة ثانية.`) + (VUP.miss.length ? ` · وفيه ${VUP.miss.length === 1 ? 'ملف' : VUP.miss.length + ' ملفات'} ما عرفت مقطعه` : ''));
+  }
+  // ---------- 🎬 «مقاطعي»: المدرس (سلمان الفرج · عبدالله الشمراني) يرفع مقاطعه بنفسه — التأسيس والتدريب ----------
+  let MYV = null;
+  async function renderMyVids() {
+    document.title = 'مقاطعي | Q-Guide';
+    app.innerHTML = topbar(`<span class="ttl">🎬 مقاطعي</span><span class="sp"></span>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) + `<main class="wrap myv" id="myv"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>`;
+    bindCtl();
+    if (!MYV || !VUP.busy) { try { const r = await api({ op: 'teach_vids', session: auth.session }); if (!r.ok) throw new Error(r.msg || r.error || 'تعذّر'); MYV = r; }
+      catch (e) { const w = $('#myv'); if (w) w.innerHTML = `<div class="center mut">${esc(e.message || 'تعذّر تحميل مقاطعك')}</div>`; return; } }
+    paintMyVids();
+  }
+  function paintMyVids() {
+    const W = $('#myv'); if (!W || !MYV) return;
+    const t = TEACHERS.find(x => x.id === MYV.teach) || { name: '', href: '#sharh' }, S = vupSlots(MYV), up = S.filter(x => x.size).length;
+    W.innerHTML = `<div class="tphead"><span class="tav" aria-hidden="true">${esc(t.name[0] || '🎬')}</span><div class="tphx"><h1>مقاطع ${t.name}</h1>
+      <p>ارفع مقطع كل درس أو قسم أو نموذج، ويطلع للطلاب في صفحتك أول ما يخلص رفعه. انرفع <bdi>${up}</bdi> من <bdi>${S.length}</bdi> · <a class="lnk2" href="${t.href}">👨‍🏫 صفحتي عند الطلاب</a></p></div></div>${vupHtml(MYV, MYV.teach)}`;
+    vupBind(W, MYV.teach);
   }
   async function vupFile(file, key, onp) {
     const base = window.QG.API.replace(/\/$/, '') + '/vup', H = { 'x-qg-ses': auth.session }, J = Object.assign({ 'content-type': 'application/json' }, H);

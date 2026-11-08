@@ -39,13 +39,17 @@ It must be in Google Cloud → APIs & Services → Credentials → the OAuth cli
 Registered by the owner on Nov 6 2026 (verified: Google shows the account chooser, not the error). The OAuth client (project number 248349599429) lives in the Google Cloud of the account that owns the students sheet and the Forms — not the Cloudflare/GitHub account and not the YouTube channel account. Never change `login_uri` without adding the new address there first.
 `POST /gsi` (API) bounces to `/p/#gsi=<credential>`; `/test/` saves `qg_gsi_to` before the redirect and `/p/` (`gsiBack`, read before `renderLogin` clears it) sends him back after login. Test: `site/gsi_e2e.js`.
 
-## 👨‍🏫 Abdullah Al Shamrani's page (`#sharh-abdullah`, `renderSharhAbd`)
-Two tabs: «🧱 التأسيس» = 4 in-site lessons `af:1–4` (1 التناظر · 2 إكمال الجمل · 3 الخطأ السياقي · 4 استيعاب المقروء = `PART_AR`, same order as the verbal rules workbook; `ABD`) and «🏋️ التدريب» = the 14 models (coming soon, no slots yet).
-Lessons play in `#watch-af<n>` (`renderWatch` handles `q`/`v`/`af`) for **every** subscriber incl. YouTube members (`login`/`me` now return `vids` to all subscribers; Salman's `q`/`v` still play in-site only for free/bank/pay via `vidSub()`). Not uploaded → «⏳ قريباً». Visitors see locks.
-The owner uploads them in «💳 الاشتراكات» → «⬆️ رفع المقاطع للموقع» (group «🧱 عبدالله الشمراني · التأسيس», files matched by name: Analogy/تناظر, Sentence/إكمال, Contextual/سياقي, Reading/استيعاب). «📘 قواعد الدرس» opens `#wb-tv@<page>` (`TV_PAGE`).
+## 👨‍🏫 Teacher pages (`#sharh-salman`, `#sharh-abdullah` · `renderTeach(id, tab)`, config `TP`) — «الشرح والمدرسين» `#sharh` = teacher cards only
+Each teacher page has two tabs (`/f` «🧱 التأسيس» · `/t` «🏋️ التدريب» in the hash; else the last tab `qg_tp_sal`/`qg_tp_abd`; Salman opens on practice while none of his foundation is uploaded):
+- Salman Al Faraj: foundation = the 24 lessons of «قواعد الكمي» (`sf:1–24`, `QR_L` = [ar, en, workbook page, unit], `QR_U` = 4 units, same order as `#wb-tq`; «📘 قواعد الدرس» → `#wb-tq@<page>`) · practice = his quant sections + verbal models (`q`/`v`, YouTube or in-site as before).
+- Abdullah Al Shamrani: foundation = 4 verbal lessons `af:1–4` (`PART_AR`, `TV_PAGE`) · practice = the 14 models `at:1–14` (in-site; «✍️ حل النموذج N» → `#vN`).
+Foundation + Abdullah's practice play in-site for **every** subscriber incl. YouTube members (`TK` in `renderWatch`: `af`/`at`/`sf`); not uploaded → «⏳ قريباً» (banner when none); visitors see locks. The verbal workbook card has no teacher button any more (owner's request).
 
-## 🧱 Foundation workbooks (`#wb-tq` = تأسيس الكمي / Quant Rules 207 p · `#wb-tv` = تأسيس اللفظي / verbal rules 4 p)
-Same viewer as the training workbooks (`renderWorkbook`, pen, encrypted pages, no download, no solved copy), for every subscriber. `#wb-tv@3` opens a page. Built by the private builder `site/build_found.py` from the owner's PDFs → `p/wb/tq|tv/NNN.bin` + `meta.json` (`slots.header` = the name stamp, bottom-right, `align`). Home «📘 مذكراتك» has two groups: 🧱 التأسيس / 🏋️ التدريب.
+## 🎬 Teachers upload their own videos (`#my-vids` «🎬 مقاطعي», `renderMyVids` / `paintMyVids`)
+A staff account linked to a teacher (`auth.teach` = `salman` | `abdullah` from `login`/`me`) gets «🎬 مقاطعي» in the top bar: only his slots (`teach_vids`), same upload cells/multi-picker as the owner (`vupHtml(V, teach)` / `vupBind(W, teach)`; names: Lesson N = Salman's foundation, Section N, Model N (Abdullah's practice on his page), Analogy…). The owner links accounts in «💳 الاشتراكات» → «⬆️ رفع المقاطع للموقع» (closed `<details>`, `VUP.open`) → «👨‍🏫 المدرسين يرفعون مقاطعهم بأنفسهم» (`adm_staff_teach`, one account per teacher). Test: `site/teach_e2e.js`.
+
+## 🧱 Foundation workbooks (`#wb-tq` = تأسيس الكمي / Quant Rules EN-AR 257 p, 24 lessons · `#wb-tv` = تأسيس اللفظي / verbal rules 4 p)
+Same viewer as the training workbooks (`renderWorkbook`, pen, encrypted pages, no download, no solved copy), for every subscriber. `#wb-tv@3` opens a page. Built by the private builder `site/build_found.py` from the owner's PDFs → `p/wb/tq|tv/NNN.bin` + `meta.json` (`slots.header` = the name stamp, bottom-right, `align`; `v` = build time: pages are fetched with `?v=` and the pen key is `qg_wb_<kind>v<v>_<page>`, so a new edition never shows cached old pages or old pen marks). Bump `WB_V` when a meta.json changes. Home «📘 مذكراتك» has two groups: 🧱 التأسيس / 🏋️ التدريب.
 The assistant button is hidden on `#wb-*` pages (it covered the pen button).
 
 ## 🧑‍🏫 Academic advisors (`#admin-adv`, `renderAdv` / `paintAdv`, API `src/adv.js`)

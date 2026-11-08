@@ -1937,7 +1937,7 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .vupbar .btn.dis{opacity:.5;pointer-events:none}
 .vupgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:8px}
 .vslot{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-areas:"b p" "s p" "g g";column-gap:8px;row-gap:2px;align-items:center;padding:9px 11px 10px;border:1.5px dashed var(--line);border-radius:11px;background:#FBFCFE}
-.vslot b{grid-area:b;font-size:calc(14px * var(--fs));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vslot b{grid-area:b;font-size:calc(14px * var(--fs));line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 .vslot small{grid-area:s;font-size:calc(12px * var(--fs));color:var(--mut)}
 .vslot .pg{grid-area:g;display:block;height:4px;border-radius:4px;background:#E8ECF5;overflow:hidden;margin-top:5px}
 .vslot .pg span{display:block;height:100%;background:var(--navy3);transition:width .3s}
@@ -1949,6 +1949,18 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 [data-theme="dark"] .vup summary{color:#DCE4FF}[data-theme="dark"] .vup summary small{background:#2a3350}
 [data-theme="dark"] .vslot{background:#141d31}[data-theme="dark"] .vslot.ok{background:#12291f;border-color:#2D5A45}[data-theme="dark"] .vslot.bad{background:#2c1717;border-color:#5a2a2a}[data-theme="dark"] .vslot .pg{background:#2a3350}
 .vupbar .vmiss{color:var(--warnt,#8a5a00);font-weight:700}
+/* 👑 مين يرفع مقاطع كل مدرس (صندوق المالك) */
+.vteach{display:grid;grid-template-columns:1fr auto auto;align-items:end;gap:10px 14px;margin:10px 0 4px;padding:10px 12px;border-radius:12px;background:var(--dotbg)}
+.vteach>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vteach b{font-size:calc(14px * var(--fs));color:var(--ink2)}
+.vteach .mut{font-size:calc(12.5px * var(--fs));line-height:1.6}
+.vteach label{display:flex;flex-direction:column;gap:3px;font-size:calc(12.5px * var(--fs));font-weight:800;color:var(--mut);min-width:0}
+.vteach select{max-width:240px;height:36px;padding:0 8px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font:inherit;font-size:calc(13px * var(--fs))}
+@media (max-width:760px){.vteach{grid-template-columns:1fr}.vteach select{max-width:none;width:100%}}
+/* 🎬 «مقاطعي» (المدرس) */
+.myv .vup.mine{padding:14px 16px}
+.myv .vup.mine>p{margin:0 0 10px}
+.myv .tphx p a{margin-inline-start:4px}
 
 /* ---------- 👨‍🏫 الشرح والمدرسين (#sharh) ---------- */
 .tchs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -2255,6 +2267,20 @@ a.tle:hover,button.tle:hover{border-color:var(--navy3);box-shadow:var(--sh)}
 .tpsoon a{color:inherit;font-weight:800}
 .wvi.dis{border-style:dashed;cursor:default;opacity:.7}
 .wvi.dis small{direction:rtl}
+/* 👨‍🏫 صفحة المدرس: الوحدات (تأسيس الكمي) · عناوين التدريب · نموذج مقفول للزائر */
+.tpu{display:flex;align-items:center;gap:10px;margin:22px 0 0;font-family:var(--disp);font-weight:800;font-size:calc(17px * var(--fs));color:var(--ink2)}
+.tpu small{margin-inline-start:auto;font-family:var(--font, inherit);font-weight:600;font-size:calc(12.5px * var(--fs));color:var(--mut)}
+.tpun{flex:none;width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:#EEF3FF;color:var(--navy);font-size:calc(14px * var(--fs))}
+.tpbar + .tpu{margin-top:18px}
+.tpsoon + .tpbar{margin-top:12px}
+.tpage .tsub{display:flex;align-items:baseline;gap:8px;margin:20px 0 0;color:var(--ink2);font-weight:800;font-size:calc(16px * var(--fs))}
+.tpage .tsub:first-child{margin-top:4px}
+.tpage .tsub small{font-family:var(--font, inherit);font-weight:600;font-size:calc(12.5px * var(--fs));color:var(--mut)}
+.tpsoon + .wvlist{margin-top:12px}
+button.wvi{font:inherit;text-align:start;cursor:pointer;width:100%}
+.wvi.lock small{direction:rtl}
+.wvi.lock b{color:var(--mut)}
+[data-theme="dark"] .tpun{background:#1B2A52;color:#C9D6FF}
 .vgh{grid-column:1/-1;margin:10px 2px 0;font-size:calc(14px * var(--fs));color:var(--navy2)}
 .vgh small{color:var(--mut);font-weight:600}
 [data-theme="dark"] .tls{background:#1B2A52;color:#C9D6FF}
