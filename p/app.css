@@ -623,6 +623,17 @@ body.rec-on{overflow:hidden;background:#0B1530}
   .rail .rsw{width:22px;height:22px;border-width:2px}
 }
 @media (max-aspect-ratio:2/3) and (max-width:370px){.rail .rb{min-width:31px}.rail .rsw{width:20px;height:20px}}
+/* 🔤 اضغط على كلمة في البطاقة → ترجمتها في فقاعة تحتها (أو فوقها لو تحتها سطر ثاني) */
+.tk .tw{text-decoration:underline transparent;text-decoration-thickness:.14em;text-underline-offset:.14em;text-decoration-skip-ink:none;transition:text-decoration-color .15s}
+.tk .tw.on{text-decoration-color:#F5B83D}
+.tk-trl{position:absolute;inset:0;z-index:3;pointer-events:none}
+.tk-trb{position:absolute;left:0;top:0;direction:rtl;white-space:nowrap;font-size:4.2cqw;font-weight:800;line-height:1.25;color:#0E2458;background:#F5B83D;border-radius:999px;padding:.1em .62em .16em;box-shadow:0 .7cqw 2.2cqw rgba(9,22,56,.3);animation:trpop .24s cubic-bezier(.2,1.5,.45,1)}
+.tk-trb.big{font-size:4.8cqw}
+.tk-trb:before{content:"";position:absolute;left:var(--ax,50%);margin-left:-.3em;top:-.28em;border:.3em solid transparent;border-top:0;border-bottom:.3em solid #F5B83D}
+.tk-trb.up:before{top:auto;bottom:-.28em;border-bottom:0;border-top:.3em solid #F5B83D}
+@keyframes trpop{from{opacity:0;transform:translateY(-.35em) scale(.6)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.tk-trb{animation:none}}
+.rp-hint{margin-top:9px;font-size:calc(12.5px * var(--fs));line-height:1.65;color:var(--mut)}
 
 /* =====================================================================
    v20 — «ورقة الإجابة»: كل قسم ورقة إجابة تتعبّى فقاعاتها وأنت تحل

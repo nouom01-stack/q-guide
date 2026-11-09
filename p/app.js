@@ -2427,14 +2427,27 @@
     hide: SI('<path d="M10.73 5.08A10.74 10.74 0 0 1 21.94 11.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>'),
     panel: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>')
   };
+  // 🔤 ترجمة الكلمة بالضغط: كل طرف من التناظر وحدة، ترجمته من ترجمة السؤال نفسه (ar) · غيره من القاموس · وخيارات المقارنة في الكمي
+  const ST_PHRASE = { 'a is greater': 'A أكبر', 'b is greater': 'B أكبر', equal: 'متساويتان', 'not enough information': 'المعطيات غير كافية', mango: 'مانجو', lemon: 'ليمون', banana: 'موز', peach: 'خوخ', oats: 'شوفان', 'south-west': 'جنوب غرب', 'south-east': 'جنوب شرق', 'north-east': 'شمال شرق', 'north-west': 'شمال غرب' };
+  const stTw = (w, ar) => `<span class="tw" data-ar="${esc(ar)}">${esc(w)}</span>`;
+  function stTr(en, ar) {   // "SELECT : CHOOSE" + "ينتقي : يختار" → SELECT و CHOOSE ينضغطون
+    const a = String(en || '').split(':'), b = ar ? String(ar).split(':') : [];
+    return a.map((part, i) => {
+      const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(part), w = m[2]; if (!/[A-Za-z]/.test(w)) return esc(part);
+      const tr = (b.length === a.length && b[i].trim()) || ST_PHRASE[w.toLowerCase()] || (/^[A-Za-z][A-Za-z'’-]*$/.test(w) ? vocLook(w) : '');
+      if (tr) return m[1] + stTw(w, tr) + m[3];
+      return m[1] + w.split(/([A-Za-z][A-Za-z'’]*)/).map((x, j) => { if (!(j % 2)) return esc(x); const t = STOP.has(x.toLowerCase()) ? '' : vocLook(x); return t ? stTw(x, t) : esc(x); }).join('') + m[3];
+    }).join(':');
+  }
   async function renderRec(kind, n) {
     stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
-    let data; try { [data] = await Promise.all([stData(), stPosted()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
+    let data; try { [data] = await Promise.all([stData(), stPosted(), loadVocab()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
     const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
     ST.reveal = false; document.body.classList.add('rec-on');
-    const key = kind + n, P = ST.posted[key];
-    const opts = it.opts.map((o, i) => `<div class="tk-o" data-i="${i}"><span class="tk-l">${STL[i]}</span><span class="tk-t">${esc(o)}</span></div>`).join('');
-    const q = kind === 'v' ? `<div class="tk-kind">Analogy · التناظر اللفظي</div><div class="tk-qv">${esc(it.q)}</div>` : `<div class="tk-kind">Quant · القسم الكمي</div><div class="tk-qi"><img src="${it.img}" alt=""></div>`;
+    const key = kind + n, P = ST.posted[key], itAr = it.ar || {};
+    const opts = it.opts.map((o, i) => `<div class="tk-o" data-i="${i}"><span class="tk-l">${STL[i]}</span><span class="tk-t">${stTr(o, (itAr.o || [])[i])}</span></div>`).join('');
+    const q = kind === 'v' ? `<div class="tk-kind">Analogy · التناظر اللفظي</div><div class="tk-qv">${stTr(it.q, itAr.q)}</div>` : `<div class="tk-kind">Quant · القسم الكمي</div><div class="tk-qi"><img src="${it.img}" alt=""></div>`;
+    const hasTw = /class="tw"/.test(q + opts);
     const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
     const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
     const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
@@ -2452,18 +2465,62 @@
         <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>Q ${n} · ${kind === 'v' ? 'التناظر اللفظي' : 'الكمي'}</b><span class="sp"></span><a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a><button class="ib2" id="rrnd" title="سؤال عشوائي لم يُنشر">🎲</button></div>
         <div class="rp-sec"><div class="rp-lbl">✍️ القلم والنص</div>
           <div class="rp-tools">${ST_TOOLS.map(([t, ic, lb], i) => `<button type="button" data-tool="${t}" class="${i ? '' : 'on'}${t === 'text' ? ' tt' : ''}" title="${t === 'text' ? 'نص: اضغط على البطاقة واكتب' : lb}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span>${ST_COLS.map((c, i) => `<button type="button" data-col="${c}" class="sw ${i ? '' : 'on'}" style="--c:${c}" title="لون" aria-pressed="${!i}"></button>`).join('')}<span class="sep"></span>${ST_W.map(([w, ic, lb, tt], i) => `<button type="button" data-w="${w}" title="${tt}" class="${i ? '' : 'on'}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span><button type="button" id="rundo" title="تراجع">↶</button><button type="button" id="rclr" title="مسح الكتابة">🗑</button></div>
-          <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label></div>
+          <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label>
+          ${hasTw ? '<div class="rp-hint">🔤 اضغط على أي كلمة في البطاقة تطلع ترجمتها تحتها، واضغطها مرة ثانية تختفي.</div>' : ''}</div>
         <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
         ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
         <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
           <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
           ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
-        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح · P قلم · T نص · E ممحاة · H وضع التصوير · Esc رجوع للوحة</div>
+        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة · H وضع التصوير · Esc رجوع للوحة</div>
       </aside>
       <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
       <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
     </div>`;
-    const tk = $('#tk'); ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true }); ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
+    const tk = $('#tk');
+    // 🔤 اضغط على كلمة → ترجمتها تحتها (فوقها لو تحتها سطر ثاني من نفس النص) · ضغطة ثانية عليها أو على الترجمة تخفيها · «مسح» يخفي الكل
+    const trl = document.createElement('div'); trl.className = 'tk-trl'; tk.appendChild(trl);
+    const TR = new Map();   // الكلمة → فقاعة ترجمتها
+    const twAt = (x, y) => {
+      let best = null, bd = 1e9;
+      tk.querySelectorAll('.tw').forEach(w => { const r = w.getBoundingClientRect(), pad = Math.max(6, r.height * .18); if (x < r.left - pad || x > r.right + pad || y < r.top - pad || y > r.bottom + pad) return; const d = Math.hypot(x - (r.left + r.right) / 2, y - (r.top + r.bottom) / 2); if (d < bd) { bd = d; best = w; } });
+      if (!best) TR.forEach((b, w) => { const r = b.getBoundingClientRect(); if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) best = w; });
+      return best;
+    };
+    const MC = document.createElement('canvas').getContext('2d');
+    const glyphs = w => {   // حدود الحروف نفسها (صندوق الخط أطول بكثير): خط الأساس + أعلى الحروف + تحت الخط الذهبي
+      const cs = getComputedStyle(w), fs = parseFloat(cs.fontSize), rs = w.getClientRects(); MC.font = cs.font || `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const m = MC.measureText(w.textContent), line = r => { const base = r.top + (m.fontBoundingBoxAscent || r.height * .78); return { r, cx: (r.left + r.right) / 2, top: base - (m.actualBoundingBoxAscent || fs * .72), bot: Math.max(base + (m.actualBoundingBoxDescent || 0), base + fs * .3) }; };
+      return { first: line(rs[0]), last: line(rs[rs.length - 1]) };
+    };
+    const trPlace = () => {
+      if (!TR.size || !tk.isConnected) return; const kr = tk.getBoundingClientRect(), cw = kr.width, pad = cw * .025, rows = new Map();
+      TR.forEach((b, w) => {
+        if (!w.getClientRects().length) return; const g = glyphs(w), bw = b.offsetWidth, bh = b.offsetHeight, ah = parseFloat(getComputedStyle(b).fontSize) * .3 + 2;
+        const box = w.closest('.tk-qv,.tk-t'), bs = box && getComputedStyle(box), lh = bs ? parseFloat(bs.lineHeight) || parseFloat(bs.fontSize) * 1.2 : 0;
+        const up = !!box && box.getBoundingClientRect().bottom - parseFloat(bs.paddingBottom) - g.last.r.bottom > lh * .45;   // تحت الكلمة سطر ثاني من نفس النص → الترجمة فوقها
+        const L = up ? g.first : g.last, y = up ? L.top - kr.top - bh - ah : L.bot - kr.top + ah, cx = L.cx - kr.left, k = Math.round(y);
+        b.classList.toggle('up', up); (rows.get(k) || rows.set(k, []).get(k)).push({ b, x: cx - bw / 2, y, bw, cx });
+      });
+      rows.forEach(l => {   // ترجمتين بنفس السطر ما يركبون على بعض
+        l.sort((a, c) => a.x - c.x);
+        for (let i = 1; i < l.length; i++) if (l[i].x < l[i - 1].x + l[i - 1].bw + 6) l[i].x = l[i - 1].x + l[i - 1].bw + 6;
+        const z = l[l.length - 1], over = z.x + z.bw - (cw - pad); if (over > 0) l.forEach(o => o.x -= over);
+        if (l[0].x < pad) { const d = pad - l[0].x; l.forEach(o => o.x += d); }
+        l.forEach(o => { o.b.style.left = o.x + 'px'; o.b.style.top = o.y + 'px'; o.b.style.setProperty('--ax', Math.max(12, Math.min(o.bw - 12, o.cx - o.x)) + 'px'); });
+      });
+    };
+    const trToggle = w => {
+      const old = TR.get(w);
+      if (old) { old.remove(); TR.delete(w); w.classList.remove('on'); }
+      else { const b = document.createElement('div'); b.className = 'tk-trb' + (w.closest('.tk-qv') ? ' big' : ''); b.textContent = w.dataset.ar; trl.appendChild(b); TR.set(w, b); w.classList.add('on'); }
+      trPlace();
+    };
+    const trClear = () => { TR.forEach((b, w) => { b.remove(); w.classList.remove('on'); }); TR.clear(); };
+    const tro = new ResizeObserver(() => { if (!tk.isConnected) return tro.disconnect(); trPlace(); }); tro.observe(tk); if (document.fonts) document.fonts.ready.then(trPlace);
+    tk.addEventListener('click', e => { if (ST.pen.isOn()) return; const w = twAt(e.clientX, e.clientY); if (w) trToggle(w); });   // الكتابة مقفلة: الضغط يوصل للكلمة مباشرة
+    ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, onTap: (x, y) => { const w = twAt(x, y); if (!w) return false; trToggle(w); return true; } });
+    ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
     const rec = $('.rec');
     // نفس الأداة/اللون/السماكة تتعلّم في اللوحة والعمودين مع بعض
     const mark = (a, v) => rec.querySelectorAll(`[data-${a}]`).forEach(x => { const on = x.dataset[a] === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
@@ -2476,7 +2533,7 @@
     const recMode = () => { setUI(false); setBare(false); };
     const reveal = () => { ST.reveal = !ST.reveal; tk.classList.toggle('rev', ST.reveal); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', ST.reveal && +o.dataset.i === it.ans)); $('#rrev').textContent = ST.reveal ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة';
       const l = $('#lrev'); l.classList.toggle('on', ST.reveal); l.title = ST.reveal ? 'إخفاء الإجابة · R' : 'كشف الإجابة · R'; l.setAttribute('aria-label', l.title); };
-    const clear = () => ST.pen.clear(), undo = () => ST.pen.undo();
+    const clear = () => { ST.pen.clear(); trClear(); }, undo = () => ST.pen.undo();
     // الضغط على الأدوات ما ياخذ التركيز من النص اللي ينكتب (عشان اللون والحجم يتغيّرون عليه)
     rec.querySelectorAll('[data-tool],[data-col],[data-w],#rundo,#rclr,#lundo,#lclr,#mtxt,#mundo,#mclr').forEach(b => b.addEventListener('pointerdown', e => e.preventDefault()));
     rec.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
@@ -2484,6 +2541,7 @@
     rec.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
     $('#rundo').onclick = $('#mundo').onclick = $('#lundo').onclick = undo;
     $('#rclr').onclick = $('#mclr').onclick = $('#lclr').onclick = clear;
+    $('#lclr').title = 'مسح الكتابة والترجمات · C'; $('#lclr').setAttribute('aria-label', $('#lclr').title); $('#rclr').title = 'مسح الكتابة والترجمات';
     $('#rpen').onchange = e => penOn(e.target.checked);
     $('#mpen').classList.add('on'); $('#mpen').onclick = () => penOn(!ST.pen.isOn());
     $('#mtxt').onclick = () => setTool(ST.pen.tool() === 'text' ? 'pen' : 'text');

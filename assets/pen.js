@@ -2,6 +2,7 @@
    const pen = QGPen.attach(hostEl, { storageKey, text: true }); pen.setTool('pen'|'hl'|'eraser'|'text'); pen.toggle(on); pen.undo(); pen.clear(); pen.save()/load()
    Drawing coordinates are stored relative to the host size (0..1) so they survive resizing.
    Text (opts.text): press anywhere to type · drag a text to move it · press it to edit · empty it or rub it with the eraser to delete it.
+   opts.onTap(x, y): a press without moving (pen / highlighter / text) is offered to the page first (e.g. tap a word → its translation); return true to keep it from drawing a dot or opening a text box.
    Texts live in the same list as the strokes ({t:'txt', x, y, s, c, z, d}), so undo / clear / save cover both. */
 (function () {
   'use strict';
@@ -11,7 +12,7 @@
   const clamp = v => Math.max(0, Math.min(1, v));
   function attach(host, opts) {
     opts = opts || {};
-    const st = { on: false, tool: 'pen', color: COLORS.pen[0], solid: COLORS.pen[0], width: 2.4, strokes: [], hist: [], cur: null, dels: null, key: opts.storageKey || null, save: opts.autosave !== false };
+    const st = { on: false, tool: 'pen', color: COLORS.pen[0], solid: COLORS.pen[0], width: 2.4, strokes: [], hist: [], cur: null, dels: null, down: null, key: opts.storageKey || null, save: opts.autosave !== false };
     host.style.position = host.style.position || 'relative';
     const cv = document.createElement('canvas'); cv.className = 'qgpen-canvas'; host.appendChild(cv);
     const ctx = cv.getContext('2d');
@@ -42,9 +43,11 @@
     function redraw() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); st.strokes.forEach(drawStroke); if (st.cur) drawStroke(st.cur); }
     function paint() { redraw(); syncText(); }
     function pos(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; }
-    cv.addEventListener('pointerdown', e => { if (!st.on || st.tool === 'text') return; if (e.pointerType === 'mouse' && e.button !== 0) return; cv.setPointerCapture(e.pointerId); st.cur = { t: st.tool, c: st.color, w: st.width, p: [pos(e)] }; st.dels = null; if (st.tool === 'eraser') eraseText(e); e.preventDefault(); });
-    cv.addEventListener('pointermove', e => { if (!st.cur) return; st.cur.p.push(pos(e)); if (st.cur.t === 'eraser') eraseText(e); redraw(); e.preventDefault(); });
-    const up = e => { if (!st.cur) return; st.strokes.push(st.cur); st.hist.push({ a: 'add', it: st.cur, dels: st.dels }); st.cur = null; st.dels = null; redraw(); persist(); };
+    cv.addEventListener('pointerdown', e => { if (!st.on || st.tool === 'text') return; if (e.pointerType === 'mouse' && e.button !== 0) return; cv.setPointerCapture(e.pointerId); st.cur = { t: st.tool, c: st.color, w: st.width, p: [pos(e)] }; st.dels = null; st.down = { x: e.clientX, y: e.clientY, far: false }; if (st.tool === 'eraser') eraseText(e); e.preventDefault(); });
+    cv.addEventListener('pointermove', e => { if (!st.cur) return; if (st.down && !st.down.far && Math.hypot(e.clientX - st.down.x, e.clientY - st.down.y) > 6) st.down.far = true; st.cur.p.push(pos(e)); if (st.cur.t === 'eraser') eraseText(e); redraw(); e.preventDefault(); });
+    const up = e => { if (!st.cur) return; const d = st.down; st.down = null;
+      if (e.type === 'pointerup' && d && !d.far && st.cur.t !== 'eraser' && opts.onTap && opts.onTap(d.x, d.y)) { st.cur = null; st.dels = null; redraw(); return; }   // ضغطة على كلمة = للصفحة (ترجمة)، مو نقطة
+      st.strokes.push(st.cur); st.hist.push({ a: 'add', it: st.cur, dels: st.dels }); st.cur = null; st.dels = null; redraw(); persist(); };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 
     // ✍️ النص: كل نص عنصر فوق البطاقة وتحت الحبر (يقدر يكتب بالقلم فوقه)
@@ -125,7 +128,7 @@
       const tup = e => {
         const d = tdrag; tdrag = null; if (!d) return;
         if (d.it) { if (d.moved) { st.hist.push({ a: 'mod', it: d.it, prev: { x: d.px, y: d.py } }); persist(); } else if (e.type === 'pointerup') startEdit(d.it, false); }
-        else if (e.type === 'pointerup' && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 12) startEdit({ t: 'txt', x: d.p[0], y: d.p[1], s: '', c: txtColor(), z: txtSize(), d: 'ltr' }, true);
+        else if (e.type === 'pointerup' && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 12 && !(opts.onTap && opts.onTap(d.x0, d.y0))) startEdit({ t: 'txt', x: d.p[0], y: d.p[1], s: '', c: txtColor(), z: txtSize(), d: 'ltr' }, true);
       };
       TL.addEventListener('pointerup', tup); TL.addEventListener('pointercancel', tup);
     }
