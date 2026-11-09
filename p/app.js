@@ -345,18 +345,27 @@
       try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
       if (window.QGT) { QGT.ev('subgo', 'سلة'); QGT.flush(true); } });
     const f = box.querySelector('.slp-ref'), inp = f.querySelector('#slref'), btn = f.querySelector('#slclaim');
-    inp.addEventListener('input', () => { const st = box.querySelector('.slp-st'); if (st && /\b(bad|na)\b/.test(st.className)) slStatus({}); });
-    f.onsubmit = async e => {
-      e.preventDefault(); if (btn.disabled) return;
-      const v = inp.value.trim();
-      if (!/\d{4,}/.test(enDigits(v))) { slStatus({ ok: false, error: 'ref' }); inp.focus(); return; }
-      btn.disabled = true; inp.readOnly = true; slStatus({ busy: 1 });
+    let slT = 0;   // ⏳ الطلب ما وصلنا للحين (إيميل سلة يوصل بعد الدفع بدقيقة أو دقيقتين): نعيد نفس الرقم لحاله
+    inp.addEventListener('input', () => { clearTimeout(slT); const st = box.querySelector('.slp-st'); if (st && /\b(bad|na|mw)\b/.test(st.className)) slStatus({}); });
+    const claimNo = async (v, n) => {
+      clearTimeout(slT); btn.disabled = true; inp.readOnly = true; if (!n) slStatus({ busy: 1 });
       let r = null; try { r = await api({ op: 'salla_claim', session: auth.session, ref: v.slice(0, 60), ua: navigator.userAgent.slice(0, 120) }); } catch (x) { r = null; }
       btn.disabled = false; inp.readOnly = false;
       if (r && r.ok && r.paid) { if (window.QGT) QGT.ev('subgo', 'رقم طلب سلة'); return sallaWin(r); }
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); return logout(esc(r.msg || '')); }
+      if (r && r.ok && r.none && n < 9 && box.isConnected && inp.value.trim() === v) {   // كل 20 ثانية لمدة 3 دقايق، وبعدها «ما لقينا»
+        slStatus({ mailwait: 1 });
+        slT = setTimeout(() => { if (box.isConnected && inp.value.trim() === v && !btn.disabled) claimNo(v, n + 1); }, 20000);
+        return;
+      }
       slStatus(r || { ok: false, error: 'net' });
       if (!(r && r.ok && r.pending)) inp.focus();
+    };
+    f.onsubmit = e => {
+      e.preventDefault(); if (btn.disabled) return;
+      const v = inp.value.trim();
+      if (!/\d{4,}/.test(enDigits(v))) { slStatus({ ok: false, error: 'ref' }); inp.focus(); return; }
+      claimNo(v, 0);
     };
     (ref || sallaPending() ? inp : go).focus({ preventScroll: true });   // رجع من سلة: على خانة الرقم · أول مرة: على زر الدفع (بدون ما يطلع الكيبورد في الجوال)
   }
@@ -366,6 +375,7 @@
     const set = (cls, html) => { el.className = 'slp-st' + (cls ? ' ' + cls : ''); el.innerHTML = html; };
     if (r.busy) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> نتحقق من رقم الطلب…'));
     if (r.pending) return set('wait', _T`⏳ طلبك${r.ref ? ' <bdi>#' + esc(r.ref) + '</bdi>' : ''} وصلنا وينتظر تأكيد الدفع (مثل التحويل البنكي). اشتراكك يتفعّل لحاله أول ما يتأكد.`);
+    if (r.mailwait) return set('wait mw', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر وصول طلبك من سلة… عادة ياخذ دقيقة أو دقيقتين بعد الدفع. خلّ الصفحة مفتوحة ويتفعّل اشتراكك لحاله.'));
     if (r.none) return set('na', _T('ما لقينا طلب بهذا الرقم. تأكد منه، ولو توك دفعت انتظر دقيقة وجرّب مرة ثانية.'));
     if (r.taken) return set('bad', _T`رقم الطلب هذا مستخدم في حساب ثاني. لو هو طلبك <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a>.`);
     if (r.canceled) return set('bad', _T('الطلب هذا ملغي أو مسترجع.'));
@@ -3309,22 +3319,22 @@
   // 🛍 الدفع عن طريق سلة: حالة الربط (السر · المتجر · رابط المنتج) + فتحه للزوار + الطلبات (اللي بدون إيميل تربطه أنت بالطالب)
   const SL_PM = { credit_card: 'بطاقة', mada: 'مدى', apple_pay: 'Apple Pay', stc_pay: 'STC Pay', google_pay: 'Google Pay', bank: 'تحويل بنكي', cod: 'عند الاستلام', tabby_installment: 'تابي', tamara_installment: 'تمارا', paypal: 'PayPal', free: 'مجاني' };
   const SL_SRC = { field: '✍️ من خانة المنتج', customer: '📧 إيميل حسابه في سلة', owner: '👤 ربطته أنت', claim: '🔢 كتب رقم الطلب' };
-  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات', claim: 'تفعيل برقم الطلب' };
+  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات', claim: 'تفعيل برقم الطلب', mail: 'إيميل من سلة' };
   const slState = o => o.applied_at ? (o.bad ? ['warn', '⚠️ انلغى بعد التفعيل', 'راجعه وأنهِ اشتراكه لو لازم'] : ['ok', '✅ تفعّل', o.until ? `لين ${admDay(o.until)}${o.months > 1 ? ` · ${o.months} شهور` : ''}` : ''])
     : o.paid === 1 ? (!o.email || o.note === SL_WAIT ? (slStuck(o) ? ['warn', '⚠️ ما فعّله صاحبه للحين', 'كلّمه على جواله، أو اضغط «🔗 ربط»'] : ['na', '⏳ ينتظر رقم الطلب', 'الطالب يفعّله بنفسه من الموقع']) : ['warn', '⚠️ ما تفعّل', o.note || ''])
     : o.paid === -1 ? ['na', '↩️ ملغي أو مسترجع', o.stn || ''] : ['na', '⏳ بانتظار الدفع', o.stn || ''];
   const SL_WAIT = 'ينتظر الطالب يكتب رقم الطلب', slStuck = o => o.paid === 1 && !o.applied_at && (!o.email || o.note === SL_WAIT) && Date.now() - (o.created_at || 0) > 3 * 3600e3;   // مدفوع من أكثر من 3 ساعات وما كتب أحد رقمه
   function sallaBox(SL) {
     if (!SL || !SL.ok) return '';
-    const st = SL.store, linked = st && !st.gone;
-    const mode = !SL.secret ? '<span class="pbmode off">⏸ متوقف: سر سلة مو موجود</span>' : !SL.url ? '<span class="pbmode wait">🔗 باقي رابط المنتج</span>'
+    const st = SL.store, linked = st && !st.gone, ML = SL.mail || {}, mailOk = ML.at > 0, on = SL.secret || mailOk;
+    const mode = !on ? '<span class="pbmode off">⏸ متوقف: ما وصل أي إيميل من سلة</span>' : !SL.url ? '<span class="pbmode wait">🔗 باقي رابط المنتج</span>'
       : SL.open ? '<span class="pbmode live">🟢 شغّال لكل الزوار</span>' : `<span class="pbmode wait">🔒 يطلع بس لك وللمختبرين${SL.testers ? ` (${SL.testers})` : ''}</span>`;
     const chk = (ok, ic, b, t) => `<li class="${ok ? 'ok' : 'no'}"><span aria-hidden="true">${ok ? '✓' : ic}</span><span><b>${b}</b><small>${t}</small></span></li>`;
     const conn = `<ul class="slconn" aria-label="حالة الربط">
-      ${chk(SL.secret, '🔐', 'سر الإشعارات', SL.secret ? 'محفوظ في Cloudflare' : 'حط SALLA_WEBHOOK_SECRET في Cloudflare (Variables and Secrets)')}
-      ${chk(linked, st && st.gone ? '⛔' : '🏪', 'تطبيق Q-Guide على متجرك', linked ? `مربوط · متجر رقم <bdi>${esc(st.merchant)}</bdi>${st.err ? ` · <span class="slerr">${esc(st.err)}</span>` : ''}` : st && st.gone ? 'انشال من المتجر: ثبّته من جديد' : 'ما انربط للحين: ثبّت التطبيق على متجرك')}
-      ${chk(!!SL.url, '🔗', 'رابط المنتج', SL.url ? 'محفوظ: الزر يفتح صفحة المنتج' : 'حطه تحت عشان يطلع زر الدفع')}</ul>`;
-    const ready = SL.secret && SL.url;
+      ${linked ? chk(SL.secret, '🔐', 'سر الإشعارات', SL.secret ? 'محفوظ في Cloudflare' : 'حط SALLA_WEBHOOK_SECRET في Cloudflare (Variables and Secrets)') + chk(linked, '🏪', 'تطبيق Q-Guide على متجرك', `مربوط · متجر رقم <bdi>${esc(st.merchant)}</bdi>${st.err ? ` · <span class="slerr">${esc(st.err)}</span>` : ''}`)
+        : chk(mailOk, '📧', 'إيميلات سلة', mailOk ? `توصل للموقع · آخر واحد ${fmtD(ML.at)}${ML.store ? ` · متجر رقم <bdi>${esc(ML.store)}</bdi>` : ''}` : 'ما وصل أي إيميل من سلة للحين: سكربت Gmail في حساب سلة لازم يشتغل')}
+      ${chk(!!SL.url, '🔗', 'رابط المنتج', SL.url ? 'محفوظ: الزر يفتح صفحة الدفع' : 'حطه تحت عشان يطلع زر الدفع')}</ul>`;
+    const ready = on && SL.url;
     const openBar = !ready ? '' : SL.open ? '<div class="pbopen on"><span>الزوار يشوفون زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في سلة.</span><button type="button" class="lnk dng" id="slclose">⏸ إيقاف سلة للزوار</button></div>'
       : '<div class="pbopen"><span>جرّبه قبل: ادخل الموقع بحساب Gmail ثاني (مو حساب المشرف)، اشترِ من الزر، والصق رقم الطلب. لو تفعّل اشتراكه، افتحه للكل.</span><button type="button" class="btn sm gold" id="slopen1">🚀 افتح سلة لكل الزوار</button></div>';
     const rows = SL.rows || [], miss = rows.filter(slStuck).length, L = ADM.sallaAll ? rows : rows.slice(0, 6);
@@ -3336,14 +3346,14 @@
         <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
       ${openBar}
       <p class="pbsum">${SL.paid ? `${SL.paid === 1 ? 'طلب واحد تفعّل' : SL.paid === 2 ? 'طلبين تفعّلت' : SL.paid + ' طلبات تفعّلت'} · المجموع <b>${SL.total} ريال</b>` : 'ما تفعّل أي طلب للحين'} · ${last ? `آخر إشعار من سلة ${fmtD(last.at)} (${esc(SL_EV[last.ev] || last.ev)})` : 'ما وصل أي إشعار من سلة للحين'}</p>
-      ${bad && (!last || bad.at > last.at) ? `<div class="rgsync warn">⚠️ ${esc(bad.note || bad.ev)} · ${fmtD(bad.at)}</div>` : ''}
+      ${bad && (!last || bad.at > last.at) ? `<div class="rgsync warn">⚠️ ${esc(bad.note || bad.ev)} · ${fmtD(bad.at)}</div>` : ML.bad ? `<div class="rgsync warn">⚠️ ${esc(ML.bad.note || 'إيميل من سلة انرفض')} · ${fmtD(ML.bad.at)}</div>` : ''}
       ${miss ? `<div class="rgsync warn">⚠️ ${miss === 1 ? 'فيه طلب مدفوع من أكثر من 3 ساعات وما فعّله صاحبه' : `فيه ${miss} طلبات مدفوعة من أكثر من 3 ساعات وما فعّلها أصحابها`}: كلّمه على جواله (تحت رقم الطلب)، أو اضغط «🔗 ربط» واكتب إيميله.</div>` : ''}
       ${rows.length ? `<div class="pblist">${L.map(o => { const S = slState(o), who = o.display || o.cname || '—', em = o.applied_email || o.email;
         return `<div class="pbrow slrow" data-id="${esc(o.id)}"${em ? ` data-e="${esc(em)}" role="button" tabindex="0" title="بطاقة الطالب"` : ''}><span class="pbwho"><b${o.display && o.cname && o.cname !== o.display ? ` title="اسمه في حساب سلة: ${esc(o.cname)}"` : ''}>${esc(who)}</b><small class="ltr">${em ? esc(em) : o.ftxt ? `«${esc(o.ftxt)}»` : 'بدون إيميل'}</small><small>#<bdi>${esc(o.ref || o.id)}</bdi>${o.esrc && SL_SRC[o.esrc] ? ' · ' + SL_SRC[o.esrc] : ''}${o.cphone ? ` · <bdi dir="ltr">${esc(o.cphone)}</bdi>` : ''}</small></span>
           <span class="pbamt">${o.total ? o.total + ' ريال' : '—'}<small>${esc(SL_PM[o.pm] || o.pm || '')}</small></span>
           <span class="pbst ${S[0]}">${S[1]}${S[2] ? `<small>${esc(S[2])}</small>` : ''}${!o.applied_at ? `<span class="slact"><button type="button" class="lnk" data-link="${esc(o.id)}">🔗 ربط</button><button type="button" class="lnk" data-hide="${esc(o.id)}" title="إخفاء الطلب من القائمة">🙈 إخفاء</button></span>` : ''}</span>
           <span class="pbdt">${fmtD(o.created_at)}</span></div>`; }).join('')}</div>
-        ${rows.length > 6 ? `<button type="button" class="lnk" id="slall">${ADM.sallaAll ? 'عرض أقل' : `عرض كل الطلبات (${rows.length})`}</button>` : ''}` : `<p class="mut pbempty">${linked ? 'أول ما يشتري أحد من متجرك يطلع هنا.' : 'بعد ما تثبّت التطبيق على متجرك، الطلبات تطلع هنا.'}</p>`}
+        ${rows.length > 6 ? `<button type="button" class="lnk" id="slall">${ADM.sallaAll ? 'عرض أقل' : `عرض كل الطلبات (${rows.length})`}</button>` : ''}` : `<p class="mut pbempty">${linked || mailOk ? 'أول ما يشتري أحد من متجرك يطلع هنا.' : 'أول ما توصل إيميلات سلة للموقع، الطلبات تطلع هنا.'}</p>`}
       <div class="slfoot">${linked ? '<button type="button" class="lnk" id="slpull" title="لو فات إشعار: نجيب طلبات آخر 7 أيام من سلة نفسها">🔄 جلب طلبات آخر 7 أيام من سلة</button>' : ''}${(SL.events || []).length ? `<details class="slevs"><summary>📜 سجل الإشعارات</summary><ul>${SL.events.map(e => `<li class="${e.ok ? '' : 'bad'}"><span>${esc(SL_EV[e.ev] || e.ev)}${e.oid ? ` <bdi>#${esc(e.oid)}</bdi>` : ''}</span><small>${esc(e.note || '')}</small><time>${fmtD(e.at)}</time></li>`).join('')}</ul></details>` : ''}</div>
     </section>`;
   }
