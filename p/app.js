@@ -2405,6 +2405,28 @@
     W.querySelectorAll('.chips button').forEach(b => b.onclick = () => { ST.f = b.dataset.f; paintStudio(data); });
     $('#strnd').onclick = () => { location.hash = `studio-${k}-${stRandom(k, data)}`; };
   }
+  // 🎬 بطاقة التصوير: اللوحة جنبها، أو «🎥 وضع التصوير» = البطاقة بالنص والأدوات عمودين حولها:
+  // يمين = الكتابة (قلم · تظليل · نص · ممحاة · السماكة · الألوان) · يسار = الأوامر (تراجع · مسح · الإجابة · التنقل · النشر · إخفاء · اللوحة)
+  // الجوال بالطول: صف فوق وصف تحت عشان البطاقة تبقى كبيرة · «👁 إخفاء» = البطاقة لحالها للتصوير النظيف (⋯ يرجّع الأدوات)
+  const ST_COLS = ['#D62828', '#1F5FBF', '#111111', '#1B9E63', '#E9A23B'];
+  const ST_TOOLS = [['pen', '✎', 'قلم'], ['hl', '▬', 'تظليل'], ['text', 'T', 'نص'], ['eraser', '◌', 'ممحاة']];
+  const ST_W = [['2.6', '─', 'رفيع', 'خط رفيع · نص عادي'], ['5', '━', 'عريض', 'خط عريض · نص كبير']];
+  const SI = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ST_IC = {   // أيقونات العمودين (Lucide)
+    pen: SI('<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/><path d="m15 5 4 4"/>'),
+    hl: SI('<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>'),
+    text: SI('<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>'),
+    eraser: SI('<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>'),
+    '2.6': SI('<path d="M4 12h16" stroke-width="1.6"/>'), '5': SI('<path d="M4 12h16" stroke-width="4.6"/>'),
+    undo: SI('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),
+    clear: SI('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
+    ans: SI('<circle cx="12" cy="12" r="10"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
+    prev: SI('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'), next: SI('<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>'),   // الاتجاه عربي: السابق ← يمين · التالي ← يسار (مثل أسهم الكيبورد)
+    rnd: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M12 12h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/>'),
+    post: SI('<rect x="3" y="3" width="18" height="18" rx="3"/>'), posted: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
+    hide: SI('<path d="M10.73 5.08A10.74 10.74 0 0 1 21.94 11.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>'),
+    panel: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>')
+  };
   async function renderRec(kind, n) {
     stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
     let data; try { [data] = await Promise.all([stData(), stPosted()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
@@ -2415,50 +2437,71 @@
     const q = kind === 'v' ? `<div class="tk-kind">Analogy · التناظر اللفظي</div><div class="tk-qv">${esc(it.q)}</div>` : `<div class="tk-kind">Quant · القسم الكمي</div><div class="tk-qi"><img src="${it.img}" alt=""></div>`;
     const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
     const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
-    app.innerHTML = `<div class="rec ${ST.ui ? '' : 'noui'}">
-      <div class="stage"><div class="tk" id="tk">
+    const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
+    const rlink = (h, ic, lb, tt) => `<a class="rb" href="${h}" title="${tt}" aria-label="${tt}"><i aria-hidden="true">${ic}</i><small>${lb}</small></a>`;
+    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', P ? ST_IC.posted : ST_IC.post, 'نُشر', P ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»', P ? 'ok' : '')}<span class="rsep"></span>${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
+    const railDraw = `<nav class="rail rdraw" aria-label="أدوات الكتابة">${ST_TOOLS.map(([t, , lb], i) => rb(`data-tool="${t}" aria-pressed="${!i}"`, ST_IC[t], lb, lb + ({ pen: ' · P', text: ' (اضغط على البطاقة واكتب) · T', eraser: ' · E' }[t] || ''), i ? '' : 'on')).join('')}<span class="rsep"></span>${ST_W.map(([w, , lb, tt], i) => rb(`data-w="${w}" aria-pressed="${!i}"`, ST_IC[w], lb, tt, i ? '' : 'on')).join('')}<span class="rsep"></span><div class="rcols">${ST_COLS.map((c, i) => `<button type="button" class="rsw${i ? '' : ' on'}" data-col="${c}" style="--c:${c}" title="لون" aria-label="لون" aria-pressed="${!i}"></button>`).join('')}</div></nav>`;
+    app.innerHTML = `<div class="rec ${ST.ui ? '' : 'noui'} ${ST.bare ? 'bare' : ''}">
+      <div class="stage">${railActs}<div class="tk" id="tk">
         <div class="tk-top"><span class="tk-brand"><img src="/assets/logo.png" alt=""><b>Q-Guide1</b>${YTSVG}</span></div>
         <div class="tk-panel"><span class="tk-badge">Q ${n}</span>${q}<div class="tk-opts ${it.opts.some(o => o.length > 13) ? 'one' : ''}">${opts}</div>
           <div class="tk-sol"><span>الحل</span></div></div>
         <div class="tk-foot">اكتب إجابتك في التعليقات 👇</div>
-      </div></div>
+      </div>${railDraw}</div>
       <aside class="rp">
         <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>Q ${n} · ${kind === 'v' ? 'التناظر اللفظي' : 'الكمي'}</b><span class="sp"></span><a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a><button class="ib2" id="rrnd" title="سؤال عشوائي لم يُنشر">🎲</button></div>
-        <div class="rp-sec"><div class="rp-lbl">✍️ القلم</div>
-          <div class="rp-tools"><button data-tool="pen" class="on" title="قلم">✎</button><button data-tool="hl" title="تظليل">▬</button><button data-tool="eraser" title="ممحاة">◌</button><span class="sep"></span>${['#D62828', '#1F5FBF', '#111111', '#1B9E63', '#E9A23B'].map((c, i) => `<button data-col="${c}" class="sw ${i === 0 ? 'on' : ''}" style="--c:${c}" title="لون"></button>`).join('')}<span class="sep"></span><button data-w="2.6" title="رفيع" class="on">─</button><button data-w="5" title="عريض">━</button><span class="sep"></span><button id="rundo" title="تراجع">↶</button><button id="rclr" title="مسح الكتابة">🗑</button></div>
+        <div class="rp-sec"><div class="rp-lbl">✍️ القلم والنص</div>
+          <div class="rp-tools">${ST_TOOLS.map(([t, ic, lb], i) => `<button type="button" data-tool="${t}" class="${i ? '' : 'on'}${t === 'text' ? ' tt' : ''}" title="${t === 'text' ? 'نص: اضغط على البطاقة واكتب' : lb}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span>${ST_COLS.map((c, i) => `<button type="button" data-col="${c}" class="sw ${i ? '' : 'on'}" style="--c:${c}" title="لون" aria-pressed="${!i}"></button>`).join('')}<span class="sep"></span>${ST_W.map(([w, ic, lb, tt], i) => `<button type="button" data-w="${w}" title="${tt}" class="${i ? '' : 'on'}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span><button type="button" id="rundo" title="تراجع">↶</button><button type="button" id="rclr" title="مسح الكتابة">🗑</button></div>
           <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label></div>
-        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="يخفي اللوحة ويخلي البطاقة بس للتصوير">🎥 وضع التصوير</button></div>
+        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
         ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
         <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
           <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
           ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
-        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح · H وضع التصوير</div>
+        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح · P قلم · T نص · E ممحاة · H وضع التصوير · Esc رجوع للوحة</div>
       </aside>
-      <button class="rec-fab" id="rshow" title="إظهار الأدوات">⋯</button>
-      <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
+      <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
+      <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
     </div>`;
-    const tk = $('#tk'); ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null }); ST.pen.toggle(true); ST.pen.setColor('#D62828'); ST.pen.setWidth(2.6);
+    const tk = $('#tk'); ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true }); ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
     const rec = $('.rec');
-    const setUI = on => { ST.ui = on; rec.classList.toggle('noui', !on); };
-    const togglePanel = () => rec.classList.toggle('sheet');
-    const reveal = () => { ST.reveal = !ST.reveal; tk.classList.toggle('rev', ST.reveal); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', ST.reveal && +o.dataset.i === it.ans)); $('#rrev').textContent = ST.reveal ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة'; };
-    const clear = () => ST.pen.clear();
-    rec.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => { ST.pen.setTool(b.dataset.tool); rec.querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('on', x === b)); });
-    rec.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { ST.pen.setColor(b.dataset.col); rec.querySelectorAll('[data-col]').forEach(x => x.classList.toggle('on', x === b)); rec.querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('on', x.dataset.tool === 'pen')); ST.pen.setTool('pen'); });
-    rec.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { ST.pen.setWidth(+b.dataset.w); rec.querySelectorAll('[data-w]').forEach(x => x.classList.toggle('on', x === b)); });
-    $('#rundo').onclick = $('#mundo').onclick = () => ST.pen.undo();
-    $('#rclr').onclick = $('#mclr').onclick = clear;
-    $('#rpen').onchange = e => { ST.pen.toggle(e.target.checked); $('#mpen').classList.toggle('on', e.target.checked); };
-    $('#mpen').classList.add('on'); $('#mpen').onclick = () => { const on = ST.pen.toggle(); $('#rpen').checked = on; $('#mpen').classList.toggle('on', on); };
-    $('#rrev').onclick = $('#mrev').onclick = reveal;
-    $('#rhide').onclick = $('#mhide').onclick = () => setUI(false);
-    $('#rshow').onclick = () => setUI(true);
-    $('#mmore').onclick = togglePanel;
-    $('#rrnd').onclick = () => { location.hash = `studio-${kind}-${stRandom(kind, data, n)}`; };
-    $('#rpost').onclick = async () => { const on = !ST.posted[key]; const b = $('#rpost'); b.disabled = true; if (await stMark(key, on)) { b.className = 'btn ' + (on ? 'okb' : 'ghost'); b.textContent = on ? '✓ تم النشر' : '☐ علّمه «تم النشر»'; toast(on ? 'تم التعليم كمنشور ✓' : 'أُلغي التعليم'); } b.disabled = false; };
-    window.__stKey = e => { if (e.target.closest('input,textarea')) return; const kk = e.key.toLowerCase();
-      if (kk === 'arrowleft') location.hash = `studio-${kind}-${next}`; else if (kk === 'arrowright') location.hash = `studio-${kind}-${prev}`;
-      else if (kk === 'r') reveal(); else if (kk === 'z') ST.pen.undo(); else if (kk === 'c') clear(); else if (kk === 'h') setUI(!ST.ui); else if (kk === 'escape') setUI(true); };
+    // نفس الأداة/اللون/السماكة تتعلّم في اللوحة والعمودين مع بعض
+    const mark = (a, v) => rec.querySelectorAll(`[data-${a}]`).forEach(x => { const on = x.dataset[a] === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+    const penOn = on => { ST.pen.toggle(on); $('#rpen').checked = on; $('#mpen').classList.toggle('on', on); };
+    const setTool = t => { if (!ST.pen.isOn()) penOn(true); ST.pen.setTool(t); mark('tool', t); $('#mtxt').classList.toggle('on', t === 'text'); };
+    const setCol = c => { ST.pen.setColor(c); mark('col', c); if (ST.pen.tool() !== 'text') setTool('pen'); };
+    const setW = w => { ST.pen.setWidth(+w); mark('w', w); };
+    const setUI = on => { ST.ui = on; rec.classList.toggle('noui', !on); if (!on) rec.classList.remove('sheet'); };
+    const setBare = on => { ST.bare = on; rec.classList.toggle('bare', on); };
+    const recMode = () => { setUI(false); setBare(false); };
+    const reveal = () => { ST.reveal = !ST.reveal; tk.classList.toggle('rev', ST.reveal); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', ST.reveal && +o.dataset.i === it.ans)); $('#rrev').textContent = ST.reveal ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة';
+      const l = $('#lrev'); l.classList.toggle('on', ST.reveal); l.title = ST.reveal ? 'إخفاء الإجابة · R' : 'كشف الإجابة · R'; l.setAttribute('aria-label', l.title); };
+    const clear = () => ST.pen.clear(), undo = () => ST.pen.undo();
+    // الضغط على الأدوات ما ياخذ التركيز من النص اللي ينكتب (عشان اللون والحجم يتغيّرون عليه)
+    rec.querySelectorAll('[data-tool],[data-col],[data-w],#rundo,#rclr,#lundo,#lclr,#mtxt,#mundo,#mclr').forEach(b => b.addEventListener('pointerdown', e => e.preventDefault()));
+    rec.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+    rec.querySelectorAll('[data-col]').forEach(b => b.onclick = () => setCol(b.dataset.col));
+    rec.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
+    $('#rundo').onclick = $('#mundo').onclick = $('#lundo').onclick = undo;
+    $('#rclr').onclick = $('#mclr').onclick = $('#lclr').onclick = clear;
+    $('#rpen').onchange = e => penOn(e.target.checked);
+    $('#mpen').classList.add('on'); $('#mpen').onclick = () => penOn(!ST.pen.isOn());
+    $('#mtxt').onclick = () => setTool(ST.pen.tool() === 'text' ? 'pen' : 'text');
+    $('#rrev').onclick = $('#mrev').onclick = $('#lrev').onclick = reveal;
+    $('#rhide').onclick = $('#mhide').onclick = recMode;
+    $('#lbare').onclick = () => setBare(true);
+    $('#lpanel').onclick = () => setUI(true);
+    $('#rshow').onclick = () => setBare(false);
+    $('#mmore').onclick = () => rec.classList.toggle('sheet');
+    $('#rrnd').onclick = $('#lrnd').onclick = () => { location.hash = `studio-${kind}-${stRandom(kind, data, n)}`; };
+    const paintPost = on => { const b = $('#rpost'), l = $('#lpost'); b.className = 'btn ' + (on ? 'okb' : 'ghost'); b.textContent = on ? '✓ تم النشر' : '☐ علّمه «تم النشر»';
+      l.classList.toggle('ok', on); l.querySelector('i').innerHTML = on ? ST_IC.posted : ST_IC.post; l.title = on ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»'; l.setAttribute('aria-label', l.title); };
+    $('#rpost').onclick = $('#lpost').onclick = async () => { const on = !ST.posted[key], bs = [$('#rpost'), $('#lpost')]; bs.forEach(b => b.disabled = true); if (await stMark(key, on)) { paintPost(on); toast(on ? 'تم التعليم كمنشور ✓' : 'أُلغي التعليم'); } bs.forEach(b => b.disabled = false); };
+    // اختصارات الكيبورد بمكان الزر (تشتغل حتى لو الكيبورد عربي)
+    const KEYS = { KeyR: reveal, KeyZ: undo, KeyC: clear, KeyP: () => setTool('pen'), KeyT: () => setTool('text'), KeyE: () => setTool('eraser'), KeyH: () => ST.ui ? recMode() : setBare(!ST.bare) };
+    window.__stKey = e => { if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return; if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'ArrowLeft') location.hash = `studio-${kind}-${next}`; else if (e.key === 'ArrowRight') location.hash = `studio-${kind}-${prev}`;
+      else if (e.key === 'Escape') setUI(true); else if (KEYS[e.code]) { e.preventDefault(); KEYS[e.code](); } };
     document.addEventListener('keydown', window.__stKey);
   }
   // i18n:on

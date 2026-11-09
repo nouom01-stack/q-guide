@@ -587,6 +587,42 @@ body.rec-on{overflow:hidden;background:#0B1530}
 /* v18.2 الوضع الليلي: النصوص اللي لونها كحلي تصير فاتحة */
 [data-theme=dark] .stc .pv,[data-theme=dark] .atabs a.on,[data-theme=dark] .seg button.on,[data-theme=dark] .sintro b,[data-theme=dark] .sadd h3,[data-theme=dark] .stf h3.sh,[data-theme=dark] .rp-h b,[data-theme=dark] .rp-lbl,[data-theme=dark] .rp-ans summary,[data-theme=dark] .chips button.on{color:#E7EBF5}
 [data-theme=dark] .seg button.on{background:#24304D}
+/* v18.3 وضع التصوير: البطاقة بالنص والأدوات عمودين حولها — يمين الكتابة، يسار الأوامر · «👁 إخفاء» يرجّع البطاقة لحالها (.bare) */
+.rail{display:none}
+.rec.noui:not(.bare) .rec-fab{display:none}
+.rec.noui:not(.bare) .stage{direction:ltr;gap:14px;padding:12px;align-items:center;justify-content:center}
+.rec.noui:not(.bare) .tk{height:min(calc(100dvh - 24px),calc((100vw - 180px) * 16 / 9));width:auto;max-width:none;aspect-ratio:9/16;border-radius:18px;padding:4cqw 4.5cqw 2cqw}
+.rec.noui:not(.bare) .rail{display:flex}
+.rail{flex:none;flex-direction:column;align-items:stretch;gap:2px;width:64px;max-height:calc(100dvh - 24px);overflow:auto;scrollbar-width:none;padding:7px 6px;background:rgba(7,18,48,.84);border:1px solid rgba(255,255,255,.14);border-radius:20px;box-shadow:0 18px 44px rgba(0,0,0,.42);direction:rtl}
+.rail::-webkit-scrollbar{display:none}
+.rail .rb{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;padding:6px 2px;border-radius:13px;color:#fff;text-decoration:none;transition:background .12s,color .12s}
+.rail .rb i{display:flex;font-style:normal;line-height:1}.rail .rb svg{width:22px;height:22px;display:block}
+.rail [data-tool=hl]:not(.on) svg{color:#FFE27A}
+.rail .rb small{font-size:11px;font-weight:700;line-height:1;color:rgba(255,255,255,.72);white-space:nowrap}
+.rail .rb:hover{background:rgba(255,255,255,.1)}
+.rail .rb.on{background:#F5B83D;color:#0E2458}.rail .rb.on small{color:#0E2458}
+.rail .rb.ok{background:#1B9E63}.rail .rb.ok small{color:#fff}
+.rail .rb:disabled{opacity:.5}
+.rail .rb:focus-visible,.rail .rsw:focus-visible{outline:2px solid #F5B83D;outline-offset:2px}
+.rail .rsep{flex:none;height:1px;margin:5px 8px;background:rgba(255,255,255,.16)}
+.rail .rcols{display:flex;flex-direction:column;align-items:center;gap:8px;padding:5px 0 3px}
+.rail .rsw{flex:none;width:30px;height:30px;border-radius:50%;padding:0;background:var(--c);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);transition:transform .12s}
+.rail .rsw.on{box-shadow:0 0 0 3px #F5B83D,0 1px 4px rgba(0,0,0,.4);transform:scale(1.1)}
+.rp-tools .tt,.rec-mini .tt{font-family:Georgia,"Times New Roman",serif;font-weight:700}
+@media (max-height:620px){.rail .rb{min-height:44px;gap:2px}.rail .rb small{font-size:10px}.rail .rsw{width:26px;height:26px}.rail .rcols{gap:6px}}
+/* الجوال بالطول: صف الأوامر فوق وصف الكتابة تحت عشان البطاقة تبقى كبيرة */
+@media (max-aspect-ratio:2/3){
+  .rec.noui:not(.bare) .stage{flex-direction:column;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom))}
+  .rec.noui:not(.bare) .tk{height:min(calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),calc((100vw - 16px) * 16 / 9))}
+  .rail{flex-direction:row;align-items:center;width:auto;max-width:100%;max-height:none;overflow-x:auto;overflow-y:hidden;padding:5px;gap:0;border-radius:16px}
+  .rail .rb{min-height:44px;min-width:34px;padding:4px 2px}
+  .rail .rb small{display:none}
+  .rail .rb svg{width:21px;height:21px}
+  .rail .rsep{width:1px;height:26px;margin:0 3px}
+  .rail .rcols{flex-direction:row;gap:4px;padding:0 4px}
+  .rail .rsw{width:22px;height:22px;border-width:2px}
+}
+@media (max-aspect-ratio:2/3) and (max-width:370px){.rail .rb{min-width:31px}.rail .rsw{width:20px;height:20px}}
 
 /* =====================================================================
    v20 — «ورقة الإجابة»: كل قسم ورقة إجابة تتعبّى فقاعاتها وأنت تحل
