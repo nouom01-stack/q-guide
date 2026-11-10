@@ -30,6 +30,7 @@
   //    (ولو إيميله في سلة نفس إيميله هنا، الخادم يفتح له لحاله ونلقطه بـ salla_check)
   //    🔗 auth.salla.link: الخادم يجهّز له سلة باسمه في المتجر ويعطيه رابط صفحة الدفع حقتها (salla_go) ← الطلب ينربط به ويتفعّل لحاله بدون رقم الطلب
   const SAL_SS = 'qg_salla';   // متى فتح صفحة الدفع في سلة (نتحقق من طلبه لين 45 دقيقة)
+  const SAL_FAST = 600e3;      // ⚡ أول 10 دقايق: نسأل كل 3 ثواني والخادم يفحص إيميل سلة بسرعة
   const sallaOn = () => !!(auth && auth.role !== 'admin' && auth.salla && auth.salla.on && auth.salla.url);
   const sallaPending = () => { try { const t = +sessionStorage.getItem(SAL_SS) || 0; return t && Date.now() - t < 45 * 60e3 ? t : 0; } catch (e) { return 0; } };
   const sallaDone = () => { try { sessionStorage.removeItem(SAL_SS); } catch (e) {} };
@@ -360,8 +361,8 @@
       <button type="button" class="lnk slp-back">→ رجوع</button>
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
       <ol class="slp-s">
-        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
-        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله خلال دقيقة أو دقيقتين، بدون ما تكتب شي.</small>
+        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
+        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله بعد الدفع بثواني، بدون ما تكتب شي.</small>
           <form class="slp-ref" novalidate><input id="slref" type="text" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="60" placeholder="#218402731" aria-label="رقم الطلب"><button type="submit" class="btn" id="slclaim">✓ فعّل اشتراكي</button></form>
           <div class="slp-st" role="status" aria-live="polite"></div>
           <button type="button" class="lnk slp-alt">ما تفعّل؟ اكتب رقم الطلب</button></div></li>
@@ -373,6 +374,7 @@
     go.addEventListener('click', e => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — ولو إيميله في سلة نفس إيميله هنا يتفعّل لحاله (نتحقق بالخلفية)
       if (go.classList.contains('busy')) { e.preventDefault(); return; }   // رابطه الخاص يتجهّز: ثانية أو ثانيتين
       try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
+      sallaHot();
       if (box.classList.contains('slk')) { const st = box.querySelector('.slp-st'); if (st && !st.innerHTML) slStatus({ linkwait: 1 }); }
       if (window.QGT) { QGT.ev('subgo', box.classList.contains('slk') ? 'سلة (رابط خاص)' : 'سلة'); QGT.flush(true); } });
     const f = box.querySelector('.slp-ref'), inp = f.querySelector('#slref'), btn = f.querySelector('#slclaim');
@@ -387,7 +389,7 @@
       setTimeout(() => fin(''), 12000);
       api({ op: 'salla_go', session: auth.session, ua: navigator.userAgent.slice(0, 120) }).then(r => fin(r && r.ok && /^https:\/\/[^\s"'<>]+$/.test(r.url || '') ? r.url : ''), () => fin(''));
     }
-    let slT = 0;   // ⏳ الطلب ما وصلنا للحين (إيميل سلة يوصل بعد الدفع بدقيقة أو دقيقتين): نعيد نفس الرقم لحاله
+    let slT = 0;   // ⏳ الطلب ما وصلنا للحين (إيميل سلة يوصل بعد الدفع بثواني): نعيد نفس الرقم لحاله
     inp.addEventListener('input', () => { clearTimeout(slT); const st = box.querySelector('.slp-st'); if (st && /\b(bad|na|mw)\b/.test(st.className)) slStatus({}); });
     const claimNo = async (v, n) => {
       clearTimeout(slT); btn.disabled = true; inp.readOnly = true; if (!n) slStatus({ busy: 1 });
@@ -395,9 +397,9 @@
       btn.disabled = false; inp.readOnly = false;
       if (r && r.ok && r.paid) { if (window.QGT) QGT.ev('subgo', 'رقم طلب سلة'); return sallaWin(r); }
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); return logout(esc(r.msg || '')); }
-      if (r && r.ok && r.none && n < 9 && box.isConnected && inp.value.trim() === v) {   // كل 20 ثانية لمدة 3 دقايق، وبعدها «ما لقينا»
+      if (r && r.ok && r.none && n < 18 && box.isConnected && inp.value.trim() === v) {   // كل 10 ثواني لمدة 3 دقايق، وبعدها «ما لقينا»
         slStatus({ mailwait: 1 });
-        slT = setTimeout(() => { if (box.isConnected && inp.value.trim() === v && !btn.disabled) claimNo(v, n + 1); }, 20000);
+        slT = setTimeout(() => { if (box.isConnected && inp.value.trim() === v && !btn.disabled) claimNo(v, n + 1); }, 10000);
         return;
       }
       slStatus(r || { ok: false, error: 'net' });
@@ -418,7 +420,7 @@
     if (r.busy) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> نتحقق من رقم الطلب…'));
     if (r.pending) return set('wait', _T`⏳ طلبك${r.ref ? ' <bdi>#' + esc(r.ref) + '</bdi>' : ''} وصلنا وينتظر تأكيد الدفع (مثل التحويل البنكي). اشتراكك يتفعّل لحاله أول ما يتأكد.`);
     if (r.linkwait) return set('wait lw', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر دفعك… أول ما تدفع يتفعّل اشتراكك هنا لحاله.'));
-    if (r.mailwait) return set('wait mw', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر وصول طلبك من سلة… عادة ياخذ دقيقة أو دقيقتين بعد الدفع. خلّ الصفحة مفتوحة ويتفعّل اشتراكك لحاله.'));
+    if (r.mailwait) return set('wait mw', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر وصول طلبك من سلة… عادة ياخذ ثواني بعد الدفع. خلّ الصفحة مفتوحة ويتفعّل اشتراكك لحاله.'));
     if (r.none) return set('na', _T('ما لقينا طلب بهذا الرقم. تأكد منه، ولو توك دفعت انتظر دقيقة وجرّب مرة ثانية.'));
     if (r.taken) return set('bad', _T`رقم الطلب هذا مستخدم في حساب ثاني. لو هو طلبك <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a>.`);
     if (r.canceled) return set('bad', _T('الطلب هذا ملغي أو مسترجع.'));
@@ -435,7 +437,8 @@
   async function sallaPoll() {
     if (salBusy || !auth || !auth.session || auth.role === 'admin') return null; salBusy = true;
     try {
-      const r = await api({ op: 'salla_check', session: auth.session, since: isSub() ? sallaPending() || undefined : undefined, ua: navigator.userAgent.slice(0, 120) });   // 🔁 المشترك: بس طلب تفعّل بعد ما فتح صفحة الدفع
+      const t = sallaPending();
+      const r = await api({ op: 'salla_check', session: auth.session, since: isSub() ? t || undefined : undefined, w: t && Date.now() - t < SAL_FAST ? 1 : undefined, ua: navigator.userAgent.slice(0, 120) });   // 🔁 المشترك: بس طلب تفعّل بعد ما فتح صفحة الدفع · ⚡ w = توّه فاتح صفحة الدفع: الخادم يفحص إيميل سلة بسرعة
       if (r && r.ok && r.paid) { sallaWin(r); return r; }
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); logout(esc(r.msg || '')); return null; }
       const st = document.querySelector('.slp-st');
@@ -452,8 +455,17 @@
     PAID_OK = { until: r.until || 0, months: r.months || 1, renew: was ? 1 : 0 };
     if (location.hash === '#paid') renderPaid(); else location.hash = 'paid';
   }
-  // ⏳ فاتح صفحة سلة: نتحقق كل 5 ثواني أول 5 دقايق، وبعدها كل 20 ثانية — ولما يرجع للتبويب نتحقق على طول
-  { let tick = 0; setInterval(() => { const t = sallaPending(); if (!t || document.hidden || !auth || auth.role === 'admin') return; tick++; if (Date.now() - t < 300e3 || tick % 4 === 0) sallaPoll(); }, 5000);
+  // ⚡ ضغط «افتح صفحة الدفع»: نبلّغ الخادم إنه يدفع الحين (يفحص إيميل سلة كل 3 ثواني بدل كل دقيقة). sendBeacon يوصل حتى لو الصفحة راحت للخلفية
+  function sallaHot() {
+    try {
+      if (!auth || !auth.session || auth.role === 'admin') return;
+      const b = JSON.stringify({ op: 'salla_check', session: auth.session, open: 1, ua: navigator.userAgent.slice(0, 120) });
+      if (!(navigator.sendBeacon && navigator.sendBeacon(window.QG.API, new Blob([b], { type: 'text/plain;charset=utf-8' }))))
+        fetch(window.QG.API, { method: 'POST', body: b, headers: { 'Content-Type': 'text/plain;charset=utf-8' }, keepalive: true }).catch(() => {});
+    } catch (e) {}
+  }
+  // ⏳ فاتح صفحة سلة: نتحقق كل 3 ثواني أول 10 دقايق، وبعدها كل 21 ثانية — ولما يرجع للتبويب نتحقق على طول
+  { let tick = 0; setInterval(() => { const t = sallaPending(); if (!t || document.hidden || !auth || auth.role === 'admin') return; tick++; if (Date.now() - t < SAL_FAST || tick % 7 === 0) sallaPoll(); }, 3000);
     const back = () => { if (!document.hidden && sallaPending() && auth && auth.role !== 'admin') sallaPoll(); };
     document.addEventListener('visibilitychange', back); window.addEventListener('focus', back); }
   // 💳 «ادفع واشترك»: الخادم ينشئ العملية عند تاب ويرجّع رابط صفحة الدفع (مدى، أبل باي، البطاقات) — بيانات البطاقة ما تمر علينا
@@ -3697,6 +3709,11 @@
     : o.paid === 1 ? (!o.email || o.note === SL_WAIT ? (slStuck(o) ? ['warn', '⚠️ ما فعّله صاحبه للحين', 'كلّمه على جواله، أو اضغط «🔗 ربط»'] : ['na', '⏳ ينتظر رقم الطلب', 'الطالب يفعّله بنفسه من الموقع']) : ['warn', '⚠️ ما تفعّل', o.note || ''])
     : o.paid === -1 ? ['na', '↩️ ملغي أو مسترجع', o.stn || ''] : ['na', '⏳ بانتظار الدفع', o.stn || ''];
   const SL_WAIT = 'ينتظر الطالب يكتب رقم الطلب', slStuck = o => o.paid === 1 && !o.applied_at && (!o.email || o.note === SL_WAIT) && Date.now() - (o.created_at || 0) > 3 * 3600e3;   // مدفوع من أكثر من 3 ساعات وما كتب أحد رقمه
+  // ⚡ نبضة سكربت Gmail (اللي يجيب إيميلات سلة): شغّال لو فحص خلال آخر 3 دقايق وما عنده خطأ · «يفحص كل 3 ثواني» لما طالب يدفع
+  const gsOk = g => !!g && !g.err && Date.now() - (g.at || 0) < 180e3;
+  const gsLine = g => { const s = Math.max(0, Math.round((Date.now() - (g.at || 0)) / 1000)), ago = s < 90 ? `قبل ${s} ث` : fmtD(g.at);
+    return g.err ? `<span class="slerr">خطأ: ${esc(g.err)}</span> · آخر فحص ${ago}` : !gsOk(g) ? `<span class="slerr">واقف: آخر فحص ${ago}</span> · الدفع ما يتفعّل لحاله لين يرجع`
+      : `${g.hot ? '⚡ طالب يدفع الحين: يفحص كل 3 ثواني' : 'شغّال: يفحص إيميلات سلة كل 20 ثانية'} · آخر فحص ${ago}`; };
   function sallaBox(SL) {
     if (!SL || !SL.ok) return '';
     const st = SL.store, linked = st && !st.gone, ML = SL.mail || {}, mailOk = ML.at > 0, on = SL.secret || mailOk;
@@ -3705,7 +3722,8 @@
     const chk = (ok, ic, b, t) => `<li class="${ok ? 'ok' : 'no'}"><span aria-hidden="true">${ok ? '✓' : ic}</span><span><b>${b}</b><small>${t}</small></span></li>`;
     const conn = `<ul class="slconn" aria-label="حالة الربط">
       ${linked ? chk(SL.secret, '🔐', 'سر الإشعارات', SL.secret ? 'محفوظ في Cloudflare' : 'حط SALLA_WEBHOOK_SECRET في Cloudflare (Variables and Secrets)') + chk(linked, '🏪', 'تطبيق Q-Guide على متجرك', `مربوط · متجر رقم <bdi>${esc(st.merchant)}</bdi>${st.err ? ` · <span class="slerr">${esc(st.err)}</span>` : ''}`)
-        : chk(mailOk, '📧', 'إيميلات سلة', mailOk ? `توصل للموقع · آخر واحد ${fmtD(ML.at)}${ML.store ? ` · متجر رقم <bdi>${esc(ML.store)}</bdi>` : ''}` : 'ما وصل أي إيميل من سلة للحين: سكربت Gmail في حساب سلة لازم يشتغل')}
+        : chk(mailOk, '📧', 'إيميلات سلة', mailOk ? `توصل للموقع · آخر واحد ${fmtD(ML.at)}${ML.store ? ` · متجر رقم <bdi>${esc(ML.store)}</bdi>` : ''}` : 'ما وصل أي إيميل من سلة للحين: سكربت Gmail في حساب سلة لازم يشتغل')
+          + (mailOk && ML.gs ? chk(gsOk(ML.gs), '⚠️', 'سكربت Gmail', gsLine(ML.gs)) : '')}
       ${chk(!!SL.url, '🔗', 'رابط المنتج', SL.url ? 'محفوظ: الزر يفتح صفحة الدفع' : 'حطه تحت عشان يطلع زر الدفع')}</ul>`;
     const ready = on && SL.url;
     const openBar = !ready ? '' : SL.open ? '<div class="pbopen on"><span>الزوار يشوفون زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في سلة.</span><button type="button" class="lnk dng" id="slclose">⏸ إيقاف سلة للزوار</button></div>'
@@ -3897,9 +3915,10 @@
     follow: x => ['👋', `${nStu(x.n)} ما ذاكروا من 4 أيام وأكثر`, 'القائمة تحت: كلّمهم على واتساب، أو افتح تقرير الطالب.', '#oh-follow', 'شوفهم', 'low'],
     vids: x => ['🎬', x.qv ? `${x.qv === 1 ? 'مقطع واحد' : x.qv === 2 ? 'مقطعين' : x.qv + ' مقاطع'} من شرح الأقسام والنماذج ما انرفعت` : `${x.n === 1 ? 'مقطع واحد' : x.n === 2 ? 'مقطعين' : x.n + ' مقطع'} من التأسيس والتدريب ما انرفع`, x.qv ? 'اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع: ' + (x.list || []).map(vidKeyName).join('، ') + '.' : 'تطلع للطلاب «⏳ قريباً» لين يرفعها المدرس.', '#admin-vids', x.qv ? 'ارفعها' : 'افتح المقاطع', x.qv ? 'mid' : 'low'],
     backup: x => ['💾', x.at ? 'آخر نسخة احتياطية قديمة' : 'ما فيه نسخة احتياطية للحين', 'النسخ يتم لحاله كل يوم، وتقدر تبدأه الحين من الإعدادات.', '#admin-settings', 'افتح الإعدادات', 'low'],
+    gs: x => ['📧', x.err ? 'خطأ في سكربت إيميلات سلة' : 'سكربت إيميلات سلة واقف', (x.err ? x.err + ' — ' : `آخر فحص ${fmtD(x.at)}. `) + 'الدفع من سلة ما يتفعّل لحاله لين يرجع: افتح script.google.com بحساب سلة وشوف «Executions».', '#admin-pay', 'افتح المدفوعات', 'hi'],
     payoff: () => ['💳', 'الدفع من الموقع مقفل على الزوار', 'الزائر ما يشوف زر الدفع ويراسلك على واتساب. افتحه من المدفوعات لما تجهز.', '#admin-pay', 'افتح المدفوعات', 'hi'],
   };
-  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'],
+  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'],
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
     adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
     adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
@@ -3941,6 +3960,7 @@
     const health = dot(1, 'إصدار الخادم', `<bdi>${esc(HL.v || '—')}</bdi>`)
       + dot(HL.salla_url ? (HL.salla_open ? 1 : 2) : 0, 'سلة للزوار', !HL.salla_url ? 'ما انحط رابط المنتج' : HL.salla_open ? 'مفتوحة' : 'للمختبرين بس')
       + dot(HL.salla_mail ? (t - HL.salla_mail < 7 * 864e5 ? 1 : 2) : 0, 'إيميلات سلة', HL.salla_mail ? 'آخر واحد ' + fmtD(HL.salla_mail) : 'ما وصل شي')
+      + (HL.gs ? dot(gsOk(HL.gs) ? 1 : 2, 'سكربت إيميلات سلة', HL.gs.err ? 'خطأ: ' + esc(HL.gs.err) : gsOk(HL.gs) ? 'شغّال · آخر فحص ' + fmtD(HL.gs.at) : 'واقف · آخر فحص ' + fmtD(HL.gs.at)) : '')
       + dot(HL.salla_link ? 1 : 0, 'رابط دفع خاص بكل طالب', HL.salla_link ? 'شغّال' : 'مطفي')
       + dot(HL.tap ? (HL.tap === 'live' && HL.tap_open ? 1 : 2) : 0, 'تاب (الدفع المباشر)', !HL.tap ? 'بدون مفتاح' : HL.tap === 'test' ? 'وضع التجربة' : HL.tap_open ? 'شغّال للكل' : 'للمختبرين بس')
       + dot(HL.ai && HL.ai.on && HL.ai.mode !== 'off' ? 1 : 0, 'المرشد الذكي', HL.ai ? (HL.ai.mode === 'off' ? 'مطفي' : HL.ai.mode === 'all' ? 'شغّال للكل' : 'شغّال (' + esc(HL.ai.mode) + ')') : '—')

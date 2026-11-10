@@ -2433,6 +2433,8 @@ html.l-en .memail{text-align:left}
 .slp-t{display:flex;flex-direction:column;gap:6px;min-width:0}
 .slp-t b{font-size:calc(15.5px * var(--fs));color:var(--ink2);line-height:1.5}
 .slp-t small{color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.6}
+/* تنبيه قبل زر الدفع: سلة تطلب تسجيل الدخول برقم الجوال قبل الدفع (بدونه تطلع رسالة «اختر شركة الشحن») */
+.slp-t small.slp-tip{background:var(--dotbg);color:var(--ink2);border-radius:10px;padding:8px 11px;font-weight:700}
 /* خانة رقم الطلب: الرقم بخط كبير في النص، والزر جنبه (وتحته في الجوالات الضيقة) */
 .slp-ref{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .slp-ref input{flex:1 1 150px;min-width:0;height:48px;padding:0 12px;font:inherit;font-size:calc(18px * var(--fs));font-weight:800;letter-spacing:.04em;font-variant-numeric:tabular-nums;text-align:center;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:12px;transition:border-color .15s}
