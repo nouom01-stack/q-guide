@@ -928,7 +928,7 @@
       const raw = YT[k].v[n - 1].split(':')[0];
       say(t, _T`<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
     if (X && isFree()) { say(fd ? _T('مقاطع التأسيس للمشتركين في الدورة.') : _T('مقاطع التدريب للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
-    if (!X && !(vidSub() || auth.role === 'admin')) { toYT(_T('مقاطع الشرح عندك تفتح في يوتيوب (عضوية القناة).')); return; }
+    if (!X && !(vidSub() || auth.role === 'admin')) { say(_T('مقاطع الشرح للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
     VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
     box.oncontextmenu = e => { e.preventDefault(); return false; };
     // 💧 العلامة: إيميله ورقمه، تتنقّل كل شوي بين أماكن ما تغطي أزرار المشغّل
@@ -4252,7 +4252,7 @@
     W.innerHTML = `<div class="stf">
       <form class="sadd" id="madd" autocomplete="off"><h3>➕ إضافة مشتركين</h3>
         <div class="sgrid"><label class="wide"><span>إيميلات Google — كل إيميل في سطر، وتقدر تكتب اسم الطالب بعد الإيميل</span><textarea id="m_em" rows="5" dir="ltr" spellcheck="false" placeholder="ahmed@gmail.com أحمد محمد&#10;sara@gmail.com"></textarea></label></div>
-        <div class="sroles s3" role="radiogroup" aria-label="نوع اشتراكهم">${[['free', '🎁 مجاني', 'تفتح له النسخ الخاصة من المقاطع'], ['bank', '🏦 تحويل بنكي', 'تفتح له النسخ الخاصة من المقاطع'], ['yt', '▶️ يوتيوب', 'عضو في القناة: مقاطع الأعضاء']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_sub" value="${v}" ${ADM.msub === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
+        <div class="sroles" role="radiogroup" aria-label="نوع اشتراكهم">${[['free', '🎁 مجاني', 'هدية أو استثناء، بدون دفع'], ['bank', '🏦 تحويل بنكي', 'حوّل لك المبلغ على حسابك']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_sub" value="${v}" ${(ADM.msub === 'bank' ? 'bank' : 'free') === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
         <div class="acts"><button class="btn gold" type="submit" id="m_go" disabled>إضافة</button><span class="mcnt" id="m_cnt"></span></div>
         ${resHtml}
         <p class="mnote">يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة تطلع لهم داخل الموقع (التفاعلية والمحلولة) باسمهم وإيميلهم، ونسخة PDF في Drive تنعمل من الشيت بس.</p></form>
