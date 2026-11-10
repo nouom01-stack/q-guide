@@ -24,6 +24,7 @@
   const payDone = () => { try { sessionStorage.removeItem(PAY_SS); } catch (e) {} };
   // 🛍 الدفع عن طريق سلة: الزائر يشتري من متجر المالك في سلة ← يلصق رقم الطلب هنا (salla_claim) ← نبدّل جلسته بجلسة المشترك — auth.salla = {on, url, price}
   //    (ولو إيميله في سلة نفس إيميله هنا، الخادم يفتح له لحاله ونلقطه بـ salla_check)
+  //    🔗 auth.salla.link: الخادم يجهّز له سلة باسمه في المتجر ويعطيه رابط صفحة الدفع حقتها (salla_go) ← الطلب ينربط به ويتفعّل لحاله بدون رقم الطلب
   const SAL_SS = 'qg_salla';   // متى فتح صفحة الدفع في سلة (نتحقق من طلبه لين 45 دقيقة)
   const sallaOn = () => !!(auth && auth.role === 'free' && auth.salla && auth.salla.on && auth.salla.url);
   const sallaPending = () => { try { const t = +sessionStorage.getItem(SAL_SS) || 0; return t && Date.now() - t < 45 * 60e3 ? t : 0; } catch (e) { return 0; } };
@@ -300,7 +301,7 @@
       <h3 id="subh">اشترك في دورة Q-Guide</h3>
       <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>الساحة 1v1 بدون حد، ولوحات الصدارة</li><li>المذكرات وخطة المذاكرة ونقاط ضعفك</li></ul>
       ${SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">💳 ادفع ${SL.price || PRICE} ريال واشترك الحين</button>
-        <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.</p>
+        <p class="sub-payn">${SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك الدورة كاملة لمدة شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.')}</p>
         <button type="button" class="lnk sub-have" id="slhave">دفعت؟ فعّل اشتراكك برقم الطلب</button></div>
       <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">💳 ادفع ${PAY.price || PRICE} ريال واشترك الحين</button>
         <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>
@@ -333,18 +334,32 @@
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
       <ol class="slp-s">
         <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
-        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b>الصق رقم الطلب هنا</b><small>يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small>
+        <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله خلال دقيقة أو دقيقتين، بدون ما تكتب شي.</small>
           <form class="slp-ref" novalidate><input id="slref" type="text" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="60" placeholder="#218402731" aria-label="رقم الطلب"><button type="submit" class="btn" id="slclaim">✓ فعّل اشتراكي</button></form>
-          <div class="slp-st" role="status" aria-live="polite"></div></div></li>
+          <div class="slp-st" role="status" aria-live="polite"></div>
+          <button type="button" class="lnk slp-alt">ما تفعّل؟ اكتب رقم الطلب</button></div></li>
       </ol>
       <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>`;
     box.querySelector('.sub-x').onclick = close;
     box.querySelector('.slp-back').onclick = () => { close(); subDlg(what, '', 1); };
     const go = box.querySelector('#slopen');
-    go.addEventListener('click', () => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — ولو إيميله في سلة نفس إيميله هنا يتفعّل لحاله (نتحقق بالخلفية)
+    go.addEventListener('click', e => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — ولو إيميله في سلة نفس إيميله هنا يتفعّل لحاله (نتحقق بالخلفية)
+      if (go.classList.contains('busy')) { e.preventDefault(); return; }   // رابطه الخاص يتجهّز: ثانية أو ثانيتين
       try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
-      if (window.QGT) { QGT.ev('subgo', 'سلة'); QGT.flush(true); } });
+      if (box.classList.contains('slk')) { const st = box.querySelector('.slp-st'); if (st && !st.innerHTML) slStatus({ linkwait: 1 }); }
+      if (window.QGT) { QGT.ev('subgo', box.classList.contains('slk') ? 'سلة (رابط خاص)' : 'سلة'); QGT.flush(true); } });
     const f = box.querySelector('.slp-ref'), inp = f.querySelector('#slref'), btn = f.querySelector('#slclaim');
+    box.querySelector('.slp-alt').onclick = () => { box.classList.add('sref'); inp.focus(); };
+    // 🔗 رابط دفع خاص به: الخادم يجهّز له سلة في المتجر، والطلب اللي يطلع منها يتفعّل على حسابه لحاله. لو ما تجهّز (12 ثانية) يبقى الرابط العادي ورقم الطلب
+    if (SL.link && !ref) {
+      const label = go.innerHTML; let done = false;
+      go.classList.add('busy'); go.setAttribute('aria-disabled', 'true'); go.innerHTML = _T('⏳ نجهّز صفحة الدفع…');
+      const fin = url => { if (done) return; done = true; if (!box.isConnected) return;
+        if (url) { go.href = url; box.classList.add('slk'); if (sallaPending()) { const st = box.querySelector('.slp-st'); if (st && !st.innerHTML) slStatus({ linkwait: 1 }); } }
+        go.classList.remove('busy'); go.removeAttribute('aria-disabled'); go.innerHTML = label; };
+      setTimeout(() => fin(''), 12000);
+      api({ op: 'salla_go', session: auth.session, ua: navigator.userAgent.slice(0, 120) }).then(r => fin(r && r.ok && /^https:\/\/[^\s"'<>]+$/.test(r.url || '') ? r.url : ''), () => fin(''));
+    }
     let slT = 0;   // ⏳ الطلب ما وصلنا للحين (إيميل سلة يوصل بعد الدفع بدقيقة أو دقيقتين): نعيد نفس الرقم لحاله
     inp.addEventListener('input', () => { clearTimeout(slT); const st = box.querySelector('.slp-st'); if (st && /\b(bad|na|mw)\b/.test(st.className)) slStatus({}); });
     const claimNo = async (v, n) => {
@@ -367,7 +382,7 @@
       if (!/\d{4,}/.test(enDigits(v))) { slStatus({ ok: false, error: 'ref' }); inp.focus(); return; }
       claimNo(v, 0);
     };
-    (ref || sallaPending() ? inp : go).focus({ preventScroll: true });   // رجع من سلة: على خانة الرقم · أول مرة: على زر الدفع (بدون ما يطلع الكيبورد في الجوال)
+    (ref || (sallaPending() && !SL.link) ? inp : go).focus({ preventScroll: true });   // رجع من سلة: على خانة الرقم (مو لو رابطه خاص: يتفعّل لحاله) · أول مرة: على زر الدفع (بدون ما يطلع الكيبورد في الجوال)
   }
   // حالة رقم الطلب تحت الخانة
   function slStatus(r) {
@@ -375,6 +390,7 @@
     const set = (cls, html) => { el.className = 'slp-st' + (cls ? ' ' + cls : ''); el.innerHTML = html; };
     if (r.busy) return set('wait', _T('<span class="spin sm" aria-hidden="true"></span> نتحقق من رقم الطلب…'));
     if (r.pending) return set('wait', _T`⏳ طلبك${r.ref ? ' <bdi>#' + esc(r.ref) + '</bdi>' : ''} وصلنا وينتظر تأكيد الدفع (مثل التحويل البنكي). اشتراكك يتفعّل لحاله أول ما يتأكد.`);
+    if (r.linkwait) return set('wait lw', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر دفعك… أول ما تدفع يتفعّل اشتراكك هنا لحاله.'));
     if (r.mailwait) return set('wait mw', _T('<span class="spin sm" aria-hidden="true"></span> ننتظر وصول طلبك من سلة… عادة ياخذ دقيقة أو دقيقتين بعد الدفع. خلّ الصفحة مفتوحة ويتفعّل اشتراكك لحاله.'));
     if (r.none) return set('na', _T('ما لقينا طلب بهذا الرقم. تأكد منه، ولو توك دفعت انتظر دقيقة وجرّب مرة ثانية.'));
     if (r.taken) return set('bad', _T`رقم الطلب هذا مستخدم في حساب ثاني. لو هو طلبك <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a>.`);
@@ -396,7 +412,7 @@
       if (r && r.ok && r.paid) { sallaWin(r); return r; }
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); logout(esc(r.msg || '')); return null; }
       const st = document.querySelector('.slp-st');
-      if (r && r.ok && r.pending && st && !st.innerHTML) slStatus(r);   // طلب على إيميله ينتظر التحويل — وما نغطّي رسالة رقم الطلب
+      if (r && r.ok && r.pending && st && (!st.innerHTML || /\blw\b/.test(st.className))) slStatus(r);   // طلب على إيميله ينتظر التحويل — وما نغطّي رسالة رقم الطلب
       return r;
     } catch (e) { return { ok: false, error: 'net' }; } finally { salBusy = false; }
   }
@@ -3318,8 +3334,8 @@
   }
   // 🛍 الدفع عن طريق سلة: حالة الربط (السر · المتجر · رابط المنتج) + فتحه للزوار + الطلبات (اللي بدون إيميل تربطه أنت بالطالب)
   const SL_PM = { credit_card: 'بطاقة', mada: 'مدى', apple_pay: 'Apple Pay', stc_pay: 'STC Pay', google_pay: 'Google Pay', bank: 'تحويل بنكي', cod: 'عند الاستلام', tabby_installment: 'تابي', tamara_installment: 'تمارا', paypal: 'PayPal', free: 'مجاني' };
-  const SL_SRC = { field: '✍️ من خانة المنتج', customer: '📧 إيميل حسابه في سلة', owner: '👤 ربطته أنت', claim: '🔢 كتب رقم الطلب' };
-  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات', claim: 'تفعيل برقم الطلب', mail: 'إيميل من سلة' };
+  const SL_SRC = { field: '✍️ من خانة المنتج', customer: '📧 إيميل حسابه في سلة', owner: '👤 ربطته أنت', claim: '🔢 كتب رقم الطلب', link: '🔗 من رابطه الخاص' };
+  const SL_EV = { 'order.created': 'طلب جديد', 'order.updated': 'تحديث طلب', 'order.status.updated': 'تغيّرت حالة طلب', 'order.payment.updated': 'تحديث الدفع', 'order.cancelled': 'انلغى طلب', 'order.refunded': 'استرجاع مبلغ', 'order.deleted': 'انحذف طلب', 'app.store.authorize': 'ربط المتجر', 'app.installed': 'تثبيت التطبيق', 'app.uninstalled': 'إزالة التطبيق', 'app.updated': 'تحديث التطبيق', pull: 'جلب الطلبات', claim: 'تفعيل برقم الطلب', mail: 'إيميل من سلة', link: 'رابط دفع خاص', cart: 'سلة جديدة' };
   const slState = o => o.applied_at ? (o.bad ? ['warn', '⚠️ انلغى بعد التفعيل', 'راجعه وأنهِ اشتراكه لو لازم'] : ['ok', '✅ تفعّل', o.until ? `لين ${admDay(o.until)}${o.months > 1 ? ` · ${o.months} شهور` : ''}` : ''])
     : o.paid === 1 ? (!o.email || o.note === SL_WAIT ? (slStuck(o) ? ['warn', '⚠️ ما فعّله صاحبه للحين', 'كلّمه على جواله، أو اضغط «🔗 ربط»'] : ['na', '⏳ ينتظر رقم الطلب', 'الطالب يفعّله بنفسه من الموقع']) : ['warn', '⚠️ ما تفعّل', o.note || ''])
     : o.paid === -1 ? ['na', '↩️ ملغي أو مسترجع', o.stn || ''] : ['na', '⏳ بانتظار الدفع', o.stn || ''];
@@ -3337,14 +3353,19 @@
     const ready = on && SL.url;
     const openBar = !ready ? '' : SL.open ? '<div class="pbopen on"><span>الزوار يشوفون زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في سلة.</span><button type="button" class="lnk dng" id="slclose">⏸ إيقاف سلة للزوار</button></div>'
       : '<div class="pbopen"><span>جرّبه قبل: ادخل الموقع بحساب Gmail ثاني (مو حساب المشرف)، اشترِ من الزر، والصق رقم الطلب. لو تفعّل اشتراكه، افتحه للكل.</span><button type="button" class="btn sm gold" id="slopen1">🚀 افتح سلة لكل الزوار</button></div>';
+    // 🔗 رابط دفع خاص بكل طالب: الموقع يجهّز للطالب سلة باسمه في المتجر، وطلبه يتفعّل لحاله بدون رقم الطلب
+    const LK = SL.link || {};
+    const linkBar = !ready || !LK.can ? '' : LK.on ? `<div class="pbopen on"><span>🔗 <b>رابط دفع خاص بكل طالب: شغّال.</b> الطالب يدفع ويتفعّل اشتراكه لحاله بدون رقم الطلب.${LK.n ? ` آخر 30 يوم: ${LK.n === 1 ? 'رابط واحد' : LK.n === 2 ? 'رابطين' : LK.n <= 10 ? LK.n + ' روابط' : LK.n + ' رابط'} · ${LK.orders ? `تفعّل منها ${LK.orders} لحاله` : 'ما تفعّل منها شي لحاله للحين'}${LK.amb ? ` · ${LK.amb} ما انربط (يكتب رقم الطلب)` : ''}.` : ''}</span><button type="button" class="lnk dng" id="sllkoff">⏸ إيقاف</button></div>`
+      : '<div class="pbopen"><span>🔗 <b>رابط دفع خاص بكل طالب:</b> الموقع يجهّز للطالب سلة باسمه في متجرك، ويتفعّل اشتراكه لحاله بعد الدفع بدون ما يكتب رقم الطلب.</span><button type="button" class="btn sm" id="sllkon">تشغيل</button></div>';
     const rows = SL.rows || [], miss = rows.filter(slStuck).length, L = ADM.sallaAll ? rows : rows.slice(0, 6);
-    const last = (SL.events || []).find(e => e.ok && e.ev !== 'pull'), bad = (SL.events || []).find(e => !e.ok);
+    const last = (SL.events || []).find(e => e.ok && e.ev !== 'pull' && e.ev !== 'cart'), bad = (SL.events || []).find(e => !e.ok);
     return `<section class="paybox slbox" aria-labelledby="slh"><div class="pbtop"><h3 id="slh">🛍 الدفع عن طريق سلة</h3>${mode}</div>
       ${conn}
       <form class="slset" id="slform"><label class="slu"><span>رابط المنتج في سلة</span><input id="slurl" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url || '')}" autocomplete="off"></label>
         <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || 140))}"><small>ريال</small></span></label>
         <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
       ${openBar}
+      ${linkBar}
       <p class="pbsum">${SL.paid ? `${SL.paid === 1 ? 'طلب واحد تفعّل' : SL.paid === 2 ? 'طلبين تفعّلت' : SL.paid + ' طلبات تفعّلت'} · المجموع <b>${SL.total} ريال</b>` : 'ما تفعّل أي طلب للحين'} · ${last ? `آخر إشعار من سلة ${fmtD(last.at)} (${esc(SL_EV[last.ev] || last.ev)})` : 'ما وصل أي إشعار من سلة للحين'}</p>
       ${bad && (!last || bad.at > last.at) ? `<div class="rgsync warn">⚠️ ${esc(bad.note || bad.ev)} · ${fmtD(bad.at)}</div>` : ML.bad ? `<div class="rgsync warn">⚠️ ${esc(ML.bad.note || 'إيميل من سلة انرفض')} · ${fmtD(ML.bad.at)}</div>` : ''}
       ${miss ? `<div class="rgsync warn">⚠️ ${miss === 1 ? 'فيه طلب مدفوع من أكثر من 3 ساعات وما فعّله صاحبه' : `فيه ${miss} طلبات مدفوعة من أكثر من 3 ساعات وما فعّلها أصحابها`}: كلّمه على جواله (تحت رقم الطلب)، أو اضغط «🔗 ربط» واكتب إيميله.</div>` : ''}
@@ -3368,6 +3389,9 @@
       if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
       btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); paintSubs(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
     if (op1) op1.onclick = () => setOpen(true, op1); if (cl) cl.onclick = () => setOpen(false, cl);
+    const lon = W.querySelector('#sllkon'), lof = W.querySelector('#sllkoff'), setLink = async (on, btn) => {
+      btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', link: on ? 1 : 0 }); toast(on ? '🔗 الرابط الخاص شغّال' : '⏸ وقّفت الرابط الخاص: الطالب يكتب رقم الطلب'); paintSubs(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
+    if (lon) lon.onclick = () => setLink(true, lon); if (lof) lof.onclick = () => setLink(false, lof);
     const al = W.querySelector('#slall'); if (al) al.onclick = () => { ADM.sallaAll = !ADM.sallaAll; paintSubs(); };
     const pl = W.querySelector('#slpull'); if (pl) pl.onclick = async () => { pl.disabled = true; const t = pl.textContent; pl.textContent = '⏳ نجيب الطلبات من سلة…';
       try { const r = await admCall({ op: 'adm_salla_pull' }); ADM.salla = r; const P = r.pulled || {}; toast(`جبنا ${P.n || 0} طلب من سلة${P.done ? ` · تفعّل منها ${P.done}` : ''}`); if (P.done) { ADM.subs = null; renderSubs(); } else paintSubs(); }
