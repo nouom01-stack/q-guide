@@ -7,7 +7,7 @@
  */
 (function () {
   'use strict';
-  const LS = 'qg_lang', EN_V = 'e9ab2296';
+  const LS = 'qg_lang', EN_V = 'd48937a5';
   let lang = 'ar';
   try { const q = /[?&]lang=(ar|en)\b/.exec(location.search); if (q) localStorage.setItem(LS, q[1]); lang = localStorage.getItem(LS) === 'en' ? 'en' : 'ar'; } catch (e) {}
   const EN = lang === 'en', html = document.documentElement;

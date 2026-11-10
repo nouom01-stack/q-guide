@@ -16,6 +16,7 @@
   const cache = {};
   // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
   const isFree = () => !!(auth && auth.role === 'free');
+  let CERR = () => {};   // 🐞 مرسل الأخطاء للمالك (يتعرّف تحت): نستخدمه في try/catch حول الإضافات اللي ما نبيها تكسر الصفحة
   const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, FREE_GAMES = 3;
   const isSub = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin');   // مشترك في الدورة (طالب)
   const WA = t => 'https://wa.me/966508003683?text=' + encodeURIComponent(t);   // 💬 واتساب الدعم
@@ -519,7 +520,8 @@
   function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w && _T(w)); }); }   // 🌐 اسم المقفول بالإنجليزي لو له ترجمة
   const lockTool = (i, b, s) => _T`<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
   // ⏰ اشتراكه قرب يخلص (أو خلص وما جدّد): شريط فوق الرئيسية فيه زر التجديد — متى يطلع يحدده المالك (auth.renew.nag من الخادم)
-  function renewBar() {
+  function renewBar() { try { return renewBar0(); } catch (e) { CERR('renewBar: ' + (e && e.message)); return ''; } }
+  function renewBar0() {
     const R = auth && auth.renew, left = renewLeft(); if (!isSub() || !R || !R.nag || left == null) return '';
     const over = left < 0;
     return _T`<section class="rnw${over ? ' over' : ''}" aria-label="تجديد الاشتراك"><span class="rnw-i" aria-hidden="true">${over ? '⛔' : '⏰'}</span>
@@ -598,7 +600,8 @@
   // 📱 شريط التنقل تحت في الجوال (الصفحات الرئيسية بس، مو داخل حل الأسئلة ولا الساحة ولا الإدارة): الرئيسية · الشرح · مرشدي · الساحة · ملفي
   //    زر «مرشدي» في النص: المشترك يفتح صفحة مرشده (#advisor)، والزائر يفتح محادثة المرشد. الزر العائم ينخفي في الجوال لما الشريط موجود.
   const TB_ON = h => h === '' || /^(sharh(-(salman|abdullah)(\/[ft])?)?|advisor|me|skills|plan|notes|badges)$/.test(h) || /^board/.test(h) || /^vocab/.test(h);
-  function tabbar(h) {
+  function tabbar(h) { try { tabbar0(h); } catch (e) { CERR('tabbar: ' + (e && e.message)); } }
+  function tabbar0(h) {
     let el = document.querySelector('.tbar'); const on = !!auth && h != null && TB_ON(h);
     document.documentElement.classList.toggle('tb-on', on);
     if (!on) { if (el) el.remove(); return; }
@@ -1176,7 +1179,10 @@
   // كم يوم من آخر مرة حل فيها (null = ما حل أبداً)
   function advGap() { const D = daysGet(); let last = ''; for (const k in D) if (D[k] > 0 && k > last) last = k; if (!last) return null; const [y, m, d] = last.split('-').map(Number); return Math.max(0, dayDiff(new Date(y, m - 1, d).getTime(), Date.now())); }
   const ADV_LESSON = { ana: 1, sen: 2, err: 3, read: 4 };
-  function advPick() {
+  // النصيحة ما تكسر الرئيسية أبداً: لو صار خطأ (بيانات قديمة على جهاز الطالب) تطلع نصيحة البداية، والخطأ ينرسل للمالك
+  function advPick() { try { return advPick0(); } catch (e) { CERR('advPick: ' + (e && e.message));
+    return { k: 'start', i: '🧭', t: _T('اعرف وين تركّز'), s: _T('حل كم سؤال أو اختبار تحديد المستوى، ونقولك أضعف مهاراتك ونتدرّب عليها'), a: [{ t: _T('🧭 تحديد المستوى'), h: '#level' }] }; } }
+  function advPick0() {
     const P = helpProfile(), FR = isFree(), w = P.weak && P.weak[0], dl = advDl(), st = planState(), plan = PLANS.find(p => p.id === st.id) || null, A = advGet();
     const nW = (() => { try { const h = histGet(); let n = 0; for (const s in h.items) for (const i in h.items[s]) if (!h.items[s][i][2]) n++; return n; } catch (e) { return 0; } })();
     const setup = { t: _T('🎓 رتّب مذاكرتي'), act: 'data-adv="setup"', g: 1 }, needSetup = !FR && !A && !plan;
@@ -4989,7 +4995,7 @@
 
   // 🐞 خطأ ما توقعناه في المتصفح: ينرسل للخادم (cerr) ويطلع للمالك في «الإعدادات والسجل» — أول 5 أخطاء مختلفة في الجلسة، وبدون أي بيانات غير نص الخطأ والصفحة
   { const seen = {}; let n = 0;
-    const send = (msg, src) => { try { msg = String(msg || '').slice(0, 280); if (!msg || seen[msg] || n >= 5 || !auth || !auth.session || /Script error|ResizeObserver|extension:|Load failed|NetworkError|Failed to fetch|AbortError/i.test(msg)) return; seen[msg] = 1; n++;
+    const send = CERR = (msg, src) => { try { msg = String(msg || '').slice(0, 280); if (!msg || seen[msg] || n >= 5 || !auth || !auth.session || /Script error|ResizeObserver|extension:|Load failed|NetworkError|Failed to fetch|AbortError/i.test(msg)) return; seen[msg] = 1; n++;
       api({ op: 'cerr', session: auth.session, msg: msg + (src ? ' @' + src : ''), url: (location.pathname + location.hash).replace(/[?&=].*$/, '').slice(0, 120), ua: navigator.userAgent.slice(0, 150) }).catch(() => {}); } catch (e) {} };
     window.addEventListener('error', e => { if (e && e.message) send(e.message, e.filename ? String(e.filename).split('/').pop().split('?')[0] + ':' + (e.lineno || 0) : ''); });
     window.addEventListener('unhandledrejection', e => { const r = e && e.reason; if (r && (r.stack || r.message) && !/API not configured|locked|bad key/.test(r.message || '')) send((r.name || 'Error') + ': ' + (r.message || ''), String(r.stack || '').split('\n')[1] ? String(r.stack).split('\n')[1].trim().slice(0, 80) : ''); }); }
