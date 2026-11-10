@@ -16,17 +16,20 @@
   const cache = {};
   // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
   const isFree = () => !!(auth && auth.role === 'free');
-  const FREE_SETS = ['q1', 'v1', 'placement'], JOIN_URL = 'https://www.youtube.com/@Q-guide1/join', PRICE = 140, FREE_GAMES = 3;
-  // 💳 الدفع من الموقع (Tap): الزائر (أو اللي انتهى اشتراكه) يدفع وتنفتح له الدورة على طول — auth.pay = {on, price, test} من الخادم
+  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, FREE_GAMES = 3;
+  const isSub = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin');   // مشترك في الدورة (طالب)
+  const WA = t => 'https://wa.me/966508003683?text=' + encodeURIComponent(t);   // 💬 واتساب الدعم
+  // 💳 الاشتراك والتجديد من الموقع بس (اشتراك يوتيوب توقف): الزائر يدفع وتنفتح له الدورة، والمشترك يجدّد ويتمدد اشتراكه شهر من موعد نهايته
+  // 💳 الدفع من الموقع (Tap): auth.pay = {on, price, test} من الخادم (للزائر وللمشترك)
   const PAY_SS = 'qg_tap';   // رقم العملية اللي رجع منها الطالب من صفحة الدفع (لين نتحقق منها)
-  const payOn = () => !!(auth && auth.role === 'free' && auth.pay && auth.pay.on);
+  const payOn = () => !!(auth && auth.role !== 'admin' && auth.pay && auth.pay.on);
   const payPending = () => { try { return sessionStorage.getItem(PAY_SS) || ''; } catch (e) { return ''; } };
   const payDone = () => { try { sessionStorage.removeItem(PAY_SS); } catch (e) {} };
   // 🛍 الدفع عن طريق سلة: الزائر يشتري من متجر المالك في سلة ← يلصق رقم الطلب هنا (salla_claim) ← نبدّل جلسته بجلسة المشترك — auth.salla = {on, url, price}
   //    (ولو إيميله في سلة نفس إيميله هنا، الخادم يفتح له لحاله ونلقطه بـ salla_check)
   //    🔗 auth.salla.link: الخادم يجهّز له سلة باسمه في المتجر ويعطيه رابط صفحة الدفع حقتها (salla_go) ← الطلب ينربط به ويتفعّل لحاله بدون رقم الطلب
   const SAL_SS = 'qg_salla';   // متى فتح صفحة الدفع في سلة (نتحقق من طلبه لين 45 دقيقة)
-  const sallaOn = () => !!(auth && auth.role === 'free' && auth.salla && auth.salla.on && auth.salla.url);
+  const sallaOn = () => !!(auth && auth.role !== 'admin' && auth.salla && auth.salla.on && auth.salla.url);
   const sallaPending = () => { try { const t = +sessionStorage.getItem(SAL_SS) || 0; return t && Date.now() - t < 45 * 60e3 ? t : 0; } catch (e) { return 0; } };
   const sallaDone = () => { try { sessionStorage.removeItem(SAL_SS); } catch (e) {} };
   // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات) · مقطعا القواعد (الكمي واللفظي) انشالوا من الموقع بطلب المالك
@@ -57,9 +60,10 @@
   // i18n:on
   const qrName = n => QR_L[n - 1][EN ? 1 : 0];
   const ytUrl = id => 'https://youtu.be/' + id;
-  // 🎬 المشترك المجاني أو بالتحويل: المقاطع تشتغل هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميله · مشترك يوتيوب يكمل على يوتيوب (مقاطع الأعضاء)
-  // auth.vids = المقاطع المرفوعة للموقع · لو مقطع ما انرفع للحين يفتح نسخته الخاصة في يوتيوب (auth.yt) مثل قبل
-  const vidSub = () => !!(auth && (auth.sub === 'free' || auth.sub === 'bank' || auth.sub === 'pay'));
+  // 🎬 كل المشتركين يشوفون المقاطع هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميلهم
+  // auth.vids = المقاطع المرفوعة للموقع · لو مقطع ما انرفع للحين: عضو القناة القديم يفتح مقطع الأعضاء، والمجاني/التحويل نسخته الخاصة (auth.yt)، ومشترك الدفع من الموقع يطلع له «قريباً»
+  const vidSub = () => isSub();
+  const noYt = () => !!(auth && auth.sub === 'pay');   // مشترك الدفع من الموقع ما له نسخة في يوتيوب
   const vidHas = k => !!(auth && Array.isArray(auth.vids) && auth.vids.indexOf(k) >= 0);
   const ytAlt = () => auth && auth.yt && vidSub() ? auth.yt : null;
   const YT_ALT_TIP = _T('مقطع خاص لك: افتحه وأنت داخل يوتيوب بنفس إيميل Google اللي تدخل فيه الموقع');
@@ -68,6 +72,7 @@
   const inSite = (k, n) => vidSub() && vidHas(k + ':' + n) ? { url: vidHash(k, n), tgt: '', site: true } : null;
   function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), lab = vLabel(m[1], m[2]), dur = raw.slice(i + 1);
     const s = inSite(m[1], +m[2]); if (s) return Object.assign({ id: raw.slice(0, i), dur, label: lab, alt: false }, s);
+    if (noYt()) return { id: '', dur, label: lab, alt: false, url: vidHash(m[1], +m[2]), tgt: '', site: true, soon: true };   // ما انرفع للحين: صفحته تقول «ينزل قريباً»
     const A = ytAlt(), alt = A && A[m[1]] && A[m[1]].v ? A[m[1]].v[+m[2] - 1] : ''; const id = alt || raw.slice(0, i); return { id, dur, url: ytUrl(id), tgt: TGT, label: lab, alt: !!alt }; }
   const ytList = k => { const A = ytAlt(); return (A && A[k] && A[k].list) || YT[k].list; };
   const ytTip = (y, t) => y && y.site ? _T(' title="يشتغل هنا داخل الموقع"') : y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
@@ -82,15 +87,23 @@
   const MATHRUN = /[0-9A-Za-z√π°²³⁴¹⁰⁻⁺\(\)\[\]\+\-−×÷=≈≤≥<>\/\.,%:'’ ]+/g;
   function wrapMath(raw) {
     return esc(raw).replace(MATHRUN, m => {
-      let lead = '', trail = '', core = m;
-      // أقواس غير متوازنة في الأطراف تبقى خارج المقطع
+      let lead = '', trail = '', core = m, x, ch = true;
       const bal = t => (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
-      while (core.length && bal(core) < 0 && core.endsWith(')')) { trail = ')' + trail; core = core.slice(0, -1); }
-      while (core.length && bal(core) > 0 && core.startsWith('(')) { lead += '('; core = core.slice(1); }
+      // أطراف المقطع اللي تخص الجملة العربية تبقى برا (وإلا تنقلب للطرف الثاني من المقطع):
+      //   ترقيم قبله «للترتيب: Tree…» أو بعده «…= 5.» · قوس إغلاق في أوله «(مرضه). health» · قوس فتح في آخره «wet (مبلول)» · أقواس غير متوازنة في الأطراف
+      while (ch && core.length) { ch = false;
+        if ((x = /^\s*[:,.]+(?=\s)/.exec(core))) { lead += x[0]; core = core.slice(x[0].length); ch = true; }
+        if (bal(core) < 0 && (x = /^\s*\)/.exec(core))) { lead += x[0]; core = core.slice(x[0].length); ch = true; }
+        if (bal(core) > 0 && (x = /\(\s*$/.exec(core))) { trail = x[0] + trail; core = core.slice(0, x.index); ch = true; }
+        if ((x = /[.,:]+\s*$/.exec(core)) && /[0-9A-Za-z)\]%°²³]\s*$/.test(core.slice(0, x.index))) { trail = x[0] + trail; core = core.slice(0, x.index); ch = true; }
+        if (bal(core) < 0 && (x = /\)\s*$/.exec(core))) { trail = x[0] + trail; core = core.slice(0, x.index); ch = true; }
+        if (bal(core) > 0 && (x = /^\s*\(/.exec(core))) { lead += x[0]; core = core.slice(x[0].length); ch = true; }
+      }
       const t = core.trim();
       const mathy = /[+−\-×÷=≈≤≥<>\/√π]/.test(t) || /[A-Za-z]/.test(t) || /\d\s*[,.]\s*\d/.test(t);
       if (t.length < 2 || !mathy || !/[0-9A-Za-z√π]/.test(t)) return m;
-      return lead + '<bdi dir="ltr">' + core + '</bdi>' + trail;
+      const ls = /^\s*/.exec(core)[0], ts = /\s*$/.exec(core)[0];   // المسافات تبقى برا المقطع (وإلا تروح للطرف الثاني وتلتصق الكلمة بالعربي اللي بعدها)
+      return lead + ls + '<bdi dir="ltr">' + t + '</bdi>' + ts + trail;
     });
   }
   function fmtExp(t) {
@@ -112,8 +125,11 @@
   function applyTheme() { const t = lsGet(LS.theme, 'light'); document.documentElement.dataset.theme = t; document.querySelectorAll('#dm').forEach(b => b.textContent = t === 'dark' ? '☀️' : '🌙'); }
   function toggleTheme() { lsSet(LS.theme, lsGet(LS.theme, 'light') === 'dark' ? 'light' : 'dark'); applyTheme(); }
   function waUrl() { const who = auth ? ((auth.display || auth.name || '') + ' · ' + (auth.email || '')) : ''; return 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أحتاج دعم فني في منصة Q-Guide') + (who ? '\n' + who : '') + _T('\nالمشكلة: ')); }
-  function ctlHtml() { return _T`<span class="ctl"><button id="fsm" title="تصغير الخط">A-</button><button id="fsp" title="تكبير الخط">A+</button>${QGL.btn('lng')}<button id="dm" title="الوضع الداكن/الفاتح">🌙</button><a class="wa" href="${waUrl()}" target="_blank" rel="noopener" title="دعم فني عبر واتساب"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8zm-3.3 4.3c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.5 0 1.7-.7 2-1.4.2-.7.2-1.3.1-1.4l-.5-.3-1.9-.9c-.3-.1-.5-.2-.7.1l-.9 1.1c-.2.2-.3.2-.6.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.4 0-.5l-.9-2.1c-.2-.5-.4-.5-.6-.5h-.4z"/></svg><span>دعم</span></a></span>`; }
-  function bindCtl() { const a = $('#fsm'), b = $('#fsp'), c = $('#dm'); if (a) a.onclick = () => bumpFs(-.1); if (b) b.onclick = () => bumpFs(.1); if (c) c.onclick = toggleTheme; applyTheme(); }
+  function ctlHtml() { return _T`<span class="ctlw"><button type="button" class="ib ctlb" id="ctlb" aria-expanded="false" title="إعدادات العرض" aria-label="إعدادات العرض: الخط واللغة والوضع الداكن والدعم"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button><span class="ctl"><button id="fsm" title="تصغير الخط">A-</button><button id="fsp" title="تكبير الخط">A+</button>${QGL.btn('lng')}<button id="dm" title="الوضع الداكن/الفاتح">🌙</button><a class="wa" href="${waUrl()}" target="_blank" rel="noopener" title="دعم فني عبر واتساب"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.2 15.3l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 0 1 12 3.8zm-3.3 4.3c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.5 0 1.7-.7 2-1.4.2-.7.2-1.3.1-1.4l-.5-.3-1.9-.9c-.3-.1-.5-.2-.7.1l-.9 1.1c-.2.2-.3.2-.6.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.4 0-.5l-.9-2.1c-.2-.5-.4-.5-.6-.5h-.4z"/></svg><span>دعم</span></a></span></span>`; }
+  function bindCtl() { const a = $('#fsm'), b = $('#fsp'), c = $('#dm'); if (a) a.onclick = () => bumpFs(-.1); if (b) b.onclick = () => bumpFs(.1); if (c) c.onclick = toggleTheme; applyTheme();
+    const cb = $('#ctlb'); if (cb) cb.onclick = e => { e.stopPropagation(); const w = cb.parentElement, on = !w.classList.contains('open'); w.classList.toggle('open', on); cb.setAttribute('aria-expanded', on); };   // 📱 الجوال: أزرار العرض تحت زر واحد
+    const an = $('.adm-nav a.on'), nv = an && an.closest('.adm-nav'); if (nv && nv.scrollWidth > nv.clientWidth + 4) nv.scrollLeft += an.getBoundingClientRect().left - nv.getBoundingClientRect().left - (nv.clientWidth - an.offsetWidth) / 2; }   // 👑 قائمة الإدارة على الجوال: القسم الحالي في النص
+  document.addEventListener('click', e => { const w = document.querySelector('.ctlw.open'); if (w && !w.contains(e.target)) { w.classList.remove('open'); const b = w.querySelector('.ctlb'); if (b) b.setAttribute('aria-expanded', 'false'); } });
   function bumpFs(d) { let f = lsGet(LS.fs, 1); f = Math.min(1.4, Math.max(.85, +(f + d).toFixed(2))); lsSet(LS.fs, f); applyFs(); }
   async function api(body) {
     if (!window.QG.API || window.QG.API.indexOf('__') === 0) throw new Error('API not configured');
@@ -195,7 +211,7 @@
   let skillsPulled = false;
   // كل اللي يتزامن بين أجهزة الطالب في رسالة وحدة
   function syncPayload() {
-    const pl = planState(), o = { v: 1, items: histGet().items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null, marks: marksGet(), badges: lsGet(BADGE_LS, {}), lvl: lsGet(LVL_LS, null), fc: lsGet(FC_LS, null) };
+    const pl = planState(), o = { v: 1, items: histGet().items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null, marks: marksGet(), badges: lsGet(BADGE_LS, {}), lvl: lsGet(LVL_LS, null), fc: lsGet(FC_LS, null), fq: fqGet(), adv: lsGet(ADV_LS, null) };
     let s = JSON.stringify(o); if (s.length < 140000) return s;   // حد الخادم 150 ألف حرف: نخفّف الأقل أهمية أول
     o.fc = null; if (o.lvl) o.lvl = Object.assign({}, o.lvl, { a: {} }); s = JSON.stringify(o); if (s.length < 140000) return s;
     const M = JSON.parse(JSON.stringify(o.marks)); for (const k in M.items) for (const i in M.items[k]) if (M.items[k][i].n) M.items[k][i].n = M.items[k][i].n.slice(0, 160); o.marks = M; return JSON.stringify(o);
@@ -210,7 +226,7 @@
         // موعد الاختبار والخطة: الأحدث يكسب (حتى تلحقك على أي جهاز)
         if (rem.exam && (rem.exam.up || 0) > ((lsGet(EXAM_LS, null) || {}).up || 0)) lsSet(EXAM_LS, rem.exam);
         if (rem.plan && planUp(rem.plan) > planUp(planState())) lsSet(PLAN_LS, rem.plan);
-        marksMerge(rem.marks); badgesMerge(rem.badges); if (rem.lvl && (rem.lvl.at || 0) > ((lsGet(LVL_LS, null) || {}).at || 0)) lsSet(LVL_LS, rem.lvl); fcMerge(rem.fc);
+        marksMerge(rem.marks); badgesMerge(rem.badges); if (rem.lvl && (rem.lvl.at || 0) > ((lsGet(LVL_LS, null) || {}).at || 0)) lsSet(LVL_LS, rem.lvl); fcMerge(rem.fc); fqMerge(rem.fq); advMerge(rem.adv);
         return h;
       }
     } catch (e) {}
@@ -270,8 +286,10 @@
       const r = await api({ op: 'me', session: auth.session });
       if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
-      else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.adv || '') !== (auth.adv || '') || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.adv = r.adv || ''; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 🧑‍🏫 صار مرشد؟ · 👨‍🏫 صار يرفع مقاطعه؟
-      if (r && r.ok && auth && auth.role === 'free' && (JSON.stringify(r.pay || null) !== JSON.stringify(auth.pay || null) || JSON.stringify(r.salla || null) !== JSON.stringify(auth.salla || null))) { auth.pay = r.pay || null; auth.salla = r.salla || null; lsSet(LS.auth, auth); }   // 💳🛍 الدفع انفتح/انقفل
+      else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 👨‍🏫 صار يرفع مقاطعه؟
+      if (r && r.ok && auth && auth.role !== 'admin' && ['pay', 'salla', 'renew'].some(k => JSON.stringify(r[k] || null) !== JSON.stringify(auth[k] || null))) {   // 💳🛍 الدفع انفتح/انقفل · ⏰ موعد اشتراكه تغيّر
+        const rn = JSON.stringify(r.renew || null) !== JSON.stringify(auth.renew || null); auth.pay = r.pay || null; auth.salla = r.salla || null; auth.renew = r.renew || null; lsSet(LS.auth, auth);
+        if (rn && (!location.hash || location.hash === '#')) { const b = $('#rnw'); if (b) { b.innerHTML = renewBar(); bindSub(b); } } }
       if (r && r.ok && auth && auth.role !== 'free' && Array.isArray(r.vids) && JSON.stringify(r.vids) !== JSON.stringify(auth.vids || [])) {   // 🎬 مقاطع جديدة انرفعت للموقع
         auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-(salman|abdullah)(\/[ft])?)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
       if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
@@ -285,29 +303,37 @@
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
-    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-sf/.test(h)) return _T('تأسيس الكمي'); if (/^watch-at/.test(h)) return _T('تدريب اللفظي');
+    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-sf/.test(h)) return _T('تأسيس الكمي'); if (/^fq-/.test(h)) return _T('اختبارات التأسيس'); if (h === 'advisor') return _T('مرشدك الأكاديمي'); if (/^watch-at/.test(h)) return _T('تدريب اللفظي');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
     return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
+  // ⏰ كم يوم باقي على نهاية اشتراك الطالب (بتقويم الرياض) — auth.renew = {until, nag: قرب يخلص أو خلص, auto: ينتهي تلقائياً, grace} من الخادم
+  const renewLeft = () => { const R = auth && auth.renew; return R && R.until ? rDay(R.until) - rDay(Date.now()) : null; };
+  // نافذة وحدة للاشتراك (الزائر) وللتجديد (المشترك): الدفع من الموقع — سلة أول لو المالك شغّلها، وإلا تاب، وإلا واتساب الدعم
   function subDlg(what, from, stay) {
+    const renew = isSub();
     if (isFree() && window.QGT) QGT.ev('sub', what || from || 'زر الاشتراك');   // 👀 فتح نافذة الاشتراك (وش اللي فتحها)
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
-    const ov = document.createElement('div'); ov.className = 'qgdlg subdlg'; ov.setAttribute('dir', EN ? 'ltr' : 'rtl');
-    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أبي أشترك في دورة Q-Guide') + (auth && auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
+    const ov = document.createElement('div'); ov.className = 'qgdlg subdlg' + (renew ? ' rn' : ''); ov.setAttribute('dir', EN ? 'ltr' : 'rtl');
+    const wa = WA((renew ? _T('السلام عليكم، أبي أجدد اشتراكي في دورة Q-Guide') : _T('السلام عليكم، أبي أشترك في دورة Q-Guide')) + (auth && auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
     const SL = sallaOn() ? auth.salla : null, PAY = !SL && payOn() ? auth.pay : null;   // 🛍 سلة أول (لو المالك شغّلها)، وإلا 💳 الدفع من الموقع (تاب)
+    const price = (SL && SL.price) || (PAY && PAY.price) || PRICE, R = (renew && auth.renew) || {}, left = renew ? renewLeft() : null;
+    const head = renew ? _T`<h3 id="subh">جدّد اشتراكك</h3>
+      <p class="sub-rn${left != null && left < 0 ? ' over' : ''}">${left == null ? _T('التجديد يضيف شهر كامل على اشتراكك.') : left < 0 ? _T`انتهت مدة اشتراكك ${meDay(R.until)}. جدّد الحين عشان ما ينقطع دخولك للدورة.` : _T`اشتراكك ينتهي ${meDay(R.until)}. التجديد يضيف شهر على هذا التاريخ، فما يضيع عليك ولا يوم.`}</p>`
+      : _T`${what ? _T`<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
+      <h3 id="subh">اشترك في دورة Q-Guide</h3>
+      <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li>دروس التأسيس واختباراتها مع مدرسين الدورة</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>مرشدك الأكاديمي الذكي وخطة مذاكرة على موعد اختبارك</li><li>الساحة 1v1 بدون حد، والمذكرات ولوحات الصدارة</li></ul>`;
+    const go = renew ? _T`💳 ادفع ${price} ريال وجدّد شهر` : _T`💳 ادفع ${price} ريال واشترك الحين`;
+    const body = SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">${go}</button>
+        <p class="sub-payn">${renew ? (SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا ويتمدد اشتراكك شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، ويتمدد اشتراكك شهر.')) : SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك الدورة كاملة لمدة شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.')}</p>
+        <button type="button" class="lnk sub-have" id="slhave">${renew ? _T('دفعت؟ جدّد اشتراكك برقم الطلب') : _T('دفعت؟ فعّل اشتراكك برقم الطلب')}</button></div>`
+      : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">${go}</button>
+        <p class="sub-payn">${renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد شهر على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.')}</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>`
+      : _T`<p class="sub-nopay">${renew ? _T`التجديد <b>${price} ريال</b> للشهر. راسلنا على واتساب ونجدّد لك اشتراكك على نفس حسابك.` : _T`الاشتراك <b>${price} ريال</b> للشهر. راسلنا على واتساب ونفعّل لك الدورة كاملة على نفس حسابك.`}</p>`;
     ov.innerHTML = _T`<div class="qgdlg-box sub-box" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
-      ${what ? _T`<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
-      <h3 id="subh">اشترك في دورة Q-Guide</h3>
-      <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>الساحة 1v1 بدون حد، ولوحات الصدارة</li><li>المذكرات وخطة المذاكرة ونقاط ضعفك</li></ul>
-      ${SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">💳 ادفع ${SL.price || PRICE} ريال واشترك الحين</button>
-        <p class="sub-payn">${SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك الدورة كاملة لمدة شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.')}</p>
-        <button type="button" class="lnk sub-have" id="slhave">دفعت؟ فعّل اشتراكك برقم الطلب</button></div>
-      <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">💳 ادفع ${PAY.price || PRICE} ريال واشترك الحين</button>
-        <p class="sub-payn">مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>
-      <div class="sub-or" role="separator"><span>أو اشترك عن طريق يوتيوب</span></div>` : _T('<h4>طريقة الاشتراك</h4>')}
-      <ol class="sub-s"><li>انتسب لقناة Q-guide1 في يوتيوب بـ <b>${PRICE} ريال</b></li><li>أرسل لنا على واتساب إيميلك اللي دخلت فيه هنا</li><li>نفعّل لك الدورة كاملة على نفس حسابك</li></ol>
-      <div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'}" href="${JOIN_URL}" target="_blank" rel="noopener">اشترك من يوتيوب</a><a class="btn wa" href="${wa}" target="_blank" rel="noopener">راسلنا على واتساب</a></div>
+      ${head}${body}
+      <div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${wa}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>
     </div>`;
     document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
     const close = () => { ov.remove(); document.removeEventListener('keydown', onK); };
@@ -318,12 +344,12 @@
     const pg = ov.querySelector('#paygo'); if (pg) pg.onclick = () => payGo(pg);
     const sg = ov.querySelector('#sallago'); if (sg) sg.onclick = () => sallaSteps(ov, what, close);
     const sh = ov.querySelector('#slhave'); if (sh) sh.onclick = () => sallaSteps(ov, what, close, 1);   // دفع قبل (أو أبوه دفع عنه): على طول لخانة رقم الطلب
-    ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { if (isFree() && window.QGT) { QGT.ev('subgo', a.classList.contains('wa') ? 'واتساب' : 'يوتيوب'); QGT.flush(true); } }));
+    ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { if (isFree() && window.QGT) { QGT.ev('subgo', 'واتساب'); QGT.flush(true); } }));
     if (SL && sallaPending() && !stay) sallaSteps(ov, what, close);   // رجع للنافذة وهو فاتح صفحة الدفع: نكمل من خطوات سلة
   }
   // 🛍 خطوات الدفع عن طريق سلة (داخل نفس النافذة): ① افتح صفحة الدفع وادفع ② الصق رقم الطلب هنا ← يتفعّل اشتراكه على حسابه
   //    ref = جا من «دفعت؟ فعّل اشتراكك برقم الطلب» (أو أبوه دفع عنه): نركّز على خانة الرقم على طول
-  const slWa = () => 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت عن طريق سلة وما تفعّل اشتراكي') + '\n' + ((auth && auth.email) || ''));
+  const slWa = () => WA(_T('السلام عليكم، دفعت عن طريق سلة وما تفعّل اشتراكي') + '\n' + ((auth && auth.email) || ''));
   const enDigits = s => String(s || '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6f0);
   function sallaSteps(ov, what, close, ref) {
     const SL = auth && auth.salla; if (!SL || !SL.url) return;
@@ -408,7 +434,7 @@
   async function sallaPoll() {
     if (salBusy || !auth || !auth.session || auth.role === 'admin') return null; salBusy = true;
     try {
-      const r = await api({ op: 'salla_check', session: auth.session, ua: navigator.userAgent.slice(0, 120) });
+      const r = await api({ op: 'salla_check', session: auth.session, since: isSub() ? sallaPending() || undefined : undefined, ua: navigator.userAgent.slice(0, 120) });   // 🔁 المشترك: بس طلب تفعّل بعد ما فتح صفحة الدفع
       if (r && r.ok && r.paid) { sallaWin(r); return r; }
       if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) { sallaDone(); logout(esc(r.msg || '')); return null; }
       const st = document.querySelector('.slp-st');
@@ -418,22 +444,23 @@
   }
   // انفتح اشتراكه (برقم الطلب أو لحاله): جلسة المشترك بدل جلسة الزائر + صفحة «تم الاشتراك» مرة وحدة
   function sallaWin(r) {
-    sallaDone();
+    sallaDone(); const was = isSub();
     if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
+    else if (was && r.until) { auth.renew = Object.assign({}, auth.renew || {}, { until: r.until, nag: 0 }); lsSet(LS.auth, auth); }   // 🔁 جدّد: موعده الجديد
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
-    PAID_OK = { until: r.until || 0, months: r.months || 1 };
+    PAID_OK = { until: r.until || 0, months: r.months || 1, renew: was ? 1 : 0 };
     if (location.hash === '#paid') renderPaid(); else location.hash = 'paid';
   }
   // ⏳ فاتح صفحة سلة: نتحقق كل 5 ثواني أول 5 دقايق، وبعدها كل 20 ثانية — ولما يرجع للتبويب نتحقق على طول
-  { let tick = 0; setInterval(() => { const t = sallaPending(); if (!t || document.hidden || !auth || auth.role !== 'free') return; tick++; if (Date.now() - t < 300e3 || tick % 4 === 0) sallaPoll(); }, 5000);
-    const back = () => { if (!document.hidden && sallaPending() && auth && auth.role === 'free') sallaPoll(); };
+  { let tick = 0; setInterval(() => { const t = sallaPending(); if (!t || document.hidden || !auth || auth.role === 'admin') return; tick++; if (Date.now() - t < 300e3 || tick % 4 === 0) sallaPoll(); }, 5000);
+    const back = () => { if (!document.hidden && sallaPending() && auth && auth.role !== 'admin') sallaPoll(); };
     document.addEventListener('visibilitychange', back); window.addEventListener('focus', back); }
   // 💳 «ادفع واشترك»: الخادم ينشئ العملية عند تاب ويرجّع رابط صفحة الدفع (مدى، أبل باي، البطاقات) — بيانات البطاقة ما تمر علينا
   async function payGo(btn) {
     if (!btn || btn.disabled) return; btn.disabled = true; const label = btn.innerHTML; btn.innerHTML = _T('⏳ نجهّز صفحة الدفع…');
     if (window.QGT) { QGT.ev('subgo', 'دفع'); QGT.flush(true); }
     try {
-      const r = await api({ op: 'pay_start', session: auth.session, lang: EN ? 'en' : 'ar' });
+      const r = await api({ op: 'pay_start', session: auth.session, lang: EN ? 'en' : 'ar', renew: isSub() ? 1 : undefined });
       if (r && r.ok && r.url) { location.href = r.url; return; }
       if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
       toast((r && r.msg) || _T('تعذّر فتح صفحة الدفع، حاول بعد شوي.'));
@@ -442,9 +469,11 @@
   }
   // 💳 الرجوع من صفحة الدفع (#paid): نتحقق من العملية عند تاب — لو انخصمت تنفتح الدورة على طول بجلسة المشترك الجديدة
   let PAID_OK = null;   // 🛍 دفع سلة تفعّل: صفحة «تم الاشتراك» تطلع مرة وحدة
-  function paidOk(show, until, months) {
+  function paidOk(show, until, months, renew) {
     const end = until ? new Date(until).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }) : '';
-    show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
+    if (renew) show('🎉', 'ok', _T`<h2>تم تجديد اشتراكك</h2><p>انضاف ${months > 1 ? _T`${months} شهور` : _T('شهر')} على اشتراكك، وتقدّمك ونتائجك كلها مثل ما هي.</p>${end ? _T`<p class="pdend">اشتراكك الحين ينتهي <b>${end}</b></p>` : ''}
+      <div class="pdact"><a class="btn gold" href="#">كمّل مذاكرتك</a></div>`);
+    else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
       <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
     confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع');
   }
@@ -455,9 +484,9 @@
         `<main class="wrap paid"><div class="pdcard ${cls}" role="status" aria-live="polite"><div class="pdic" aria-hidden="true">${ic}</div>${body}</div></main>`;
       bindCtl();
     };
-    if (PAID_OK) { const K = PAID_OK; PAID_OK = null; return paidOk(show, K.until, K.months); }
+    if (PAID_OK) { const K = PAID_OK; PAID_OK = null; return paidOk(show, K.until, K.months, K.renew); }
     const id = payPending(); if (!id) { location.hash = ''; return; }
-    const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، دفعت في موقع Q-Guide وعندي استفسار') + '\n' + (auth.email || '') + '\n' + id);
+    const wa = WA(_T('السلام عليكم، دفعت في موقع Q-Guide وعندي استفسار') + '\n' + (auth.email || '') + '\n' + id), was = isSub();
     show('<div class="spin"></div>', 'wait', _T('<h2>نتحقق من عملية الدفع…</h2><p>لا تسكّر الصفحة، ثواني بس.</p>'));
     let r = null;
     for (let i = 0; i < 8; i++) {   // تاب أحياناً يتأخر ثواني قبل ما تتأكد العملية
@@ -470,7 +499,8 @@
     if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));   // بعد الدخول نرجع هنا ونكمل
     if (r && r.ok && r.paid) {
       payDone(); if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
-      return paidOk(show, r.until, 1);
+      else if (was && r.until) { auth.renew = Object.assign({}, auth.renew || {}, { until: r.until, nag: 0 }); lsSet(LS.auth, auth); }   // 🔁 جدّد: موعده الجديد
+      return paidOk(show, r.until, 1, was);
     }
     if (r && r.ok && r.failed) {
       payDone();
@@ -488,6 +518,14 @@
   // أي زر فيه data-lock أو data-sub يفتح نافذة الاشتراك
   function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w && _T(w)); }); }   // 🌐 اسم المقفول بالإنجليزي لو له ترجمة
   const lockTool = (i, b, s) => _T`<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
+  // ⏰ اشتراكه قرب يخلص (أو خلص وما جدّد): شريط فوق الرئيسية فيه زر التجديد — متى يطلع يحدده المالك (auth.renew.nag من الخادم)
+  function renewBar() {
+    const R = auth && auth.renew, left = renewLeft(); if (!isSub() || !R || !R.nag || left == null) return '';
+    const over = left < 0;
+    return _T`<section class="rnw${over ? ' over' : ''}" aria-label="تجديد الاشتراك"><span class="rnw-i" aria-hidden="true">${over ? '⛔' : '⏰'}</span>
+      <div class="rnw-t"><b>${over ? _T('انتهت مدة اشتراكك') : left === 0 ? _T('اشتراكك ينتهي اليوم') : _T`اشتراكك ينتهي بعد ${dLabel(left)}`}</b><span>${over ? (R.auto ? _T('جدّده الحين عشان ما ينقفل حسابك.') : _T('جدّده الحين عشان تكمّل مذاكرتك بدون انقطاع.')) : _T('جدّده الحين ويضاف الشهر على تاريخ انتهاء اشتراكك، فما يضيع عليك ولا يوم.')}</span></div>
+      <button type="button" class="btn gold sm" data-sub>↻ جدّد اشتراكك</button></section>`;
+  }
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
     return _T`<section class="fhero" aria-label="الحساب المجاني">
@@ -500,18 +538,24 @@
   function route() {
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
-    if (!auth) { if (window.QGAI) QGAI.fab(false); return renderLogin(); }
+    if (!auth) { if (window.QGAI) QGAI.fab(false); tabbar(null); if (location.hash === '#join') { try { sessionStorage.setItem('qg_join', '1'); } catch (e) {} } return renderLogin(); }
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
-    const h = location.hash.replace('#', '');
+    let h = location.hash.replace('#', ''), joinDlg = false;
+    // 🛒 #join (زر «اشترك» في صفحة الموقع الرئيسية): الزائر تنفتح له نافذة الاشتراك · المشترك يروح لملفه (التجديد) · المشرف للرئيسية
+    if (h === 'join' || (() => { try { return sessionStorage.getItem('qg_join'); } catch (e) { return ''; } })()) { try { sessionStorage.removeItem('qg_join'); } catch (e) {}
+      if (isSub()) { history.replaceState(null, '', location.pathname + '#me'); h = 'me'; }
+      else { history.replaceState(null, '', location.pathname); h = ''; joinDlg = isFree(); } }
     if (h === 'qall' || h === 'vall' || (!RULES_ON && /^rules(-v)?(\/|$)/.test(h))) { history.replaceState(null, '', location.pathname); return route(); }   // 🗑 الاختبار الشامل وملخص القوانين/القواعد انشالوا: الروابط القديمة ترجع للرئيسية
     if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
       H.dir = adm ? 'rtl' : 'ltr'; H.lang = adm ? 'ar' : 'en'; H.classList.toggle('l-en', !adm); H.classList.toggle('l-ar', adm); }
+    document.body.classList.toggle('adm-on', auth.role === 'admin' && /^(admin(-|$)|studio$)/.test(h));   // 👑 لوحة الإدارة: صفحة أعرض وقائمة جانبية
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
-    if (window.QGAI) QGAI.fab(helpOn(isFree() && !freeRoute(h) ? '' : h));   // 🙋 زر «تحتاج مساعدة؟»
+    if (window.QGAI) QGAI.fab(helpOn(isFree() && !freeRoute(h) ? '' : h));   // 🎓 الزر العائم «مرشدك الأكاديمي»
+    tabbar(isFree() && !freeRoute(h) ? '' : h);   // 📱 شريط التنقل تحت (الجوال)
     if (isFree() && !freeRoute(h)) { const nm = lockName(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? _T('الاختبارات المحاكية') : ''); }   // 🔒 للمشتركين
     if (isFree() && window.QGT) QGT.page(h === '' ? 'home' : /^duel-/.test(h) ? 'duel' : h.replace(/@\d+$/, ''));   // 👀 وش فتح الزائر
     if (h === 'paid') return renderPaid();
@@ -529,6 +573,8 @@
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
     if (/^wb-t[qv](@\d{1,3})?$/.test(h)) return renderWorkbook(h.slice(3, 5), false, +(h.split('@')[1] || 0));   // 🧱 مذكرات التأسيس (قواعد الكمي/اللفظي)
     if (/^watch-([qv]|af|at|sf)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af/at = تأسيس وتدريب عبدالله الشمراني · sf = تأسيس سلمان الفرج
+    if (/^fq-[1-4]$/.test(h)) return renderFq(+h.slice(3));   // 📝 اختبار درس التأسيس
+    if (h === 'advisor') return renderAdvisor();   // 🎓 مرشدك الأكاديمي
     if (h === 'me') return renderProfile();   // 👤 ملفي
     if (h === 'sharh') return renderSharh();
     const tm = /^sharh-(salman|abdullah)(?:\/([ft]))?$/.exec(h); if (tm) return renderTeach(tm[1], tm[2]);   // 👨‍🏫 صفحة المدرس: /f التأسيس · /t التدريب
@@ -540,13 +586,31 @@
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
-    if (h === 'admin-adv') { if (auth.role === 'admin') return renderAdv(); location.hash = ''; return; }   // 🧑‍🏫 المرشدين / طلابي
+    if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
     if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
-    if (h === 'admin' || h === 'admin-staff' || h === 'admin-members' || h === 'admin-subs' || h === 'admin-regs' || h === 'admin-free' || h === 'admin-ai' || h === 'admin-find') { if (auth.role === 'admin') return h === 'admin' ? renderAdmin() : h === 'admin-staff' ? renderStaff() : h === 'admin-free' ? renderFreeUsers() : h === 'admin-ai' ? renderAiAdmin() : h === 'admin-find' ? renderFindLog() : h === 'admin-subs' ? renderSubs() : h === 'admin-regs' ? renderRegs() : renderMembers(); location.hash = ''; return; }
-    renderHome();
+    if (/^admin(-(home|staff|members|subs|pay|vids|settings|regs|free|ai|find))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
+      const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
+      return R[h](); }
+    renderHome(); if (joinDlg) subDlg('', _T('صفحة الموقع'));
   }
   window.addEventListener('hashchange', route);
 
+  // 📱 شريط التنقل تحت في الجوال (الصفحات الرئيسية بس، مو داخل حل الأسئلة ولا الساحة ولا الإدارة): الرئيسية · الشرح · مرشدي · الساحة · ملفي
+  //    زر «مرشدي» في النص: المشترك يفتح صفحة مرشده (#advisor)، والزائر يفتح محادثة المرشد. الزر العائم ينخفي في الجوال لما الشريط موجود.
+  const TB_ON = h => h === '' || /^(sharh(-(salman|abdullah)(\/[ft])?)?|advisor|me|skills|plan|notes|badges)$/.test(h) || /^board/.test(h) || /^vocab/.test(h);
+  function tabbar(h) {
+    let el = document.querySelector('.tbar'); const on = !!auth && h != null && TB_ON(h);
+    document.documentElement.classList.toggle('tb-on', on);
+    if (!on) { if (el) el.remove(); return; }
+    const cur = h === '' ? 'home' : /^sharh/.test(h) ? 'sharh' : h === 'advisor' ? 'adv' : h === 'me' ? 'me' : '';
+    const it = (k, href, ic, t) => `<a class="tb${cur === k ? ' on' : ''}" href="${href}"${cur === k ? ' aria-current="page"' : ''}><span class="tbi" aria-hidden="true">${ic}</span><span class="tbl">${t}</span></a>`;
+    if (!el) { el = document.createElement('nav'); el.className = 'tbar'; document.body.appendChild(el); }
+    el.setAttribute('dir', EN ? 'ltr' : 'rtl'); el.setAttribute('aria-label', _T('التنقل الرئيسي'));
+    el.innerHTML = it('home', '#', '🏠', _T('الرئيسية')) + it('sharh', '#sharh', '🎬', _T('الدروس'))
+      + `<button type="button" class="tb mid${cur === 'adv' ? ' on' : ''}" id="tbadv"${cur === 'adv' ? ' aria-current="page"' : ''}><span class="tbi" aria-hidden="true">✦</span><span class="tbl">${_T('مرشدي')}</span></button>`
+      + it('arena', '#arena', '⚔️', _T('الساحة')) + it('me', '#me', '👤', _T('ملفي'));
+    el.querySelector('#tbadv').onclick = () => { if (isFree()) { if (window.QGAI) QGAI.help(); } else location.hash = 'advisor'; };
+  }
   // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...) — التطبيق المضاف للشاشة الرئيسية (standalone) يدخل بهذا الوضع.
   // رابط الرجوع واحد: <API>/gsi ولازم يكون مسجّل في Google Cloud (OAuth client → Authorized redirect URIs)، وإلا يطلع للطالب redirect_uri_mismatch.
   // Google يرجّعه دايماً لـ /p/؛ صفحة الاختبارات المحاكية تحفظ qg_gsi_to قبل الدخول فنرجّعه لها بعده (gsiBack)
@@ -558,7 +622,7 @@
   }
   // ---------- login ----------
   function renderLogin(err, good) {
-    document.title = _T('تسجيل الدخول | Q-Guide');
+    document.title = _T('تسجيل الدخول | Q-Guide'); tabbar(null); document.body.classList.remove('adm-on');
     const mem = /[?&]m=1(&|$)/.test(location.search);   // جا من «دخول المشتركين» في الصفحة الرئيسية: صفحة دخول للمشترك بدون «جرّب مجاناً»
     app.innerHTML = _T`<div class="login"><div class="card">${QGL.btn('lng lgl')}
       <img src="/assets/logo.png" alt="Q-Guide">
@@ -585,7 +649,7 @@
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
-  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, adv: r.adv || '', teach: r.teach || '' });
+  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, renew: r.renew || null, teach: r.teach || '' });
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
@@ -597,7 +661,8 @@
       auth = authFrom(r);
       lsSet(LS.auth, auth);
       if (resp.back && !payPending()) return location.replace(resp.back);   // دخل من صفحة الاختبارات المحاكية: نرجّعه لها
-      location.hash = payPending() ? 'paid' : ''; route();   // 💳 رجع من صفحة الدفع وجلسته منتهية: نكمل التحقق بعد الدخول
+      if (payPending()) location.hash = 'paid'; else if (location.hash && location.hash !== '#') history.replaceState(null, '', location.pathname);   // 💳 رجع من صفحة الدفع وجلسته منتهية: نكمل التحقق بعد الدخول
+      route();
     } catch (e) { renderLogin(_T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')); }
   }
 
@@ -646,23 +711,20 @@
             <span class="gt"><b>${met ? '✓ ' : ''}${today}<small> من ${goal}</small></b><small>${met ? _T('حققت هدف اليوم') : _T('هدف اليوم')}</small></span></button></div>
       </div></section>`;
   }
-  // 🎯 «ركّز اليوم»: أضعف مهارة من سجل إجاباتك مع تدريب مباشر عليها، وزر المساعد — أو اختبار تحديد المستوى لو ما فيه بيانات بعد
+  // 🎓 «مرشدك» في الرئيسية: نصيحة وحدة واضحة من بيانات الطالب (advPick) + «اسأل مرشدك» — الزائر: أضعف مهارة أو تحديد المستوى مثل قبل
   function focusHtml() {
-    const P = helpProfile(), w = P.weak && P.weak[0], FR = isFree(), nW = (() => { try { const h = histGet(); let n = 0; for (const s in h.items) for (const i in h.items[s]) if (!h.items[s][i][2]) n++; return n; } catch (e) { return 0; } })();
-    const ask = _T`<button type="button" class="btn sm ghost fx-ask" id="fxask"><span class="fx-sp" aria-hidden="true">✦</span>اسأل المساعد</button>`;
-    if (w) {
-      const drill = FR ? _T`<button type="button" class="btn sm" data-lock="التدريب على نقاط ضعفك">${w.i} تدريب ${esc(w.t)}</button>` : `<a class="btn sm" href="#t-${w.k}">${w.i} ${_T('تدريب')} ${esc(w.t)}</a>`;
-      const wrong = nW >= 3 && !FR ? _T`<a class="btn sm ghost" href="#t-wrong-${TOPICS[w.k].k === 'verbal' ? 'v' : 'q'}">🔁 أعد حل أخطائك <small>${nW}</small></a>` : '';
-      return _T`<section class="focus" aria-label="ركّز اليوم"><span class="fx-i" aria-hidden="true">🎯</span><div class="fx-t"><b>ركّز اليوم على ${esc(w.t)}</b><span>دقتك فيها ${w.p}% — أضعف مهاراتك الحين${P.weak[1] ? _T`، وبعدها ${esc(P.weak[1].t)} ${P.weak[1].p}%` : ''}</span></div><div class="fx-a">${drill}${wrong}${ask}</div></section>`;
-    }
-    return _T`<section class="focus" aria-label="ركّز اليوم"><span class="fx-i" aria-hidden="true">🧭</span><div class="fx-t"><b>اعرف وين تركّز</b><span>حل كم سؤال أو اختبار تحديد المستوى، ونقولك أضعف مهاراتك ونتدرّب عليها</span></div><div class="fx-a"><a class="btn sm" href="#level">🧭 تحديد المستوى</a>${ask}</div></section>`;
+    const A = advPick(), FR = isFree();
+    const btn = x => x.lock ? _T`<button type="button" class="btn sm${x.g ? ' ghost' : ''}" data-lock="${esc(x.lock)}">${x.t}</button>`
+      : x.act ? `<button type="button" class="btn sm${x.g ? ' ghost' : ''}" ${x.act}>${x.t}</button>` : `<a class="btn sm${x.g ? ' ghost' : ''}" href="${x.h}">${x.t}</a>`;
+    const ask = _T`<button type="button" class="btn sm ghost fx-ask" id="fxask"><span class="fx-sp" aria-hidden="true">✦</span>اسأل مرشدك</button>`;
+    return _T`<section class="focus adv k-${A.k}" aria-label="نصيحة مرشدك الأكاديمي"><span class="fx-i" aria-hidden="true">${A.i}</span><div class="fx-t">${FR ? '' : _T`<small class="fx-k">مرشدك الأكاديمي${A.tag ? ' · ' + A.tag : ''}</small>`}<b>${A.t}</b><span>${A.s}</span></div><div class="fx-a">${A.a.map(btn).join('')}${ask}${FR ? '' : _T`<a class="fx-more" href="#advisor" title="تقريرك الأسبوعي وهدفك">تقريري ${EN ? '›' : '‹'}</a>`}</div></section>`;
   }
   let homePulled = false;
   async function renderHome() {
     document.title = _T('منصة التدريب | Q-Guide');
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = _T('<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'); return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
-    const adminLinks = auth.role === 'admin' ? (auth.teach ? _T`<a class="tn" href="#my-vids" title="مقاطعي: ارفعها للموقع"><span class="i">🎬</span><span class="l">مقاطعي</span></a>` : '') + (auth.adv ? _T`<a class="tn" href="#admin-adv" title="طلابي: كلّمهم بالواتس"><span class="i">💬</span><span class="l">طلابي</span></a>` : '') + _T`<a class="tn gold" href="#admin" title="لوحة الإدارة: الطلاب والمشرفون"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    const adminLinks = auth.role === 'admin' ? (auth.teach ? _T`<a class="tn" href="#my-vids" title="مقاطعي: ارفعها للموقع"><span class="i">🎬</span><span class="l">مقاطعي</span></a>` : '') + _T`<a class="tn gold" href="${auth.staff === 'owner' ? '#admin-home' : '#admin'}" title="لوحة الإدارة"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
     if (!isFree()) badgeCheck();
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
     const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
@@ -670,7 +732,7 @@
     const toolB = (id, i, b, s) => FR ? lockTool(i, b, s) : `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
     app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: اشتراكك واسمك وصورتك">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
-      ${FR ? freeHero() : ''}<div id="rz">${rzHtml()}</div>
+      ${FR ? freeHero() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
@@ -717,7 +779,7 @@
     if (!isFree()) badgeCheckSoon(); remCtx();
     const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; };
     if (!isFree()) paintTrip();
-    const bindFocus = () => { const b = $('#fxask'); if (b) b.onclick = () => { if (window.QGAI) QGAI.help(); }; bindSub($('#focus')); }; bindFocus();
+    const bindFocus = () => { const b = $('#fxask'); if (b) b.onclick = () => { if (window.QGAI) QGAI.help(); }; bindSub($('#focus')); advBind($('#focus'), () => { const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } paintTrip(); }); }; bindFocus();
     if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } } }).catch(() => {}); }
     if (!isFree()) renderWorkbooks();
     prefetchSets();
@@ -840,7 +902,8 @@
     const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
     // 🧱 التأسيس: «📘 قواعد الدرس» في مذكرة التأسيس + رجعة لدروسه · التدريب والشرح: «حل النموذج/القسم»
     const tpH = X ? '#sharh-' + X.page + '/' + X.tab : '';
-    const solve = fd ? _T`<a class="btn sm" href="${X.wb(n)}">📘 قواعد الدرس</a><a class="btn sm ghost" href="${tpH}">🧱 دروس التأسيس</a>`
+    const hasQ = k === 'af' && !isFree();   // 📝 الدرس له اختبار
+    const solve = fd ? (hasQ ? _T`<a class="btn sm gold" href="#fq-${n}">📝 اختبر فهمك</a>` : '') + _T`<a class="btn sm${hasQ ? ' ghost' : ''}" href="${X.wb(n)}">📘 قواعد الدرس</a><a class="btn sm ghost" href="${tpH}">🧱 دروس التأسيس</a>`
       : X ? _T`<a class="btn sm" href="#v${n}">✍️ حل ${vLabel('v', n)}</a><a class="btn sm ghost" href="${tpH}">🏋️ التدريب</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
     const teach = TEACHERS[X ? X.t : 0].name, sub = fd ? _T`الدرس ${n} من ${L.length}` : X ? _T`${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
     const head = X ? _T`<h2 class="h2">${X.head}</h2><span class="wvhl"><a class="lnk2" href="${tpH}">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
@@ -852,6 +915,7 @@
           <button type="button" class="wvfs" id="wvfs" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
         <div class="wvbar"><div class="wvt"><b>${what}</b><span class="mut"><span class="wvteach">👨‍🏫 ${teach}</span> · ${sub}</span></div>
           <div class="wvact">${solve}${prev ? _T`<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? _T`<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
+        ${hasQ ? _T`<a class="wvq" id="wvq" href="#fq-${n}"${W[cur.key] && W[cur.key].w ? '' : ' hidden'}><span class="wvqi" aria-hidden="true">📝</span><span class="wvqx"><b>خلّصت الدرس؟ اختبر فهمك</b><small>12 سؤال قصير، وبعد كل سؤال شرحه والقاعدة اللي تخصه</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>` : ''}
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
         <div class="wvhead">${head}</div>
         <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : X ? (vidHas(x.key) ? _T('لم تشاهده') : _T('⏳ قريباً')) : esc(x.dur || '')}</small></a>`; }).join('')}</div>
@@ -860,7 +924,7 @@
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب · التأسيس ما له يوتيوب
-    const toYT = t => { if (X) { say(t); $('#wvfs').hidden = true; return; } const A = ytAlt(), alt = A && A[k] && A[k].v && A[k].v[n - 1];
+    const toYT = t => { if (X || noYt()) { say(noYt() && !X ? _T('المقطع هذا ينزل للموقع قريباً. لين ينزل، حل أسئلته وشرح كل سؤال مع المرشد الذكي.') : t); $('#wvfs').hidden = true; return; } const A = ytAlt(), alt = A && A[k] && A[k].v && A[k].v[n - 1];
       const raw = YT[k].v[n - 1].split(':')[0];
       say(t, _T`<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
     if (X && isFree()) { say(fd ? _T('مقاطع التأسيس للمشتركين في الدورة.') : _T('مقاطع التدريب للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
@@ -884,7 +948,7 @@
     const st = () => { const A = lsGet(VW_LS, {}); return A[cur.key] || {}; };
     const put = o => { const A = lsGet(VW_LS, {}); A[cur.key] = Object.assign(A[cur.key] || {}, o); lsSet(VW_LS, A); };
     const saveT = () => { if (!v.duration || !isFinite(v.duration)) return; const t = v.currentTime, done = t / v.duration > .9; put(Object.assign({ t: done ? 0 : Math.floor(t) }, done ? { w: 1 } : {}));
-      if (done) { const a = document.querySelector('.wvi.on'); if (a && !a.classList.contains('ok')) { a.classList.add('ok'); a.querySelector('small').textContent = _T('✓ شاهدته'); } } };
+      if (done) { const a = document.querySelector('.wvi.on'); if (a && !a.classList.contains('ok')) { a.classList.add('ok'); a.querySelector('small').textContent = _T('✓ شاهدته'); } const q = $('#wvq'); if (q) q.hidden = false; } };
     VID.sv = setInterval(saveT, 5000); v.onpause = saveT; v.onended = saveT;
     let want = st().t || 0;
     v.onloadedmetadata = () => { msg.hidden = true; if (want > 10 && want < v.duration - 5) v.currentTime = want; want = 0; };
@@ -923,23 +987,28 @@
   //    عبدالله: التأسيس = 4 دروس اللفظي (af) · التدريب = النماذج الـ14 (at)
   const TP = {
     salman: { t: 0, ls: 'qg_tp_sal', fk: 'sf', fn: QR_L.length, wb: 'tq', ft: _T('تأسيس الكمي'), desc: _T('مدرس الكمي واللفظي. يأسّسك في قواعد الكمي درس درس، ويشرح لك أقسام الكمي ونماذج اللفظي.') },
-    abdullah: { t: 1, ls: 'qg_tp_abd', fk: 'af', fn: ABD.found.length, wb: 'tv', ft: _T('تأسيس اللفظي'), desc: _T('مدرس اللفظي. يبدأ معك من الأساس بطريقة حل كل نوع من أسئلة اللفظي الأربعة، وبعدها يدرّبك على النماذج.') },
+    abdullah: { t: 1, ls: 'qg_tp_abd', fk: 'af', fn: ABD.found.length, wb: 'tv', quiz: 1, ft: _T('تأسيس اللفظي'), desc: _T('مدرس اللفظي. يبدأ معك من الأساس بطريقة حل كل نوع من أسئلة اللفظي الأربعة، وبعدها يدرّبك على النماذج.') },
   };
   function renderTeach(id, tabHint) {
     const C = TP[id], t = TEACHERS[C.t]; document.title = t.name + ' | Q-Guide';
     const W = lsGet(VW_LS, {}), free = isFree(), adm = auth.role === 'admin', seen = k => W[k] && W[k].w;
     const fkeys = Array.from({ length: C.fn }, (_, i) => C.fk + ':' + (i + 1)), fUp = fkeys.filter(vidHas).length, fSeen = fkeys.filter(seen).length;
     // حالة كل درس: الزائر 🔒 (يفتح نافذة الاشتراك) · شاهده ✓ · انرفع ▶ · ما انرفع ⏳
-    const lesson = n => { const key = C.fk + ':' + n, w = seen(key), has = vidHas(key) || adm;
+    // 📝 اختبار الدرس (دروس عبدالله): زر جنب كل درس فيه أفضل نتيجة للطالب
+    const quiz = n => { if (!C.quiz) return ''; const B = fqBest(n);
+      if (free) return _T`<button type="button" class="tlq lock" data-lock="اختبارات التأسيس"><span class="tlqi" aria-hidden="true">📝</span><span class="tlqx"><b>اختبار الدرس</b><small>🔒 للمشتركين</small></span></button>`;
+      return _T`<a class="tlq${B ? (B.best >= FQ_PASS ? ' ok' : ' mid') : ''}" href="#fq-${n}"><span class="tlqi" aria-hidden="true">${B && B.best >= FQ_PASS ? '✓' : '📝'}</span><span class="tlqx"><b>اختبار الدرس</b><small>${B ? _T`أفضل نتيجة لك <bdi dir="ltr">${B.best}/${B.n}</bdi>` : _T('12 سؤال تتأكد فيها من فهمك')}</small></span></a>`; };
+    const lesson0 = n => { const key = C.fk + ':' + n, w = seen(key), has = vidHas(key) || adm;
       const ar = id === 'salman' ? QR_L[n - 1][0] : PART_AR[n], en = id === 'salman' ? QR_L[n - 1][1] : ABD.en[n];
       const body = `<span class="tln" aria-hidden="true">${n}</span><span class="tlx"><b>${EN ? en : ar}</b>${EN ? '' : `<small dir="ltr">${en}</small>`}</span>`;
       if (free) return _T`<button type="button" class="tle lock" data-lock="${C.ft}">${body}<span class="tls">🔒 للمشتركين</span></button>`;
       if (!has) return _T`<div class="tle soon" aria-disabled="true">${body}<span class="tls">⏳ قريباً</span></div>`;
       return _T`<a class="tle${w ? ' ok' : ''}" href="#watch-${C.fk}${n}">${body}<span class="tls">${w ? _T('✓ شاهدته') : _T('▶ شاهد الدرس')}</span></a>`; };
+    const lesson = n => C.quiz ? `<div class="tlw">${lesson0(n)}${quiz(n)}</div>` : lesson0(n);
     const lessons = id === 'salman'
       ? QR_U.map((u, ui) => `<h3 class="tpu"><span class="tpun" aria-hidden="true">${ui + 1}</span>${EN ? u[1] : u[0]}<small>${EN ? 'Unit ' + (ui + 1) : _T`الوحدة ${ui + 1}`}</small></h3>
           <div class="tles">${QR_L.map((x, i) => x[3] === ui + 1 ? lesson(i + 1) : '').join('')}</div>`).join('')
-      : `<div class="tles">${ABD.found.map(lesson).join('')}</div>`;
+      : `<div class="tles${C.quiz ? ' wq' : ''}">${ABD.found.map(lesson).join('')}</div>`;
     const pct = Math.round(fSeen * 100 / C.fn), fN = EN ? enN(C.fn, 'lesson', 'lessons') : C.fn + (C.fn <= 10 ? ' دروس' : ' درس');   // i18n:skip
     const fSoon = !fUp && !adm ? _T`<div class="tpsoon"><b>⏳ التأسيس ينزل قريباً</b><span>${t.name} يشرح ${C.ft} درس درس (${fN}). لين ينزل، ابدأ من <a href="#wb-${C.wb}">مذكرة التأسيس</a>.</span></div>` : '';
     const fBar = _T`<div class="tpbar"><div class="tpbt"><b>${C.ft}</b><span>${free ? (id === 'salman' ? _T`${fN}: كل قواعد الكمي من الأساس` : _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي')) : fSeen ? _T`شاهدت ${fSeen} من ${C.fn}` : fUp ? _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة') : _T`${fN} بنفس ترتيب مذكرة التأسيس`}</span></div>
@@ -949,7 +1018,7 @@
     if (id === 'salman') {
       const item = (k, n) => { const y = ytFor(k + n); if (!y) return '';
         const w = seen(k + ':' + n);
-        return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${vLabel(k, n)}</span></b><small>${w ? _T('✓ شاهدته') : `<bdi dir="ltr">${esc(y.dur || '')}</bdi>`}</small></a>`; };
+        return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${vLabel(k, n)}</span></b><small>${w ? _T('✓ شاهدته') : y.soon ? _T('⏳ قريباً') : `<bdi dir="ltr">${esc(y.dur || '')}</bdi>`}</small></a>`; };
       const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
       tN = EN ? enN(qn.length + vn.length, 'video', 'videos') : (qn.length + vn.length) + ' مقطع';   // i18n:skip
       tPane = _T`<h3 class="tsub">📐 الكمي <small>14 قسم</small></h3><div class="wvlist">${qn.map(n => item('q', n)).join('')}</div>
@@ -981,6 +1050,286 @@
     $('#tpt-f').onclick = () => show('f'); $('#tpt-t').onclick = () => show('t');
     $('.tptabs').onkeydown = e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const x = tab === 'f' ? 't' : 'f'; show(x); $('#tpt-' + x).focus(); e.preventDefault(); } };
     show(tab);
+  }
+
+
+  // ---------- 📝 اختبارات دروس التأسيس (#fq-1…#fq-4): اختبار قصير لكل درس من دروس تأسيس اللفظي (عبدالله الشمراني) ----------
+  // 12 سؤال لكل درس: «فهمت الطريقة؟» (بالعربي) + تطبيق بنفس شكل أسئلة قياس. بعد كل إجابة: القاعدة اللي تخص السؤال وشرحه.
+  // النتيجة: وش تراجع (قواعد الأسئلة اللي غلط فيها) + الدرس والقواعد والتدريب. البيانات p/data/fqN.bin (المولّد الخاص found_quiz.py).
+  // أفضل نتيجة تنحفظ على الجهاز (qg_fq) وتتزامن مع حسابه، وتنرسل للخادم (result: set = fqN) عشان المرشد والمالك يشوفونها.
+  const FQ_LS = 'qg_fq', FQ_PASS = 9, FQ_TOPIC = { 1: 'ana', 2: 'sen', 3: 'err', 4: 'read' };
+  const fqGet = () => lsGet(FQ_LS, {});
+  const fqBest = n => { const r = fqGet()[n]; return r && r.n ? r : null; };
+  const fqName = n => EN ? ABD.en[n] : PART_AR[n];
+  function fqMerge(rem) {
+    if (!rem || typeof rem !== 'object') return; const L = fqGet(); let ch = false;
+    for (const k in rem) { const r = rem[k], l = L[k]; if (!/^[1-4]$/.test(k) || !r || !r.n) continue;
+      if (!l || (r.at || 0) > (l.at || 0) || (r.best || 0) > (l.best || 0)) {
+        const newer = !l || (r.at || 0) >= (l.at || 0);
+        L[k] = { n: r.n, best: Math.max(r.best || 0, (l && l.best) || 0), last: newer ? r.last : l.last, at: Math.max(r.at || 0, (l && l.at) || 0), tries: Math.max(r.tries || 0, (l && l.tries) || 0) }; ch = true; } }
+    if (ch) lsSet(FQ_LS, L);
+  }
+  let FQ = null;   // {n, set, i, a: [{s, c, ms}], sel, tq}
+  const fqTop = (n, right) => topbar(_T`<span class="ttl">📝 اختبار ${esc(fqName(n))}</span><span class="sp"></span>${right || ''}`, _T`<a class="ib" href="#sharh-abdullah/f" title="دروس التأسيس">→</a>`);
+  async function renderFq(n) {
+    document.title = _T('اختبار الدرس: ') + fqName(n) + ' | Q-Guide';
+    app.innerHTML = fqTop(n) + '<main class="wrap fq" id="fqw"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>'; bindCtl();
+    let set; try { set = await loadSet('fq' + n); } catch (e) { const w = $('#fqw'); if (w) w.innerHTML = `<div class="sum">${_T('تعذّر تحميل الاختبار. تأكد من النت وحدّث الصفحة.')}</div>`; return; }
+    if (location.hash !== '#fq-' + n) return;
+    if (FQ && FQ.n === n && FQ.a.length && FQ.a.length < set.items.length) return fqShow(FQ.a.length);   // رجع وهو في نص الاختبار: يكمل من سؤاله
+    fqIntro(n, set);
+  }
+  function fqIntro(n, set) {
+    FQ = null; const W = $('#fqw'); if (!W) return;
+    const B = fqBest(n), N = set.items.length, seen = (lsGet(VW_LS, {})['af:' + n] || {}).w, has = vidHas('af:' + n) || auth.role === 'admin';
+    const pill = k => { const b = fqBest(k); return `<a class="fqp${k === n ? ' on' : ''}${b ? (b.best >= FQ_PASS ? ' ok' : ' mid') : ''}" href="#fq-${k}"${k === n ? ' aria-current="page"' : ''}><span class="fqpn" aria-hidden="true">${b && b.best >= FQ_PASS ? '✓' : k}</span><span class="fqpx"><b>${esc(fqName(k))}</b><small>${b ? `<bdi dir="ltr">${b.best}/${b.n}</bdi>` : _T('ما حليته')}</small></span></a>`; };
+    W.innerHTML = _T`<section class="fqi">
+        <span class="fqk">تأسيس اللفظي · الدرس ${n} من 4</span>
+        <h1>اختبار درس ${esc(fqName(n))}</h1>
+        <p class="fqd">${N} سؤال قصير تتأكد فيها أنك فهمت طريقة الحل من الدرس. بعد كل سؤال يطلع لك شرحه والقاعدة اللي تخصه.</p>
+        <ul class="fqf"><li><b>${N}</b><span>سؤال</span></li><li><b>≈ 8</b><span>دقايق</span></li><li class="${B ? (B.best >= FQ_PASS ? 'ok' : 'mid') : ''}"><b><bdi dir="ltr">${B ? B.best + '/' + B.n : '—'}</bdi></b><span>أفضل نتيجة لك</span></li></ul>
+        <div class="fqa"><button type="button" class="btn gold" id="fqgo">${B ? _T('🔁 أعد الاختبار') : _T('▶ ابدأ الاختبار')}</button>${has ? _T`<a class="btn ghost" href="#watch-af${n}">${seen ? _T('🎬 راجع الدرس') : _T('🎬 شاهد الدرس أول')}</a>` : ''}<a class="btn ghost" href="#wb-tv@${TV_PAGE[n]}">📘 قواعد الدرس</a></div>
+        ${has && !seen && !B ? _T('<p class="fqh">ما شاهدت الدرس للحين؟ الأفضل تشوفه أول، والاختبار ينتظرك.</p>') : ''}
+      </section>
+      <h2 class="h2 fqh2">اختبارات دروس التأسيس</h2>
+      <nav class="fqps" aria-label="اختبارات دروس التأسيس">${[1, 2, 3, 4].map(pill).join('')}</nav>`;
+    $('#fqgo').onclick = () => { FQ = { n, set, a: [], sel: null, tq: 0 }; fqShow(0); };
+  }
+  // الكلمات الأربع المرشّحة في سؤال الخطأ السياقي: تحتها خط داخل الجملة (مثل اختبار قياس)
+  function fqMark(q, opts) { const used = {}; return String(q).split(/\b/).map(w => { const k = opts.findIndex(o => o.toLowerCase() === w.toLowerCase()); if (k >= 0 && !used[k]) { used[k] = 1; return `<u class="fqu">${esc(w)}</u>`; } return esc(w); }).join(''); }
+  function fqShow(i) {
+    const { n, set } = FQ, N = set.items.length, it = set.items[i], a = FQ.a[i], con = !!it.c;
+    if (!$('#fqcnt')) { app.innerHTML = fqTop(n, '<span class="chip cnt" id="fqcnt"></span>') + '<div class="pbar"><i id="fqpb"></i></div><main class="wrap fq" id="fqw"></main>'; bindCtl(); }
+    $('#fqcnt').textContent = (i + 1) + ' / ' + N; $('#fqpb').style.width = Math.round((a ? i + 1 : i) * 100 / N) + '%';
+    FQ.i = i; FQ.sel = null; if (!a) FQ.tq = Date.now();
+    const q = con ? (EN && it.qe ? it.qe : it.q) : it.q, opts = con ? (EN && it.oe ? it.oe : it.opts) : it.opts, arq = con && !(EN && it.qe);
+    const stem = con ? `<p class="txt${arq ? ' fqar' : ' ltr'}">${esc(q)}</p>`
+      : `<p class="txt ltr${n === 1 ? ' fqana' : ''}">${n === 3 ? fqMark(q, opts) : esc(q).replace(/_{4,}/g, '<span class="fqb" aria-label="blank"></span>')}</p>`;
+    const pass = it.p && set.passage ? _T`<div class="pass fqpass"><div class="ph"><span>📄 القطعة: <bdi dir="ltr">${esc(set.passage.title)}</bdi></span></div><div class="pb">${set.passage.text.split(/\n\n+/).map((p, k) => `<p><sup>${k + 1}</sup> ${esc(p)}</p>`).join('')}</div></div>` : '';
+    const two = !arq && opts.every(o => o.length <= 28);
+    $('#fqw').innerHTML = pass + _T`<div class="q fqq"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${N}</small></span><span class="tag">${con ? _T('🧠 فهم الطريقة') : _T('✍️ تطبيق')}</span></div>
+        ${n === 3 && !con ? _T('<p class="fqins">اختر الكلمة اللي ما تناسب معنى الجملة:</p>') : ''}${stem}
+        <div class="opts${two ? ' two' : ''}${arq ? ' fqaro' : ''}">${opts.map((o, k) => { let cls = ''; if (a) { if (k === it.ans) cls = 'ok'; else if (k === a.s) cls = 'bad'; }
+          return `<button class="opt ${cls}" data-k="${k}"${a ? ' disabled' : ''}><span class="L">${LETTERS[k]}</span><span>${esc(o)}</span></button>`; }).join('')}</div>
+        <div id="fqfb">${a ? fqFb(it, a) : ''}</div>
+        <div class="acts"><span class="sp"></span>${a ? `<button class="btn" id="fqnx">${i + 1 < N ? _T('التالي ←') : _T('النتيجة 🏁')}</button>` : _T('<button class="btn gold" id="fqok" disabled>✓ تأكيد الإجابة</button>')}</div>
+        <div class="kbd" style="margin-top:8px">${a ? _T('Enter للتالي') : _T('اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد')}</div></div>`;
+    window.scrollTo({ top: 0, behavior: RM() ? 'auto' : 'smooth' });
+    const pick = k => { if (FQ.a[i]) return; FQ.sel = k; document.querySelectorAll('.fqq .opt').forEach(x => x.classList.toggle('sel', +x.dataset.k === k)); const c = $('#fqok'); if (c) c.disabled = false; };
+    document.querySelectorAll('.fqq .opt').forEach(b => b.onclick = () => pick(+b.dataset.k));
+    const ok = $('#fqok'); if (ok) ok.onclick = () => { if (FQ.sel == null) return; const c = FQ.sel === it.ans; FQ.a[i] = { s: FQ.sel, c, ms: Math.min(Q_CAP, Date.now() - FQ.tq) }; daysAdd(); fqShow(i);
+      const b = document.querySelector('.fqq .opt.' + (c ? 'ok' : 'bad')); if (b && !RM()) { if (c) burst(b); else b.classList.add('shake'); }
+      const f = $('#fqfb'); if (f) f.scrollIntoView({ block: 'nearest', behavior: RM() ? 'auto' : 'smooth' }); };
+    const nx = $('#fqnx'); if (nx) nx.onclick = () => { if (i + 1 < N) fqShow(i + 1); else fqDone(); };
+    document.onkeydown = e => { if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || '')) return;
+      const m = /^Key([A-D])$/.exec(e.code || '') || /^(?:Digit|Numpad)([1-4])$/.exec(e.code || '');
+      if (m && !FQ.a[i]) { e.preventDefault(); pick(/[A-D]/.test(m[1]) ? 'ABCD'.indexOf(m[1]) : +m[1] - 1); }
+      else if (e.key === 'Enter') { const b = $('#fqok') || $('#fqnx'); if (b && !b.disabled) { e.preventDefault(); b.click(); } } };
+  }
+  // بعد الإجابة: صح/غلط + القاعدة اللي تخص السؤال + الشرح + ترجمة السؤال (لأسئلة التطبيق)
+  function fqFb(it, a) {
+    const ok = a.c, opts = it.c && EN && it.oe ? it.oe : it.opts;
+    const tr = it.ar ? _T`<details class="tr"><summary>ترجمة السؤال</summary><div class="arc" dir="rtl" lang="ar"><p class="trq">${esc(it.ar.q)}</p><ul class="tro">${it.opts.map((o, k) => `<li class="${k === it.ans ? 'ok' : ''}"><span class="L">${LETTERS[k]}</span><span class="en" dir="ltr">${esc(o)}</span><span class="arr">${esc(it.ar.o[k] || '')}</span></li>`).join('')}</ul></div></details>` : '';
+    return _T`<div class="fb ${ok ? 'ok' : 'bad'} fqfb"><div class="h">${ok ? _T('✅ إجابة صحيحة') : _T('❌ إجابة خاطئة')}</div>
+      ${ok ? '' : _T`<div class="ans">الإجابة الصحيحة: <b>${LETTERS[it.ans]}) ${esc(opts[it.ans])}</b></div>`}
+      <div class="fqrule"><span aria-hidden="true">📌</span><span>${esc(EN && it.re ? it.re : it.rule)}</span></div>
+      <div class="ex">${fmtExp(it.exp)}</div>${tr}</div>`;
+  }
+  function fqDone() {
+    const { n, set, a } = FQ, N = set.items.length, correct = a.filter(x => x && x.c).length, wrong = set.items.filter((it, k) => !(a[k] && a[k].c));
+    const secs = Math.round(a.reduce((t, x) => t + ((x && x.ms) || 0), 0) / 1000), prev = fqBest(n), L = fqGet();
+    L[n] = { n: N, best: Math.max(correct, (prev && prev.best) || 0), last: correct, at: Date.now(), tries: ((prev && prev.tries) || 0) + 1 }; lsSet(FQ_LS, L); skillsPushSoon(1500);
+    api({ op: 'result', session: auth.session, set: 'fq' + n, kind: 'quiz', n: N, correct, secs, wrong: wrong.map(it => it.n).join(',') }).catch(() => {}); ADVR = null;
+    FQ = null; document.onkeydown = null;
+    const pass = correct >= FQ_PASS, mid = !pass && correct >= 6, C = 2 * Math.PI * 52, topic = FQ_TOPIC[n];
+    // وش يراجع: قواعد الأسئلة اللي غلط فيها (بدون تكرار) مع أرقام أسئلتها
+    const R = []; wrong.forEach(it => { const t = EN && it.re ? it.re : it.rule; let r = R.find(x => x.t === t); if (!r) R.push(r = { t, q: [] }); r.q.push(it.n); });
+    const nx = n < 4 ? n + 1 : 0, nb = nx ? fqBest(nx) : null;
+    app.innerHTML = fqTop(n) + _T`<main class="wrap fq" id="fqw"><section class="sum fqr ${pass ? 'ok' : mid ? 'mid' : 'low'}">
+        <div class="fqring" role="img" aria-label="${correct} من ${N}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" class="bg"/><circle cx="60" cy="60" r="52" class="fg" stroke-dasharray="${(correct / N * C).toFixed(1)} ${C.toFixed(1)}"/></svg><b><bdi dir="ltr">${correct}<small>/${N}</small></bdi></b></div>
+        <h2>${pass ? (correct === N ? _T('العلامة الكاملة 🎉') : _T('أتقنت الدرس 👏')) : mid ? _T('قريب! باقي لك شوي') : _T('الدرس يحتاج مراجعة')}</h2>
+        <p class="fqrp">${pass ? _T`فهمت طريقة حل ${esc(fqName(n))}. الحين طبّقها على أسئلة الدورة.` : mid ? _T('راجع القواعد اللي تحت، وأعد الاختبار وتشوف الفرق.') : _T('شاهد الدرس مرة ثانية وركّز على القواعد اللي تحت، وبعدها أعد الاختبار.')}${prev && correct > prev.best ? _T` <b class="fqup">تحسّنت عن أفضل نتيجة لك (<bdi dir="ltr">${prev.best}/${prev.n}</bdi>) 📈</b>` : ''}</p>
+        ${R.length ? _T`<div class="fqrv"><h3>📌 وش تراجع</h3><ul>${R.map(r => _T`<li><b>${esc(r.t)}</b><small>${r.q.length === 1 ? _T`سؤال ${r.q[0]}` : _T`الأسئلة ${r.q.join(EN ? ', ' : '، ')}`}</small></li>`).join('')}</ul></div>` : ''}
+        <div class="fqa c">${pass ? _T`<a class="btn gold" href="#t-${topic}">🏋️ تدرّب على أسئلة ${esc(fqName(n))}</a>` : _T`<a class="btn gold" href="#watch-af${n}">🎬 شاهد الدرس</a>`}<a class="btn ghost" href="#wb-tv@${TV_PAGE[n]}">📘 قواعد الدرس</a><button type="button" class="btn ghost" id="fqag">🔁 أعد الاختبار</button></div>
+        ${nx ? _T`<a class="fqnext" href="${pass ? '#watch-af' + nx : '#fq-' + nx}"><span>${pass ? _T('الدرس التالي') : _T('اختبار الدرس التالي')}</span><b>${esc(fqName(nx))}</b>${nb ? `<small><bdi dir="ltr">${nb.best}/${nb.n}</bdi></small>` : ''}<span aria-hidden="true">${EN ? '›' : '‹'}</span></a>` : pass ? _T`<a class="fqnext" href="#sharh-abdullah/t"><span>خلّصت دروس التأسيس</span><b>ابدأ التدريب على النماذج</b><span aria-hidden="true">${EN ? '›' : '‹'}</span></a>` : ''}
+        <details class="fqall"><summary>راجع إجاباتك (${N})</summary><ol>${set.items.map((it, k) => { const x = a[k] || {}, o = it.c && EN && it.oe ? it.oe : it.opts, q = it.c && EN && it.qe ? it.qe : it.q;
+          return `<li class="${x.c ? 'ok' : 'bad'}"><p class="${it.c && !(EN && it.qe) ? 'fqar' : 'ltr'}">${esc(q)}</p><span class="fqmy">${x.c ? '✓' : '✕'} <bdi${it.c && !(EN && it.oe) ? '' : ' dir="ltr"'}>${esc(o[x.s] != null ? o[x.s] : '—')}</bdi></span>${x.c ? '' : `<span class="fqright">✓ <bdi${it.c && !(EN && it.oe) ? '' : ' dir="ltr"'}>${esc(o[it.ans])}</bdi></span>`}</li>`; }).join('')}</ol></details>
+      </section></main>`;
+    bindCtl(); window.scrollTo({ top: 0 });
+    $('#fqag').onclick = () => { FQ = { n, set, a: [], sel: null, tq: 0 }; fqShow(0); };
+    if (pass && !RM()) confetti();
+  }
+
+  // ---------- 🎓 مرشدك الأكاديمي (الذكي): يرتب مذاكرة الطالب ويتابعه — بدل المرشد البشري ----------
+  // ① الإعداد (advSetup): موعد اختباره + وقته اليومي + هدفه ← نقترح الخطة اللي تناسبه ونبدأها
+  // ② «نصيحة مرشدك» (advPick): قرار واحد واضح من بياناته (أول مرة، غياب، تأخر عن الخطة، أسبوع الاختبار، درس تأسيس، أضعف مهارة، مهمة اليوم)
+  // ③ صفحة #advisor: النصيحة + هدفه + تقريره الأسبوعي (adv_report) + دروس التأسيس واختباراتها + أسئلة جاهزة للمحادثة
+  // المحادثة نفسها في assets/ai.js (QGAI.help / QGAI.ask)، والخادم يعرف ملف الطالب كامل (aiProfile)
+  const ADV_LS = 'qg_adv', ADV_MINS = [30, 60, 120, 180], ADV_GOALS = [75, 85, 90, 95];
+  const LOCK_WEAK = 'التدريب على نقاط ضعفك';   // i18n:skip (اسم المقفول بالعربي للإحصائيات، ويتترجم وقت العرض)
+  const advGet = () => { const a = lsGet(ADV_LS, null); return a && a.mins ? a : null; };
+  function advMerge(rem) { if (rem && rem.mins && (rem.up || 0) > ((lsGet(ADV_LS, null) || {}).up || 0)) lsSet(ADV_LS, rem); }
+  const advMinsT = m => EN ? (m === 30 ? '30 min' : m === 60 ? '1 hour' : m === 120 ? '2 hours' : '3+ hours') : m === 30 ? 'نص ساعة' : m === 60 ? 'ساعة' : m === 120 ? 'ساعتين' : '3 ساعات وأكثر';   // i18n:skip
+  // الخطة اللي تناسبه: حسب الأيام الباقية على اختباره، وإذا ما حدّد موعد فحسب وقته اليومي
+  const advPlan = (dl, mins) => dl != null && dl >= 0 ? (dl <= 8 ? 'strong' : dl <= 16 ? 'intense' : dl <= 24 ? 'balanced' : mins <= 60 ? 'relaxed' : 'balanced') : mins >= 120 ? 'balanced' : 'relaxed';
+  const advDl = () => { const ex = examGet(); return ex ? dayDiff(Date.now(), examAt(ex)) : null; };
+  // كم يوم من آخر مرة حل فيها (null = ما حل أبداً)
+  function advGap() { const D = daysGet(); let last = ''; for (const k in D) if (D[k] > 0 && k > last) last = k; if (!last) return null; const [y, m, d] = last.split('-').map(Number); return Math.max(0, dayDiff(new Date(y, m - 1, d).getTime(), Date.now())); }
+  const ADV_LESSON = { ana: 1, sen: 2, err: 3, read: 4 };
+  function advPick() {
+    const P = helpProfile(), FR = isFree(), w = P.weak && P.weak[0], dl = advDl(), st = planState(), plan = PLANS.find(p => p.id === st.id) || null, A = advGet();
+    const nW = (() => { try { const h = histGet(); let n = 0; for (const s in h.items) for (const i in h.items[s]) if (!h.items[s][i][2]) n++; return n; } catch (e) { return 0; } })();
+    const setup = { t: _T('🎓 رتّب مذاكرتي'), act: 'data-adv="setup"', g: 1 }, needSetup = !FR && !A && !plan;
+    const weakA = () => { const a = [FR ? { t: `${w.i} ${_T('تدريب')} ${esc(w.t)}`, lock: LOCK_WEAK } : { t: `${w.i} ${_T('تدريب')} ${esc(w.t)}`, h: '#t-' + w.k }];
+      if (nW >= 3 && !FR) a.push({ t: _T`🔁 أعد حل أخطائك <small>${nW}</small>`, h: '#t-wrong-' + (TOPICS[w.k].k === 'verbal' ? 'v' : 'q'), g: 1 }); return a; };
+    if (FR) return w ? { k: 'weak', i: '🎯', t: _T`ركّز اليوم على ${esc(w.t)}`, s: _T`دقتك فيها ${w.p}% — أضعف مهاراتك الحين${P.weak[1] ? _T`، وبعدها ${esc(P.weak[1].t)} ${P.weak[1].p}%` : ''}`, a: weakA() }
+      : { k: 'start', i: '🧭', t: _T('اعرف وين تركّز'), s: _T('حل كم سؤال أو اختبار تحديد المستوى، ونقولك أضعف مهاراتك ونتدرّب عليها'), a: [{ t: _T('🧭 تحديد المستوى'), h: '#level' }] };
+    const gap = advGap(), I = plan ? planInfo(plan, st) : null, any = gap != null;
+    // مهام يوم الخطة الحالي اللي لسا ما خلصت (اللي علّمها ✓ ما نرجّعه لها)
+    const todo = I && I.cur ? I.cur.tasks.filter((x, i) => !I.tDone(I.cur, i)) : [], curSet = todo.find(x => x.set) || null;
+    const todoT = [...new Set(todo.map(x => x.set ? SET_NAME(x.set) : x.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و');
+    // ① أول مرة: ما رتّب مذاكرته وما عنده بيانات
+    if (needSetup && !any && dl == null) return { k: 'setup', i: '🎓', t: _T('خلني أرتب لك مذاكرتك'), s: _T('3 أسئلة سريعة عن موعد اختبارك ووقتك، وأجهّز لك خطة تمشي عليها يوم بيوم.'), a: [{ t: _T('▶ ابدأ مع مرشدك'), act: 'data-adv="setup"' }, { t: _T('🧭 تحديد المستوى'), h: '#level', g: 1 }] };
+    // ② يوم الاختبار وبعده
+    if (dl === 0) return { k: 'examday', i: '🤲', tag: _T('يوم الاختبار'), t: _T('اليوم اختبارك، بالتوفيق'), s: _T('لا تفتح شي جديد اليوم. راجع أخطاءك بهدوء، ونم بدري، وثق في تدريبك.'), a: nW ? [{ t: _T('🔁 راجع أخطائي'), h: '#skills' }] : [] };
+    if (dl != null && dl < 0) return { k: 'exampast', i: '🎓', t: _T('كيف كان اختبارك؟'), s: _T('لو عندك اختبار جديد حدّث الموعد، وأرتب لك مذاكرتك عليه من جديد.'), a: [{ t: _T('⏳ حدّث موعد الاختبار'), act: 'data-exam' }] };
+    // ③ غايب 3 أيام وأكثر: رجعة خفيفة بدون لوم
+    if (any && gap >= 3) return { k: 'back', i: '👋', tag: _T('نرجع نكمّل'), t: _T('نكمّل من وين وقفنا؟'), s: _T`لك ${dLabel(gap)} ما حليت. ابدأ اليوم بـ10 أسئلة بس، والباقي يجي لحاله.`, a: [{ t: _T`▶ كمّل ${esc(P.next || '')}`, h: '#' + (P.nextId || 'q1') }].concat(needSetup ? [setup] : []) };
+    // ④ متأخر عن خطته
+    if (I && I.cur && I.lag >= 1) { const t = curSet, h = t ? '#' + t.set : '#plan';
+      return { k: 'lag', i: '📅', tag: _T('خطتك'), t: _T`متأخر ${I.lag === 1 && !EN ? _T('يوم') : dLabel(I.lag)} عن خطتك، ونلحق`, s: _T('خلّص مهمة اليوم أول، وعوّض الباقي على كم يوم. لا تحاول تلحق كل شي في يوم واحد.'), a: [{ t: t ? _T`▶ ${SET_NAME(t.set)}` : _T('▶ مهمة اليوم'), h }, { t: _T('📅 افتح الخطة'), h: '#plan', g: 1 }] }; }
+    // ⑤ أسبوع الاختبار
+    if (dl != null && dl <= 7) return { k: 'lastweek', i: '🎯', tag: _T('الأسبوع الأخير'), t: _T`باقي ${dLabel(dl)} على اختبارك`, s: _T('هذا وقت المحاكاة والمراجعة: كل يوم اختبار محاكي كامل وراجع أخطاءه، ولا تفتح شي جديد.'), a: [{ t: _T('🧪 اختبار محاكي'), h: '/test/' }].concat(nW ? [{ t: _T`🔁 أخطائي <small>${nW}</small>`, h: '#skills', g: 1 }] : []) };
+    // ⑥ حدّد موعده وما اختار خطة
+    if (dl != null && !plan) { const id = advPlan(dl, (A && A.mins) || 120), pl = PLANS.find(p => p.id === id);
+      return { k: 'noplan', i: '📅', tag: _T('خطتك'), t: _T`باقي ${dLabel(dl)} على اختبارك، ${pl.name} تناسبك`, s: _T`${pl.daily}، وتخلّص فيها كل الأقسام والنماذج مع مراجعة آخر الأيام.`, a: [{ t: _T`▶ ابدأ ${pl.name}`, act: `data-advplan="${pl.id}"` }, { t: _T('كل الخطط'), h: '#plan', g: 1 }] }; }
+    // ⑦ أضعف مهاراته لفظية وما أتقن درس تأسيسها: الدرس واختباره قبل التدريب
+    if (w && ADV_LESSON[w.k] && w.p < 65) { const n = ADV_LESSON[w.k], B = fqBest(n), has = vidHas('af:' + n);
+      if (!(B && B.best >= FQ_PASS)) return { k: 'found', i: '🧱', tag: _T('التأسيس'), t: _T`أساسك في ${esc(w.t)} يبي له تقوية`, s: _T`دقتك فيه ${w.p}%. ${has ? _T('شاهد درس التأسيس') : _T('راجع قواعد الدرس')} وحل اختباره، وبعدها ارجع للتدريب.`,
+        a: [has ? { t: _T('🎬 درس التأسيس'), h: '#watch-af' + n } : { t: _T('📘 قواعد الدرس'), h: '#wb-tv@' + TV_PAGE[n] }, { t: _T('📝 اختبار الدرس'), h: '#fq-' + n, g: 1 }] }; }
+    // ⑧ أضعف مهارة
+    if (w) return { k: 'weak', i: '🎯', tag: _T('نقطة ضعفك'), t: _T`ركّز اليوم على ${esc(w.t)}`, s: _T`دقتك فيها ${w.p}% — أضعف مهاراتك الحين${P.weak[1] ? _T`، وبعدها ${esc(P.weak[1].t)} ${P.weak[1].p}%` : ''}`, a: weakA().concat(needSetup ? [setup] : []) };
+    // ⑨ مهمة اليوم من خطته
+    if (I && I.cur && todo.length) { const t = curSet;
+      return { k: 'today', i: '✅', tag: _T('خطتك'), t: _T`مهمتك اليوم: ${esc(todoT)}`, s: t ? _T`اليوم ${I.cur.n} من ${plan.days}. شاهد المقطع أول، وبعدها حل الأسئلة.` : _T`اليوم ${I.cur.n} من ${plan.days}. خلّص اللي باقي وعلّمه ✓ في خطتك.`,
+        a: (t ? [{ t: _T`▶ ${SET_NAME(t.set)}`, h: '#' + t.set }] : []).concat([{ t: t ? _T('📅 الخطة') : _T('📅 افتح الخطة'), h: '#plan', g: t ? 1 : 0 }]) }; }
+    // ⑩ ما فيه بيانات تكفي
+    return { k: 'start', i: '🧭', t: _T('اعرف وين تركّز'), s: _T('حل كم سؤال أو اختبار تحديد المستوى، ونقولك أضعف مهاراتك ونتدرّب عليها'), a: [{ t: _T('🧭 تحديد المستوى'), h: '#level' }].concat(needSetup ? [setup] : []) };
+  }
+  // أزرار بطاقة النصيحة: الإعداد · موعد الاختبار · بدء الخطة المقترحة
+  function advBind(root, after) {
+    if (!root) return;
+    root.querySelectorAll('[data-adv="setup"]').forEach(b => b.onclick = async () => { if (await advSetup()) after(); });
+    root.querySelectorAll('[data-advplan]').forEach(b => b.onclick = () => { const pl = PLANS.find(p => p.id === b.dataset.advplan); if (!pl) return; planStart(pl.id); toast(_T('بدأت ') + pl.name + ' ✓'); after(); });
+    bindExam(root, after);
+  }
+  // 🎓 نافذة الإعداد: 3 أسئلة ← الخطة المقترحة
+  function advSetup() {
+    return new Promise(res => {
+      const ex = examGet(), A = advGet() || {}, box = document.createElement('div'); box.className = 'modal';
+      const S = { mins: A.mins || 0, goal: A.goal || 0, noex: !ex && !!A.mins };
+      const chips = (arr, cur, key, lab) => arr.map(v => `<button type="button" class="advc${v === cur ? ' on' : ''}" data-${key}="${v}" aria-pressed="${v === cur}">${lab(v)}</button>`).join('');
+      box.innerHTML = _T`<div class="m advm" role="dialog" aria-modal="true" aria-labelledby="advh">
+        <h3 id="advh">🎓 خلّ مرشدك يرتب لك مذاكرتك</h3>
+        <p class="mut advml">3 أسئلة سريعة، وأقترح لك الخطة اللي تناسب وقتك وموعد اختبارك.</p>
+        <div class="advq"><b><span class="advn" aria-hidden="true">1</span>متى اختبارك؟</b>
+          <div class="exf"><label><span>التاريخ</span><input type="date" id="advd" min="${dayKey()}" value="${ex ? ex.d : ''}" dir="ltr"></label><label><span>الوقت <small>(اختياري)</small></span><input type="time" id="advt" value="${ex ? ex.t || '08:00' : '08:00'}" dir="ltr"></label></div>
+          <label class="advno"><input type="checkbox" id="advnx"${S.noex ? ' checked' : ''}> ما حجزت موعد للحين</label></div>
+        <div class="advq"><b><span class="advn" aria-hidden="true">2</span>كم تقدر تذاكر كل يوم؟</b><div class="advcs" role="group" aria-label="وقتك اليومي">${chips(ADV_MINS, S.mins, 'm', advMinsT)}</div></div>
+        <div class="advq"><b><span class="advn" aria-hidden="true">3</span>وش الدرجة اللي تطمح لها؟</b><div class="advcs" role="group" aria-label="هدفك">${chips(ADV_GOALS, S.goal, 'g', v => `<bdi dir="ltr">${v}+</bdi>`)}</div></div>
+        <div class="acts"><button class="btn" id="advok">اقترح لي خطة</button><button class="btn ghost" id="advno">إلغاء</button></div></div>`;
+      document.body.appendChild(box);
+      let done = false; const close = v => { box.remove(); document.removeEventListener('keydown', onK); res(v || done); };
+      const onK = e => { if (e.key === 'Escape') close(false); };
+      document.addEventListener('keydown', onK);
+      box.addEventListener('click', e => { if (e.target === box) close(false); });
+      box.querySelector('#advno').onclick = () => close(false);
+      const D = box.querySelector('#advd'), NX = box.querySelector('#advnx');
+      NX.onchange = () => { D.disabled = box.querySelector('#advt').disabled = NX.checked; }; NX.onchange();
+      D.oninput = () => { if (D.value) NX.checked = false; };
+      const pickC = key => box.querySelectorAll(`[data-${key}]`).forEach(b => b.onclick = () => { S[key === 'm' ? 'mins' : 'goal'] = +b.dataset[key]; box.querySelectorAll(`[data-${key}]`).forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); }); });
+      pickC('m'); pickC('g');
+      box.querySelector('#advok').onclick = () => {
+        const d = D.value, t = box.querySelector('#advt').value || '08:00', noex = NX.checked;
+        if (!noex && !/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast(_T('اختر تاريخ اختبارك، أو علّم «ما حجزت موعد»')); D.focus(); return; }
+        if (!noex && examAt({ d, t }) < Date.now() - DAYMS) { toast(_T('التاريخ اللي اخترته مضى')); return; }
+        if (!S.mins) { toast(_T('اختر كم تقدر تذاكر كل يوم')); return; }
+        if (!S.goal) { toast(_T('اختر الدرجة اللي تطمح لها')); return; }
+        if (!noex) { const old = examGet(); if (!old || old.d !== d || (old.t || '08:00') !== t) { lsSet(EXAM_LS, { d, t, up: Date.now() }); lsDel(TRIPX_LS); } }
+        lsSet(ADV_LS, { mins: S.mins, goal: S.goal, up: Date.now() }); skillsPushSoon(1500); done = true;
+        // الخطة المقترحة
+        const dl = noex ? null : dayDiff(Date.now(), examAt({ d, t })), id = advPlan(dl, S.mins), pl = PLANS.find(p => p.id === id), st = planState(), cur = PLANS.find(p => p.id === st.id);
+        const fit = dl != null && dl < pl.days - 1;   // الخطة أطول من الأيام الباقية
+        const why = dl == null ? _T`تقدر تذاكر ${advMinsT(S.mins)} باليوم، وما عندك موعد للحين.` : _T`باقي على اختبارك ${dLabel(dl)}، وتقدر تذاكر ${advMinsT(S.mins)} باليوم.`;
+        const tip = S.goal >= 90 ? _T('عشان توصل 90 وفوق: لا تعدّي سؤال غلطت فيه بدون ما تفهم ليش، وأعد حل أخطائك كل كم يوم.') : _T('ثبّت الأساس أول: دروس التأسيس، وبعدها الأقسام والنماذج بالترتيب.');
+        box.querySelector('.advm').innerHTML = _T`<h3 id="advh">📅 خطتك المقترحة</h3>
+          <div class="advrec"><span class="advrk">${why}</span><b>${pl.name}</b><span class="advrd">${pl.days} يوم · ${pl.daily}</span>
+            ${fit ? _T`<small class="advrw">⚠️ الخطة أطول من الأيام الباقية بشوي: اختصر يومين من المراجعة، أو زد وقتك اليومي.</small>` : ''}</div>
+          <p class="advtip">💡 ${tip}</p>
+          <div class="acts">${cur && cur.id === pl.id ? _T('<button class="btn" id="advgo">تمام، أكمّل عليها</button>') : _T`<button class="btn gold" id="advgo">▶ ابدأ ${pl.name}</button>`}${cur && cur.id !== pl.id ? _T`<button class="btn ghost" id="advkeep">أكمّل على ${cur.name}</button>` : _T('<a class="btn ghost" id="advall" href="#plan">كل الخطط</a>')}</div>`;
+        box.querySelector('#advgo').onclick = () => { if (!(cur && cur.id === pl.id)) { planStart(pl.id); toast(_T('بدأت ') + pl.name + ' ✓'); } close(true); };
+        const kp = box.querySelector('#advkeep'); if (kp) kp.onclick = () => close(true);
+        const al = box.querySelector('#advall'); if (al) al.onclick = () => close(true);
+        box.querySelector('#advgo').focus();
+      };
+      setTimeout(() => { const i = box.querySelector('#advd'); if (i && !i.disabled && !i.value) i.focus(); }, 60);
+    });
+  }
+  // 🎓 صفحة المرشد
+  let ADVR = null;   // تقرير الأسبوع من الخادم (يتجدد كل 10 دقايق)
+  async function renderAdvisor() {
+    document.title = _T('مرشدك الأكاديمي | Q-Guide');
+    if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) {} }
+    app.innerHTML = topbar(_T`<span class="ttl">🎓 مرشدك الأكاديمي</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + '<main class="wrap advp" id="advp"></main>';
+    bindCtl(); advPaint();
+    if (!homePulled) { homePulled = true; skillsPull().then(() => { if (location.hash === '#advisor') advPaint(); }).catch(() => {}); }
+    if (!ADVR || Date.now() - ADVR.at > 600e3) { try { const r = await api({ op: 'adv_report', session: auth.session }); if (r && r.ok) { ADVR = Object.assign(r, { at: Date.now() }); if (location.hash === '#advisor') advPaint(); } } catch (e) {} }
+  }
+  function advPaint() {
+    const W = $('#advp'); if (!W) return;
+    const A = advPick(), G = advGet(), ex = examGet(), dl = advDl(), st = planState(), plan = PLANS.find(p => p.id === st.id) || null, I = plan ? planInfo(plan, st) : null, D = daysGet();
+    const btn = x => x.act ? `<button type="button" class="btn${x.g ? ' ghost' : ' gold'}" ${x.act}>${x.t}</button>` : `<a class="btn${x.g ? ' ghost' : ' gold'}" href="${x.h}">${x.t}</a>`;
+    // 📊 الأسبوع: آخر 7 أيام من سجل الجهاز (كل سؤال انحل) + الأسبوع اللي قبله، والدقة والوقت من الخادم
+    const wk = [], sum = (a, b) => { let n = 0, d = 0; for (let k = a; k <= b; k++) { const t = new Date(); t.setDate(t.getDate() - k); const v = D[dayKey(t)] || 0; n += v; if (v) d++; } return { n, d }; };
+    for (let k = 6; k >= 0; k--) { const t = new Date(); t.setDate(t.getDate() - k); wk.push({ l: _T('حنثرخجس')[t.getDay()], n: D[dayKey(t)] || 0, today: k === 0 }); }
+    const cur = sum(0, 6), prev = sum(7, 13), goal = goalGet(), mx = Math.max(goal, ...wk.map(d => d.n)), R = ADVR;
+    const dlt = (a, b, unit) => b == null || a == null || a === b ? '' : `<em class="${a > b ? 'up' : 'dn'}"><bdi dir="ltr">${a > b ? '▲' : '▼'} ${Math.abs(a - b)}${unit || ''}</bdi></em>`;
+    const acc = R && R.cur.acc != null ? R.cur.acc : null, pacc = R && R.prev.acc != null ? R.prev.acc : null, secs = R ? R.cur.secs : 0;
+    const hh = Math.floor(secs / 3600), mm = Math.round(secs % 3600 / 60), hrs = hh ? `${hh} ${EN ? 'h' : 'س'}${mm ? ` ${mm} ${EN ? 'min' : 'د'}` : ''}` : `${mm} ${EN ? 'min' : 'د'}`;   // i18n:skip
+    const verdict = !cur.n ? _T('ما حليت شي هالأسبوع. ابدأ اليوم بـ10 أسئلة، والأسبوع الجاي يطلع تقريرك أحلى.')
+      : cur.d >= 5 ? _T`ذاكرت ${cur.d} أيام من 7. هذا الاستمرار اللي يرفع الدرجة، كمّل عليه.`
+        : cur.n > prev.n && prev.n ? _T('حليت أكثر من الأسبوع اللي فات. جرّب تزيد يوم مذاكرة هالأسبوع.')
+          : _T`ذاكرت ${cur.d === 1 && !EN ? _T('يوم واحد') : dLabel(cur.d)} من 7. الأفضل تذاكر كل يوم ولو شوي، بدل ما تجمعها في يوم.`;
+    const topic = (x, cls) => { const T = TOPICS[x.k]; return T ? `<a class="advt ${cls}" href="#t-${x.k}"><span aria-hidden="true">${T.i}</span><b>${T.t}</b><i class="pg" aria-hidden="true"><span style="width:${x.p}%"></span></i><bdi dir="ltr">${x.p}%</bdi></a>` : ''; };
+    const weak = (R && R.weak) || [], strong = (R && R.strong) || [];
+    // 🧱 التأسيس
+    const VW = lsGet(VW_LS, {}), fl = n => { const B = fqBest(n), seen = VW['af:' + n] && VW['af:' + n].w, ok = B && B.best >= FQ_PASS;
+      return `<div class="advl${ok ? ' ok' : ''}"><span class="advln" aria-hidden="true">${ok ? '✓' : n}</span><span class="advlx"><b>${esc(fqName(n))}</b><small>${seen ? _T('✓ شاهدت الدرس') : _T('ما شاهدت الدرس')} · ${B ? _T`الاختبار <bdi dir="ltr">${B.best}/${B.n}</bdi>` : _T('ما حليت الاختبار')}</small></span><a class="btn sm ghost" href="${seen || !vidHas('af:' + n) ? '#fq-' + n : '#watch-af' + n}">${seen || !vidHas('af:' + n) ? (B ? _T('أعد الاختبار') : _T('📝 الاختبار')) : _T('▶ الدرس')}</a></div>`; };
+    const sfSeen = QR_L.filter((_, i) => VW['sf:' + (i + 1)] && VW['sf:' + (i + 1)].w).length;
+    const asks = [_T('وش أذاكر اليوم؟'), _T('رتّب لي جدول مذاكرة لين اختباري'), _T('كيف أرفع درجتي في اللفظي؟'), _T('كيف أرفع درجتي في الكمي؟'), _T('وش أسوي آخر أسبوع قبل الاختبار؟'), _T('أتوتر في الاختبار، وش الحل؟')];
+    W.innerHTML = _T`<section class="advh"><span class="advav" aria-hidden="true">✦</span>
+        <div class="advhx"><h1>مرشدك الأكاديمي</h1><p>يرتب لك مذاكرتك، يتابع تقدّمك، ويجاوبك على أي سؤال في القدرات.</p></div>
+        <button type="button" class="btn gold" id="advask">💬 اسأل مرشدك</button></section>
+      <section class="advtip-c k-${A.k}" aria-label="نصيحة اليوم"><span class="advtk">نصيحة اليوم${A.tag ? ' · ' + A.tag : ''}</span><div class="advtb"><span class="advti" aria-hidden="true">${A.i}</span><div><h2>${A.t}</h2><p>${A.s}</p></div></div>${A.a.length ? `<div class="advta">${A.a.map(btn).join('')}</div>` : ''}</section>
+      <section class="advg" aria-label="هدفك">
+        <div class="advgi"><span>⏳ اختبارك</span><b>${dl == null ? _T('ما حدّدته') : dl < 0 ? _T('مضى') : dl === 0 ? _T('اليوم') : _T`بعد ${dLabel(dl)}`}</b>${ex ? `<small>${fmtDay(examAt(ex))}</small>` : ''}</div>
+        <div class="advgi"><span>⏱ وقتك اليومي</span><b>${G ? advMinsT(G.mins) : '—'}</b></div>
+        <div class="advgi"><span>🎯 هدفك</span><b>${G && G.goal ? `<bdi dir="ltr">${G.goal}+</bdi>` : '—'}</b></div>
+        <div class="advgi"><span>📅 خطتك</span><b>${plan ? plan.name : _T('ما اخترت')}</b>${I ? `<small>${I.cur ? _T`اليوم ${I.cur.n} من ${plan.days}` : _T('خلّصتها 🎉')} · ${I.pct}%</small>` : ''}</div>
+        <button type="button" class="btn sm ghost advge" data-adv="setup">${G ? _T('✎ عدّل هدفك') : _T('🎓 رتّب مذاكرتي')}</button></section>
+      <section class="advw" aria-labelledby="advwh"><div class="advwt"><h2 id="advwh">📊 أسبوعك</h2><span class="mut">${_T('آخر 7 أيام')}</span></div>
+        <div class="advk"><div><b>${cur.n}</b><span>سؤال حليته</span>${dlt(cur.n, prev.n || null)}</div><div><b>${cur.d}<small>/7</small></b><span>أيام ذاكرت فيها</span>${dlt(cur.d, prev.n ? prev.d : null)}</div><div><b>${acc == null ? '—' : acc + '%'}</b><span>دقتك في الأقسام</span>${dlt(acc, pacc, '%')}</div><div><b>${secs ? hrs : '—'}</b><span>وقت الحل</span></div></div>
+        <div class="advbars" role="img" aria-label="${_T('الأسئلة اللي حليتها كل يوم')}">${wk.map(d => `<div class="advb${d.today ? ' t' : ''}${d.n >= goal ? ' met' : ''}"><span class="advbn">${d.n || ''}</span><i style="height:${Math.max(d.n ? 6 : 2, Math.round(d.n * 100 / mx))}%"></i><b>${d.l}</b></div>`).join('')}</div>
+        <p class="advv">${verdict}</p>
+        ${weak.length || strong.length ? `<div class="advts">${weak.length ? _T`<div><h3>يبي لها شغل</h3>${weak.map(x => topic(x, 'weak')).join('')}</div>` : ''}${strong.length ? _T`<div><h3>نقطة قوتك</h3>${strong.map(x => topic(x, 'strong')).join('')}</div>` : ''}</div>` : ''}
+        ${R && R.cur.exams ? _T`<p class="advex">🧪 اختبارات محاكية هالأسبوع: <b>${R.cur.exams}</b>${R.cur.exam_best != null ? _T` · أفضل نتيجة <b>${R.cur.exam_best}%</b>` : ''}</p>` : ''}</section>
+      <section class="advf" aria-labelledby="advfh"><div class="advwt"><h2 id="advfh">🧱 تأسيسك</h2><a class="lnk2" href="#sharh">${_T('كل الدروس')}</a></div>
+        <h3 class="advfh3">${_T('اللفظي · عبدالله الشمراني')}</h3><div class="advls">${[1, 2, 3, 4].map(fl).join('')}</div>
+        <a class="advsf" href="#sharh-salman/f"><span aria-hidden="true">📐</span><span class="advlx"><b>${_T('الكمي · سلمان الفرج')}</b><small>${_T`شاهدت ${sfSeen} من ${QR_L.length} درس`}</small></span><i class="pg" aria-hidden="true"><span style="width:${Math.round(sfSeen * 100 / QR_L.length)}%"></span></i></a></section>
+      <section class="advqs" aria-labelledby="advqh"><h2 id="advqh">💬 اسأل مرشدك</h2><div class="advqc">${asks.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div></section>`;
+    $('#advask').onclick = () => { if (window.QGAI) QGAI.help(); };
+    W.querySelectorAll('.advqc [data-q]').forEach(b => b.onclick = () => { if (window.QGAI) QGAI.ask(b.dataset.q); });
+    advBind(W, advPaint);
   }
 
   // ---------- player ----------
@@ -1287,7 +1636,7 @@
     skillsPushSoon(1500);
     if (set.topicSet) { $('#saved').textContent = _T('تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'); return; }
     try {
-      const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') });
+      const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') }); ADVR = null;   // تقرير الأسبوع يتجدد
       $('#saved').textContent = r.ok ? (r.admin ? _T('وضع المشرف: النتيجة لا تُسجّل') : r.free ? _T('نتيجتك محفوظة على جهازك ✓') : _T('تم حفظ نتيجتك ✓')) : '';
       if (!r.ok && r.error === 'session') { toast(_T('انتهت الجلسة، سجّل دخولك من جديد')); }
     } catch (e) { $('#saved').textContent = ''; }
@@ -1775,17 +2124,17 @@
     return { ok: true, text: p.file ? r.text || '' : '', card: helpCard(r) };
   }
   // الزر العائم يطلع في الصفحات العامة بس (مو داخل حل الأسئلة، ولا الساحة، ولا صفحات المشرفين، ولا صفحة البحث نفسها)
-  const helpOn = h => h != null && (h === '' || /^(sharh|sharh-abdullah|level|notes|badges|plan|skills)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^vocab/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
+  const helpOn = h => h != null && (h === '' || /^(sharh|sharh-abdullah|sharh-salman|level|notes|badges|plan|skills|me)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^vocab/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
   // 👤 ملف الطالب للمساعد (من جهازه): اختباره، سلسلته، أضعف مواضيعه، مهمة اليوم من خطته، وأنسب مكان يكمل فيه
   function helpProfile() {
-    const P = { name: firstName(auth && (auth.display || auth.name)), free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '' };
+    const P = { name: firstName(auth && (auth.display || auth.name)), free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '', lag: 0 };
     try {
       const ex = examGet(), exT = ex ? examAt(ex) : 0; if (exT) P.examIn = dayDiff(Date.now(), exT);
       P.streak = streakOf(daysGet());
       const agg = histAgg(histGet());
       P.weak = TOPIC_ORDER.map(t => ({ k: t, n: agg[t].w + agg[t].r, p: agg[t].w + agg[t].r ? Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)) : 0 })).filter(r => r.n >= 8).sort((a, b) => a.p - b.p).slice(0, 2).map(r => ({ k: r.k, t: TOPICS[r.k].t, i: TOPICS[r.k].i, p: r.p }));
       const st = planState(), plan = PLANS.find(p => p.id === st.id);
-      if (plan) { const I = planInfo(plan, st); if (I.cur) P.task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و'); }
+      if (plan) { const I = planInfo(plan, st); P.lag = Math.max(0, I.lag || 0); if (I.cur) P.task = [...new Set(I.cur.tasks.map(t => t.set ? SET_NAME(t.set) : t.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و'); }
       if (manifest) { const r = pickResume(); P.next = SET_NAME(r.s.id); P.nextId = r.s.id; }
     } catch (e) {}
     return P;
@@ -1793,7 +2142,8 @@
   // 🔗 روابط المساعد: {{q3}} {{v5}} {{t2}} {{rules:circles}} {{t-geo}} {{plan}}… → زر ينقل الطالب للصفحة
   const HELP_PAGES = { rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
     vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], 'wb-tq': ['🧱', _T('تأسيس الكمي'), '#wb-tq'], 'wb-tv': ['🧱', _T('تأسيس اللفظي'), '#wb-tv'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
-    't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'] };
+    't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'],
+    me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'] };
   function helpLink(tok) {
     if (!RULES_ON && /^rules/.test(tok)) return '';   // ملخص القوانين/القواعد انشال: الرمز ينشال من الرد
     let m; const a = (ic, t, h) => `<a class="qgai-lk" href="${h}"><span aria-hidden="true">${ic}</span>${t}</a>`;
@@ -1801,6 +2151,7 @@
     if ((m = /^([qv])(\d{1,2})$/.exec(tok)) && +m[2] >= 1 && +m[2] <= (m[1] === 'v' ? 15 : 14)) return a(m[1] === 'q' ? '📘' : '📗', SET_NAME(tok), '#' + tok);
     if ((m = /^t(\d{1,2})$/.exec(tok)) && +m[1] >= 1 && +m[1] <= 17) return a('🧪', _T`الاختبار المحاكي ${m[1]}`, '/test/');
     if ((m = /^t-([a-z]+)$/.exec(tok)) && TOPICS[m[1]]) return a(TOPICS[m[1]].i, _T`تدريب: ${TOPICS[m[1]].t}`, '#' + tok);
+    if ((m = /^fq-([1-4])$/.exec(tok))) return a('📝', _T`اختبار درس ${fqName(+m[1])}`, '#' + tok);   // 📝 اختبار درس التأسيس
     if ((m = /^rules:([a-z]+)$/.exec(tok))) { const s = (RU_DATA.q || []).find(x => x.id === m[1]) || RU_SEC[m[1]]; return s ? a(s.icon || '📐', _T`القوانين: ${s.t}`, '#rules/' + m[1]) : a('📐', _T('ملخص القوانين'), '#rules'); }
     return '';
   }
@@ -2630,11 +2981,13 @@
         const left = rDay(S.until) - rDay(now), span = Math.max(1, S.until - (S.start || S.until - 30 * 864e5)), pct = Math.min(100, Math.max(0, Math.round((now - (S.start || S.until - span)) * 100 / span)));
         const tone = left < 0 ? 'bad' : left <= 3 ? 'warn' : left <= 7 ? 'mid' : 'ok';
         const big = left < 0 ? _T('انتهت المدة') : left === 0 ? _T('آخر يوم') : EN ? enN(left, 'day', 'days') + ' left' : left === 1 ? _T('باقي يوم') : left === 2 ? _T('باقي يومين') : _T`باقي ${left} ${left <= 10 ? _T('أيام') : _T('يوم')}`;
-        const wa = 'https://wa.me/966508003683?text=' + encodeURIComponent(_T('السلام عليكم، أبي أجدد اشتراكي في دورة Q-Guide') + _T('\nإيميلي في الموقع: ') + (P.email || auth.email));
+        // 🔁 التجديد من الموقع (نفس نافذة الدفع): زر واضح لما يقرب يخلص، ورابط صغير قبلها — التجديد يضيف الشهر على موعد النهاية
+        const soon = left <= 3 || !!(auth.renew && auth.renew.nag);
         subHtml = _T`<div class="msub ${tone}"><div class="msubn"><b>${big}</b><span>${left < 0 ? _T`كان آخر يوم ${meDay(S.until)}` : _T`ينتهي اشتراكك ${meDay(S.until, 1)}`}</span></div>
           <i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>
           <div class="msubm"><span>${S.start ? _T`بدأ ${meDay(S.start)}` : ''}</span><span>${L[0]} ${L[1]}</span></div></div>
-          ${left <= 3 ? _T`<div class="msubact"><p>${left < 0 ? _T('جدّد اشتراكك عشان ما ينقفل حسابك.') : _T('اشتراكك قرب يخلص. جدّده عشان تكمّل بدون انقطاع.')}</p><a class="btn gold" href="${wa}"${TGT}>↻ جدّد اشتراكك</a></div>` : ''}`;
+          ${soon ? _T`<div class="msubact"><p>${left < 0 ? _T('جدّد اشتراكك عشان ما ينقفل حسابك.') : _T('اشتراكك قرب يخلص. جدّده عشان تكمّل بدون انقطاع.')}</p><button type="button" class="btn gold" data-sub>↻ جدّد اشتراكك</button></div>`
+            : _T`<div class="msubact quiet"><p>تبي تمدّد اشتراكك؟ التجديد يضيف شهر على تاريخ النهاية.</p><button type="button" class="btn sm ghost" data-sub>↻ جدّد من الحين</button></div>`}`;
       } else subHtml = _T`<p class="msubtx">✓ اشتراكك فعّال (${L[0]} ${L[1]}).</p>`;
     }
     // 🖼 الصورة: ارفع صورة · صورة قناتك في يوتيوب · أشكال جاهزة · بدون صورة — تتغيّر على طول
@@ -2654,12 +3007,14 @@
       <section class="mecard" aria-labelledby="me-h2"><h2 id="me-h2">✏️ بياناتك</h2>
         <div class="mefields"><label class="mef"><span>اسمك في لوحة الصدارة</span><input id="me-name" maxlength="30" autocomplete="nickname" value="${esc(name)}"></label>
           <label class="mef"><span>مدرستك</span><input id="me-school" maxlength="60" placeholder="مثال: ثانوية الملك فهد" value="${esc(P.school || '')}"></label></div>
-        <p class="mut menote">الاسم والصورة يشوفها الطلاب في لوحة الصدارة والساحة. المدرسة ما يشوفها إلا أنت ومرشدك.</p>
+        <p class="mut menote">الاسم والصورة يشوفها الطلاب في لوحة الصدارة والساحة. المدرسة تبقى خاصة فيك.</p>
         <div class="meact"><button type="button" class="btn" id="me-save" disabled>حفظ</button><span class="mut" id="me-st" aria-live="polite"></span></div></section>
       <section class="mecard" id="me-av" aria-labelledby="me-h3"><div class="mecardh"><h2 id="me-h3">🖼 صورتك</h2><button type="button" class="lnk2" id="me-shuf">🔀 أشكال ثانية</button></div>
         <div class="meavs">${avs}</div>
-        <p class="mut menote">اضغط على أي صورة وتتغيّر على طول.</p></section>`;
+        <p class="mut menote">اضغط على أي صورة وتتغيّر على طول.</p></section>
+      <section class="mecard mefoot"><a class="btn ghost" href="${waUrl()}"${TGT}>💬 الدعم الفني على واتساب</a><button type="button" class="btn ghost melo" id="me-lo">${LOSVG} تسجيل الخروج</button></section>`;
     bindSub(W);
+    $('#me-lo').onclick = async () => { if (await QGDlg.confirm(_T('تسجيل الخروج؟'), { ok: _T('خروج') })) logout('', true); };
     // ✏️ الاسم والمدرسة: زر الحفظ يشتغل لما يتغيّر شي
     const nm = $('#me-name'), sc = $('#me-school'), sv = $('#me-save'), stt = $('#me-st');
     const dirty = () => { sv.disabled = nm.value.trim() === name && sc.value.trim() === (P.school || ''); stt.textContent = ''; };
@@ -2691,7 +3046,7 @@
   const rDay = t => Math.floor((t + 3 * 3600000) / 864e5);
   const admDay = (t, y) => t ? new Date(t).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', Object.assign({ day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' }, y ? { year: 'numeric' } : {})) : '—';
   const arDays = n => n === 1 ? 'يوم' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';
-  function subLeft(until) {   // ok = باقي أكثر من 3 أيام · soon · over = مر عليه شهر (خلص موعده)
+  function subLeft(until) {   // ok = باقي أكثر من 3 أيام · soon · over = خلصت مدته
     if (!until) return { c: 'na', t: 'بدون تاريخ' };
     const t = Date.now();
     if (until <= t) { const d = rDay(t) - rDay(until); return { c: 'over', t: d ? 'انتهى قبل ' + arDays(d) : 'انتهى اليوم' }; }
@@ -2731,10 +3086,6 @@
   let ADM = { list: null, q: '', f: 'all', role: '', staff: null, members: null, mq: '', draft: '', subs: null, sf: 'all', sq: '', msub: 'free', regs: null, regsSync: null, regsAt: 0, rf: 'wait', rq: '', rt: {}, share: null };
   const isOwner = () => (ADM.role || auth.staff) === 'owner';
   const ROLE_T = { owner: '👑 مالك', admin: '🛡 مشرف كامل', viewer: '👁 متابعة فقط' };
-  function admTop(tab) {
-    return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><a class="tn" href="${SHEET_URL}" target="_blank" rel="noopener" title="فتح الشيت"><span class="i">📊</span><span class="l">الشيت</span></a><button class="ib" id="admref" title="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      `<main class="wrap" id="admw"><div class="atabs"><a href="#admin" class="${tab === 'students' ? 'on' : ''}">👥 الطلاب${ADM.list ? ` <small>${ADM.list.length}</small>` : ''}</a>${isOwner() ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}">${regTabLabel()}</a>` : ''}${isOwner() ? `<a href="#admin-members" class="${tab === 'members' ? 'on' : ''}">➕ المشتركون${ADM.members ? ` <small>${ADM.members.length}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-subs" class="${tab === 'subs' ? 'on' : ''}">💳 الاشتراكات</a>` : ''}${isOwner() ? `<a href="#admin-free" class="${tab === 'free' ? 'on' : ''}">🆓 الزوار${ADM.free ? ` <small>${ADM.free.total}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-ai" class="${tab === 'ai' ? 'on' : ''}">🤖 المساعد${ADM.ai && ADM.ai.flagged ? ` <small class="red">${ADM.ai.flagged}</small>` : ''}</a>` : ''}${isOwner() ? `<a href="#admin-find" class="${tab === 'find' ? 'on' : ''}">🔎 البحث</a>` : ''}${isOwner() || auth.adv || (ADM.staff && ADM.staff.myAdv) ? `<a href="#admin-adv" class="${tab === 'adv' ? 'on' : ''}">${advTab()}</a>` : ''}<a href="#admin-staff" class="${tab === 'staff' ? 'on' : ''}">🛡 المشرفون${ADM.staff ? ` <small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : ''}</a><a href="#studio" class="${tab === 'studio' ? 'on' : ''}">🎬 استوديو تيك توك</a>${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</div><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>`;
-  }
   async function admLoadStaff(force) { if (ADM.staff && !force) { regsSoon(); return ADM.staff; } const r = await admCall({ op: 'adm_staff_list' }); ADM.staff = r; ADM.role = r.myRole || ''; if (auth.staff !== ADM.role) { auth.staff = ADM.role; lsSet(LS.auth, auth); } regsSoon(); return r; }
   async function admCall(body) { const r = await api(Object.assign({ session: auth.session }, body)); if (!r.ok) { if (r.error === 'kicked' || r.error === 'session') return logout(esc(r.msg || '')); throw new Error(r.msg || r.error); } return r; }
   async function renderAdmin() {
@@ -2754,12 +3105,12 @@
     let list = all.filter(s => !q || [s.name, s.display, s.email, s.typed, s.phone, s.user].some(x => String(x || '').toLowerCase().includes(q)));
     if (ADM.f === 'banned') list = list.filter(s => s.banned); else if (ADM.f === 'today') list = list.filter(s => s.lastLogin > day); else if (ADM.f === 'never') list = list.filter(s => !s.logins && !s.banned); else if (ADM.f === 'over') list = list.filter(subOver);
     if (ADM.f === 'over') list.sort((a, b) => a.until - b.until); else list.sort((a, b) => (b.lastLogin || 0) - (a.lastLogin || 0));   // ⏰ اللي خلص شهره من زمان أول
-    W.innerHTML = `<div class="astats${OW ? ' n6' : ''}">${OW && ADM.ever != null ? `<div class="ever" title="كل اللي اشتركوا في الدورة من بدايتها: الحاليين واللي انتهى اشتراكهم أو انحذفوا (ما يحسب المشرفين وحسابات التجربة)"><b>${ADM.ever}</b><span>🎓 كل اللي اشتركوا</span></div>` : ''}<div><b>${stats.n}</b><span>طالب مشترك الحين</span></div><div><b>${stats.today}</b><span>دخل آخر 24 ساعة</span></div><div><b>${stats.never}</b><span>لم يدخل الموقع</span></div>${OW ? `<button type="button" class="over${ADM.f === 'over' ? ' on' : ''}" data-f="${ADM.f === 'over' ? 'all' : 'over'}" title="اللي مر على اشتراكهم شهر كامل (خلص موعده)"><b>${stats.over}</b><span>⏰ مر عليهم شهر</span></button>` : ''}<div class="bad"><b>${stats.banned}</b><span>محظور</span></div></div>
-      <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل']].concat(OW ? [['over', '⏰ مر عليه شهر']] : [], [['banned', 'محظور']]).map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+    W.innerHTML = `<div class="astats${OW ? ' n6' : ''}">${OW && ADM.ever != null ? `<div class="ever" title="كل اللي اشتركوا في الدورة من بدايتها: الحاليين واللي انتهى اشتراكهم أو انحذفوا (ما يحسب المشرفين وحسابات التجربة)"><b>${ADM.ever}</b><span>🎓 كل اللي اشتركوا</span></div>` : ''}<div><b>${stats.n}</b><span>طالب مشترك الحين</span></div><div><b>${stats.today}</b><span>دخل آخر 24 ساعة</span></div><div><b>${stats.never}</b><span>لم يدخل الموقع</span></div>${OW ? `<button type="button" class="over${ADM.f === 'over' ? ' on' : ''}" data-f="${ADM.f === 'over' ? 'all' : 'over'}" title="اللي خلصت مدة اشتراكهم وما جدّدوا"><b>${stats.over}</b><span>⏰ خلصت مدتهم</span></button>` : ''}<div class="bad"><b>${stats.banned}</b><span>محظور</span></div></div>
+      <div class="abar"><input id="aq" type="search" placeholder="ابحث بالاسم أو الإيميل أو الجوال أو اليوزر…" value="${esc(ADM.q)}"><div class="tabs sm">${[['all', 'الكل'], ['today', 'نشط اليوم'], ['never', 'لم يدخل']].concat(OW ? [['over', '⏰ خلصت مدتهم']] : [], [['banned', 'محظور']]).map(([k, t]) => `<button data-f="${k}" class="${ADM.f === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
       ${ADM.f === 'over' ? `<div class="rgsync warn overnote">⏰ هذول مر على اشتراكهم شهر كامل (من وقت تسجيلهم). لو جدّد الطالب اضغط «＋ شهر» تحت تاريخه، ولو ما جدّد اضغط «⛔ إنهاء».</div>` : ''}
       <div class="atable${OW ? ' dt' : ''}"><div class="arow head"><span class="c-st">الطالب</span><span class="c-ph">الجوال</span><span class="c-n">الأقسام</span><span class="c-n">المحاكي</span><span class="c-dt">آخر دخول</span>${OW ? '<span class="c-sub">ينتهي الاشتراك</span>' : ''}<span class="c-act">إجراءات</span></div>
       ${list.map(s => `<div class="arow ${s.banned ? 'banned' : ''}${OW && subOver(s) ? ' hasx' : ''}" data-e="${esc(s.email)}"><span class="c-st">${avatarHtml(s.avatar, s.display || s.name, 36)}<span class="who"><b>${esc(s.display || s.name || '—')}${s.display && s.display !== s.name ? ` <small class="mut">(${esc(s.name)})</small>` : ''}</b><small>${esc(s.typed || s.email)}${s.user ? ' · @' + esc(s.user) : ''}${s.manual ? (s.added_by === 'salla' ? ' · <span class="bdg pay">🛍 دفع عن طريق سلة</span>' : s.added_by === 'tap' ? ' · <span class="bdg pay">💳 دفع من الموقع</span>' : ' · <span class="bdg man">➕ من اللوحة</span>') : ''}${s.banned ? ' · <span class="bdg">⛔ محظور</span>' : s.ended ? ' · <span class="bdg">⛔ اشتراكه منتهي</span>' : s.session ? ' · <span class="bdg on">متصل</span>' : ''}</small>${OW && !s.banned && !s.ended && s.until ? (() => { const L = subLeft(s.until); return `<small class="sdm ${L.c}">⏰ ينتهي ${admDay(s.until)} · ${L.t}</small>`; })() : ''}</span></span><span class="c-ph ltr">${esc(s.phone || '—')}</span><span class="c-n">${s.results}</span><span class="c-n">${s.exams}</span><span class="c-dt">${fmtD(s.lastLogin)}</span>${OW ? `<span class="c-sub">${subCell(s)}${subOverBtns(s)}</span>` : ''}<span class="c-act"><button class="btn sm ghost" data-view="${esc(s.email)}">عرض</button>${OW ? `<a class="btn sm ghost rpb" href="#admin-report/${encodeURIComponent(s.email)}" title="التقرير الشامل" aria-label="التقرير الشامل لـ${esc(s.display || s.name || s.email)}">📊</a>` : ''}${ADM.role === 'viewer' ? '' : s.banned ? `<button class="btn sm" data-unban="${esc(s.email)}">فك الحظر</button>` : OW && s.ended ? `<button class="btn sm gone" data-gone="${esc(s.email)}" title="اشتراكه منتهي: احذفه من القائمة">🗑 حذف</button>` : `<button class="btn sm danger" data-ban="${esc(s.email)}">حظر</button>`}</span>${OW && subOver(s) ? `<div class="sdxrow"><small class="sdt over"><b>⏰ ${admDay(s.until)}</b> · ${subLeft(s.until).t}</small>${subOverBtns(s)}</div>` : ''}</div>`).join('') || '<div class="center mut" style="padding:30px">لا نتائج</div>'}</div>
-      <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. ${isOwner() ? 'لإضافة مشتركين استخدم تبويب «➕ المشتركون» أو الشيت، وبيانات طلاب الشيت تتعدّل من الشيت.' : 'لإضافة طالب أو تعديل بياناته استخدم الشيت.'}</p>`;
+      <p class="mut" style="font-size:12.5px;margin-top:10px">${list.length} من ${all.length} · الحظر دائم: يمنع دخول الموقع فوراً، ويطرد الجلسة، وخلال دقيقة يتحوّل في الشيت إلى "محظور" مع سحب الوصول لاختبارات الفورمز وملفات المذكرة. ${isOwner() ? 'لإضافة طالب بدون دفع استخدم «➕ إضافة يدوية». بيانات طلاب الشيت القديم تتعدّل من الشيت.' : 'لإضافة طالب أو تعديل بياناته استخدم الشيت.'}</p>`;
     $('#aq').oninput = e => { ADM.q = e.target.value; const pos = e.target.selectionStart; paintAdmin(); const i = $('#aq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { ADM.f = b.dataset.f; paintAdmin(); });
     W.querySelectorAll('[data-view]').forEach(b => b.onclick = () => admStudent(b.dataset.view));
@@ -3243,7 +3594,7 @@
   const regNeed = x => x.status === 'wait' && !x.act;                    // ينتظر قرارك
   const regPending = x => x.status !== 'ok' && x.act && !x.applied;      // قرارك ينتظر الشيت
   const regFinishing = x => x.act === 'confirm' && x.applied && x.status !== 'ok';   // الشيت يكمّل التأكيد
-  function regTabLabel() { const n = ADM.regs ? ADM.regs.filter(regNeed).length : 0; return '📝 التسجيلات' + (n ? ` <small class="red" title="بانتظار تأكيدك">${n}</small>` : ''); }
+  function regTabLabel() { const n = ADM.regs ? ADM.regs.filter(regNeed).length : 0; return '<span class="i" aria-hidden="true">📝</span> <span class="l">التسجيلات</span>' + (n ? ` <small class="red" title="بانتظار تأكيدك">${n}</small>` : ''); }
   function refreshRegTab() { const a = document.querySelector('.atabs a[href="#admin-regs"]'); if (a) a.innerHTML = regTabLabel(); }
   async function admLoadRegs() { const r = await admCall({ op: 'adm_regs' }); ADM.regs = r.rows || []; ADM.regsSync = r.sync || null; ADM.regsAt = Date.now(); refreshRegTab(); return r; }
   function regsSoon() { if (!isOwner() || (ADM.regs && Date.now() - ADM.regsAt < 60000)) return; ADM.regsAt = Date.now(); admLoadRegs().catch(() => {}); }   // عدّاد التبويب في كل صفحات اللوحة
@@ -3384,17 +3735,17 @@
     if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140); }; u.oninput = dirty; pr.oninput = dirty;
       f.onsubmit = async e => { e.preventDefault(); const url = u.value.trim();
         if (url && !/^https:\/\/\S+$/.test(url)) { toast('الرابط لازم يبدأ بـ https://'); u.focus(); return; }
-        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140 }); toast('✓ انحفظ'); paintSubs(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
+        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
     const op1 = W.querySelector('#slopen1'), cl = W.querySelector('#slclose'), setOpen = async (open, btn) => {
-      if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
-      btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); paintSubs(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
+      if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيبقى لهم زر واتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
+      btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); ADM.home = null; toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); admRepaint(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
     if (op1) op1.onclick = () => setOpen(true, op1); if (cl) cl.onclick = () => setOpen(false, cl);
     const lon = W.querySelector('#sllkon'), lof = W.querySelector('#sllkoff'), setLink = async (on, btn) => {
-      btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', link: on ? 1 : 0 }); toast(on ? '🔗 الرابط الخاص شغّال' : '⏸ وقّفت الرابط الخاص: الطالب يكتب رقم الطلب'); paintSubs(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
+      btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', link: on ? 1 : 0 }); toast(on ? '🔗 الرابط الخاص شغّال' : '⏸ وقّفت الرابط الخاص: الطالب يكتب رقم الطلب'); admRepaint(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
     if (lon) lon.onclick = () => setLink(true, lon); if (lof) lof.onclick = () => setLink(false, lof);
-    const al = W.querySelector('#slall'); if (al) al.onclick = () => { ADM.sallaAll = !ADM.sallaAll; paintSubs(); };
+    const al = W.querySelector('#slall'); if (al) al.onclick = () => { ADM.sallaAll = !ADM.sallaAll; admRepaint(); };
     const pl = W.querySelector('#slpull'); if (pl) pl.onclick = async () => { pl.disabled = true; const t = pl.textContent; pl.textContent = '⏳ نجيب الطلبات من سلة…';
-      try { const r = await admCall({ op: 'adm_salla_pull' }); ADM.salla = r; const P = r.pulled || {}; toast(`جبنا ${P.n || 0} طلب من سلة${P.done ? ` · تفعّل منها ${P.done}` : ''}`); if (P.done) { ADM.subs = null; renderSubs(); } else paintSubs(); }
+      try { const r = await admCall({ op: 'adm_salla_pull' }); ADM.salla = r; const P = r.pulled || {}; toast(`جبنا ${P.n || 0} طلب من سلة${P.done ? ` · تفعّل منها ${P.done}` : ''}`); if (P.done) { ADM.subs = null; admReload(); } else admRepaint(); }
       catch (x) { pl.disabled = false; pl.textContent = t; toast(x.message); } };
     W.querySelectorAll('.slrow').forEach(r => {
       const o = (SL.rows || []).find(x => x.id === r.dataset.id); if (!o) return;
@@ -3403,9 +3754,9 @@
         const v = await QGDlg.prompt(`طلب #${o.ref || o.id}${o.cname ? ' · ' + o.cname : ''}${o.cphone ? ' · ' + o.cphone : ''}\n${o.ftxt ? `كتب في الخانة: «${o.ftxt}»\n` : ''}\nاكتب إيميل Google اللي يدخل فيه الطالب الموقع${o.paid === 1 ? '، ويتفعّل اشتراكه على طول:' : '، ويتفعّل أول ما يندفع الطلب:'}\n(أو خلّ الطالب يلصق رقم الطلب في الموقع بنفسه)`, o.email || '', { ok: '🔗 اربط', placeholder: 'name@gmail.com' });
         if (v === null) return; const em = v.trim();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('اكتب إيميل صحيح'); return; }
-        try { const x = await admCall({ op: 'adm_salla_link', id: o.id, email: em }); ADM.salla = x; toast(/تفعّل/.test(x.note || '') ? `✅ تفعّل اشتراك ${em}` : `انربط الطلب بـ ${em}${x.note ? ' · ' + x.note : ''}`); ADM.subs = null; ADM.list = null; renderSubs(); }
+        try { const x = await admCall({ op: 'adm_salla_link', id: o.id, email: em }); ADM.salla = x; toast(/تفعّل/.test(x.note || '') ? `✅ تفعّل اشتراك ${em}` : `انربط الطلب بـ ${em}${x.note ? ' · ' + x.note : ''}`); ADM.subs = null; ADM.list = null; admReload(); }
         catch (x) { toast(x.message); } };
-      const hd = r.querySelector('[data-hide]'); if (hd) hd.onclick = async () => { hd.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_hide', id: o.id }); toast('🙈 انخفى الطلب'); paintSubs(); } catch (x) { hd.disabled = false; toast(x.message); } };
+      const hd = r.querySelector('[data-hide]'); if (hd) hd.onclick = async () => { hd.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_hide', id: o.id }); toast('🙈 انخفى الطلب'); admRepaint(); } catch (x) { hd.disabled = false; toast(x.message); } };
     });
   }
   async function renderSubs() {
@@ -3413,7 +3764,7 @@
     const top = () => { app.innerHTML = admTop('subs'); bindCtl(); $('#admref').onclick = () => { ADM.subs = null; renderSubs(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
-      if (!ADM.subs) { const [r, v, py, sl] = await Promise.all([admCall({ op: 'adm_subs' }), admCall({ op: 'adm_vids' }).catch(() => null), admCall({ op: 'adm_pay' }).catch(() => null), admCall({ op: 'adm_salla' }).catch(() => null)]); ADM.subs = r.rows; ADM.subsBatch = r.batch || null; ADM.vids = v; ADM.pay = py; ADM.salla = sl; } }
+      if (!ADM.subs) { const [r, c] = await Promise.all([admCall({ op: 'adm_subs' }), admCall({ op: 'adm_cfg' }).catch(() => null)]); ADM.subs = r.rows; ADM.subsBatch = r.batch || null; ADM.life = c && c.life ? c.life : null; } }
     catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#admin-subs') return;
     top(); paintSubs();
@@ -3423,48 +3774,32 @@
     if (ADM.sf === 'need') ADM.sf = 'all';
     const all = ADM.subs, f = ADM.sf, q = ADM.sq.trim().toLowerCase(), alt = x => x.t !== 'yt', on = x => !x.end;
     const n = { yt: all.filter(x => on(x) && x.t === 'yt').length, free: all.filter(x => on(x) && x.t === 'free').length, bank: all.filter(x => on(x) && x.t === 'bank').length, pay: all.filter(x => on(x) && x.t === 'pay').length, end: all.filter(x => x.end).length, over: all.filter(subOver).length };
-    const PY = ADM.pay, payT = !!(n.pay || (PY && PY.mode) || (ADM.salla && ADM.salla.secret));   // 💳 خانة «دفع من الموقع» تطلع لو الدفع (تاب أو سلة) مفعّل أو فيه أحد دفع
+    const LF = ADM.life;   // ⏰ إعدادات الانتهاء (من «الإعدادات والسجل»)
     if (f === 'end' && !n.end) ADM.sf = 'all';
     let list = all.filter(x => !q || [x.name, x.display, x.email, x.typed, x.user].some(v => String(v || '').toLowerCase().includes(q)));
     if (ADM.sf === 'end') list = list.filter(x => x.end); else if (ADM.sf === 'over') list = list.filter(subOver); else if (ADM.sf !== 'all') list = list.filter(x => on(x) && x.t === ADM.sf);
     if (ADM.sf === 'over') list.sort((a, b) => a.until - b.until); else list.sort((a, b) => (alt(a) ? 0 : 1) - (alt(b) ? 0 : 1) || (b.last || 0) - (a.last || 0));
     const nm = x => x.display || x.name || x.email.split('@')[0];
-    // 🎬 المقاطع داخل الموقع: كم مقطع مرفوع + المشاهدات آخر 30 يوم
-    const V = ADM.vids, up = V && V.files ? V.files.length : 0, tot = (V && V.total) || 29, views = V && V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0;
-    // شرح سلمان (q/v): اللي ما انرفع يفتح في يوتيوب · التأسيس وتدريب عبدالله (sf/af/at): يطلع للطلاب «قريباً» لين يرتفع
-    const yv = V && V.files ? V.files.filter(k => /^[qv]:/.test(k)).length : 0, yt = V && V.map ? Object.keys(V.map).filter(k => /^[qv]:/.test(k)).length : 29;
-    const vidLine = !V ? '<div class="rgsync warn">⚠️ تعذّر قراءة حالة المقاطع داخل الموقع. حدّث الصفحة.</div>'
-      : up >= tot ? `<div class="rgsync">🎬 كل الـ${tot} مقطع مرفوعة للموقع · ${views} مشاهدة آخر 30 يوم</div>`
-      : `<div class="rgsync${yv < yt ? ' warn' : ''}">${yv < yt ? `⏳ انرفع ${yv} من ${yt} من شرح سلمان (الأقسام والنماذج)، واللي ما انرفع يفتح لهم نسخته في يوتيوب.` : `🎬 شرح سلمان كله مرفوع (${yt}).`} دروس التأسيس وتدريب عبدالله: انرفع ${up - yv} من ${tot - yt}، والباقي يطلع للطلاب «⏳ قريباً». · ${views} مشاهدة آخر 30 يوم</div>`;
     const tile = (k, ic, b, t) => `<button type="button" class="sbt ${k}${f === k ? ' on' : ''}" data-sf="${k}" aria-pressed="${f === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
     const B = ADM.subsBatch;   // آخر «إنهاء الكل» (للتراجع)
     const row = x => `<div class="srow sbrow${x.end ? ' ended' : ''}" data-e="${esc(x.email)}">
       <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.via === 'salla' ? '🛍 اشترك بالدفع عن طريق سلة' : x.via === 'tap' ? '💳 اشترك بالدفع من الموقع' : x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
       ${x.t === 'pay' ? `<span class="sbseg pay" aria-label="نوع اشتراك ${esc(nm(x))}: دفع إلكتروني"><span class="sbpay">💳 دفع إلكتروني</span></span>` : `<span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}"${x.end ? ' aria-disabled="true"' : ''}>${['yt', 'free', 'bank'].map(t => `<button type="button" role="radio" data-t="${t}" class="${x.t === t ? 'on ' + t : ''}" aria-checked="${x.t === t}"${x.end ? ' disabled' : ''}>${SUB_N[t][0]} ${SUB_N[t][1]}</button>`).join('')}</span>`}
-      <span class="sbsh">${x.end ? `<small class="sbendst">⛔ انتهى اشتراكه ${fmtD(x.end)}</small>` : alt(x) ? '<small class="sbin">🎬 يشوف المقاطع داخل الموقع</small>' : '<small class="mut">تفتح له مقاطع الأعضاء في القناة</small>'}${x.end ? '' : (() => { const L = subLeft(x.until);
+      <span class="sbsh">${x.end ? `<small class="sbendst">⛔ انتهى اشتراكه ${fmtD(x.end)}${x.eb === 'auto' ? ' (تلقائي)' : ''}</small>` : ''}${x.end ? '' : (() => { const L = subLeft(x.until);
         return `<span class="sbdt ${L.c}"><span>📅 ينتهي <b>${x.until ? admDay(x.until) : '—'}</b> · ${L.t}</span><span class="sbdtb"><button type="button" class="lnk" data-add title="يمدّد الاشتراك شهر من موعد نهايته (أو من اليوم لو خلص)">＋ شهر</button><button type="button" class="lnk" data-dates>تعديل</button></span></span>`; })()}</span>
       <span class="sbend">${x.end ? '<button type="button" class="btn sm ghost" data-restore>↩️ إرجاع الاشتراك</button><button type="button" class="btn sm gone" data-gone title="احذفه من القوائم">🗑 حذف</button>' : '<button type="button" class="btn sm ghost dang" data-end>⛔ إنهاء الاشتراك</button>'}</span></div>`;
+    const lifeLine = !LF ? '' : `<div class="rgsync${LF.on ? '' : ' warn'} sblife"><span>${LF.on ? `⏰ الإنهاء التلقائي شغّال: اللي تخلص مدته وما يجدّد ينتهي اشتراكه بعد ${LF.grace ? arDays(LF.grace) : 'نهاية المدة على طول'} (${LF.types.map(t => SUB_N[t] ? SUB_N[t][1] : t).join('، ')}).` : '⏰ الإنهاء التلقائي مطفي: اللي تخلص مدته يبقى مشترك لين تنهيه أنت.'}${LF.remind ? ` الطالب يتذكّر بالتجديد قبل النهاية بـ${arDays(LF.remind)}.` : ''}</span><a class="lnk" href="#admin-settings">⚙️ غيّر الإعداد</a></div>`;
     W.innerHTML = `<div class="stf subs">
-      <div class="sbtiles n${5 + (n.end ? 1 : 0) + (payT ? 1 : 0)}">${tile('yt', '▶️', n.yt, 'مشتركين عن طريق يوتيوب')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${payT ? tile('pay', '💳', n.pay, 'دفع من الموقع') : ''}${tile('over', '⏰', n.over, 'مر عليهم شهر')}${n.end ? tile('end', '⛔', n.end, 'اشتراك منتهي') : ''}<div class="sbt vid" aria-label="المقاطع داخل الموقع"><span class="i" aria-hidden="true">🎬</span><b><bdi>${up}/${tot}</bdi></b><span>مقطع داخل الموقع</span></div></div>
-      ${sallaBox(ADM.salla)}
-      ${payBox(PY)}
+      <div class="sbtiles n${5 + (n.end ? 1 : 0)}">${tile('pay', '💳', n.pay, 'دفع من الموقع')}${tile('bank', '🏦', n.bank, 'تحويل بنكي')}${tile('free', '🎁', n.free, 'اشتراك مجاني')}${tile('yt', '▶️', n.yt, 'عضوية يوتيوب (قديم)')}${tile('over', '⏰', n.over, 'خلصت مدتهم')}${n.end ? tile('end', '⛔', n.end, 'اشتراك منتهي') : ''}</div>
+      ${lifeLine}
       ${B && B.n ? `<div class="rgsync warn sbundo"><span>⛔ أنهيت كل الاشتراكات ${fmtD(B.at)}، واللي باقي اشتراكهم منتهي منها ${nStu(B.n)}.</span><button type="button" class="lnk" id="sbundo">↩️ تراجع وأرجعهم</button></div>` : ''}
-      ${vidLine}
-      ${vupHtml(ADM.vids)}
-      <p class="sbhelp">المجاني والتحويل البنكي يشوفون مقاطع الشرح هنا داخل الموقع: رابط مؤقت يشتغل من الموقع بس، وإيميل الطالب ظاهر على المقطع. مشترك يوتيوب تفتح له مقاطع الأعضاء في القناة مثل قبل.</p>
       <div class="abar"><input id="sbq" type="search" placeholder="ابحث بالاسم أو الإيميل أو اليوزر…" value="${esc(ADM.sq)}">${f !== 'all' ? `<button type="button" class="btn sm ghost" id="sball">عرض الكل (${all.length})</button>` : ''}</div>
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : 'ما فيه طلاب هنا'}</div>`}</div>
-      <p class="mut sbnote">الطالب الجديد من الشيت يطلع «يوتيوب»، واللي تضيفه من «➕ المشتركون» يطلع بالنوع اللي تختاره هناك. تقدر تغيّر أي طالب من هنا، ويتغيّر عنده خلال دقائق.</p>
+      <p class="mut sbnote">اللي يدفع من الموقع يطلع «دفع إلكتروني» لحاله. واللي تضيفه من «➕ إضافة يدوية» يطلع بالنوع اللي تختاره هناك. كل المشتركين يشوفون مقاطع الشرح داخل الموقع.</p>
       <section class="sbdz" aria-labelledby="sbdzh"><div class="sbdzt"><h3 id="sbdzh">⛔ إنهاء كل الاشتراكات</h3><p>ينهي اشتراك كل الطلاب دفعة وحدة: يطلعون من الموقع فوراً، ولو دخلوا مرة ثانية يدخلون بالحساب المجاني. أنت والمشرفين ما تتأثرون، وتقدر تتراجع بعدها.</p></div>
         <button type="button" class="btn sm danger" id="sbendall"${all.some(on) ? '' : ' disabled'}>⛔ إنهاء كل الاشتراكات</button></section></div>`;
     W.querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { ADM.sf = ADM.sf === b.dataset.sf ? 'all' : b.dataset.sf; paintSubs(); });
     const ab = $('#sball'); if (ab) ab.onclick = () => { ADM.sf = 'all'; paintSubs(); };
-    const pa = $('#pball'); if (pa) pa.onclick = () => { ADM.payAll = !ADM.payAll; paintSubs(); };
-    const po = $('#pbopen'), pc = $('#pbclose'), payOpen = async (open, btn) => {
-      if (!await QGDlg.confirm(open ? 'تفتح الدفع الحقيقي لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، واللي يدفع ينفتح له اشتراكه على طول.' : 'توقف الدفع من الموقع للزوار؟\nيرجع لهم الاشتراك عن طريق يوتيوب وواتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح الدفع' } : { ok: '⏸ إيقاف', danger: true })) return;
-      btn.disabled = true; try { ADM.pay = await admCall({ op: 'adm_pay_open', open: open ? 1 : 0 }); toast(open ? '🚀 الدفع صار مفتوح لكل الزوار' : '⏸ وقّفت الدفع للزوار'); paintSubs(); } catch (e) { btn.disabled = false; toast('ما انحفظ: ' + e.message); } };
-    if (po) po.onclick = () => payOpen(true, po); if (pc) pc.onclick = () => payOpen(false, pc);
-    W.querySelectorAll('.pbrow[data-e]').forEach(r => { r.onclick = () => admStudent(r.dataset.e); r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); admStudent(r.dataset.e); } }; });
     $('#sbq').oninput = e => { ADM.sq = e.target.value; const pos = e.target.selectionStart; paintSubs(); const i = $('#sbq'); i.focus(); i.setSelectionRange(pos, pos); };
     const save = async (x, patch, undo, msg) => { Object.assign(x, patch); paintSubs();
       try { await admCall(Object.assign({ op: 'adm_sub_set', email: x.email }, patch)); toast(msg); } catch (e) { Object.assign(x, undo); paintSubs(); toast('ما انحفظ: ' + e.message); } };
@@ -3486,7 +3821,6 @@
       if (!await QGDlg.confirm(`ترجع اشتراك ${B.n === 1 ? 'الطالب' : B.n === 2 ? 'الطالبين' : 'الـ' + nStu(B.n)} اللي انتهى اشتراكهم في «إنهاء الكل»؟\nيقدرون يدخلون مشتركين من جديد.`, { ok: '↩️ أرجعهم' })) return;
       try { const r = await admCall({ op: 'adm_sub_restore_all', batch: B.batch }); toast(`↩️ رجع اشتراك ${nStu(r.n)}`); ADM.subs = null; ADM.list = null; renderSubs(); }
       catch (e) { toast('ما انحفظ: ' + e.message); } };
-    sallaBind(W); vupBind(W, '');
   }
   // ⛔ إنهاء اشتراك طالب / ↩️ إرجاعه (المالك) — من «💳 الاشتراكات» ومن بطاقة الطالب
   const nStu = n => n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n >= 3 && n <= 10 ? n + ' طلاب' : n + ' طالب';
@@ -3502,6 +3836,286 @@
   async function subRestoreOne(email, name) {
     try { await admCall({ op: 'adm_sub_restore', email }); toast(`↩️ رجع اشتراك ${name}`); ADM.list = null; return true; } catch (e) { toast('ما انحفظ: ' + e.message); return false; }
   }
+
+  // ---------- 👑 هيكل لوحة الإدارة: قائمة جانبية بمجموعات واضحة (الجوال: شريط يتحرك) + عنوان ووصف لكل صفحة ----------
+  // كل الصفحات تمر على admTop(tab). «الرئيسية» (#admin-home) = نظرة المالك: وش يحتاج قراره + أرقام اليوم + آخر اللي صار + صحة النظام + طلاب يحتاجون متابعة
+  // «الاشتراكات» انقسمت: القائمة والمواعيد (#admin-subs) · المدفوعات: سلة وتاب (#admin-pay) · المقاطع: الرفع وحسابات المدرسين (#admin-vids)
+  // «الإعدادات والسجل» (#admin-settings): انتهاء الاشتراكات تلقائياً والتذكير · تنبيهات المالك على جهازه · النسخ الاحتياطي · سجل الإدارة · أخطاء الموقع
+  const ADM_PG = {
+    home: ['🏠', 'الرئيسية', 'وش يحتاج قرارك اليوم، وأرقام الموقع في نظرة وحدة.'],
+    students: ['👥', 'الطلاب', 'كل المشتركين: دخولهم ونتائجهم وموعد اشتراكهم. اضغط على أي طالب تفتح بطاقته.'],
+    ai: ['🎓', 'المرشد الذكي', 'تشغيل المرشد وحدوده اليومية، وآخر شروحاته وبلاغات الطلاب عليها.'],
+    find: ['🔎', 'البحث والبلاغات', 'الأسئلة اللي دوّر عنها الطلاب، واللي بلّغوا إنها مو في الدورة.'],
+    free: ['🆓', 'الزوار', 'الحسابات المجانية: من وين جاو، وش جرّبوا، ومين اشترك منهم.'],
+    subs: ['💳', 'الاشتراكات', 'نوع اشتراك كل طالب وموعد نهايته: مدّد، عدّل، أو أنهِ الاشتراك.'],
+    pay: ['💰', 'المدفوعات', 'الدفع من الموقع عن طريق سلة وتاب: الطلبات وحالتها وإعدادات الدفع.'],
+    members: ['➕', 'إضافة يدوية', 'أضف طالب بإيميله مباشرة (مجاني أو تحويل) بدون ما يدفع من الموقع.'],
+    regs: ['📝', 'التسجيلات', 'طلبات فورم التسجيل القديم (الشيت): أكّد أو ارفض.'],
+    vids: ['🎬', 'المقاطع', 'ارفع مقاطع الشرح والتأسيس للموقع، واربط حسابات المدرسين عشان يرفعون مقاطعهم.'],
+    studio: ['📱', 'استوديو تيك توك', 'بطاقات الأسئلة جاهزة للتصوير، مع القلم والترجمة.'],
+    staff: ['🛡', 'الفريق', 'المشرفين وصلاحياتهم.'],
+    settings: ['⚙️', 'الإعدادات والسجل', 'انتهاء الاشتراكات، تنبيهاتك، النسخ الاحتياطي، وسجل كل اللي صار في اللوحة.'],
+  };
+  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'members', 'regs']], ['المحتوى', ['vids', 'studio']], ['النظام', ['staff', 'settings']]];
+  const ADM_HREF = { home: '#admin-home', students: '#admin', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', staff: '#admin-staff', settings: '#admin-settings' };
+  const ADM_ALL = { students: 1, staff: 1, studio: 1 };   // يشوفها كل مشرف · الباقي للمالك بس
+  function admTop(tab) {
+    const OW = isOwner(), pg = ADM_PG[tab] || ADM_PG.students, H = ADM.home;
+    const wait = H ? H.need.filter(x => x.k === 'salla_wait' || x.k === 'bank').reduce((a, x) => a + x.n, 0) : 0;
+    const badge = k => k === 'students' && ADM.list ? `<small>${ADM.list.length}</small>` : k === 'members' && ADM.members ? `<small>${ADM.members.length}</small>` : k === 'free' && ADM.free ? `<small>${ADM.free.total}</small>`
+      : k === 'ai' && ADM.ai && ADM.ai.flagged ? `<small class="red">${ADM.ai.flagged}</small>` : k === 'staff' && ADM.staff ? `<small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : k === 'pay' && wait ? `<small class="red" title="طلبات تنتظرك">${wait}</small>` : '';
+    const item = k => k === 'regs' ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}"${tab === 'regs' ? ' aria-current="page"' : ''}>${regTabLabel()}</a>`
+      : `<a href="${ADM_HREF[k]}" class="${tab === k ? 'on' : ''}"${tab === k ? ' aria-current="page"' : ''}><span class="i" aria-hidden="true">${ADM_PG[k][0]}</span> <span class="l">${ADM_PG[k][1]}</span>${badge(k) ? ' ' + badge(k) : ''}</a>`;
+    const nav = ADM_NAV.map(([g, ks]) => { const L = ks.filter(k => OW || ADM_ALL[k]); return L.length ? `<div class="an-g"><span class="an-h">${g}</span>${L.map(item).join('')}</div>` : ''; }).join('');
+    return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><button class="ib" id="admref" title="تحديث" aria-label="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      `<div class="adm-shell"><nav class="adm-nav atabs" aria-label="أقسام لوحة الإدارة">${nav}${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</nav>
+        <main class="adm-main" id="admw"><header class="adm-hd"><h1><span aria-hidden="true">${pg[0]}</span> ${pg[1]}</h1><p>${pg[2]}</p></header><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main></div>`;
+  }
+  // صناديق سلة وتاب ورفع المقاطع ترسم صفحتها الحالية بعد كل إجراء
+  const admRepaint = () => { const h = location.hash; if (h === '#admin-pay') paintPay(); else if (h === '#admin-vids') paintVids(); else if (h === '#admin-subs') paintSubs(); else if (h === '#my-vids') paintMyVids(); };
+  const admReload = () => { const h = location.hash; if (h === '#admin-pay') renderPay(); else if (h === '#admin-vids') renderVids(); else if (h === '#admin-subs') renderSubs(); };
+  const waPhone = p => { p = String(p || '').replace(/\D/g, ''); return p.startsWith('966') ? p : /^05\d{8}$/.test(p) ? '966' + p.slice(1) : /^5\d{8}$/.test(p) ? '966' + p : p; };
+  const sar = n => (Math.round(n) || 0).toLocaleString('en-US');
+  const vidKeyName = k => { const m = /^([a-z]+):(\d+)$/.exec(k) || []; return m[1] === 'q' ? 'القسم ' + m[2] : m[1] === 'v' ? (+m[2] === 15 ? 'الأسئلة الجديدة' : 'النموذج ' + m[2]) : k; };
+
+  // ---------- 🏠 الرئيسية (المالك) ----------
+  const OH_NEED = {
+    salla_wait: x => ['🛍', x.n === 1 ? 'طلب مدفوع في سلة وما تفعّل' : `${x.n} طلبات مدفوعة في سلة وما تفعّلت`, 'الطالب دفع وما رجع للموقع. اربط الطلب بإيميله وينفتح اشتراكه.', '#admin-pay', 'افتح المدفوعات', 'hi'],
+    bank: x => ['🏦', x.n === 1 ? 'تحويل بنكي ينتظر تأكيدك' : `${x.n} تحويلات بنكية تنتظر تأكيدك`, 'لما يوصلك المبلغ، حوّل الطلب في سلة إلى «قيد التنفيذ» ويتفعّل الاشتراك لحاله.', '#admin-pay', 'افتح المدفوعات', 'hi'],
+    over: x => ['⏰', `${nStu(x.n)} خلصت مدة اشتراكهم`, x.auto ? 'الإنهاء التلقائي شغّال: اللي ما يجدّد ينتهي اشتراكه بعد المهلة.' : 'مدّد لهم شهر أو أنهِ اشتراكهم. وتقدر تشغّل الإنهاء التلقائي من الإعدادات.', '#admin-subs', 'راجعهم', 'mid'],
+    soon: x => ['⏳', `${x.n === 1 ? 'اشتراك واحد ينتهي' : x.n === 2 ? 'اشتراكين ينتهون' : x.n + ' اشتراكات تنتهي'} خلال 3 أيام`, 'يطلع لهم تذكير بالتجديد في الموقع.', '#admin-subs', 'شوفهم', 'low'],
+    rep: x => ['🚩', `${x.n === 1 ? 'بلاغ واحد' : x.n === 2 ? 'بلاغين' : x.n + ' بلاغات'} من الطلاب على أسئلة`, 'أسئلة قالوا إنها مو في الدورة أو نتيجة البحث غلط (آخر 7 أيام).', '#admin-find', 'افتح البلاغات', 'mid'],
+    flag: x => ['🤖', `${x.n === 1 ? 'شرح واحد' : x.n === 2 ? 'شرحين' : x.n + ' شروحات'} من المرشد بلّغ عنها الطلاب`, 'راجع الشرح وشوف وين الغلط.', '#admin-ai', 'راجعها', 'mid'],
+    regs: x => ['📝', `${x.n === 1 ? 'طلب تسجيل ينتظر' : x.n === 2 ? 'طلبين تسجيل ينتظرون' : x.n + ' طلبات تسجيل تنتظر'} قرارك`, 'من فورم التسجيل القديم (الشيت).', '#admin-regs', 'افتح التسجيلات', 'mid'],
+    err: x => ['🐞', `${x.n === 1 ? 'خطأ واحد' : x.n === 2 ? 'خطأين' : x.n + ' أخطاء'} في الموقع آخر 24 ساعة`, 'أخطاء صارت عند الطلاب وانسجلت لحالها.', '#admin-settings', 'شوف السجل', 'low'],
+    follow: x => ['👋', `${nStu(x.n)} ما ذاكروا من 4 أيام وأكثر`, 'القائمة تحت: كلّمهم على واتساب، أو افتح تقرير الطالب.', '#oh-follow', 'شوفهم', 'low'],
+    vids: x => ['🎬', x.qv ? `${x.qv === 1 ? 'مقطع واحد' : x.qv === 2 ? 'مقطعين' : x.qv + ' مقاطع'} من شرح الأقسام والنماذج ما انرفعت` : `${x.n === 1 ? 'مقطع واحد' : x.n === 2 ? 'مقطعين' : x.n + ' مقطع'} من التأسيس والتدريب ما انرفع`, x.qv ? 'اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع: ' + (x.list || []).map(vidKeyName).join('، ') + '.' : 'تطلع للطلاب «⏳ قريباً» لين يرفعها المدرس.', '#admin-vids', x.qv ? 'ارفعها' : 'افتح المقاطع', x.qv ? 'mid' : 'low'],
+    backup: x => ['💾', x.at ? 'آخر نسخة احتياطية قديمة' : 'ما فيه نسخة احتياطية للحين', 'النسخ يتم لحاله كل يوم، وتقدر تبدأه الحين من الإعدادات.', '#admin-settings', 'افتح الإعدادات', 'low'],
+    payoff: () => ['💳', 'الدفع من الموقع مقفل على الزوار', 'الزائر ما يشوف زر الدفع ويراسلك على واتساب. افتحه من المدفوعات لما تجهز.', '#admin-pay', 'افتح المدفوعات', 'hi'],
+  };
+  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'],
+    adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
+    adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
+    adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
+    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'] };
+  const evRow = e => { const T = EV_T[e.kind] || ['•', e.kind], sys = !/^adm_/.test(e.kind), who = String(e.who || '');
+    const sub = [sys ? '' : who && who.indexOf('@') > 0 ? 'بواسطة ' + who.split('@')[0] : '', e.target, e.note].filter(Boolean).map(esc).join(' · ');
+    return `<li class="ev${sys ? ' sys' : ''}"><span class="evi" aria-hidden="true">${T[0]}</span><span class="evx"><b>${T[1]}${sys && who.indexOf('@') > 0 ? ` <small class="ltr">${esc(who)}</small>` : ''}</b><small>${sub || '—'}</small></span>${e.amt ? `<span class="evamt"><bdi>${sar(e.amt)}</bdi> ريال</span>` : ''}<time>${fmtD(e.at)}</time></li>`; };
+  async function renderAdmHome() {
+    document.title = 'لوحة الإدارة | Q-Guide';
+    const top = () => { app.innerHTML = admTop('home'); bindCtl(); $('#admref').onclick = () => { ADM.home = null; renderAdmHome(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.replace('#admin'); return; }
+      if (!ADM.home || Date.now() - (ADM.homeAt || 0) > 60000) { ADM.home = await admCall({ op: 'adm_home' }); ADM.homeAt = Date.now(); } }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-home') return;
+    top(); paintAdmHome();
+  }
+  function paintAdmHome() {
+    const W = $('#adm'), H = ADM.home; if (!W || !H) return;
+    const K = H.kpi, S = H.series, HL = H.health, t = H.t || Date.now();
+    const order = { hi: 0, mid: 1, low: 2 }, need = H.need.map(x => OH_NEED[x.k] ? Object.assign({ k: x.k }, { v: OH_NEED[x.k](x) }) : null).filter(Boolean).sort((a, b) => order[a.v[5]] - order[b.v[5]]);
+    const needHtml = need.length ? need.map(x => `<li class="ohn ${x.v[5]}" data-k="${x.k}"><span class="ohni" aria-hidden="true">${x.v[0]}</span><span class="ohnx"><b>${x.v[1]}</b><small>${esc(x.v[2])}</small></span><a class="btn sm${x.v[5] === 'hi' ? '' : ' ghost'}" href="${x.v[3]}" data-need="${x.k}">${x.v[4]}</a></li>`).join('')
+      : '<li class="ohn none"><span class="ohni" aria-hidden="true">✓</span><span class="ohnx"><b>ما فيه شي ينتظرك</b><small>كل الطلبات مفعّلة، وما فيه بلاغات ولا أخطاء.</small></span></li>';
+    const by = K.by || {}, tile = (ic, b, t1, s, href, cls) => `<a class="oht${cls ? ' ' + cls : ''}" href="${href}"><span class="ohti" aria-hidden="true">${ic}</span><b>${b}</b><span class="ohtt">${t1}</span><small>${s}</small></a>`;
+    const tiles = tile('👥', K.subs, 'مشترك الحين', `💳 ${by.pay || 0} · 🏦 ${by.bank || 0} · 🎁 ${by.free || 0} · ▶️ ${by.yt || 0}`, '#admin-subs')
+      + tile('💰', `<bdi>${sar(K.rev_m.a)}</bdi>`, 'ريال هالشهر', `${K.rev_m.n === 1 ? 'اشتراك واحد' : K.rev_m.n === 2 ? 'اشتراكين' : K.rev_m.n + ' اشتراك'} مدفوع${K.rev_d.a ? ` · اليوم <bdi>${sar(K.rev_d.a)}</bdi>` : ''}`, '#admin-pay', 'gold')
+      + tile('🆕', K.new7, 'اشتركوا آخر 7 أيام', K.soon ? `${K.soon} ينتهي اشتراكهم قريب` : 'ما فيه اشتراك ينتهي قريب', '#admin-subs')
+      + tile('🔥', K.active, 'طالب نشط اليوم', K.active_free ? `ومعهم ${K.active_free === 1 ? 'زائر واحد' : K.active_free + ' زوار'}` : `من ${K.subs} مشترك`, '#admin')
+      + tile('✍️', sar(K.q), 'سؤال انحل اليوم', K.sets ? `${K.sets === 1 ? 'قسم واحد خلص' : K.sets === 2 ? 'قسمين خلصوا' : K.sets + ' أقسام ونماذج خلصت'}` : 'في الأقسام والنماذج', '#admin')
+      + tile('🎓', K.ai, 'رسالة للمرشد اليوم', K.ai_u ? `من ${K.ai_u === 1 ? 'طالب واحد' : K.ai_u + ' طلاب'}` : 'ما أحد سأله اليوم', '#admin-ai')
+      + tile('🎬', K.vids, 'مشاهدة مقطع اليوم', `<bdi>${HL.vids}/${HL.vids_total}</bdi> مقطع مرفوع`, '#admin-vids')
+      + tile('🆓', K.free.n, 'زائر مجاني', `${K.free.d ? `+${K.free.d} اليوم · ` : ''}${K.free.c30 ? `${K.free.c30} اشتركوا آخر 30 يوم` : `+${K.free.w} آخر 7 أيام`}`, '#admin-free');
+    // 📈 14 يوم: الطلاب اللي حلّوا كل يوم · الدخل كل يوم
+    const dn = i => new Date(S.days[i]).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'short', timeZone: 'Asia/Riyadh' });
+    const chart = (arr, unit, cls, alt) => { const mx = Math.max(1, ...arr), sum = arr.reduce((a, b) => a + b, 0);
+      return `<div class="ohbars ${cls}" role="img" aria-label="${alt}">${arr.map((v, i) => `<i class="${i === arr.length - 1 ? 't' : ''}${v ? '' : ' z'}" style="height:${Math.max(v ? 6 : 2, Math.round(v * 100 / mx))}%" title="${dn(i)}: ${sar(v)} ${unit}"></i>`).join('')}</div><div class="ohax"><span>${dn(0)}</span><span>${sum ? 'أعلى يوم ' + sar(mx) + ' ' + unit : 'ما فيه بيانات'}</span><span>اليوم</span></div>`; };
+    const dot = (ok, t1, v) => `<li class="${ok === 2 ? 'warn' : ok ? 'ok' : 'off'}"><span class="hd" aria-hidden="true"></span><span>${t1}</span><b>${v}</b></li>`;
+    const bk = HL.backup, L = HL.life || {};
+    const health = dot(1, 'إصدار الخادم', `<bdi>${esc(HL.v || '—')}</bdi>`)
+      + dot(HL.salla_url ? (HL.salla_open ? 1 : 2) : 0, 'سلة للزوار', !HL.salla_url ? 'ما انحط رابط المنتج' : HL.salla_open ? 'مفتوحة' : 'للمختبرين بس')
+      + dot(HL.salla_mail ? (t - HL.salla_mail < 7 * 864e5 ? 1 : 2) : 0, 'إيميلات سلة', HL.salla_mail ? 'آخر واحد ' + fmtD(HL.salla_mail) : 'ما وصل شي')
+      + dot(HL.salla_link ? 1 : 0, 'رابط دفع خاص بكل طالب', HL.salla_link ? 'شغّال' : 'مطفي')
+      + dot(HL.tap ? (HL.tap === 'live' && HL.tap_open ? 1 : 2) : 0, 'تاب (الدفع المباشر)', !HL.tap ? 'بدون مفتاح' : HL.tap === 'test' ? 'وضع التجربة' : HL.tap_open ? 'شغّال للكل' : 'للمختبرين بس')
+      + dot(HL.ai && HL.ai.on && HL.ai.mode !== 'off' ? 1 : 0, 'المرشد الذكي', HL.ai ? (HL.ai.mode === 'off' ? 'مطفي' : HL.ai.mode === 'all' ? 'شغّال للكل' : 'شغّال (' + esc(HL.ai.mode) + ')') : '—')
+      + dot(L.on ? 1 : 2, 'الإنهاء التلقائي للاشتراكات', L.on ? `شغّال · مهلة ${arDays(L.grace || 0) || 'بدون'}` : 'مطفي: أنت تقرر')
+      + dot(bk && bk.done && t - bk.done < 40 * 3600e3 ? 1 : bk && bk.run ? 2 : HL.r2 ? 2 : 0, 'النسخ الاحتياطي', !HL.r2 ? 'التخزين مو مربوط' : bk && bk.run ? 'قاعد ينسخ…' : bk && bk.done ? 'آخر نسخة ' + fmtD(bk.done) : 'ما فيه نسخة')
+      + dot(HL.push_o ? 1 : 2, 'تنبيهاتك', HL.push_o ? (HL.push_o === 1 ? 'جهاز واحد' : HL.push_o + ' أجهزة') : 'مو مفعّلة على أي جهاز')
+      + dot(1, 'تنبيهات الطلاب', HL.push_s === 1 ? 'جهاز واحد' : HL.push_s + ' جهاز')
+      + dot(HL.cron && t - HL.cron < 2 * 3600e3 ? 1 : 2, 'المهام التلقائية', HL.cron ? 'آخر تشغيل ' + fmtD(HL.cron) : 'ما اشتغلت للحين')
+      + dot(HL.sheet && t - HL.sheet < 15 * 60e3 ? 1 : 2, 'مزامنة الشيت (قديم)', HL.sheet ? fmtD(HL.sheet) : '—');
+    const msg = n => 'هلا ' + firstName(n) + '، معك Q-Guide. لاحظنا إنك ما دخلت المنصة من كم يوم، عسى المانع خير؟ لو تحتاج أي مساعدة في المذاكرة حنا موجودين.';
+    const FL = H.follow || [], fol = (ADM.folAll ? FL : FL.slice(0, 8)).map(x => { const ago = x.last ? rDay(t) - rDay(x.last) : null, ph = waPhone(x.phone), T = SUB_N[x.t] || SUB_N.yt;
+      return `<div class="ohf" data-e="${esc(x.email)}">${avatarHtml(x.avatar, x.name, 36)}<span class="ohfx"><b>${esc(x.name)}</b><small>${ago == null ? 'ما ذاكر من يوم اشترك' : 'آخر نشاط قبل ' + arDays(ago)} · ${T[0]} ${T[1]}${x.until ? ' · ينتهي ' + admDay(x.until) : ''}</small></span>
+        <span class="ohfa"><a class="btn sm ghost" href="#admin-report/${encodeURIComponent(x.email)}" title="تقرير الطالب">📊 تقريره</a>${ph ? `<a class="btn sm wa" href="https://wa.me/${ph}?text=${encodeURIComponent(msg(x.name))}" target="_blank" rel="noopener" title="افتح محادثته في واتساب (الرسالة جاهزة وأنت ترسلها)">💬 واتساب</a>` : ''}</span></div>`; }).join('');
+    W.innerHTML = `<div class="oh">
+      <section class="ohneed" aria-labelledby="ohnh"><h2 id="ohnh">يحتاج قرارك${need.length ? ` <small>${need.length}</small>` : ''}</h2><ul>${needHtml}</ul></section>
+      <section class="ohtiles" aria-label="أرقام اليوم">${tiles}</section>
+      <div class="ohrow">
+        <section class="ohcard" aria-labelledby="ohc1"><h2 id="ohc1">📈 الطلاب اللي حلّوا كل يوم <small>آخر 14 يوم</small></h2>${chart(S.solved, 'طالب', 'blue', 'عدد الطلاب اللي حلّوا أسئلة كل يوم')}</section>
+        <section class="ohcard" aria-labelledby="ohc2"><h2 id="ohc2">💰 الدخل كل يوم <small>ريال · آخر 14 يوم</small></h2>${chart(S.rev, 'ريال', 'gold', 'الدخل كل يوم بالريال')}</section>
+      </div>
+      <div class="ohrow">
+        <section class="ohcard" aria-labelledby="ohc3"><h2 id="ohc3">🕒 آخر اللي صار</h2>${H.feed && H.feed.length ? `<ul class="evs">${H.feed.slice(0, 12).map(evRow).join('')}</ul><a class="lnk2" href="#admin-settings">السجل كامل ‹</a>` : '<p class="mut ohempty">أول ما يصير اشتراك أو قرار في اللوحة يطلع هنا.</p>'}</section>
+        <section class="ohcard" aria-labelledby="ohc4"><h2 id="ohc4">🩺 حالة الموقع</h2><ul class="ohhealth">${health}</ul></section>
+      </div>
+      <section class="ohcard" id="oh-follow" aria-labelledby="ohc5"><h2 id="ohc5">👋 يحتاجون متابعة${H.follow && H.follow.length ? ` <small>${H.follow.length}</small>` : ''}</h2>
+        <p class="mut ohsub">مشتركين ما ذاكروا من 4 أيام وأكثر. المرشد الذكي يستقبلهم برجعة خفيفة لما يدخلون، وأنت تقدر تكلّمهم.</p>
+        ${fol ? `<div class="ohfs">${fol}</div>${FL.length > 8 ? `<button type="button" class="lnk" id="ohfall">${ADM.folAll ? 'عرض أقل' : `عرض الكل (${FL.length})`}</button>` : ''}` : '<p class="mut ohempty">كل المشتركين ذاكروا آخر 4 أيام 👏</p>'}</section>
+      <p class="mut ohupd">آخر تحديث ${fmtD(ADM.homeAt)} · الأرقام تتحدث كل دقيقة لما تفتح الصفحة.</p></div>`;
+    W.querySelectorAll('[data-need="over"]').forEach(a => a.addEventListener('click', () => { ADM.sf = 'over'; }));
+    W.querySelectorAll('[data-need="follow"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); $('#oh-follow').scrollIntoView({ behavior: RM() ? 'auto' : 'smooth', block: 'start' }); }));
+    W.querySelectorAll('.ohf').forEach(r => r.onclick = e => { if (!e.target.closest('a')) admStudent(r.dataset.e); });
+    const fa = $('#ohfall'); if (fa) fa.onclick = () => { ADM.folAll = !ADM.folAll; const y = scrollY; paintAdmHome(); scrollTo({ top: y }); };
+  }
+
+  // ---------- 💰 المدفوعات: سلة + تاب ----------
+  async function renderPay() {
+    document.title = 'المدفوعات | Q-Guide';
+    const top = () => { app.innerHTML = admTop('pay'); bindCtl(); $('#admref').onclick = () => { ADM.pay = null; ADM.salla = null; renderPay(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
+      const [py, sl] = await Promise.all([admCall({ op: 'adm_pay' }).catch(() => null), admCall({ op: 'adm_salla' }).catch(() => null)]); ADM.pay = py; ADM.salla = sl; }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-pay') return;
+    top(); paintPay();
+  }
+  function paintPay() {
+    const W = $('#adm'); if (!W) return;
+    const SL = ADM.salla, PY = ADM.pay, sOn = SL && SL.ok && (SL.secret || (SL.mail && SL.mail.at)) && SL.url && SL.open, tOn = PY && PY.mode === 'live' && PY.open;
+    const how = sOn ? 'الزائر والمشترك يدفعون عن طريق <b>سلة</b> من نافذة الاشتراك.' : tOn ? 'الزائر والمشترك يدفعون عن طريق <b>تاب</b> من نافذة الاشتراك.' : 'الدفع من الموقع <b>مقفل على الزوار</b> الحين: يطلع لهم زر واتساب بس. افتح سلة أو تاب من تحت.';
+    W.innerHTML = `<div class="stf subs paypg">
+      <div class="rgsync${sOn || tOn ? '' : ' warn'}">${sOn || tOn ? '🟢' : '⏸'} <span>${how} الاشتراك عن طريق يوتيوب توقف.</span></div>
+      ${sallaBox(SL) || '<div class="rgsync warn">⚠️ تعذّر قراءة حالة سلة. حدّث الصفحة.</div>'}
+      ${payBox(PY) || '<section class="paybox"><div class="pbtop"><h3>💳 الدفع المباشر (تاب)</h3><span class="pbmode off">⏸ بدون مفتاح</span></div><p class="mut pbempty">تاب يخلي الطالب يدفع داخل الموقع بدون ما يسجل في سلة. يشتغل لما تحط مفتاح تاب في Cloudflare وتتفعّل طرق الدفع في حسابك عندهم.</p></section>'}
+    </div>`;
+    sallaBind(W); payBind(W);
+  }
+  function payBind(W) {
+    const pa = W.querySelector('#pball'); if (pa) pa.onclick = () => { ADM.payAll = !ADM.payAll; admRepaint(); };
+    const po = W.querySelector('#pbopen'), pc = W.querySelector('#pbclose'), payOpen = async (open, btn) => {
+      if (!await QGDlg.confirm(open ? 'تفتح الدفع الحقيقي لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، واللي يدفع ينفتح له اشتراكه على طول.' : 'توقف الدفع من الموقع للزوار؟\nيبقى لهم زر واتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح الدفع' } : { ok: '⏸ إيقاف', danger: true })) return;
+      btn.disabled = true; try { ADM.pay = await admCall({ op: 'adm_pay_open', open: open ? 1 : 0 }); ADM.home = null; toast(open ? '🚀 الدفع صار مفتوح لكل الزوار' : '⏸ وقّفت الدفع للزوار'); admRepaint(); } catch (e) { btn.disabled = false; toast('ما انحفظ: ' + e.message); } };
+    if (po) po.onclick = () => payOpen(true, po); if (pc) pc.onclick = () => payOpen(false, pc);
+    W.querySelectorAll('.pbrow[data-e]:not(.slrow)').forEach(r => { r.onclick = () => admStudent(r.dataset.e); r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); admStudent(r.dataset.e); } }; });
+  }
+
+  // ---------- 🎬 المقاطع: الرفع للموقع + حسابات المدرسين ----------
+  async function renderVids() {
+    document.title = 'المقاطع | Q-Guide';
+    const top = () => { app.innerHTML = admTop('vids'); bindCtl(); $('#admref').onclick = () => { if (VUP.busy) return toast('خلّ الرفع يخلص أول'); ADM.vids = null; renderVids(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
+      if (!ADM.vids || !VUP.busy) ADM.vids = await admCall({ op: 'adm_vids' }); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-vids') return;
+    top(); paintVids();
+  }
+  function paintVids() {
+    const W = $('#adm'), V = ADM.vids; if (!W) return;
+    if (!V || !V.map) { W.innerHTML = '<div class="rgsync warn">⚠️ تعذّر قراءة حالة المقاطع. حدّث الصفحة.</div>'; return; }
+    const keys = Object.keys(V.map), have = new Set(V.files || []), grp = (re) => { const k = keys.filter(x => re.test(x)); return [k.filter(x => have.has(x)).length, k.length]; };
+    const G = [['📐📖', 'شرح سلمان (الأقسام والنماذج)', grp(/^[qv]:/)], ['🧱', 'تأسيس الكمي · سلمان', grp(/^sf:/)], ['🧱', 'تأسيس اللفظي · عبدالله', grp(/^af:/)], ['🏋️', 'تدريب اللفظي · عبدالله', grp(/^at:/)]];
+    const views = V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0, miss = keys.filter(k => /^[qv]:/.test(k) && !have.has(k));
+    VUP.open = 1;
+    W.innerHTML = `<div class="stf subs vidpg">
+      <div class="sbtiles n${G.length + 1}">${G.map(g => `<div class="sbt vid${g[2][0] >= g[2][1] ? ' full' : ''}"><span class="i" aria-hidden="true">${g[0]}</span><b><bdi>${g[2][0]}/${g[2][1]}</bdi></b><span>${g[1]}</span></div>`).join('')}<div class="sbt vid"><span class="i" aria-hidden="true">👁</span><b>${views}</b><span>مشاهدة آخر 30 يوم</span></div></div>
+      ${miss.length ? `<div class="rgsync warn">⚠️ <span>ناقص من شرح الأقسام والنماذج: <b>${miss.map(vidKeyName).join('، ')}</b>. اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع (عضو القناة القديم يفتح له مقطع يوتيوب).</span></div>` : '<div class="rgsync">🎬 <span>شرح الأقسام والنماذج كله مرفوع. كل المشتركين يشوفون المقاطع هنا داخل الموقع، وإيميل الطالب ظاهر على المقطع.</span></div>'}
+      ${vupHtml(V)}</div>`;
+    vupBind(W, '');
+  }
+
+  // ---------- ⚙️ الإعدادات والسجل ----------
+  const ownPushEp = async () => { try { if (!remSupported()) return ''; const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription(); return sub ? sub.endpoint : ''; } catch (e) { return ''; } };
+  async function ownPushSub() {
+    const reg = await navigator.serviceWorker.ready;
+    const perm = await Notification.requestPermission(); if (perm !== 'granted') throw new Error(perm === 'denied' ? 'رفضت التنبيهات من المتصفح. اسمح بها من إعدادات الموقع (🔒 جنب الرابط).' : 'لازم توافق على التنبيهات.');
+    const k = await api({ op: 'push_key', session: auth.session }); if (!k.ok) throw new Error(k.msg || 'تعذّر التفعيل');
+    const key = b64uToU8(k.key); let sub = await reg.pushManager.getSubscription();
+    if (sub && sub.options && sub.options.applicationServerKey) { const a = new Uint8Array(sub.options.applicationServerKey); if (a.length !== key.length || a.some((x, i) => x !== key[i])) { await sub.unsubscribe(); sub = null; } }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    await admCall({ op: 'own_push_sub', sub: sub.toJSON() }); return sub.endpoint;
+  }
+  const SET = { cfg: null, audit: null, errs: null, ak: '', aq: '', ep: '', life: null };
+  async function renderSettings() {
+    document.title = 'الإعدادات والسجل | Q-Guide';
+    const top = () => { app.innerHTML = admTop('settings'); bindCtl(); $('#admref').onclick = () => { SET.cfg = null; renderSettings(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
+      const [c, a, e, ep] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp()]);
+      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-settings') return;
+    top(); paintSettings();
+  }
+  function paintSettings() {
+    const W = $('#adm'), C = SET.cfg; if (!W || !C) return;
+    const L = SET.life, sv = C.life, same = L.on === sv.on && L.grace === sv.grace && L.remind === sv.remind && L.types.slice().sort().join() === (sv.types || []).slice().sort().join();
+    const opt = (v, cur, t) => `<option value="${v}"${v === cur ? ' selected' : ''}>${t}</option>`;
+    const TY = [['pay', '💳 دفع إلكتروني'], ['bank', '🏦 تحويل بنكي'], ['free', '🎁 مجاني'], ['yt', '▶️ عضوية يوتيوب']];
+    const mine = SET.ep && (C.push || []).some(p => SET.ep.slice(-24) === p.ep), sup = remSupported(), bk = C.backup;
+    const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' م.ب' : Math.max(1, Math.round(n / 1024)) + ' ك.ب';
+    const q = SET.aq.trim().toLowerCase(), rows = (SET.audit || []).filter(r => !q || [r.who, r.target, r.note, (EV_T[r.kind] || [])[1]].some(v => String(v || '').toLowerCase().includes(q)));
+    W.innerHTML = `<div class="setpg">
+      <section class="setc" aria-labelledby="set1"><h2 id="set1">⏰ انتهاء الاشتراكات</h2>
+        <p class="mut setd">كل اشتراك مدته شهر. الطالب يجدّد من الموقع قبل ما يخلص، والشهر ينضاف على موعد نهايته.</p>
+        <div class="setrow"><div class="setl"><b>ذكّر الطالب بالتجديد</b><small>يطلع له شريط في الرئيسية وتنبيه على جواله (لو مفعّل التذكير).</small></div>
+          <label class="setv">قبل النهاية بـ <select id="lf-rem" aria-label="التذكير قبل النهاية">${[0, 1, 2, 3, 5, 7].map(v => opt(v, L.remind, v ? arDays(v) : 'بدون تذكير')).join('')}</select></label></div>
+        <div class="setrow"><div class="setl"><b>أنهِ الاشتراك لحاله لو ما جدّد</b><small>يرجع حسابه مجاني، ونتائجه وتقدّمه تبقى. لو جدّد بعدها يرجع له كل شي.</small></div>
+          <button type="button" class="sw${L.on ? ' on' : ''}" id="lf-on" role="switch" aria-checked="${!!L.on}" aria-label="الإنهاء التلقائي"><span></span></button></div>
+        <div class="setsub${L.on ? '' : ' off'}">
+          <div class="setrow"><div class="setl"><b>المهلة بعد نهاية المدة</b><small>كم يوم نعطيه قبل ما ينتهي اشتراكه.</small></div>
+            <label class="setv"><select id="lf-grace" aria-label="المهلة"${L.on ? '' : ' disabled'}>${[0, 1, 2, 3, 5, 7].map(v => opt(v, L.grace, v ? arDays(v) : 'بدون مهلة')).join('')}</select></label></div>
+          <div class="setrow col"><div class="setl"><b>يطبّق على</b><small>الأنواع اللي ما تختارها تبقى لين تنهيها أنت.</small></div>
+            <div class="setty" role="group" aria-label="أنواع الاشتراك">${TY.map(([k, t1]) => `<label class="${L.types.includes(k) ? 'on' : ''}"><input type="checkbox" data-ty="${k}"${L.types.includes(k) ? ' checked' : ''}${L.on || L.remind ? '' : ' disabled'}> ${t1}</label>`).join('')}</div></div>
+        </div>
+        <div class="setact"><button type="button" class="btn sm" id="lf-save"${same ? ' disabled' : ''}>حفظ</button><span class="mut" id="lf-st">${same ? (sv.on ? `شغّال: ينتهي الاشتراك بعد ${sv.grace ? arDays(sv.grace) + ' من' : ''} نهاية المدة.` : 'الإنهاء التلقائي مطفي: أنت تقرر من «الاشتراكات».') : 'فيه تغييرات ما انحفظت'}</span></div></section>
+
+      <section class="setc" aria-labelledby="set2"><h2 id="set2">🔔 تنبيهاتك</h2>
+        <p class="mut setd">يوصلك تنبيه على هذا الجهاز لما: يشترك طالب أو يجدّد · تحويل بنكي ينتظر تأكيدك · طلب مدفوع ما تفعّل · اشتراكات انتهت تلقائياً · وملخص اليوم الساعة 9 الليل.</p>
+        <div class="setrow"><div class="setl"><b>${mine ? '🔔 مفعّلة على هذا الجهاز' : '🔕 مو مفعّلة على هذا الجهاز'}</b><small>${(C.push || []).length ? `مفعّلة على ${(C.push || []).length === 1 ? 'جهاز واحد' : (C.push || []).length + ' أجهزة'} من أجهزتك.` : 'ما فعّلتها على أي جهاز للحين.'}${!sup ? (isIOS() && !isStandalone() ? ' على الآيفون: أضف الموقع للشاشة الرئيسية من Safari أول.' : ' المتصفح هذا ما يدعم التنبيهات.') : ''}</small></div>
+          <span class="setbtns">${mine ? '<button type="button" class="btn sm ghost" id="op-test">أرسل تنبيه تجريبي</button><button type="button" class="lnk dng" id="op-off">إيقاف</button>' : `<button type="button" class="btn sm" id="op-on"${sup ? '' : ' disabled'}>فعّل التنبيهات هنا</button>`}</span></div></section>
+
+      <section class="setc" aria-labelledby="set3"><h2 id="set3">💾 النسخ الاحتياطي</h2>
+        <p class="mut setd">كل يوم ننسخ بيانات الموقع (الطلاب، الاشتراكات، النتائج، المدفوعات…) ونحفظ آخر 14 يوم.</p>
+        <div class="setrow"><div class="setl"><b>${!C.r2 ? '⚠️ التخزين مو مربوط' : bk && bk.run ? '⏳ قاعد ينسخ…' : bk && bk.done ? '✓ آخر نسخة ' + fmtD(bk.done) : 'ما فيه نسخة للحين'}</b><small>${bk && bk.done ? `${bk.files} ملف · ${kb(bk.bytes || 0)} · نسخة يوم ${esc(bk.day)}` : bk && bk.err ? esc(bk.err) : 'أول نسخة تبدأ لحالها بعد 3 الفجر.'}</small></div>
+          <button type="button" class="btn sm ghost" id="bk-now"${C.r2 ? '' : ' disabled'}>انسخ الحين</button></div></section>
+
+      <section class="setc" aria-labelledby="set4"><div class="seth"><h2 id="set4">📜 سجل الإدارة</h2><div class="tabs sm" role="tablist">${[['', 'الكل'], ['adm', 'قرارات المشرفين'], ['sys', 'النظام']].map(([k, t1]) => `<button type="button" role="tab" data-ak="${k}" class="${SET.ak === k ? 'on' : ''}" aria-selected="${SET.ak === k}">${t1}</button>`).join('')}</div></div>
+        <p class="mut setd">كل قرار في اللوحة (مين سواه ومتى)، وكل اشتراك وتجديد وإنهاء تلقائي.</p>
+        <div class="abar"><input id="au-q" type="search" placeholder="ابحث بالإيميل أو نوع الإجراء…" value="${esc(SET.aq)}"></div>
+        ${rows.length ? `<ul class="evs full">${rows.map(evRow).join('')}</ul>` : `<p class="mut ohempty">${q ? 'لا نتائج' : 'السجل فاضي للحين. يبدأ يتسجّل من الحين.'}</p>`}</section>
+
+      <section class="setc" aria-labelledby="set5"><div class="seth"><h2 id="set5">🐞 أخطاء الموقع</h2>${(SET.errs || []).length ? '<button type="button" class="lnk dng" id="er-clear">مسح السجل</button>' : ''}</div>
+        <p class="mut setd">أخطاء صارت في متصفحات الطلاب أو في الخادم وانسجلت لحالها. الخطأ المتكرر ينحسب مرة وحدة مع عدّاده.</p>
+        ${(SET.errs || []).length ? `<ul class="errs">${SET.errs.map(e => `<li><span class="errn" title="كم مرة تكرر">${e.n > 1 ? '×' + e.n : '1'}</span><span class="errx"><b class="ltr">${esc(e.msg)}</b><small>${e.src === 'site' ? 'متصفح الطالب' : e.src === 'api' ? 'الخادم' : esc(e.src)}${e.email ? ' · <span class="ltr">' + esc(e.email) + '</span>' : ''}${e.url ? ' · <span class="ltr">' + esc(e.url) + '</span>' : ''}</small></span><time>${fmtD(e.at)}</time></li>`).join('')}</ul>` : '<p class="mut ohempty">ما فيه أخطاء مسجلة 👍</p>'}</section>
+    </div>`;
+    const repaint = () => { const y = scrollY; paintSettings(); scrollTo({ top: y }); };
+    const auditReload = async () => { try { SET.audit = (await admCall({ op: 'adm_audit', kind: SET.ak })).rows || []; } catch (e) {} };   // السجل يبيّن القرار اللي توّه انحفظ
+    $('#lf-rem').onchange = e => { L.remind = +e.target.value; repaint(); };
+    $('#lf-on').onclick = () => { L.on = L.on ? 0 : 1; repaint(); };
+    $('#lf-grace').onchange = e => { L.grace = +e.target.value; repaint(); };
+    W.querySelectorAll('[data-ty]').forEach(c => c.onchange = () => { const k = c.dataset.ty; L.types = c.checked ? L.types.concat(k) : L.types.filter(x => x !== k); repaint(); });
+    $('#lf-save').onclick = async () => {
+      if ((L.on || L.remind) && !L.types.length) return toast('اختر نوع اشتراك واحد على الأقل');
+      if (L.on && !sv.on) { const n = ADM.home && ADM.home.kpi ? ADM.home.kpi.over : 0;
+        if (!await QGDlg.confirm(`تشغّل الإنهاء التلقائي؟\nأي طالب خلصت مدته من ${L.grace ? 'أكثر من ' + arDays(L.grace) : 'اليوم'} ونوع اشتراكه من اللي اخترتها ينتهي اشتراكه لحاله خلال نص ساعة${n ? `، وفيه الحين ${nStu(n)} خلصت مدتهم` : ''}.\nتقدر ترجّع أي واحد منهم من «الاشتراكات».`, { ok: 'شغّله', danger: true })) return; }
+      const b = $('#lf-save'); b.disabled = true;
+      try { SET.cfg = await admCall({ op: 'adm_cfg_set', set: { life: { on: L.on, grace: L.grace, remind: L.remind, types: L.types } } }); SET.life = Object.assign({}, SET.cfg.life, { types: (SET.cfg.life.types || []).slice() }); ADM.home = null; ADM.life = SET.cfg.life; await auditReload(); toast('✓ انحفظ'); repaint(); }
+      catch (e) { b.disabled = false; toast('ما انحفظ: ' + e.message); } };
+    const on = $('#op-on'); if (on) on.onclick = async () => { on.disabled = true; on.textContent = 'جارٍ التفعيل…';
+      try { SET.ep = await ownPushSub(); SET.cfg = await admCall({ op: 'adm_cfg' }); ADM.home = null; toast('🔔 التنبيهات مفعّلة على هذا الجهاز'); repaint(); } catch (e) { toast(e.message); on.disabled = false; on.textContent = 'فعّل التنبيهات هنا'; } };
+    const ts = $('#op-test'); if (ts) ts.onclick = async () => { ts.disabled = true; try { const r = await api({ op: 'own_push_test', session: auth.session, endpoint: SET.ep }); toast(r.ok ? 'أرسلنا تنبيه تجريبي، بيوصلك خلال ثواني' : (r.msg || 'تعذّر الإرسال')); if (r.error === 'gone' || r.error === 'not subscribed') { SET.cfg = await admCall({ op: 'adm_cfg' }); repaint(); } } catch (e) { toast('تعذّر الإرسال'); } ts.disabled = false; };
+    const of = $('#op-off'); if (of) of.onclick = async () => { of.disabled = true; try { await admCall({ op: 'own_push_unsub', endpoint: SET.ep }); SET.cfg = await admCall({ op: 'adm_cfg' }); ADM.home = null; toast('أوقفنا تنبيهاتك على هذا الجهاز'); repaint(); } catch (e) { of.disabled = false; toast(e.message); } };
+    $('#bk-now').onclick = async () => { const b = $('#bk-now'); b.disabled = true; let r = null;
+      try { for (let i = 0; i < 12; i++) { b.textContent = '⏳ ينسخ…' + (r && r.run && r.run.files ? ' ' + r.run.files + ' ملف' : ''); r = await admCall({ op: 'adm_backup_now' }); if (!r.backup || !r.backup.run) break; }
+        SET.cfg = r; ADM.home = null; await auditReload(); toast(r.backup && r.backup.done ? '💾 خلص النسخ الاحتياطي' : 'النسخ بدأ وبيكمل لحاله'); repaint(); }
+      catch (e) { toast('تعذّر النسخ: ' + e.message); b.disabled = false; b.textContent = 'انسخ الحين'; } };
+    W.querySelectorAll('[data-ak]').forEach(b => b.onclick = async () => { SET.ak = b.dataset.ak; try { SET.audit = (await admCall({ op: 'adm_audit', kind: SET.ak })).rows || []; } catch (e) {} repaint(); });
+    $('#au-q').oninput = e => { SET.aq = e.target.value; const pos = e.target.selectionStart; repaint(); const i = $('#au-q'); i.focus(); i.setSelectionRange(pos, pos); };
+    const ec = $('#er-clear'); if (ec) ec.onclick = async () => { if (!await QGDlg.confirm('تمسح سجل الأخطاء؟', { ok: 'مسح', danger: true })) return; try { await admCall({ op: 'adm_err_clear' }); SET.errs = []; ADM.home = null; await auditReload(); toast('انمسح السجل'); repaint(); } catch (e) { toast(e.message); } };
+  }
+
   // ---------- ⬆️ رفع المقاطع للموقع: المالك (كل المقاطع، في «💳 الاشتراكات») والمدرس (مقاطعه هو، «🎬 مقاطعي») — ملف MP4 لكل مقطع، بالأجزاء مع نسبة التقدّم ----------
   const VUP = { busy: 0, st: {}, miss: [], open: 0 };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها · open = صندوق المالك مفتوح
   // المجموعات بالترتيب: سلمان الفرج — تأسيس الكمي sf · تدريب الكمي q · تدريب اللفظي v | عبدالله الشمراني — تأسيس اللفظي af · التدريب على النماذج at
@@ -3545,7 +4159,7 @@
     const bar = `<div class="vupbar"><label class="btn sm${VUP.busy ? ' dis' : ''}">📁 اختر عدة ملفات<input type="file" accept="video/mp4,.mp4" multiple hidden id="vupmany"${VUP.busy ? ' disabled' : ''}></label><span class="mut${VUP.miss.length && !VUP.busy ? ' vmiss' : ''}" id="vupst">${VUP.busy ? 'جاري الرفع…' : VUP.miss.length ? '⚠️ ما عرفت مقطع: ' + esc(VUP.miss.slice(0, 3).join('، ')) + (VUP.miss.length > 3 ? '…' : '') + '. ارفعه من زر «اختر» حق مقطعه.' : ''}</span></div>`;
     const grid = `<div class="vupgrid">${S.map((x, i) => (i === 0 || S[i - 1].g !== x.g ? `<h4 class="vgh">${G[x.g]} <small><bdi>${S.filter(y => y.g === x.g && y.size).length}/${S.filter(y => y.g === x.g).length}</bdi></small></h4>` : '') + cell(x)).join('')}</div>`;
     if (mine) return `<section class="vup mine"><p class="mut">اختر ملفات مقاطعك (MP4)، ونعرف كل ملف من اسمه (${mine === 'salman' ? 'Lesson 3، Section 7، Model 2…' : 'Analogy، Reading، Model 5…'})، أو اختر لكل مقطع ملفه. المقطع يطلع للطلاب أول ما يخلص رفعه، فخلّ الصفحة مفتوحة لين يخلص.</p>${bar}${grid}</section>`;
-    return `<details class="vup"${VUP.open || VUP.busy ? ' open' : ''}><summary>⬆️ رفع المقاطع للموقع <small><bdi>${up}/${S.length}</bdi></small></summary>${vupTeachSet(V)}
+    return `<details class="vup" open><summary>⬆️ رفع المقاطع للموقع <small><bdi>${up}/${S.length}</bdi></small></summary>${vupTeachSet(V)}
       <p class="mut">اختر ملفات المقاطع (MP4) من جهازك، ونعرف كل ملف من اسمه (Lesson 3 = تأسيس الكمي، Section 3، Model 7، Analogy… ومقاطع عبدالله لو اسمه في الملف)، أو اختر لكل مقطع ملفه. خلّ الصفحة مفتوحة لين يخلص الرفع.</p>${bar}${grid}</details>`;
   }
   function vupBind(W, teach) {
@@ -3563,7 +4177,7 @@
       catch (e) { toast('ما انحفظ: ' + e.message); }
       vupRepaint(); });
   }
-  const vupRepaint = () => { if (location.hash === '#admin-subs') paintSubs(); else if (location.hash === '#my-vids') paintMyVids(); };
+  const vupRepaint = () => admRepaint();
   async function vupRun(plan, V) {
     if (!plan.length || VUP.busy) return; VUP.busy = 1; VUP.open = 1;
     plan.forEach(([, f]) => VUP.st[f] = { p: 0 }); vupRepaint();
@@ -3610,10 +4224,10 @@
     } catch (e) { post({ op: 'abort', key, id: c.id }).catch(() => {}); throw e; }
   }
   function refreshSubTab() {   // تبويب «💳 نوع الاشتراك» ما عليه عدّاد (المقاطع صارت داخل الموقع)
-    const a = document.querySelector('.atabs a[href="#admin-subs"]'); if (a) a.textContent = '💳 الاشتراكات';
+    const a = document.querySelector('.atabs a[href="#admin-subs"]'); if (a) a.innerHTML = '<span class="i" aria-hidden="true">💳</span> <span class="l">الاشتراكات</span>';
   }
   async function renderMembers() {
-    document.title = 'المشتركون | Q-Guide';
+    document.title = 'إضافة يدوية | Q-Guide';
     const top = () => { app.innerHTML = admTop('members'); bindCtl(); $('#admref').onclick = () => { ADM.members = null; renderMembers(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.members) ADM.members = (await admCall({ op: 'adm_members_list' })).members; }
@@ -3661,66 +4275,6 @@
     };
     const mq = $('#mq'); if (mq) mq.oninput = e => { ADM.mq = e.target.value; const pos = e.target.selectionStart; paintMembers(res); const i = $('#mq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-mrm]').forEach(b => b.onclick = async () => { if (await admMemberRemove(b.dataset.mrm)) { ADM.list = null; renderMembers(); } });
-  }
-
-  // ---------- 🧑‍🏫 المرشدين الأكاديميين: «💬 طلابي» — كل مرشد يشوف طلابه ويكلمهم بالواتس برسالة جاهزة باسمه ----------
-  // الطالبات للعنود (مرشدة الطالبات)، والطلاب بالتساوي بين عبدالله الشمراني وسلمان الفرج (adv.js في الـ API). المالك يشوف الكل ويغيّر المرشد.
-  const ADV_IDLE = 7 * 864e5;   // «ما دخل من أسبوع»
-  const advMsg = (adv, s, nm) => { const f = nm || firstName(s.display || s.name) || '';   // رسالة الواتس الوحيدة: «أنا مرشدك الأكاديمي» باسم المرشد (nm = للمعاينة)
-    return adv.adv === 'f' ? `السلام عليكم ${f} 👋\nأنا ${adv.name}، مرشدتك الأكاديمية في دورة Q-Guide.\nأي سؤال عن الدورة أو المذاكرة كلميني هنا، وبتابع معك تقدّمك إن شاء الله.`
-      : `السلام عليكم ${f} 👋\nأنا ${adv.name}، مرشدك الأكاديمي في دورة Q-Guide.\nأي سؤال عن الدورة أو المذاكرة كلمني هنا، وبتابع معك تقدّمك إن شاء الله.`; };
-  const advTab = () => isOwner() ? '🧑‍🏫 المرشدين' : '💬 طلابي';
-  async function renderAdv(force) {
-    document.title = (isOwner() ? 'المرشدين' : 'طلابي') + ' | Q-Guide';
-    app.innerHTML = admTop('adv'); bindCtl(); $('#admref').onclick = () => renderAdv(true);
-    try { if (!ADM.adv || force) ADM.adv = await admCall({ op: 'adv_mine' }); await admLoadStaff(); }
-    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">${esc(e.message)}</div>`; return; }
-    if (location.hash !== '#admin-adv') return;
-    app.innerHTML = admTop('adv'); bindCtl(); $('#admref').onclick = () => renderAdv(true);
-    paintAdv();
-  }
-  function paintAdv() {
-    const W = $('#adm'), D = ADM.adv; if (!W || !D) return;
-    const owner = !!D.owner, advs = D.advs || [], A = {}; advs.forEach(a => A[a.email] = a);
-    if (ADM.ap == null) ADM.ap = owner ? (D.me ? D.me.email : (advs[0] || {}).email || '') : '';   // المالك: أي مرشد يعرض ('' = بدون مرشد)
-    ADM.af = ADM.af || 'all'; ADM.aq = ADM.aq || '';
-    const who = owner ? A[ADM.ap] || null : D.me, base = owner ? D.students.filter(s => s.adv === ADM.ap) : D.students;
-    const now = Date.now(), idle = s => !s.last || now - s.last > ADV_IDLE, q = ADM.aq.trim().toLowerCase();
-    const n = { all: base.length, todo: base.filter(s => !s.wa_at).length, done: base.filter(s => s.wa_at).length, idle: base.filter(idle).length };
-    const list = base.filter(s => (ADM.af === 'todo' ? !s.wa_at : ADM.af === 'done' ? !!s.wa_at : ADM.af === 'idle' ? idle(s) : true)
-      && (!q || [s.name, s.display, s.email, s.phone, s.school].some(v => String(v || '').toLowerCase().includes(q))))
-      .sort((a, b) => (!a.wa_at - !b.wa_at) * -1 || (a.last || 0) - (b.last || 0));   // اللي ما تواصلت معه أول، ثم الأقل نشاطاً
-    const nm = s => s.display || s.name || s.email.split('@')[0];
-    const gl = (g, n2) => g === 'f' ? (n2 === 1 ? 'طالبة' : 'طالبات') : (n2 === 1 ? 'طالب' : 'طلاب');
-    const tile = (k, ic, b, t) => `<button type="button" class="sbt${ADM.af === k ? ' on' : ''}" data-af="${k}" aria-pressed="${ADM.af === k}"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t}</span></button>`;
-    const meta = s => [s.wa ? `<span dir="ltr">📱 ${esc(s.phone)}</span>` : '<span class="rgbad">بدون جوال</span>', s.until ? `📅 ينتهي ${admDay(s.until)}` : '', s.last ? `آخر نشاط ${fmtD(s.last)}` : '<span class="rgbad">ما دخل الموقع</span>', `حلّ ${s.sets} من ${D.sets}`, s.school ? esc(s.school) : ''].filter(Boolean).join(' · ');
-    const move = s => owner ? `<select class="advmv" data-mv="${esc(s.email)}" aria-label="مرشد ${esc(nm(s))}">${advs.map(a => `<option value="${esc(a.email)}"${a.email === s.adv ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}<option value=""${!s.adv ? ' selected' : ''}>بدون مرشد</option></select>` : '';
-    const row = s => { const adv = A[s.adv] || D.me;
-      const wa = !owner && s.wa && adv ? `<a class="btn sm advwa" href="https://wa.me/${s.wa}?text=${encodeURIComponent(advMsg(adv, s))}" target="_blank" rel="noopener" data-wa="${esc(s.email)}">💬 واتساب</a>` : '';
-      return `<div class="srow advrow${s.wa_at ? ' done' : ''}" data-e="${esc(s.email)}">
-        <span class="c-st">${avatarHtml('', nm(s), 40)}<span class="who"><b>${esc(nm(s))}</b><small class="rgmeta">${meta(s)}</small></span></span>
-        <span class="advact">${s.wa_at ? `<span class="advok">✓ تواصلت ${fmtD(s.wa_at)}</span>` : ''}${move(s)}${wa}</span></div>`; };
-    const pick = owner ? `<div class="advpick" role="tablist" aria-label="المرشد">${advs.map(a => `<button type="button" role="tab" data-ap="${esc(a.email)}" class="${ADM.ap === a.email ? 'on' : ''}" aria-selected="${ADM.ap === a.email}">${a.adv === 'f' ? '👩‍🏫' : '👨‍🏫'} ${esc(a.name)} <small>${a.n}</small></button>`).join('')}<button type="button" role="tab" data-ap="" class="${ADM.ap === '' ? 'on' : ''}" aria-selected="${ADM.ap === ''}">بدون مرشد <small>${D.students.filter(s => !s.adv).length}</small></button></div>` : '';
-    const setup = owner ? `<details class="advset"${advs.length ? '' : ' open'}><summary>⚙️ مين المرشدين؟</summary><p class="mut">الطالبات كلهن للمرشدة، والطلاب يتقسّمون بالتساوي بين مرشدي الطلاب. الاسم هنا هو اللي يطلع في رسالة الواتس.</p>
-        ${(D.staff || []).map(s => `<div class="advsr" data-se="${esc(s.email)}"><span class="ltr">${esc(s.email)}</span><input type="text" maxlength="40" value="${esc(s.adv_name || s.name)}" aria-label="اسم المرشد في الرسالة" placeholder="الاسم في الرسالة"><select aria-label="دوره">${[['', 'مو مرشد'], ['m', '👨‍🏫 مرشد الطلاب'], ['f', '👩‍🏫 مرشدة الطالبات']].map(([v, t]) => `<option value="${v}"${(s.adv || '') === v ? ' selected' : ''}>${t}</option>`).join('')}</select><button type="button" class="btn sm ghost" data-ss>حفظ</button></div>`).join('') || '<p class="mut">أضف المرشدين من «🛡 المشرفون» أول.</p>'}</details>` : '';
-    const head = who ? `<div class="advhd"><b>${who.adv === 'f' ? '👩‍🏫' : '👨‍🏫'} ${esc(who.name)}</b><span>${who.adv === 'f' ? 'مرشدة الطالبات' : 'مرشد الطلاب'} · ${n.all} ${gl(who.adv, n.all)}</span></div>`
-      : owner && ADM.ap === '' ? '<div class="advhd"><b>بدون مرشد</b><span>ما نعرف جنسهم من الشيت، أو شلتهم بيدك. اختر لكل واحد مرشده.</span></div>' : '';
-    const msgBox = who ? `<details class="advmsg"><summary>✉️ نص الرسالة</summary><pre>${esc(advMsg(who, null, who.adv === 'f' ? '(اسم الطالبة)' : '(اسم الطالب)'))}</pre></details>` : '';
-    W.innerHTML = `<div class="stf advp">${setup}${pick}${head}
-      ${ADM.ap === '' && owner ? '' : `<div class="sbtiles">${tile('all', '👥', n.all, 'الكل')}${tile('todo', '💬', n.todo, 'ما تواصلت معهم')}${tile('done', '✅', n.done, 'تواصلت معهم')}${tile('idle', '😴', n.idle, 'ما دخلوا من أسبوع')}</div>`}
-      ${msgBox}
-      <div class="abar"><input id="advq" type="search" placeholder="ابحث بالاسم أو الجوال أو الإيميل…" value="${esc(ADM.aq)}"></div>
-      <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : ADM.af === 'todo' && n.all ? 'تواصلت مع الكل 👍' : 'ما فيه أحد هنا'}</div>`}</div>
-      <p class="mut sbnote">${owner ? 'كل مرشد يكلّم طلابه بالواتس من صفحته «💬 طلابي» برسالة جاهزة باسمه، وأنت تشوف هنا مين تواصل معه («✓ تواصلت») وتقدر تنقل أي طالب لمرشد ثاني.' : '«💬 واتساب» يفتح محادثة الطالب برسالة جاهزة باسمك، وتقدر تعدّلها قبل الإرسال. نعلّم الطالب «✓ تواصلت» أول ما تفتح محادثته.'}</p></div>`;
-    W.querySelectorAll('[data-af]').forEach(b => b.onclick = () => { ADM.af = b.dataset.af; paintAdv(); });
-    W.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => { ADM.ap = b.dataset.ap; ADM.af = 'all'; paintAdv(); });
-    $('#advq').oninput = e => { ADM.aq = e.target.value; const pos = e.target.selectionStart; paintAdv(); const i = $('#advq'); i.focus(); i.setSelectionRange(pos, pos); };
-    W.querySelectorAll('[data-wa]').forEach(a => a.addEventListener('click', () => { const s = D.students.find(x => x.email === a.dataset.wa); if (!s) return;
-      s.wa_at = Date.now(); admCall({ op: 'adv_wa', email: s.email }).catch(() => {}); setTimeout(paintAdv, 300); }));
-    W.querySelectorAll('[data-mv]').forEach(sel => sel.onchange = async () => { const s = D.students.find(x => x.email === sel.dataset.mv); if (!s) return;
-      try { ADM.adv = await admCall({ op: 'adm_adv_set', email: s.email, adv: sel.value }); toast(`✓ ${nm(s)} صار عند ${sel.value ? (A[sel.value] || {}).name || '' : 'بدون مرشد'}`); paintAdv(); } catch (e) { toast('ما انحفظ: ' + e.message); paintAdv(); } });
-    W.querySelectorAll('.advsr').forEach(r => { r.querySelector('[data-ss]').onclick = async () => {
-      try { ADM.adv = await admCall({ op: 'adm_staff_adv', email: r.dataset.se, adv: r.querySelector('select').value, adv_name: r.querySelector('input').value }); toast('✓ انحفظ، وانوزّع الطلاب'); ADM.ap = null; paintAdv(); } catch (e) { toast('ما انحفظ: ' + e.message); } }; });
   }
 
   // i18n:on
@@ -4433,6 +4987,12 @@
     }).join('');
   }
 
+  // 🐞 خطأ ما توقعناه في المتصفح: ينرسل للخادم (cerr) ويطلع للمالك في «الإعدادات والسجل» — أول 5 أخطاء مختلفة في الجلسة، وبدون أي بيانات غير نص الخطأ والصفحة
+  { const seen = {}; let n = 0;
+    const send = (msg, src) => { try { msg = String(msg || '').slice(0, 280); if (!msg || seen[msg] || n >= 5 || !auth || !auth.session || /Script error|ResizeObserver|extension:|Load failed|NetworkError|Failed to fetch|AbortError/i.test(msg)) return; seen[msg] = 1; n++;
+      api({ op: 'cerr', session: auth.session, msg: msg + (src ? ' @' + src : ''), url: (location.pathname + location.hash).replace(/[?&=].*$/, '').slice(0, 120), ua: navigator.userAgent.slice(0, 150) }).catch(() => {}); } catch (e) {} };
+    window.addEventListener('error', e => { if (e && e.message) send(e.message, e.filename ? String(e.filename).split('/').pop().split('?')[0] + ':' + (e.lineno || 0) : ''); });
+    window.addEventListener('unhandledrejection', e => { const r = e && e.reason; if (r && (r.stack || r.message) && !/API not configured|locked|bad key/.test(r.message || '')) send((r.name || 'Error') + ': ' + (r.message || ''), String(r.stack || '').split('\n')[1] ? String(r.stack).split('\n')[1].trim().slice(0, 80) : ''); }); }
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
   if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800),   // i18n:skip (اسم الإحصائية بالعربي)
     help: { find: helpFind, profile: helpProfile, link: helpLink, name: () => firstName(auth && (auth.display || auth.name)) } });   // 🙋 المساعد العام

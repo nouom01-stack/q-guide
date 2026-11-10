@@ -1,6 +1,6 @@
 /* 🤖 مساعد Q-Guide — نافذة شرح بالذكاء الاصطناعي (مشتركة بين منصة التدريب والاختبارات المحاكية)
    1) «اشرح لي» على سؤال معيّن: QGAI.init({ api, session, fmt, free, onSub, onAuth }) ثم QGAI.slot({ ref, pick, label }) داخل الصفحة و QGAI.fill(root) بعد الرسم
-   2) 🙋 المساعد العام «تحتاج مساعدة؟»: زر عائم (QGAI.fab(true/false)) يفتح محادثة: الطالب يصوّر السؤال أو يكتبه ← الصفحة تدوّره في الدورة
+   2) 🎓 «مرشدك الأكاديمي» (المساعد العام): زر عائم (QGAI.fab(true/false)) يفتح محادثة — يرتب مذاكرة الطالب ويتابعه (ملفه عند الخادم)، والطالب يصوّر السؤال أو يكتبه ← الصفحة تدوّره في الدورة
       (init({ help: { find, name } }) — find({ text } | { file }) يرجّع { ok, text, card: { html, ref, label, auto, bind } }) ← الشرح على نفس السؤال، وأسئلة متابعة */
 (function () {
   'use strict';
@@ -73,7 +73,7 @@
     const help = !!C.help, ov = document.createElement('div'); ov.className = 'qgai' + (help ? ' qgh-p' : ''); ov.setAttribute('dir', EN() ? 'ltr' : 'rtl');
     const camL = _T('صوّر السؤال أو ارفع صورته');
     ov.innerHTML = `<section class="qgai-p" role="dialog" aria-modal="true" aria-labelledby="qgai-t">
-      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">${_T('مساعد Q-Guide')}</b><small>${help ? _T('صوّر سؤالك أو اكتبه، وأشرحه لك') : _T('يشرح لك السؤال على طريقة شرح الدورة')}</small></div>${lgHtml()}<button type="button" class="qgai-x" aria-label="${_T('إغلاق')}">✕</button></header>
+      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">${help ? _T('مرشدك الأكاديمي') : _T('مساعد Q-Guide')}</b><small>${help ? _T('اسألني عن مذاكرتك، أو صوّر سؤال وأشرحه لك') : _T('يشرح لك السؤال على طريقة شرح الدورة')}</small></div>${lgHtml()}<button type="button" class="qgai-x" aria-label="${_T('إغلاق')}">✕</button></header>
       <div class="qgai-ctx">${label.split(' · ').filter(Boolean).map(t => `<span class="${/✗/.test(t) ? 'bad' : /الصحيحة|correct/i.test(t) ? 'ok' : ''}">${esc(t)}</span>`).join('')}</div>
       <div class="qgai-log" aria-live="polite"></div>
       ${help ? '<div class="qgh-ctx" hidden></div>' : ''}
@@ -176,8 +176,9 @@
       if (P.examIn != null) st.push(P.examIn > 0 ? `⏳ ${EN() ? 'Your test is in ' + nD(P.examIn) : 'باقي ' + nD(P.examIn) + ' على اختبارك'}` : P.examIn === 0 ? _T('🎓 اختبارك اليوم!') : '');   // i18n:skip
       if (P.streak >= 2) st.push(`🔥 ${EN() ? nD(P.streak) + ' in a row' : nD(P.streak) + ' متتالية'}`);   // i18n:skip
       if (P.weak && P.weak[0]) st.push(`🎯 ${_T('أضعف مهارة:')} ${esc(P.weak[0].t)} ${P.weak[0].p}%`);
-      const sug = P.weak && P.weak[0] ? [['📅', _T('وش أذاكر اليوم؟')], ['🎯', _T('كيف أقوّي ضعفي؟')], ['💡', _T('نصايح للاختبار')]] : [['🧭', _T('من وين أبدأ؟')], ['📅', _T('كيف أرتب مذاكرتي؟')], ['💡', _T('نصايح للاختبار')]];
-      return `<div class="qgai-m a qgh-w"><div class="qgai-tx"><b>${n ? _T`هلا ${esc(n)} 👋` : _T('هلا 👋')}</b><div class="qgai-l">${_T('أنا مساعدك في القدرات: أحل لك أي سؤال، وأشرح لك القواعد، وأقولك وش تذاكر وكيف ترفع درجتك.')}</div></div>
+      if (P.lag > 0) st.push(`📅 ${EN() ? 'Behind your plan by ' + nD(P.lag) : 'متأخر ' + nD(P.lag) + ' عن خطتك'}`);   // i18n:skip
+      const sug = P.weak && P.weak[0] ? [['📅', _T('وش أذاكر اليوم؟')], ['🗓', _T('رتّب لي جدول لين اختباري')], ['🎯', _T('كيف أقوّي ضعفي؟')], ['💡', _T('نصايح للاختبار')]] : [['🧭', _T('من وين أبدأ؟')], ['🗓', _T('رتّب لي جدول لين اختباري')], ['📅', _T('كيف أرتب مذاكرتي؟')], ['💡', _T('نصايح للاختبار')]];
+      return `<div class="qgai-m a qgh-w"><div class="qgai-tx"><b>${n ? _T`هلا ${esc(n)} 👋` : _T('هلا 👋')}</b><div class="qgai-l">${_T('أنا مرشدك الأكاديمي في القدرات: أرتب لك خطتك وأتابع تقدّمك، وأحل لك أي سؤال وأشرح قاعدته.')}</div></div>
         ${st.filter(Boolean).length ? `<div class="qgh-st">${st.filter(Boolean).map(t => `<span>${t}</span>`).join('')}</div>` : ''}
         <div class="qgh-go"><button type="button" class="qgh-gb" data-go="cam"><span class="i" aria-hidden="true">📷</span><b>${_T('صوّر السؤال')}</b><small>${_T('من الكاميرا أو الصور')}</small></button><button type="button" class="qgh-gb" data-go="txt"><span class="i" aria-hidden="true">✍️</span><b>${_T('اكتب سؤالك')}</b><small>${_T('بالعربي أو الإنجليزي')}</small></button></div>
         <div class="qgh-sug">${sug.map(([ic, q]) => `<button type="button" data-q="${esc(q)}"><span aria-hidden="true">${ic}</span>${esc(q)}</button>`).join('')}</div></div>`; }
@@ -293,7 +294,7 @@
     try {
       const isChat = C.help && ref === 'chat', P = isChat && CFG.help.profile ? CFG.help.profile() : null;
       const r = await fetch(CFG.api.replace(/\/?$/, '/') + 'ai', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(isChat ? { session: CFG.session(), chat: 1, msgs: hist, cid: C.cid, lang: am.lg, ctx: Object.assign({ task: P ? P.task : '', next: P ? P.next : '' }, C.cx || {}) }
+        body: JSON.stringify(isChat ? { session: CFG.session(), chat: 1, msgs: hist, cid: C.cid, lang: am.lg, ctx: Object.assign({ task: P ? P.task : '', next: P ? P.next : '', lag: P ? P.lag || 0 : 0 }, C.cx || {}) }
           : { session: CFG.session(), ref, pick: C.pick, msgs: hist.length > 0 ? hist : [], cid: C.cid, lang: am.lg }) });
       if (!/event-stream/.test(r.headers.get('content-type') || '')) {
         const j = await r.json().catch(() => ({ msg: _T('صار خطأ، حاول مرة ثانية.') })); if (j && typeof j.msg === 'string') j.msg = _T(j.msg);   // 🌐
@@ -329,7 +330,7 @@
   }
   function init(o) { Object.assign(CFG, o || {}); }
 
-  // ---------- 🙋 الزر العائم «تحتاج مساعدة؟» + فقاعة ترحيب مرة باليوم ----------
+  // ---------- 🎓 الزر العائم «مرشدك الأكاديمي» + فقاعة ترحيب مرة باليوم ----------
   let FAB = null;
   const HI_LS = 'qg_hlp_hi', today = () => new Date(Date.now() + 108e5).toISOString().slice(0, 10);   // يوم الرياض
   const lsG = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, lsS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -338,7 +339,7 @@
     document.documentElement.classList.toggle('qgh-on', !!(on && CFG.help));   // مسافة تحت الصفحة عشان الزر ما يغطي آخرها
     if (!on || !CFG.help || FAB) return;
     const el = document.createElement('div'); el.className = 'qgh'; el.setAttribute('dir', EN() ? 'ltr' : 'rtl');
-    el.innerHTML = `<button type="button" class="qgh-fab" aria-label="${_T('مساعد Q-Guide: تحتاج مساعدة؟')}" title="${_T('تحتاج مساعدة؟')}">${SPARK}</button>`;
+    el.innerHTML = `<button type="button" class="qgh-fab" aria-label="${_T('مرشدك الأكاديمي: اسأله عن مذاكرتك أو أي سؤال')}" title="${_T('مرشدك الأكاديمي')}">${SPARK}</button>`;
     document.body.appendChild(el); FAB = { el, en: EN(), t: 0 };
     el.querySelector('.qgh-fab').onclick = () => help();
     if (lsG(HI_LS) !== today()) FAB.t = setTimeout(hiShow, 1600);
@@ -347,13 +348,15 @@
     if (!FAB || W || FAB.el.querySelector('.qgh-bub')) return;
     lsS(HI_LS, today());
     const b = document.createElement('div'); b.className = 'qgh-bub';
-    b.innerHTML = `<button type="button" class="qgh-bo"><b>${_T('تحتاج مساعدة؟ 👋')}</b><span>${_T('صوّر السؤال أو اكتبه، وأشرحه لك خطوة بخطوة.')}</span></button><button type="button" class="qgh-bx" aria-label="${_T('إخفاء')}">✕</button>`;
+    b.innerHTML = `<button type="button" class="qgh-bo"><b>${_T('مرشدك الأكاديمي 👋')}</b><span>${_T('أرتب لك مذاكرتك، وأشرح لك أي سؤال تصوّره أو تكتبه.')}</span></button><button type="button" class="qgh-bx" aria-label="${_T('إخفاء')}">✕</button>`;
     FAB.el.prepend(b); requestAnimationFrame(() => b.classList.add('in'));
     const bye = () => { b.classList.remove('in'); setTimeout(() => b.remove(), 220); };
     b.querySelector('.qgh-bo').onclick = () => { bye(); help(); };
     b.querySelector('.qgh-bx').onclick = bye;
     FAB.t = setTimeout(bye, 12000);
   }
+  // 💬 يفتح المرشد ويرسل سؤال جاهز (أزرار صفحة المرشد)
+  function ask1(q) { help(); q = String(q || '').trim(); if (q && W && W.C === H && !H.busy) chat(q); }
   function help() {
     if (!CFG.help) return;
     if (FAB) { clearTimeout(FAB.t); const b = FAB.el.querySelector('.qgh-bub'); if (b) b.remove(); lsS(HI_LS, today()); }
@@ -531,5 +534,5 @@ html.qgh-on body:after{content:"";display:block;height:92px}
 }
 @media (prefers-reduced-motion:reduce){.qgai,.qgai-p,.qgh-bub{transition:none}.qgai-dots i,.qgai-m.a.live .qgai-tx>:last-child:after,.qgh-fab{animation:none}}`;
   document.head.appendChild(css);
-  window.QGAI = { init, status, slot, fill, open, close, render, fab, help, _conv: CONV, _help: H };
+  window.QGAI = { init, status, slot, fill, open, close, render, fab, help, ask: ask1, _conv: CONV, _help: H };
 })();

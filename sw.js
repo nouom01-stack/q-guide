@@ -45,8 +45,17 @@ function remNoteEn(c, now, today, yest) {
   if (parts.length) body = parts.join(' · ');
   return self.registration.showNotification(title, { body, icon: '/assets/icon-192.png', badge: '/assets/badge-96.png', tag: 'qg-daily', renotify: true, dir: 'ltr', lang: 'en', data: { url: '/p/' } });
 }
-self.addEventListener('push', e => { e.waitUntil(remNote()); });
+// 🔔 تنبيه فيه محتوى من الخادم (مشفّر): تنبيهات المالك (اشتراك جديد، تحويل ينتظر، ملخص اليوم) وتنبيه «اشتراكك قرب ينتهي» للطالب ← نعرضه كما هو
+//    بدون محتوى = التذكير اليومي (نصه من بيانات الجهاز)
+self.addEventListener('push', e => {
+  let d = null; try { d = e.data ? e.data.json() : null; } catch (x) {}
+  if (!d || !d.title) return e.waitUntil(remNote());
+  const url = /^\/(p|test)\/[#A-Za-z0-9\-_/@.%]*$/.test(d.url || '') ? d.url : '/p/';
+  e.waitUntil(self.registration.showNotification(String(d.title).slice(0, 120), { body: String(d.body || '').slice(0, 300), icon: '/assets/icon-192.png', badge: '/assets/badge-96.png', tag: String(d.tag || 'qg-msg').slice(0, 60), renotify: true, dir: 'rtl', lang: 'ar', data: { url } }));
+});
 self.addEventListener('notificationclick', e => {
   e.notification.close(); const url = (e.notification.data && e.notification.data.url) || '/p/';
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => { for (const w of ws) { if (new URL(w.url).pathname.startsWith('/p/') && 'focus' in w) return w.focus(); } return self.clients.openWindow(url); }));
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async ws => {
+    for (const w of ws) { if (new URL(w.url).pathname.startsWith('/p/') && 'focus' in w) { if (url !== '/p/' && 'navigate' in w) { try { await w.navigate(url); } catch (x) {} } return w.focus(); } }
+    return self.clients.openWindow(url); }));
 });
