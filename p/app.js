@@ -4450,6 +4450,8 @@
   function tripHtml() {
     const ex = examGet(), exT = ex ? examAt(ex) : 0, now = Date.now();
     const st = planState(), plan = PLANS.find(p => p.id === st.id) || null;
+    // المشترك اللي ما حدّد موعده ولا اختار خطة: بطاقة مرشده تحت تسأله عن الموعد والوقت والهدف وتبدأ له الخطة، فما نكرر عليه نفس الطلب مرتين
+    if (!ex && !plan && !isFree() && advPick().a.some(x => /data-adv="setup"/.test(x.act || ''))) return '';
     if (!ex && !plan) return lsGet(TRIPX_LS, 0) ? '' : _T`<div class="trip invite"><span class="tr-i" aria-hidden="true">⏳</span><span class="tr-t"><b>متى اختبارك؟</b> حدّد الموعد ونعرض لك عدّاد تنازلي، ونقترح لك خطة مذاكرة تلحق قبله.</span><span class="tr-b"><button class="btn sm" data-exam>حدّد الموعد</button><a class="btn sm ghost" href="#plan">خطط المذاكرة</a></span><button class="tr-x" id="trx" title="إخفاء" aria-label="إخفاء">✕</button></div>`;
     let h = _T('<section class="trip" aria-label="موعد اختبارك وخطتك">');
     if (ex) {
