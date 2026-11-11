@@ -639,19 +639,120 @@
   function renderLogin(err, good) {
     document.title = _T('تسجيل الدخول | Q-Guide'); tabbar(null); document.body.classList.remove('adm-on');
     const mem = /[?&]m=1(&|$)/.test(location.search);   // جا من «دخول المشتركين» في الصفحة الرئيسية: صفحة دخول للمشترك بدون «جرّب مجاناً»
+    if (!emSt) { emSt = emSaved(); if (!emSt && /[?&]em=1(&|$)/.test(location.search)) emSt = { step: 'ask', e: '' }; }   // ✉️ رجع من تطبيق الإيميل · جا من «الدخول بالإيميل» في صفحة الاختبارات
     app.innerHTML = _T`<div class="login"><div class="card">${QGL.btn('lng lgl')}
       <img src="/assets/logo.png" alt="Q-Guide">
       <h1>${mem ? _T('دخول المشتركين') : _T('منصة تدريب Q-Guide')}</h1>
-      <p class="sub">${mem ? _T('سجّل بنفس إيميل Google اللي اشتركت فيه، وتنفتح لك الدورة كاملة.') : _T('أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح')}</p>
+      <p class="sub">${mem ? _T('سجّل بنفس الإيميل اللي اشتركت فيه، وتنفتح لك الدورة كاملة.') : _T('أسئلة القدرات الإنجليزي — الكمي واللفظي — مع الشرح')}</p>
       <div class="gbtn" id="gbtn"><div class="spin"></div></div>
+      <div class="lg-or" aria-hidden="true"><span>أو</span></div>
+      <div class="emw" id="emw"></div>
       ${err ? `<div class="${good ? 'okm' : 'err'}">${err}</div>` : ''}
-      ${mem ? '' : _T('<div class="lg-free"><b>جرّب مجاناً بحساب Google</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>')}
-      <p class="note">${mem ? '' : _T('مشترك في الدورة؟ سجّل بنفس إيميل Google اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>')}الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
+      ${mem ? '' : _T('<div class="lg-free"><b>جرّب مجاناً بدون اشتراك</b><ul><li>القسم 1 كمي</li><li>النموذج 1 لفظي</li><li>الاختبار المحاكي 1</li><li>تحديد المستوى</li><li>الساحة 1v1</li></ul></div>')}
+      <p class="note">${mem ? '' : _T('مشترك في الدورة؟ سجّل بنفس الإيميل اللي اشتركت فيه وتنفتح لك الدورة كاملة.<br>')}الحساب يعمل على <b>جهاز واحد</b> في الوقت نفسه.</p>
       ${mem ? _T('<p class="note" style="margin-top:6px"><a href="/p/">مو مشترك؟ جرّب مجاناً</a></p>') : ''}
       <p class="note" style="margin-top:10px"><a class="btn sm ghost" style="gap:6px" href="https://wa.me/966508003683?text=${encodeURIComponent(_T('السلام عليكم، أحتاج مساعدة في الدخول لمنصة Q-Guide'))}" target="_blank" rel="noopener">💬 دعم فني عبر واتساب</a></p>
       <p class="note" style="margin-top:8px"><a href="/privacy/">سياسة الخصوصية</a> · <a href="/terms/">الشروط</a></p>
     </div></div>`;
-    mountGoogle();
+    mountGoogle(); emPaint();
+  }
+  // ✉️ الدخول بالإيميل: يكتب إيميله ← يوصله رمز من 6 أرقام ← يكتبه ويدخل (API: em_code / em_login، نفس جلسة Google)
+  const EM_SS = 'qg_em', EMV_RE = /^[a-z0-9._%+'-]{1,64}@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,24}$/;
+  const EM_FIX = { 'gmail.con': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.cm': 'gmail.com', 'gmail.om': 'gmail.com', 'gmial.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmaill.com': 'gmail.com', 'gmal.com': 'gmail.com', 'hotmail.con': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com', 'outlook.con': 'outlook.com', 'outlok.com': 'outlook.com', 'icloud.con': 'icloud.com', 'iclod.com': 'icloud.com', 'yahoo.con': 'yahoo.com', 'yaho.com': 'yahoo.com' };
+  const EM_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg>';
+  let emSt = null, emTimer = 0, emBusy = false;
+  const emClean = v => String(v || '').replace(/[\s‎‏‪-‮]/g, '').replace(/＠/g, '@').toLowerCase();
+  const emDigits = v => String(v || '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776).replace(/\D/g, '');
+  function emSaved() { try { const v = JSON.parse(sessionStorage.getItem(EM_SS) || 'null'); return v && v.step === 'code' && v.e && Date.now() - v.at < 10 * 60e3 ? v : null; } catch (e) { return null; } }
+  function emSave() { try { if (emSt && emSt.step === 'code') sessionStorage.setItem(EM_SS, JSON.stringify(emSt)); else sessionStorage.removeItem(EM_SS); } catch (e) {} }
+  function emBack() { const v = lsGet('qg_em_to', null); lsDel('qg_em_to'); return v && v.to === '/test/' && Date.now() - (v.t || 0) < 30 * 60e3 ? '/test/' : ''; }   // جا من صفحة الاختبارات المحاكية
+  function emHint(html, kind) { const h = $('#emh'); if (h) { h.className = 'emh' + (kind ? ' ' + kind : ''); h.innerHTML = html || ''; } }
+  function emPaint() {
+    const w = $('#emw'); if (!w) return; clearInterval(emTimer);
+    const st = emSt || { step: 'btn' };
+    if (st.step === 'btn') {
+      w.innerHTML = `<button type="button" class="embtn" id="emgo">${EM_SVG}<span>${_T('الدخول بالإيميل')}</span></button>`;
+      $('#emgo').onclick = () => { emSt = { step: 'ask', e: '' }; emPaint(); const i = $('#emi'); if (i) i.focus(); };
+      return;
+    }
+    if (st.step === 'ask') {
+      w.innerHTML = `<form class="emf" id="emf" novalidate>
+        <label class="eml" for="emi">${_T('إيميلك')}</label>
+        <input class="emin" id="emi" type="email" dir="ltr" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="name@example.com" value="${esc(st.e || '')}">
+        <div class="emh" id="emh" role="status" aria-live="polite"></div>
+        <button class="btn emsub" id="emsend" type="submit">${_T('أرسل رمز الدخول')}</button>
+        <p class="emn">${_T('يوصلك رمز من 6 أرقام على إيميلك، تكتبه هنا وتدخل.')}</p>
+        <div class="emrow c"><button type="button" class="emback" id="emx">${_T('رجوع')}</button></div>
+      </form>`;
+      const inp = $('#emi');
+      inp.oninput = () => { st.asked = ''; emHint(''); };
+      $('#emx').onclick = () => { emSt = null; emSave(); emPaint(); };
+      $('#emf').onsubmit = ev => {
+        ev.preventDefault(); if (emBusy) return;
+        const e = emClean(inp.value); inp.value = e; st.e = e;
+        if (!EMV_RE.test(e) || /\.\.|^\.|\.@/.test(e)) { emHint(_T('اكتب إيميلك كامل، مثل: name@gmail.com'), 'bad'); inp.focus(); return; }
+        const dom = e.split('@')[1], fix = EM_FIX[dom];
+        if (fix && st.asked !== e) {   // غلطة إملائية شائعة في الدومين: نسأله مرة وحدة
+          st.asked = e; const ok = e.split('@')[0] + '@' + fix;
+          emHint(_T`قصدك <b dir="ltr">${esc(ok)}</b>؟` + ` <button type="button" class="emlink" id="emfix">${_T('إيه، صحّحه')}</button>`, 'warn');
+          $('#emfix').onclick = () => { inp.value = ok; st.e = ok; emSend(ok); };
+          return;
+        }
+        emSend(e);
+      };
+      return;
+    }
+    // st.step === 'code'
+    w.innerHTML = `<form class="emf" id="emf" novalidate>
+      <p class="emto">${_T('أرسلنا رمز الدخول إلى')}<br><b dir="ltr">${esc(st.e)}</b></p>
+      <input class="emin emcode" id="emc" type="text" dir="ltr" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="000000" aria-label="${_T('رمز الدخول')}">
+      <div class="emh" id="emh" role="status" aria-live="polite"></div>
+      <button class="btn emsub" id="emok" type="submit">${_T('دخول')}</button>
+      <p class="emn">${_T('ما لقيته؟ شيّك على الرسائل غير المرغوبة (Spam). الرمز صالح 10 دقائق.')}</p>
+      <div class="emrow"><button type="button" class="emback" id="emre"></button><button type="button" class="emback" id="emch">${_T('تغيير الإيميل')}</button></div>
+    </form>`;
+    const c = $('#emc'), re = $('#emre');
+    c.oninput = () => { const v = emDigits(c.value).slice(0, 6); if (c.value !== v) c.value = v; emHint(''); if (v.length === 6) emVerify(v); };
+    $('#emf').onsubmit = ev => { ev.preventDefault(); const v = emDigits(c.value); if (v.length !== 6) { emHint(_T('اكتب الرمز (6 أرقام).'), 'bad'); c.focus(); return; } emVerify(v); };
+    $('#emch').onclick = () => { emSt = { step: 'ask', e: st.e }; emSave(); emPaint(); const i = $('#emi'); if (i) { i.focus(); i.select(); } };
+    re.onclick = () => { if (!re.disabled) emSend(st.e, 1); };
+    const tick = () => {
+      if (!document.body.contains(re)) return clearInterval(emTimer);
+      const left = Math.ceil((st.at + (st.wait || 60) * 1000 - Date.now()) / 1000);
+      re.disabled = left > 0;
+      re.textContent = left > 0 ? _T`إرسال رمز جديد بعد ${Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0')}` : _T('أرسل رمز جديد');
+      if (left <= 0) clearInterval(emTimer);
+    };
+    tick(); emTimer = setInterval(tick, 1000);
+    if (st.note) { emHint(st.note, 'ok'); st.note = ''; }
+    setTimeout(() => { try { c.focus(); } catch (e) {} }, 30);
+  }
+  async function emSend(e, again) {
+    if (emBusy) return; emBusy = true;
+    const b = again ? $('#emre') : $('#emsend'); if (b) { b.disabled = true; if (!again) b.textContent = _T('جارٍ الإرسال…'); }
+    let r = null; try { r = await api({ op: 'em_code', email: e, lang: EN ? 'en' : 'ar' }); } catch (x) {}
+    emBusy = false;
+    if (r && r.ok) { emSt = { step: 'code', e, at: Date.now(), wait: r.wait || 60, note: again ? _T('أرسلنا رمز جديد. استخدم آخر رمز وصلك.') : '' }; emSave(); return emPaint(); }
+    if (r && r.error === 'wait' && emSt && (emSt.e === e || again)) { emSt = { step: 'code', e, at: Date.now() - (60 - (r.wait || 60)) * 1000, wait: 60, note: again ? '' : _T('أرسلنا لك رمز قبل شوي، استخدمه.') }; emSave(); return emPaint(); }
+    if (b) { b.disabled = false; if (!again) b.textContent = _T('أرسل رمز الدخول'); }
+    emHint(esc(r ? r.msg || _T('ما قدرنا نرسل الرمز الحين، حاول بعد شوي.') : _T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')), 'bad');
+  }
+  async function emVerify(code) {
+    if (emBusy || !emSt) return; emBusy = true;
+    const ok = $('#emok'), c = $('#emc'); if (ok) { ok.disabled = true; ok.textContent = _T('جارٍ الدخول…'); }
+    let r = null; try { r = await api({ op: 'em_login', email: emSt.e, code, ua: navigator.userAgent.slice(0, 120) }); } catch (x) {}
+    emBusy = false;
+    if (r && r.ok) { emSt = null; emSave(); return loginOk(r, emBack()); }
+    if (ok) { ok.disabled = false; ok.textContent = _T('دخول'); }
+    if (!r) return emHint(_T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.'), 'bad');
+    if (['wrong', 'bad_code', 'expired', 'tries', 'busy'].indexOf(r.error) >= 0) {
+      emHint(esc(r.msg || _T('الرمز غلط، تأكد منه وحاول مرة ثانية.')), 'bad');
+      if (c) { c.select(); c.focus(); }
+      if (r.error === 'expired' || r.error === 'tries') { const re = $('#emre'); if (re) { clearInterval(emTimer); re.disabled = false; re.textContent = _T('أرسل رمز جديد'); } }
+      return;
+    }
+    emSt = null; emSave();   // مشكلة في الحساب نفسه (موقوف…): نفس رسالة الدخول بـ Google
+    renderLogin(esc(r.msg || _T('تعذّر تسجيل الدخول.')) + _T('<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>'));
   }
   let gTries = 0;
   function mountGoogle() {
@@ -673,12 +774,17 @@
         const msg = r.msg || (r.error === 'not_member' ? _T('هذا الحساب غير مسجّل في الدورة.') : _T('تعذّر تسجيل الدخول (') + esc(r.error || '') + ').');
         return renderLogin(esc(msg) + _T('<br><a href="https://wa.me/966508003683" target="_blank" rel="noopener">تواصل معنا على واتساب 0508003683</a>'));
       }
-      auth = authFrom(r);
-      lsSet(LS.auth, auth);
-      if (resp.back && !payPending()) return location.replace(resp.back);   // دخل من صفحة الاختبارات المحاكية: نرجّعه لها
-      if (payPending()) location.hash = 'paid'; else if (location.hash && location.hash !== '#') history.replaceState(null, '', location.pathname);   // 💳 رجع من صفحة الدفع وجلسته منتهية: نكمل التحقق بعد الدخول
-      route();
+      loginOk(r, resp.back);
     } catch (e) { renderLogin(_T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.')); }
+  }
+  // دخل (بـ Google أو بالإيميل): نحفظ الجلسة ونكمل
+  function loginOk(r, back) {
+    auth = authFrom(r);
+    lsSet(LS.auth, auth);
+    if (back && !payPending()) return location.replace(back);   // دخل من صفحة الاختبارات المحاكية: نرجّعه لها
+    if (payPending()) location.hash = 'paid'; else if (location.hash && location.hash !== '#') history.replaceState(null, '', location.pathname);   // 💳 رجع من صفحة الدفع وجلسته منتهية: نكمل التحقق بعد الدخول
+    else if (/[?&]em=1(&|$)/.test(location.search)) history.replaceState(null, '', location.pathname);
+    route();
   }
 
   // ---------- home ----------

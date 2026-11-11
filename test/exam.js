@@ -65,9 +65,12 @@
   function renderLogin(err) {
     document.title = _T('تسجيل الدخول | Q-Guide');
     app.innerHTML = _T`<div class="login ar"><div class="card">${window.QGL ? QGL.btn('lng lgl') : ''}<img src="/assets/logo.png" alt=""><h1>الاختبارات المحاكية</h1><p class="mut">نفس شكل اختبار قياس المحوسب: 4 أقسام × 24 سؤال، 25 دقيقة لكل قسم</p>
-      <div class="gbtn" id="gbtn"><div class="spin"></div></div>${err ? `<div class="err">${err}</div>` : ''}
-      <p class="mut" style="font-size:13px">سجّل دخولك بحساب Google. المشترك تنفتح له الاختبارات الـ 17، وغير المشترك يجرّب <b>الاختبار المحاكي 1 مجاناً</b>.</p><p style="font-size:13px"><a href="/p/">منصة التدريب</a> · <a href="/privacy/">الخصوصية</a></p></div></div>`;
+      <div class="gbtn" id="gbtn"><div class="spin"></div></div>
+      <div class="lg-or" aria-hidden="true"><span>أو</span></div>
+      <a class="embtn" id="emgo" href="/p/?em=1"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg><span>الدخول بالإيميل</span></a>${err ? `<div class="err">${err}</div>` : ''}
+      <p class="mut" style="font-size:13px">سجّل دخولك بحساب Google أو بإيميلك. المشترك تنفتح له الاختبارات الـ 17، وغير المشترك يجرّب <b>الاختبار المحاكي 1 مجاناً</b>.</p><p style="font-size:13px"><a href="/p/">منصة التدريب</a> · <a href="/privacy/">الخصوصية</a></p></div></div>`;
     mountGoogle();
+    const em = $('#emgo'); if (em) em.onclick = () => lsSet('qg_em_to', { to: '/test/', t: Date.now() });   // ✉️ الدخول بالإيميل في /p/ ثم يرجع هنا
   }
   let gTries = 0;
   // رمز الدخول القادم من وضع إعادة التوجيه (#gsi=...)
