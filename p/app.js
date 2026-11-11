@@ -794,8 +794,9 @@
   }
   // ---------- home: ورقة الإجابة ----------
   const SET_NAME = id => id === 'v15' ? _T('الأسئلة الجديدة') : (id[0] === 'q' ? _T('القسم ') : _T('النموذج ')) + id.slice(1);
-  function setState(id, n) { const p = progGet(id); const a = p.a || {}; let ans = 0, ok = 0, last = 0, gap = -1; for (let i = 0; i < n; i++) { const x = a[i]; if (x) { ans++; if (x.c) ok++; if (x.t > last) last = x.t; } else if (gap < 0) gap = i; } return { ans, ok, last, n, gap: gap < 0 ? 0 : gap, done: n > 0 && ans >= n, best: p.best }; }
-  function dotsHtml(id, n, cur) { const a = progGet(id).a || {}; let h = ''; for (let i = 0; i < n; i++) { const x = a[i]; h += `<i class="${x ? (x.c ? 'ok' : 'bad') : ''}${i === cur ? ' cur' : ''}"></i>`; } return h; }
+  // gap = أول سؤال بدون إجابة بترتيب المحاولة (🔀 لو كانت ملخبطة نمشي على ترتيبها)، والنقاط بنفس الترتيب
+  function setState(id, n) { const p = progGet(id); const a = p.a || {}, o = ordOf(p, n); let ans = 0, ok = 0, last = 0, gap = -1; for (let k = 0; k < n; k++) { const x = a[o ? o[k] : k]; if (x) { ans++; if (x.c) ok++; if (x.t > last) last = x.t; } else if (gap < 0) gap = k; } return { ans, ok, last, n, gap: gap < 0 ? 0 : gap, done: n > 0 && ans >= n, best: p.best }; }
+  function dotsHtml(id, n, cur) { const p = progGet(id), a = p.a || {}, o = ordOf(p, n); let h = ''; for (let k = 0; k < n; k++) { const x = a[o ? o[k] : k]; h += `<i class="${x ? (x.c ? 'ok' : 'bad') : ''}${k === cur ? ' cur' : ''}"></i>`; } return h; }
   function pickResume() {
     let best = null;
     for (const s of [...manifest.quant, ...manifest.verbal]) { const st = setState(s.id, s.n); if (st.last && (!best || st.last > best.st.last)) best = { s, st }; }
@@ -1475,6 +1476,43 @@
     for (const a of arr) { tot += a.ms != null ? a.ms : Math.min(Math.max(0, a.t - prev), Q_CAP); prev = a.t; }
     return Math.round(tot / 1000);
   }
+  // 🔀 لخبطة الأسئلة: المحاولة كاملة بترتيب عشوائي يختاره الطالب (prog.o = أرقام الأسئلة بالترتيب اللي يشوفه)
+  // القطعة (استيعاب المقروء) وأجزاء سؤال الكمي الواحد تبقى مع بعض، والإجابات والمراجع تبقى على رقم السؤال الأصلي
+  const SHUF_LS = 'qg_shuf';   // اختياره ينحفظ: كل محاولة جديدة تبدأ ملخبطة لين يرجّعها مرتبة
+  const shufOk = id => /^[qv]\d{1,2}$/.test(id);   // الأقسام والنماذج فقط (التدريب الموجّه والدفتر محتواهم يتغيّر)
+  function shufOrder(set, items) {
+    const units = []; let last = null;
+    items.forEach((x, i) => {
+      const g = set.kind === 'verbal' ? set.groups[x.gi] : null;
+      const key = g ? (g.kind === 'part' ? 'q' + i : 'g' + x.gi) : (x.it.part ? 'n' + x.it.n : 'q' + i);
+      if (last && last.key === key) last.list.push(i); else units.push(last = { key, list: [i] });
+    });
+    if (units.length < 2) return null;
+    let o;
+    do { for (let k = units.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [units[k], units[j]] = [units[j], units[k]]; } o = units.flatMap(u => u.list); }
+    while (o.every((v, i) => v === i));
+    return o;
+  }
+  function ordOf(prog, n) {   // ترتيب محفوظ صالح (نفس عدد الأسئلة، كل سؤال مرة وحدة) أو null
+    const o = prog && prog.o; if (!Array.isArray(o) || o.length !== n) return null;
+    const seen = new Set(); for (const v of o) { if (!Number.isInteger(v) || v < 0 || v >= n || seen.has(v)) return null; seen.add(v); }
+    return o;
+  }
+  function ordSet(o) { P.ord = o || P.items.map((x, i) => i); P.pos = []; P.ord.forEach((v, p) => { P.pos[v] = p; }); P.shuf = !!o; }
+  const sbHtml = () => P.ord.map(i => `<i class="${P.prog.a[i] ? (P.prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('');
+  // قبل أول إجابة: يلخبطها أو يرجّعها مرتبة بدون ما يطلع من الصفحة
+  function shufApply(on) {
+    if (!P || Object.keys(P.prog.a).length) return;
+    const o = on ? shufOrder(P.set, P.items) : null; if (on && !o) return;
+    lsSet(SHUF_LS, on ? 1 : 0);
+    if (o) P.prog.o = o; else delete P.prog.o;
+    ordSet(o);
+    const sb = $('#sb'); if (sb) sb.innerHTML = sbHtml();
+    const spg = $('#spg'); if (spg) spg.innerHTML = sheetBtns();
+    const ci = $('#cshf'); if (ci) ci.hidden = !P.shuf;
+    toast(on ? _T('🔀 لخبطنا الأسئلة، بالتوفيق!') : _T('رجعت الأسئلة لترتيبها'));
+    showQ(P.ord[0]);
+  }
   document.addEventListener('visibilitychange', () => { if (!P) return; if (document.hidden) P.hidAt = Date.now(); else if (P.hidAt) { P.lastAct += Date.now() - P.hidAt; P.hidAt = 0; } });
   let P = null; // player state
   async function renderPlayer(id, start) {
@@ -1485,13 +1523,19 @@
     const items = flatItems(set); const prog = progGet(id);
     if (!items.length) { const star = /^t-star-/.test(id); app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, _T`<a class="ib" href="${star ? '#notes' : '#skills'}" title="رجوع">→</a>`) + (star ? _T`<div class="center"><div style="font-size:40px">⭐</div><p>ما حفظت أسئلة في هذا القسم من دفترك.<br><span class="mut">اضغط ⭐ على أي سؤال وأنت تحل عشان ينحفظ هنا وتتدرّب عليه.</span></p><a class="btn" href="#notes">📒 دفتري</a></div>` : _T`<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`); bindCtl(); return; }
     if (!prog.started) prog.started = Date.now();
-    let cur = items.findIndex((x, i) => !prog.a[i]); if (cur < 0) cur = Math.min(prog.last || 0, items.length - 1);   // أول سؤال بدون إجابة
+    // 🔀 ترتيب المحاولة: المحفوظ، أو ترتيب جديد لو الطالب مختار اللخبطة والمحاولة ما بدأت، أو الترتيب الأصلي
+    let ord = shufOk(id) ? ordOf(prog, items.length) : null;
+    if (!ord && prog.o) delete prog.o;
+    if (!ord && shufOk(id) && lsGet(SHUF_LS, 0) && !Object.keys(prog.a).length) { ord = shufOrder(set, items); if (ord) prog.o = ord; }
+    P = { id, set, items, prog, cur: 0, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
+    ordSet(ord);
+    let cur = P.ord.find(i => !prog.a[i]); if (cur == null) cur = Math.min(prog.last || 0, items.length - 1);   // أول سؤال بدون إجابة (بترتيب المحاولة)
     if (start != null && start >= 0 && start < items.length) cur = start;   // فتح سؤال محدد (من الدفتر)
-    P = { id, set, items, prog, cur, t0: Date.now(), lastAct: Date.now(), hidAt: 0, passOpen: {}, sel: null };
+    P.cur = cur;
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(_T`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      ${ytFor(id) ? _T`<a class="ytb" href="${ytFor(id).url}"${ytFor(id).tgt}${ytTip(ytFor(id), _T('شرح ') + ytFor(id).label + _T(' على يوتيوب'))}>${vIcon(ytFor(id))}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span></button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
-      _T`<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${items.map((x, i) => `<i class="${prog.a[i] ? (prog.a[i].c ? 'ok' : 'bad') : ''}"></i>`).join('')}</div><main class="wrap" id="pm"></main>
+      ${ytFor(id) ? _T`<a class="ytb" href="${ytFor(id).url}"${ytFor(id).tgt}${ytTip(ytFor(id), _T('شرح ') + ytFor(id).label + _T(' على يوتيوب'))}>${vIcon(ytFor(id))}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span><span class="cnt-shf" id="cshf" title="الأسئلة ملخبطة" ${P.shuf ? '' : 'hidden'}>🔀</span></button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${sbHtml()}</div><main class="wrap" id="pm"></main>
       <aside class="sheetp" aria-label="ورقة الإجابة"><div class="sp-h"><b>ورقة الإجابة</b><span id="spn"></span></div><div class="qgrid" id="spg"></div></aside>
       <div class="nav" id="nav" role="dialog" aria-modal="true" aria-label="كل الأسئلة"><div class="bg"></div><div class="sh"><div class="nvh"><b>كل الأسئلة</b><span class="nlg"><span><i class="ok"></i>صحيحة</span><span><i class="bad"></i>خاطئة</span><span><i></i>ما جاوبتها</span></span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة من البداية</button></div><div class="qgrid big" id="ng"></div></div></div>`;
     $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); const c = $('#ng .cur'); if (c) c.focus({ preventScroll: true }); };
@@ -1512,20 +1556,24 @@
     else if (k === 'arrowright') { const p = $('#prev'); if (p) p.click(); }
   }
   function updateCounter() {
-    const n = P.items.length, ans = Object.keys(P.prog.a).length; $('#cnt').textContent = (P.cur + 1) + ' / ' + n;
-    const sb = $('#sb'); if (sb) { const o = sb.querySelector('i.cur'); if (o) o.classList.remove('cur'); const c = sb.children[P.cur]; if (c) c.classList.add('cur'); }
-    const g = $('#spg'); if (g) { const o = g.querySelector('.cur'); if (o) o.classList.remove('cur'); const c = g.children[P.cur]; if (c) { c.classList.add('cur'); if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight) g.scrollTop = c.offsetTop - g.clientHeight / 2; } }
+    const n = P.items.length, ans = Object.keys(P.prog.a).length, p = P.pos[P.cur]; $('#cnt').textContent = (p + 1) + ' / ' + n;
+    const sb = $('#sb'); if (sb) { const o = sb.querySelector('i.cur'); if (o) o.classList.remove('cur'); const c = sb.children[p]; if (c) c.classList.add('cur'); }
+    const g = $('#spg'); if (g) { const o = g.querySelector('.cur'); if (o) o.classList.remove('cur'); const c = g.children[p]; if (c) { c.classList.add('cur'); if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight) g.scrollTop = c.offsetTop - g.clientHeight / 2; } }
     const sn = $('#spn'); if (sn) sn.textContent = _T`أجبت ${ans} من ${n}`;
   }
   // أزرار ورقة الإجابة (اللوحة الجانبية + نافذة كل الأسئلة): كل سؤال متاح بضغطة
-  function sheetBtns() { return P.items.map((x, i) => { const a = P.prog.a[i]; return _T`<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${i + 1}${a ? (a.c ? _T('، إجابتك صحيحة') : _T('، إجابتك خاطئة')) : ''}">${i + 1}</button>`; }).join(''); }
-  // أقرب سؤال بدون إجابة بعد i (ويرجع من البداية)، أو -1
-  function nextOpen(i) { const n = P.items.length; for (let k = 1; k < n; k++) { const j = (i + k) % n; if (!P.prog.a[j]) return j; } return -1; }
+  function sheetBtns() { return P.ord.map((i, p) => { const a = P.prog.a[i]; return _T`<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${p + 1}${a ? (a.c ? _T('، إجابتك صحيحة') : _T('، إجابتك خاطئة')) : ''}">${p + 1}</button>`; }).join(''); }
+  // أقرب سؤال بدون إجابة بعد i بترتيب المحاولة (ويرجع من البداية)، أو -1
+  function nextOpen(i) { const n = P.items.length, p0 = P.pos[i]; for (let k = 1; k < n; k++) { const j = P.ord[(p0 + k) % n]; if (!P.prog.a[j]) return j; } return -1; }
   function showQ(i) {
     const { set, items, prog } = P; P.cur = i; prog.last = i; progSet(P.id, prog); updateCounter();
-    const { it, gi } = items[i]; const a = prog.a[i]; P.sel = null;
+    const { it, gi } = items[i]; const a = prog.a[i]; P.sel = null; const p = P.pos[i];
     const mkSrc = it.src || P.id, mkI = it.sidx != null ? it.sidx : i, mk = markOf(mkSrc, mkI);
     let html = '';
+    // 🔀 قبل أول إجابة في المحاولة: «تبي تصعّبها؟ لخبط الأسئلة» (أو «الأسئلة ملخبطة · رجّعها مرتبة»)
+    if (shufOk(P.id) && !Object.keys(prog.a).length) html += P.shuf
+      ? _T`<div class="shuf on" id="shuf"><span class="shuf-i" aria-hidden="true">🔀</span><div class="shuf-t"><b>الأسئلة ملخبطة</b><small>ترتيب جديد كل ما تبدأ المحاولة من أولها</small></div><button type="button" class="btn sm ghost" id="shufOff">رجّعها مرتبة</button></div>`
+      : _T`<div class="shuf" id="shuf"><span class="shuf-i" aria-hidden="true">🔀</span><div class="shuf-t"><b>تبي تصعّبها؟</b><small>لخبط ترتيب الأسئلة وحلها بترتيب ما تعرفه</small></div><button type="button" class="btn sm gold" id="shufOn">لخبط الأسئلة</button></div>`;
     if (set.kind === 'verbal') {
       const g = set.groups[gi]; const prevG = i > 0 ? items[i - 1].gi : -1;
       if (g.m) html += `<div class="gmd"><bdi dir="ltr">Model ${g.m} · ${esc(g.mt || '')}</bdi></div>`;   // «الأسئلة الجديدة»: كل قطعة من أي نموذج
@@ -1537,7 +1585,7 @@
       }
     }
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
-    html += _T`<div class="q"><div class="hd"><span class="n">سؤال ${i + 1}<small>من ${items.length}</small></span><span class="hd-r">${set.kind === 'verbal' ? sayBtn(it.q, 'en') : ''}<button type="button" class="mk st ${mk && mk.s ? 'on' : ''}" id="mkS" aria-pressed="${!!(mk && mk.s)}" title="احفظ السؤال في دفتري" aria-label="احفظ السؤال في دفتري">${STARSVG}</button><button type="button" class="mk nt ${mk && mk.n ? 'on' : ''}" id="mkN" title="اكتب ملاحظتك على السؤال" aria-label="ملاحظتي">${NOTESVG}</button><span class="tag ltr">${tag}</span></span></div>`;
+    html += _T`<div class="q"><div class="hd"><span class="n">سؤال ${p + 1}<small>من ${items.length}</small></span><span class="hd-r">${set.kind === 'verbal' ? sayBtn(it.q, 'en') : ''}<button type="button" class="mk st ${mk && mk.s ? 'on' : ''}" id="mkS" aria-pressed="${!!(mk && mk.s)}" title="احفظ السؤال في دفتري" aria-label="احفظ السؤال في دفتري">${STARSVG}</button><button type="button" class="mk nt ${mk && mk.n ? 'on' : ''}" id="mkN" title="اكتب ملاحظتك على السؤال" aria-label="ملاحظتي">${NOTESVG}</button><span class="tag ltr">${tag}</span></span></div>`;
     if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">` + qtrHtml(it);
     else html += (it.tag ? `<div class="qtag"><bdi dir="ltr">${esc(EN ? it.tag.split(' – ')[0] : it.tag)}</bdi></div>` : '') + `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
     const two = set.kind === 'quant' || it.opts.every(o => o.length <= 28);
@@ -1548,8 +1596,8 @@
     }).join('') + '</div>';
     html += _T`<div id="fb">${a ? feedback(it, a) : ''}</div>
       <div class="note ${mk && mk.n ? 'open' : ''}" id="nt"><label for="ntx">${NOTESVG}<b>ملاحظتي</b><small>تنحفظ تلقائياً في دفتري</small></label><textarea id="ntx" dir="auto" maxlength="600" rows="2" placeholder="مثلاً: وش القاعدة؟ وليش غلطت؟">${esc(mk ? mk.n || '' : '')}</textarea></div>
-      <div class="acts"><button class="btn ghost sm" id="prev" ${i === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span>
-      ${a ? `<button class="btn" id="next">${i + 1 < items.length ? _T('التالي ←') : nextOpen(i) < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>` : _T`${nextOpen(i) >= 0 ? _T('<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>') : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
+      <div class="acts"><button class="btn ghost sm" id="prev" ${p === 0 ? 'disabled' : ''}>→ السابق</button><span class="sp"></span>
+      ${a ? `<button class="btn" id="next">${p + 1 < items.length ? _T('التالي ←') : nextOpen(i) < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>` : _T`${nextOpen(i) >= 0 ? _T('<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>') : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
       <div class="kbd" style="margin-top:8px">${a ? _T('Enter للتالي') : _T('اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد')}</div></div>`;
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' }); if (window.QGAI) QGAI.fill($('#pm'));
     bindWords();
@@ -1559,8 +1607,10 @@
     let ntT = 0; $('#ntx').oninput = () => { clearTimeout(ntT); ntT = setTimeout(() => { const v = $('#ntx').value.trim(); markSet(mkSrc, mkI, { n: v }); const b = $('#mkN'); if (b) b.classList.toggle('on', !!v); badgeCheckSoon(); }, 500); };
     const ph = $('#ph'); if (ph) ph.onclick = () => { const p = $('#pass'); p.classList.toggle('closed'); P.passOpen[gi] = !p.classList.contains('closed'); $('#pch').textContent = P.passOpen[gi] ? '▲' : '▼'; };
     document.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (P.prog.a[i]) return; P.sel = +b.dataset.k; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', +x.dataset.k === P.sel)); const c = $('#confirm'); if (c) c.disabled = false; });
-    $('#prev').onclick = () => showQ(i - 1);
-    const nx = $('#next'); if (nx) nx.onclick = () => { if (i + 1 < items.length) showQ(i + 1); else { const o = nextOpen(i); if (o >= 0) showQ(o); else finish(); } };
+    $('#prev').onclick = () => { if (p > 0) showQ(P.ord[p - 1]); };
+    const nx = $('#next'); if (nx) nx.onclick = () => { if (p + 1 < items.length) showQ(P.ord[p + 1]); else { const o = nextOpen(i); if (o >= 0) showQ(o); else finish(); } };
+    const so = $('#shufOn'); if (so) so.onclick = () => shufApply(1);
+    const sf = $('#shufOff'); if (sf) sf.onclick = () => shufApply(0);
     const sk = $('#skip'); if (sk) sk.onclick = () => { const o = nextOpen(i); if (o >= 0) showQ(o); };
     const cf = $('#confirm'); if (cf) cf.onclick = () => { if (P.sel == null) return; answer(i, P.sel); };
   }
@@ -1580,7 +1630,7 @@
     if (!window.QGAI || !P || !a) return ''; const src = it.src || P.id, idx = it.sidx != null ? it.sidx : P.cur;
     if (!/^[qv]\d{1,2}$/.test(src)) return '';
     const wrong = a.s !== it.ans;
-    return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: _T`سؤال ${P.cur + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? _T` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
+    return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: _T`سؤال ${P.pos[P.cur] + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? _T` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
   }
   function ytLink(it) {
     const yt = ytFor(P && P.id === 'v15' ? 'v15' : it.src || (P && P.id)); if (!yt) return '';
@@ -1701,8 +1751,9 @@
     const { it } = P.items[i]; if (P.prog.a[i]) return;
     const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
-    const good = k === it.ans; if (isFree() && window.QGT) QGT.ans(P.id, good); const sbi = $('#sb') && $('#sb').children[i]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
-    const gbi = $('#spg') && $('#spg').children[i]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', _T`سؤال ${i + 1}، إجابتك ${good ? _T('صحيحة') : _T('خاطئة')}`); }
+    const good = k === it.ans; if (isFree() && window.QGT) QGT.ans(P.id, good); const sbi = $('#sb') && $('#sb').children[P.pos[i]]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
+    const gbi = $('#spg') && $('#spg').children[P.pos[i]]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', _T`سؤال ${P.pos[i] + 1}، إجابتك ${good ? _T('صحيحة') : _T('خاطئة')}`); }
+    const shc = $('#shuf'); if (shc) shc.remove();   // 🔀 أول إجابة تثبّت ترتيب المحاولة
     P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + _T(' صح ورا بعض'); rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
     const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast(_T('🎉 حققت هدف اليوم: ') + goal + _T(' سؤال!')), 700); else badgeCheckSoon();
     try { const h = histGet(); histMark(h, it.src || P.id, it.sidx != null ? it.sidx : i, k === it.ans, itemTopics(it)); histSet(h); skillsPushSoon(); } catch (e) {}
@@ -1722,10 +1773,10 @@
   }
   async function finish() {
     const { items, prog, set } = P; const n = items.length; const answered = Object.keys(prog.a).length;
-    if (answered < n) { toast(EN ? enN(n - answered, 'question', 'questions') + ' still unanswered' : 'باقي ' + (n - answered) + ' سؤال بدون إجابة'); const f = items.findIndex((x, i) => !prog.a[i]); return showQ(f); }   // i18n:skip
+    if (answered < n) { toast(EN ? enN(n - answered, 'question', 'questions') + ' still unanswered' : 'باقي ' + (n - answered) + ' سؤال بدون إجابة'); const f = P.ord.find(i => !prog.a[i]); return showQ(f); }   // i18n:skip
     const correct = Object.values(prog.a).filter(a => a.c).length; const pct = Math.round(correct * 100 / n);
     const secs = activeSecs(prog);
-    const wrong = items.map((x, i) => i).filter(i => prog.a[i] && !prog.a[i].c);
+    const wrong = P.ord.filter(i => prog.a[i] && !prog.a[i].c);   // بترتيب المحاولة (لو كانت ملخبطة)
     const firstTime = !prog.done;
     if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; progSet(P.id, prog); setTimeout(badgeCheck, 2200); remCtx();
     document.onkeydown = null;
@@ -1746,11 +1797,12 @@
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
       ${paceHtml}
       <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? _T`<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : _T`<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? _T`<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? _T`<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
-      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
+      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${shufOk(P.id) ? _T('<button class="lnk2" id="againS">🔀 أعد الحل بترتيب ملخبط</button>') : ''}${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${rulesHtml}
-      ${wrong.length ? _T`<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${i + 1}</button>`).join('')}</div></div>` : ''}
+      ${wrong.length ? _T`<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${P.pos[i] + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
     $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
+    const ags = $('#againS'); if (ags) ags.onclick = () => { lsSet(SHUF_LS, 1); const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };   // 🔀 محاولة جديدة ملخبطة
     bindSub($('#pm'));
     const rv = $('#rev'); if (rv) rv.onclick = () => { document.onkeydown = onKey; showQ(wrong[0]); };
     document.querySelectorAll('.wl button').forEach(b => b.onclick = () => { document.onkeydown = onKey; showQ(+b.dataset.i); });

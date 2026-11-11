@@ -1731,5 +1731,14 @@
  "طلبت رموز كثيرة، حاول بعد ساعة أو ادخل بحساب Google.": "You’ve asked for too many codes. Try again in an hour, or sign in with Google.",
  "ما قدرنا نرسل لهذا الإيميل، تأكد منه.": "We couldn’t send to this email. Check it and try again.",
  "انتهت صلاحية الرمز، اطلب رمز جديد.": "This code has expired. Ask for a new one.",
- "أخطأت في الرمز أكثر من مرة، اطلب رمز جديد.": "Too many wrong tries. Ask for a new code."
+ "أخطأت في الرمز أكثر من مرة، اطلب رمز جديد.": "Too many wrong tries. Ask for a new code.",
+ "🔀 لخبطنا الأسئلة، بالتوفيق!": "🔀 Questions shuffled. Good luck!",
+ "رجعت الأسئلة لترتيبها": "Questions are back in their normal order",
+ "الأسئلة ملخبطة": "Questions shuffled",
+ "ترتيب جديد كل ما تبدأ المحاولة من أولها": "A new order every time you start a fresh attempt",
+ "رجّعها مرتبة": "Back to normal order",
+ "تبي تصعّبها؟": "Want a harder run?",
+ "لخبط ترتيب الأسئلة وحلها بترتيب ما تعرفه": "Shuffle the questions and solve them in an order you don’t know",
+ "لخبط الأسئلة": "Shuffle questions",
+ "🔀 أعد الحل بترتيب ملخبط": "🔀 Redo it shuffled"
 }

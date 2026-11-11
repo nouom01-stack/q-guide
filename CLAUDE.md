@@ -122,6 +122,13 @@ One dialog for both: a visitor subscribes, a subscriber renews (`subDlg` picks t
 - Home advice card (`focusHtml` → `advPick`, see the advisor section): e.g. weakest skill + drill `#t-<topic>` + «أعد حل أخطائك» + «اسأل مرشدك»; placement-test nudge when there is no data yet.
 - Test: `site/help_e2e.js` (the dev server multiplies per-minute rate limits ×10: `RATE_X`).
 
+## 🔀 Shuffled question order — sections and models only (`shufOk`, `shufOrder`, `ordOf`, `shufApply` in `p/app.js`)
+- Before the first answer of an attempt in `q1`–`q14` / `v1`–`v15`, a card above the question offers «🔀 تبي تصعّبها؟ · لخبط الأسئلة» (`#shufOn`); once shuffled it reads «الأسئلة ملخبطة · رجّعها مرتبة» (`#shufOff`) and the counter chip shows 🔀 (`#cshf`). The first answer removes the card and locks the order. The result page adds «🔀 أعد الحل بترتيب ملخبط» (`#againS`) next to «↻ إعادة القسم».
+- The order is saved with the attempt: `prog.o` (a permutation of item indices) in `qg_prog_<id>`; `P.ord` = position → item, `P.pos` = item → position. Every number the student sees (header, counter, strip `#sb`, answer sheet, prev/next/skip, wrong list, the AI label, the home resume card and dots through `setState` / `dotsHtml`) follows the attempt order; answers (`prog.a`), notes, skills, AI refs, rulemap and the posted result stay on the original item index. An invalid `prog.o` (wrong length) is dropped.
+- Units that stay together: a verbal reading passage (its questions in order) and the parts of one quant question (`it.part`, same `it.n`, e.g. Q339 parts 1–4 in q7). Analogy / completion / error questions mix freely.
+- The choice is remembered (`qg_shuf`): new attempts start shuffled until he presses «رجّعها مرتبة»; an attempt already started in normal order never reshuffles. Topic drills and notebook sets have no shuffle.
+- Test: `site/shuffle_e2e.js`.
+
 ## ⏱📐 After every answer: pace + «راجع القاعدة» (`fbMeta` in `p/app.js`) — the rule part is OFF (`RULES_ON = false`, rules pages removed)
 - `paceOf(ms)` compares the question's own time (`a.ms`, capped at `Q_CAP`) with the GAT pace (~1 min/question): `fast` ≤ 40 s · `ok` ≤ 75 s · `slow`; chip `.fb-t` after every answer, hidden when the time is unknown/capped.
 - `ruleFor(it, i)` → `{href, icon, t}` of the rules section to review: quant from `p/data/rulemap.json` (`"q4:29": "fractions"`, built in the API repo by `tools/rulemap.mjs` from the bank — only confident matches, ~70 % of the questions; bump `RMAP_V` when it changes),
