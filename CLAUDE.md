@@ -129,6 +129,13 @@ One dialog for both: a visitor subscribes, a subscriber renews (`subDlg` picks t
 - The choice is remembered (`qg_shuf`): new attempts start shuffled until he presses «رجّعها مرتبة»; an attempt already started in normal order never reshuffles. Topic drills and notebook sets have no shuffle.
 - Test: `site/shuffle_e2e.js`.
 
+## 📨 Saving a section's result — once per attempt (`resDone`, `resSave`, `resRecover` in `p/app.js`; API `saveResult` cf-52)
+- The result of `q1`–`q14` / `v1`–`v15` is sent the moment the **last unanswered question is answered** (`answer()` → `resDone` + `resSave`), not only when he presses «النتيجة 🏁» — before Nov 12 2026 a student who left the page after the last answer lost the result (several subscribers had fully answered sets with no row in `results`). «النتيجة» (`finish`) reuses the same send: `#saved` shows «⏳ نحفظ نتيجتك…» → «تم حفظ نتيجتك ✓», or «ما وصلت نتيجتك بسبب الاتصال، والموقع بيرسلها لحاله…».
+- Flags in `qg_prog_<id>`: `rq = 1` = the attempt is complete and waits to be saved · `rs` = saved (1 student · 2 visitor, kept on his device · 3 staff, not recorded). A saved attempt is never sent again (reviewing and pressing «النتيجة» again used to store it twice); one send at a time per set (`RES_P`).
+- `resRecover()` runs after a good heartbeat (at most every 10 min) and on the `online` event: every complete attempt with `rq`, or complete and never finished (`done` = 0, the old lost case), is sent with `at` = its last answer time, so it lands in its own week. Attempts finished with «النتيجة» before this change (`done` = 1, no `rq`) are left alone (they were sent then).
+- The server stores `ts` = `at` (clamped to the last 60 days) and ignores an identical result within ±10 min (`dup: 1`).
+- Test: `site/results_e2e.js`.
+
 ## ⏱📐 After every answer: pace + «راجع القاعدة» (`fbMeta` in `p/app.js`) — the rule part is OFF (`RULES_ON = false`, rules pages removed)
 - `paceOf(ms)` compares the question's own time (`a.ms`, capped at `Q_CAP`) with the GAT pace (~1 min/question): `fast` ≤ 40 s · `ok` ≤ 75 s · `slow`; chip `.fb-t` after every answer, hidden when the time is unknown/capped.
 - `ruleFor(it, i)` → `{href, icon, t}` of the rules section to review: quant from `p/data/rulemap.json` (`"q4:29": "fractions"`, built in the API repo by `tools/rulemap.mjs` from the bank — only confident matches, ~70 % of the questions; bump `RMAP_V` when it changes),

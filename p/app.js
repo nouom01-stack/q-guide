@@ -296,6 +296,7 @@
         auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-(salman|abdullah)(\/[ft])?)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
       if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
         auth.sub = r.sub; auth.yt = r.yt || null; lsSet(LS.auth, auth); if (!location.hash || location.hash === '#') renderHome(); }
+      if (r && r.ok && isSub()) setTimeout(resRecover, 1500);   // 📨 نتائج اكتملت وما وصلت للخادم (مرة كل 10 دقائق)
     } catch (e) {} finally { hbBusy = false; }
   }
   setInterval(heartbeat, 3 * 60 * 1000);
@@ -1762,6 +1763,7 @@
     $('#fb').innerHTML = feedback(it, P.prog.a[i]); if (window.QGAI) QGAI.fill($('#fb'));
     const sk = $('#skip'); if (sk) sk.remove();
     const nxo = nextOpen(i);   // بعد الإجابة: التالي = أقرب سؤال ما جاوبته، والنتيجة لما تخلص كل الأسئلة
+    if (nxo < 0 && !P.set.topicSet) { resDone(P.prog, P.items.length, 1); progSet(P.id, P.prog); resSave(P.id, P.set, P.items, P.prog); }   // 📨 آخر سؤال: النتيجة تنحفظ على طول (حتى لو طلع قبل «النتيجة»)
     const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${nxo < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>`; $('#next').onclick = () => { if (nxo >= 0) showQ(nxo); else finish(); }; }
     const kb = $('.kbd'); if (kb) kb.textContent = _T('Enter للتالي');
     updateCounter();
@@ -1777,8 +1779,7 @@
     const correct = Object.values(prog.a).filter(a => a.c).length; const pct = Math.round(correct * 100 / n);
     const secs = activeSecs(prog);
     const wrong = P.ord.filter(i => prog.a[i] && !prog.a[i].c);   // بترتيب المحاولة (لو كانت ملخبطة)
-    const firstTime = !prog.done;
-    if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; progSet(P.id, prog); setTimeout(badgeCheck, 2200); remCtx();
+    resDone(prog, n, !set.topicSet); progSet(P.id, prog); setTimeout(badgeCheck, 2200); remCtx();
     document.onkeydown = null;
     const nm = /^([qv])(\d{1,2})$/.exec(set.id), nx = nm && +nm[2] < 14 ? nm[1] + (+nm[2] + 1) : null;
     // ⏱ متوسط وقت السؤال (الأسئلة اللي وقتها معروف فقط) مقارنة بوقت قياس
@@ -1811,12 +1812,56 @@
     if (pct >= 85) setTimeout(confetti, 350);
     skillsPushSoon(1500);
     if (set.topicSet) { $('#saved').textContent = _T('تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'); return; }
-    try {
-      const r = await api({ op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct, secs, wrong: wrong.map(i => items[i].it.n).join(',') }); ADVR = null;   // تقرير الأسبوع يتجدد
-      $('#saved').textContent = r.ok ? (r.admin ? _T('وضع المشرف: النتيجة لا تُسجّل') : r.free ? _T('نتيجتك محفوظة على جهازك ✓') : _T('تم حفظ نتيجتك ✓')) : '';
-      if (!r.ok && r.error === 'session') { toast(_T('انتهت الجلسة، سجّل دخولك من جديد')); }
-    } catch (e) { $('#saved').textContent = ''; }
+    // 📨 مرة وحدة لكل محاولة: لو انحفظت مع آخر إجابة ما تنرسل مرة ثانية، ولو ما وصلت يعيد الموقع إرسالها بنفسه
+    const sv = $('#saved'); if (sv && !prog.rs) sv.textContent = _T('⏳ نحفظ نتيجتك…');
+    const r = await resSave(P.id, set, items, prog), s2 = $('#saved'); if (!s2) return;
+    if (r && r.ok) s2.textContent = r.admin ? _T('وضع المشرف: النتيجة لا تُسجّل') : r.free ? _T('نتيجتك محفوظة على جهازك ✓') : _T('تم حفظ نتيجتك ✓');
+    else if (r && r.error === 'session') { s2.textContent = ''; toast(_T('انتهت الجلسة، سجّل دخولك من جديد')); }
+    else s2.textContent = _T('ما وصلت نتيجتك بسبب الاتصال، والموقع بيرسلها لحاله أول ما يرجع النت');
   }
+
+  // ---------- 📨 حفظ نتيجة القسم/النموذج في الخادم (مرة وحدة لكل محاولة) ----------
+  // تنرسل تلقائياً أول ما يجاوب آخر سؤال، و«النتيجة 🏁» ما تعيد إرسالها، واللي ما وصلت (انقطع النت أو طلع من الصفحة
+  // قبل «النتيجة» في النسخ القديمة) يرسلها الموقع بنفسه مع النبض (resRecover) بوقت آخر إجابة فيها، فما تدخل ترتيب أسبوع غير أسبوعها
+  // prog.rq = اكتملت وتنتظر الحفظ · prog.rs = انحفظت (1 طالب · 2 زائر: على جهازه · 3 مشرف: ما تنسجّل)
+  const RES_SET = /^[qv]\d{1,2}$/, RES_P = {};
+  function resDone(prog, n, main) {   // المحاولة اكتملت: أفضل نسبة + خلصت (+ تنتظر الحفظ لو قسم أو نموذج)
+    const pct = n ? Math.round(Object.values(prog.a).filter(a => a.c).length * 100 / n) : 0;
+    if (prog.best == null || pct > prog.best) prog.best = pct; prog.done = 1; if (main && !prog.rs) prog.rq = 1;
+  }
+  function resSave(id, set, items, prog) {
+    if (!auth || !RES_SET.test(id) || set.topicSet) return Promise.resolve(null);
+    if (prog.rs) return Promise.resolve({ ok: true, admin: prog.rs === 3, free: prog.rs === 2 });
+    if (RES_P[id]) return RES_P[id];   // نفس الإرسال شغّال (آخر إجابة ثم «النتيجة» على طول)
+    const n = items.length, vals = Object.values(prog.a || {}); if (vals.length < n) return Promise.resolve(null);
+    const ord = ordOf(prog, n) || items.map((x, i) => i);
+    const body = { op: 'result', session: auth.session, set: set.id, kind: set.kind, n, correct: vals.filter(a => a.c).length, secs: activeSecs(prog),
+      wrong: ord.filter(i => prog.a[i] && !prog.a[i].c).map(i => items[i].it.n).join(','), at: vals.reduce((m, a) => Math.max(m, a.t || 0), 0) || Date.now() };
+    return (RES_P[id] = api(body).then(r => {
+      if (r && r.ok) {
+        const rs = r.admin ? 3 : r.free ? 2 : 1; prog.rs = rs; delete prog.rq; ADVR = null;   // تقرير الأسبوع يتجدد
+        const cur = progGet(id); if (cur.started === prog.started && Object.keys(cur.a || {}).length >= n) { cur.rs = rs; delete cur.rq; progSet(id, cur); }
+      }
+      return r;
+    }).catch(() => null).finally(() => { delete RES_P[id]; }));
+  }
+  // نتائج اكتملت وما وصلت: نرسلها مع النبض (مرة كل 10 دقائق) ولما يرجع النت
+  let resRecAt = 0;
+  async function resRecover(force) {
+    if (!auth || !auth.session || !isSub()) return;
+    if (!force && Date.now() - resRecAt < 10 * 60e3) return; resRecAt = Date.now();
+    const ids = []; for (let k = 1; k <= 14; k++) ids.push('q' + k); for (let k = 1; k <= 15; k++) ids.push('v' + k);
+    for (const id of ids) {
+      const live = P && P.id === id, p = live ? P.prog : progGet(id);
+      if (!p || !p.a || p.rs || (p.done && !p.rq)) continue;   // انحفظت، أو خلصها بـ«النتيجة» قبل هذا التحديث (انرسلت وقتها)
+      const k = Object.keys(p.a).length; if (k < 30) continue;   // أصغر قسم 42 سؤال
+      let set, items; try { set = live ? P.set : await loadSet(id); items = live ? P.items : flatItems(set); } catch (e) { continue; }
+      if (k < items.length) continue;
+      if (!p.done || !p.rq) { resDone(p, items.length, 1); progSet(id, p); }
+      await resSave(id, set, items, p);
+    }
+  }
+  window.addEventListener('online', () => { setTimeout(() => resRecover(1), 2500); });
 
   // ---------- 📖 القاموس: تحميل + بحث عن الكلمة ----------
   let VOC = null, vocP = null;

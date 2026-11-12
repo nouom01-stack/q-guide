@@ -1740,5 +1740,7 @@
  "تبي تصعّبها؟": "Want a harder run?",
  "لخبط ترتيب الأسئلة وحلها بترتيب ما تعرفه": "Shuffle the questions and solve them in an order you don’t know",
  "لخبط الأسئلة": "Shuffle questions",
- "🔀 أعد الحل بترتيب ملخبط": "🔀 Redo it shuffled"
+ "🔀 أعد الحل بترتيب ملخبط": "🔀 Redo it shuffled",
+ "⏳ نحفظ نتيجتك…": "⏳ Saving your result…",
+ "ما وصلت نتيجتك بسبب الاتصال، والموقع بيرسلها لحاله أول ما يرجع النت": "Your result didn’t reach us because of the connection. The site will send it by itself as soon as you’re back online"
 }
