@@ -639,7 +639,7 @@
     const lv = lsGet(LVL_LS, null);
     return _T`<section class="fhero" aria-label="الحساب المجاني">
       <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة كاملة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة كاملة.</p>`}</div>
-      <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${PRICE} ريال</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
+      <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${subPrice()} ريال</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
     </section>`;
   }
 
@@ -4042,21 +4042,28 @@
   }
   function paintAi() {
     const W = $('#adm'); if (!W || !ADM.ai) return; const A = ADM.ai, S = A.set, convs = aiConvs(A.logs || []);
-    const nr = A.today.nr || 0, usd = Math.max(0, nr - 10000) * 0.011 / 1000;   // Cloudflare: أول 10,000 وحدة يومياً مجانية، وبعدها 0.011$ لكل 1000 وحدة
+    // 🧮 حد الاستهلاك اليومي (A.cap من الخادم، بيوم كلاود فلير اللي يتصفّر 3:00 الفجر): أول 10,000 وحدة مجانية، وبعدها 0.011$ لكل 1000 — المرشد يوقف لحاله قبل الحد
+    const C = A.cap || { nr: A.today.nr || 0, cap: 10000, stop: 9500, pct: Math.min(100, Math.round((A.today.nr || 0) / 100)), left: 0 }, n3 = n => Math.round(n || 0).toLocaleString('en');
+    const capSt = C.over || C.stopped ? 'stop' : C.pct >= 80 ? 'warn' : '', capMax = Math.max(0, C.cap - 10000) * 0.011 / 1000;
+    const capTxt = (capSt === 'stop' ? 'وصل حد اليوم، فالطلاب يشوفون رسالة «المرشد وصل حدّه اليومي». يرجع لحاله الساعة 3:00 الفجر، وما انحسب عليك شي زيادة.'
+      : capSt === 'warn' ? `قرّب يوصل الحد: باقي <b dir="ltr">${n3(C.left)}</b> وحدة، وبعدها يوقف لحاله لين الساعة 3:00 الفجر.`
+      : `كلاود فلير يعطيك <span dir="ltr">10,000</span> وحدة مجانية كل يوم وتتصفّر الساعة 3:00 الفجر. المرشد يوقف لحاله عند <span dir="ltr">${n3(C.stop)}</span> عشان ما ينحسب عليك شي.`)
+      + (capMax > 0 ? ` حدّك الحين <span dir="ltr">${n3(C.cap)}</span>، يعني أقصى زيادة ممكنة في اليوم <b dir="ltr">$${capMax.toFixed(2)}</b>.` : '');
     W.innerHTML = `<div class="stf aiadm">
       ${A.on ? '' : '<div class="sum warn">⚠️ ربط الذكاء الاصطناعي (Workers AI) ما هو مفعّل في الخادم.</div>'}
       <div class="fstats"><div><b>${A.today.n}</b><span>شرح اليوم</span></div><div><b>${A.today.u}</b><span>طالب استخدمه اليوم</span></div><div><b>${A.week.n}</b><span>شرح آخر 7 أيام</span></div><div class="${A.flagged + (A.bugs || 0) ? 'bad' : ''}"><b>${A.flagged + (A.bugs || 0)}</b><span>${A.bugs ? `بلاغ: ${A.flagged} «الشرح فيه غلط» و${A.bugs} عن مشكلة في الموقع` : 'بلاغ «الشرح فيه غلط»'}</span></div></div>
-      <p class="aicost">استهلاك اليوم: <b dir="ltr">${nr.toLocaleString('en')}</b> وحدة من <span dir="ltr">10,000</span> مجانية يومياً${usd > 0 ? ` · التكلفة الزائدة <b dir="ltr">$${usd.toFixed(2)}</b> <small>(حوالي ${(usd * 3.75).toFixed(2)} ريال)</small>` : ' <small>(ما فيه تكلفة زائدة)</small>'}</p>
+      <section class="aicap ${capSt}" aria-label="استهلاك المرشد اليوم"><div class="aicap-t"><b>${capSt === 'stop' ? '⛔ المرشد متوقف لليوم' : 'استهلاك المرشد اليوم'}</b><span dir="ltr"><b>${n3(C.nr)}</b> / ${n3(C.cap)}</span></div>
+        <div class="aicap-b" role="img" aria-label="${C.pct}%"><i style="width:${Math.max(1, C.pct)}%"></i></div><p>${capTxt}</p></section>
       <section class="aiset"><h3 class="sh">الإعدادات</h3>
         <div class="aimode" role="radiogroup" aria-label="حالة المساعد">${Object.entries(AI_MODE).map(([k, [t, d]]) => `<label class="${S.mode === k ? 'on' : ''}"><input type="radio" name="aimode" value="${k}" ${S.mode === k ? 'checked' : ''}><b>${t}</b><small>${d}</small></label>`).join('')}</div>
-        <div class="airow"><label><span>شروحات المشترك في اليوم</span><input type="number" id="aipaid" min="0" max="200" inputmode="numeric" value="${S.paid}"></label><label><span>شروحات الزائر في اليوم</span><input type="number" id="aifree" min="0" max="50" inputmode="numeric" value="${S.free}"></label><label><span>النموذج</span><select id="aimodel">${Object.entries(A.models).map(([k, v]) => `<option value="${k}" ${k === S.model ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>
-        <div class="aiact"><button class="btn" id="aisave">حفظ الإعدادات</button><span class="mut">الشرح الأول للسؤال ينحسب من رصيد الطالب، وأسئلة المتابعة على نفس السؤال (لين ${esc(String(S.follow))}) ما تنحسب.</span></div></section>
+        <div class="airow"><label><span>شروحات المشترك في اليوم</span><input type="number" id="aipaid" min="0" max="200" inputmode="numeric" value="${S.paid}"></label><label><span>شروحات الزائر في اليوم</span><input type="number" id="aifree" min="0" max="50" inputmode="numeric" value="${S.free}"></label><label class="capf"><span>حد الاستهلاك اليومي (وحدة)</span><input type="number" id="aicapv" min="1000" max="2000000" step="500" inputmode="numeric" value="${S.cap || 10000}"></label><label class="wide"><span>النموذج</span><select id="aimodel">${Object.entries(A.models).map(([k, v]) => `<option value="${k}" ${k === S.model ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>
+        <div class="aiact"><button class="btn" id="aisave">حفظ الإعدادات</button><span class="mut">الشرح الأول للسؤال ينحسب من رصيد الطالب، وأسئلة المتابعة على نفس السؤال (لين ${esc(String(S.follow))}) ما تنحسب. حد الاستهلاك <span dir="ltr">10,000</span> = المجاني؛ لو رفعته ينحسب عليك <span dir="ltr">$0.011</span> لكل ألف وحدة فوقها.</span></div></section>
       <div class="aihd"><h3 class="sh">محادثات الطلاب مع المساعد <small>${convs.length}</small></h3><label class="aiflt"><input type="checkbox" id="aiflg" ${ADM.aiF ? 'checked' : ''}> اللي فيها بلاغ بس</label></div>
       <p class="aihelp mut">كل محادثة فيها السؤال نفسه، ووش كتب الطالب، ووش رد عليه المساعد بالترتيب.</p>
       <div class="ailog">${convs.map(c => aiConvHtml(c, A.qs && A.qs[c.ref], !!ADM.aiF)).join('') || `<div class="sempty">${ADM.aiF ? 'ما فيه بلاغات 👍' : 'ما استخدم أحد المساعد للحين.'}</div>`}</div></div>`;
     W.querySelectorAll('input[name=aimode]').forEach(r => r.onchange = () => W.querySelectorAll('.aimode label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)));
     $('#aisave').onclick = async e => { const b = e.currentTarget; b.disabled = true;
-      try { const mode = (W.querySelector('input[name=aimode]:checked') || {}).value; ADM.ai = await admCall({ op: 'adm_ai_set', flagged: !!ADM.aiF, set: { mode, paid: +$('#aipaid').value, free: +$('#aifree').value, model: $('#aimodel').value } });
+      try { const mode = (W.querySelector('input[name=aimode]:checked') || {}).value; ADM.ai = await admCall({ op: 'adm_ai_set', flagged: !!ADM.aiF, set: { mode, paid: +$('#aipaid').value, free: +$('#aifree').value, cap: +$('#aicapv').value || 10000, model: $('#aimodel').value } });
         if (window.QGAI) QGAI.status(true); paintAi(); toast('انحفظت إعدادات المساعد ✓'); } catch (er) { toast(er.message); b.disabled = false; } };
     $('#aiflg').onchange = e => { ADM.aiF = e.target.checked; ADM.ai = null; renderAiAdmin(); };
     W.querySelectorAll('[data-seen]').forEach(b => b.onclick = async () => { b.disabled = true; try { ADM.ai = await admCall({ op: 'adm_ai_seen', id: +b.dataset.seen, flagged: !!ADM.aiF }); paintAi(); toast('تمام، انشال من البلاغات ✓'); } catch (er) { toast(er.message); b.disabled = false; } });
@@ -4365,6 +4372,8 @@
     over: x => ['⏰', `${nStu(x.n)} خلصت مدة اشتراكهم`, x.auto ? 'الإنهاء التلقائي شغّال: اللي ما يجدّد ينتهي اشتراكه بعد المهلة.' : 'مدّد لهم شهر أو أنهِ اشتراكهم. وتقدر تشغّل الإنهاء التلقائي من الإعدادات.', '#admin-subs', 'راجعهم', 'mid'],
     soon: x => ['⏳', `${x.n === 1 ? 'اشتراك واحد ينتهي' : x.n === 2 ? 'اشتراكين ينتهون' : x.n + ' اشتراكات تنتهي'} خلال 3 أيام`, 'يطلع لهم تذكير بالتجديد في الموقع.', '#admin-subs', 'شوفهم', 'low'],
     rep: x => ['🚩', `${x.n === 1 ? 'بلاغ واحد' : x.n === 2 ? 'بلاغين' : x.n + ' بلاغات'} من الطلاب على أسئلة`, 'أسئلة قالوا إنها مو في الدورة أو نتيجة البحث غلط (آخر 7 أيام).', '#admin-find', 'افتح البلاغات', 'mid'],
+    aicap: x => x.stopped ? ['⛔', 'المرشد متوقف لليوم: وصل حد الاستهلاك', `استهلك ${Math.round(x.nr).toLocaleString('en')} من ${Math.round(x.cap).toLocaleString('en')} وحدة، فوقف لحاله عشان ما ينحسب عليك شي. يرجع الساعة 3:00 الفجر.`, '#admin-ai', 'شوف الاستهلاك']
+      : ['🧮', `المرشد استهلك ${x.pct}% من حد اليوم`, 'لو وصل الحد يوقف لحاله لين الساعة 3:00 الفجر، وما ينحسب عليك شي زيادة.', '#admin-ai', 'شوف الاستهلاك'],
     aibug: x => ['🛠', `${x.n === 1 ? 'بلاغ واحد وصل' : x.n === 2 ? 'بلاغين وصلوا' : x.n + ' بلاغات وصلت'} للمرشد عن مشكلة في الموقع`, 'طالب كتب للمرشد إن شي ما اشتغل معه. اقرأ وش كتب وكلّمه لو يحتاج.', '#admin-ai', 'شوفها', 'hi'],
     flag: x => ['🤖', `${x.n === 1 ? 'شرح واحد' : x.n === 2 ? 'شرحين' : x.n + ' شروحات'} من المرشد بلّغ عنها الطلاب`, 'راجع الشرح وشوف وين الغلط.', '#admin-ai', 'راجعها', 'mid'],
     regs: x => ['📝', `${x.n === 1 ? 'طلب تسجيل ينتظر' : x.n === 2 ? 'طلبين تسجيل ينتظرون' : x.n + ' طلبات تسجيل تنتظر'} قرارك`, 'من فورم التسجيل القديم (الشيت).', '#admin-regs', 'افتح التسجيلات', 'mid'],
@@ -4375,7 +4384,7 @@
     gs: x => ['📧', x.err ? 'خطأ في سكربت إيميلات سلة' : 'سكربت إيميلات سلة واقف', (x.err ? x.err + ' — ' : `آخر فحص ${fmtD(x.at)}. `) + 'الدفع من سلة ما يتفعّل لحاله لين يرجع: افتح script.google.com بحساب سلة وشوف «Executions».', '#admin-pay', 'افتح المدفوعات', 'hi'],
     payoff: () => ['💳', 'الدفع من الموقع مقفل على الزوار', 'الزائر ما يشوف زر الدفع ويراسلك على واتساب. افتحه من المدفوعات لما تجهز.', '#admin-pay', 'افتح المدفوعات', 'hi'],
   };
-  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'],
+  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'],
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
     adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
     adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],

@@ -301,7 +301,7 @@
         const i = C.msgs.indexOf(am); if (i >= 0) C.msgs.splice(i, 1);
         if (j.error === 'limit') { if (ST) ST.left = 0; C.msgs.push({ r: 'lim', t: j.msg || '', free: !!j.free, x: tk }); drop(); }
         else if (j.error === 'session' || j.error === 'kicked') { C.msgs.push({ r: 'e', t: j.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.') }); CFG.onAuth && CFG.onAuth(j); }
-        else { C.msgs.push({ r: 'e', t: j.msg || _T('صار خطأ، حاول مرة ثانية.'), retry: !/^(locked|soon|off|noq|maxturns)$/.test(j.error || ''), q: text, x: tk, tk, ref, label }); if (/^(locked|soon|off|noq)$/.test(j.error || '')) drop(); }
+        else { C.msgs.push({ r: 'e', t: j.msg || _T('صار خطأ، حاول مرة ثانية.'), retry: !/^(locked|soon|off|noq|maxturns|cap)$/.test(j.error || ''), q: text, x: tk, tk, ref, label }); if (/^(locked|soon|off|noq|cap)$/.test(j.error || '')) drop(); }   // cap = المرشد وصل حدّه اليومي لكل الطلاب (يرجع 3:00 الفجر): بدون «حاول مرة ثانية»
         return;
       }
       const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';

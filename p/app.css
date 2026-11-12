@@ -1702,6 +1702,17 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .atabs small.red{background:#D64545;color:#fff}
 .fstats>div.bad b{color:var(--bad)}
 .aiadm .aicost{margin:2px 0 18px;color:var(--ink);font-size:calc(14.5px * var(--fs))}.aiadm .aicost small{color:var(--mut)}
+/* v70 🧮 استهلاك المرشد اليوم: شريط + حالة (عادي · قرّب · متوقف) */
+.aicap{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px 13px;margin:0 0 18px}
+.aicap-t{display:flex;align-items:baseline;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;color:var(--ink2);font-size:calc(15.5px * var(--fs))}
+.aicap-t>span{color:var(--mut);font-size:calc(14px * var(--fs));font-variant-numeric:tabular-nums}
+.aicap-t>span b{font-family:var(--disp);font-size:calc(22px * var(--fs));line-height:1;color:var(--ink2)}
+.aicap-b{height:10px;border-radius:99px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden;margin:10px 0 9px}
+.aicap-b i{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .3s}
+.aicap.warn .aicap-b i{background:var(--gold)}
+.aicap.stop{border-color:var(--bad)}.aicap.stop .aicap-b i{background:var(--bad)}.aicap.stop .aicap-t>b{color:var(--bad)}
+.aicap p{margin:0;color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.75}
+.aicap p b{color:var(--ink)}
 .aiadm .sum.warn{background:#FFF4E0;color:#8A5300;border:1px solid #F3D9A6}
 .aiset{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px 14px;margin-bottom:22px}
 .aiset .sh{margin-top:0}
@@ -1712,8 +1723,8 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .aimode input{position:absolute;opacity:0;pointer-events:none}
 .aimode b{font-size:calc(15px * var(--fs))}.aimode small{color:var(--mut);font-size:calc(12.5px * var(--fs));line-height:1.5}
 .aimode label:has(input:focus-visible){outline:2px solid var(--navy3);outline-offset:2px}
-.airow{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px 12px;margin-bottom:12px}
-.airow label{display:flex;flex-direction:column;gap:5px;font-weight:700;font-size:calc(13.5px * var(--fs));color:var(--mut)}
+.airow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;margin-bottom:12px}.airow label.wide{grid-column:1/-1}
+.airow label{display:flex;flex-direction:column;justify-content:flex-end;gap:5px;font-weight:700;font-size:calc(13.5px * var(--fs));color:var(--mut)}
 .airow input,.airow select{font:inherit;font-size:calc(15px * var(--fs));color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;min-height:44px}
 .airow input:focus,.airow select:focus{outline:none;border-color:var(--navy3)}
 .aiact{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}.aiact .mut{font-size:calc(13px * var(--fs))}
@@ -1732,7 +1743,7 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .ailg .aimeta{display:flex;flex-wrap:wrap;gap:4px 14px;padding:0 16px 12px;color:var(--mut);font-size:calc(12.5px * var(--fs))}.ailg .aimeta a{margin-inline-start:auto;font-weight:700}
 [data-theme="dark"] .aimode label.on{background:#1B2645}[data-theme="dark"] .aiadm .sum.warn{background:#3A2C12;color:#F5D08A;border-color:#5E4718}
 [data-theme="dark"] .ailg.fl{border-color:#6A2A33}[data-theme="dark"] .ailg .rbdg.flg{background:#381A21;color:#FFB3B3}
-@media (max-width:760px){.aimode{grid-template-columns:1fr}.airow{grid-template-columns:1fr 1fr}.airow label:last-child{grid-column:1/-1}.ailg .fq{flex-basis:100%;white-space:normal}}
+@media (max-width:760px){.aimode{grid-template-columns:1fr}.airow{grid-template-columns:1fr 1fr}.airow label:last-child,.airow label.capf{grid-column:1/-1}.ailg .fq{flex-basis:100%;white-space:normal}}
 /* 👀 الزوار: وش سووا (قمع النشاط + المصادر والأجهزة والمدن + سطر نشاط تحت كل زائر + الخط الزمني) */
 .vhd{display:flex;align-items:baseline;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;margin:22px 0 10px}.vhd .sh{margin:0!important}.vhd .mut{font-size:calc(12.5px * var(--fs))}
 .vempty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:14px 16px;color:var(--mut);line-height:1.8;font-size:calc(14px * var(--fs))}
