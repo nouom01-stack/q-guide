@@ -168,8 +168,97 @@
   }
   // 👤 الاسم الأول للترحيب: الأسماء المركّبة (عبد الله، عبد العزيز، أبو فهد، Abdul Rahman) تبقى كاملة
   function firstName(s) { const w = String(s || '').trim().split(/\s+/).filter(Boolean); if (!w.length) return ''; return w.length > 1 && /^(عبد|عبدال|أبو|ابو|أم|ام|abd|abdul|abdel|abdol|abu)$/i.test(w[0]) ? w[0] + ' ' + w[1] : w[0]; }
+  // ---------- 💾 تقدّم الطالب داخل كل قسم/نموذج/تدريب: على جهازه + نسخة في حسابه تتبعه على أي جهاز (PSY) ----------
+  // كل قسم صف في الخادم (prog_get / prog_set). نفس المحاولة (started) = الإجابات تندمج · محاولتين مختلفتين = الأحدث تعديلاً (m) تكسب · z = بدأ من جديد بنفسه
   function progGet(id) { return lsGet(LS.prog + id, { a: {}, best: null, started: 0, last: 0, done: 0 }); }
-  function progSet(id, p) { lsSet(LS.prog + id, p); }
+  const PROG_ID = /^(?:[qv]\d{1,2}|t-(?:arith|alg|geo|stat|cmp|ana|sen|err|read))$/;   // الأخطاء والدفتر قوائمهم تتغيّر: ما تتزامن
+  const PSY = { pulled: false, p: null, dirty: {}, sig: {}, srv: {}, t: 0, busy: false };
+  const progSyncOn = () => !!(auth && auth.session && auth.role !== 'free');
+  const progHas = p => !!(Object.keys(p.a || {}).length || p.done || p.best != null);
+  const progSig = p => [p.started || 0, Object.keys(p.a || {}).length, p.done || 0, p.rs || 0, p.rq || 0, p.o ? 1 : 0, p.best == null ? '' : p.best].join('|');
+  const progM = p => p.m || Object.values(p.a || {}).reduce((m, a) => Math.max(m, (a && a.t) || 0), 0) || 0;   // آخر تعديل (المحاولات اللي قبل المزامنة: وقت آخر إجابة)
+  const progFresh = best => ({ a: {}, best, started: Date.now(), last: 0, done: 0, z: 1 });   // ↻ محاولة جديدة بطلب الطالب: تمسح القديمة على كل أجهزته
+  function progSet(id, p) {
+    if (PROG_ID.test(id) && progSyncOn()) { const sg = progSig(p);
+      if (PSY.sig[id] !== sg && (PSY.sig[id] !== undefined || PSY.srv[id] || progHas(p) || p.z)) { p.m = Date.now(); PSY.dirty[id] = 1; if (!PSY.d0) PSY.d0 = p.m; progPushSoon(); } }
+    lsSet(LS.prog + id, p);
+  }
+  const progIds = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i) || ''; if (k.indexOf(LS.prog) === 0 && PROG_ID.test(k.slice(LS.prog.length))) out.push(k.slice(LS.prog.length)); } } catch (e) {} return out; };
+  function progPack(ids, max) { const out = []; let len = 0; for (const id of ids) { const p = progGet(id), d = JSON.stringify(p); if (d.length > 60000) { delete PSY.dirty[id]; continue; } if (out.length >= 12 || len + d.length > (max || 400000)) break; len += d.length; out.push({ id, m: progM(p) || Date.now(), d, sg: progSig(p) }); } return out; }
+  function progPushSoon(ms) { clearTimeout(PSY.t); PSY.t = setTimeout(progPush, PSY.d0 && Date.now() - PSY.d0 > 30000 ? 300 : ms || 6000); }   // 6 ثواني بعد آخر إجابة، وبحد أقصى 30 ثانية لو يجاوب ورا بعض
+  async function progPush() {
+    if (!progSyncOn() || PSY.busy || !Object.keys(PSY.dirty).length) return;
+    if (!PSY.pulled) { await progPull(); if (!PSY.pulled) return progPushSoon(30000); }   // ما نكتب فوق نسخة الخادم قبل ما ندمجها
+    PSY.busy = true;
+    try {
+      const sets = progPack(Object.keys(PSY.dirty)); if (!sets.length) return;
+      const r = await api({ op: 'prog_set', session: auth.session, sets: sets.map(x => ({ id: x.id, m: x.m, d: x.d })) });
+      if (r && r.ok) { PSY.d0 = 0; sets.forEach(x => { PSY.srv[x.id] = x.m; if (progSig(progGet(x.id)) === x.sg) { delete PSY.dirty[x.id]; PSY.sig[x.id] = x.sg; } }); }
+    } catch (e) {} finally { PSY.busy = false; if (Object.keys(PSY.dirty).length) progPushSoon(15000); }
+  }
+  // دمج نسخة الخادم R مع اللي على الجهاز L (يرجع true لو تغيّر اللي على الجهاز)
+  function progMerge(id, R, rm) {
+    if (!R || typeof R !== 'object' || !R.a || typeof R.a !== 'object') return false;
+    const L = progGet(id), lm = progM(L); rm = rm || progM(R);
+    let out;
+    if (!progHas(R) && !R.z) out = Object.assign({}, L);                                   // نسخة فاضية بدون قصد: ما تمسح شي
+    else if (!Object.keys(L.a || {}).length && !L.done && !(L.z && lm > rm)) out = Object.assign({}, R);   // هذا الجهاز ما فيه إجابات: ناخذ اللي في حسابه
+    else if (L.started && L.started === R.started) {                                       // نفس المحاولة من جهازين: الإجابات تندمج
+      out = Object.assign({}, rm > lm ? R : L); out.a = Object.assign({}, L.a);
+      for (const k in R.a) if (!out.a[k] || ((R.a[k] && R.a[k].t) || 0) > ((out.a[k] && out.a[k].t) || 0)) out.a[k] = R.a[k];
+      out.done = Math.max(L.done || 0, R.done || 0); const rs = L.rs || R.rs; if (rs) { out.rs = rs; delete out.rq; } else if (L.rq || R.rq) out.rq = 1;
+    } else {                                                                               // محاولتين مختلفتين
+      const nw = rm > lm ? R : L, od = nw === R ? L : R, n = p => Object.keys(p.a || {}).length;
+      // بدأها من جديد بنفسه (z) أو وحدة منهم مكتملة ← الأحدث · الثنتين ما اكتملوا ← اللي فيها إجابات أكثر (تعادل ← الأحدث)
+      out = Object.assign({}, nw.z || nw.done || od.done || n(nw) >= n(od) ? nw : od);
+    }
+    const b = Math.max(L.best == null ? -1 : L.best, R.best == null ? -1 : R.best); out.best = b < 0 ? null : b;
+    out.m = Math.max(lm, rm);
+    const same = o => JSON.stringify(o.a || {}) === JSON.stringify(out.a || {}) && (o.started || 0) === (out.started || 0) && (o.done || 0) === (out.done || 0) && (o.rs || 0) === (out.rs || 0) && (o.best == null ? null : o.best) === out.best && JSON.stringify(o.o || null) === JSON.stringify(out.o || null);
+    const changed = !same(L);
+    if (changed || (L.m || 0) !== out.m) lsSet(LS.prog + id, out);   // m الأحدث ينحفظ حتى لو المحتوى ما تغيّر (عشان الخادم يقبل نسختنا لو هي اللي كسبت)
+    if (same(R)) { PSY.sig[id] = progSig(out); delete PSY.dirty[id]; } else PSY.dirty[id] = 1;   // على الجهاز شي أحدث من الخادم: يترفع
+    return changed;
+  }
+  // سحب نسخة الخادم مرة لكل دخول (يرجع الأقسام اللي تغيّرت على هذا الجهاز)
+  function progPull() {
+    if (PSY.p) return PSY.p; if (!progSyncOn()) return Promise.resolve([]);
+    const ses = auth.session;
+    return (PSY.p = (async () => {
+      const ch = [];
+      try {
+        const have = {}; progIds().forEach(id => { have[id] = progM(progGet(id)); });
+        const r = await api({ op: 'prog_get', session: ses, have });
+        if (!r || !r.ok || !auth || auth.session !== ses) { PSY.p = null; return ch; }
+        PSY.srv = r.ms || {};
+        (r.sets || []).forEach(x => { let R = null; try { R = JSON.parse(x.d); } catch (e) {} if (R && PROG_ID.test(x.id) && progMerge(x.id, R, x.m)) ch.push(x.id); });
+        progIds().forEach(id => { if (PSY.dirty[id]) return; const p = progGet(id);   // اللي على هذا الجهاز وما وصل حسابه (أو أحدث منه): يترفع
+          if (progHas(p) && (!(id in PSY.srv) || progM(p) > PSY.srv[id])) PSY.dirty[id] = 1; else PSY.sig[id] = progSig(p); });
+        PSY.pulled = true; if (Object.keys(PSY.dirty).length) progPushSoon(2500);
+      } catch (e) { PSY.p = null; }
+      return ch;
+    })());
+  }
+  const progReset = () => { clearTimeout(PSY.t); PSY.pulled = false; PSY.p = null; PSY.dirty = {}; PSY.sig = {}; PSY.srv = {}; PSY.d0 = 0; };
+  // 👥 أكثر من حساب على نفس المتصفح (إخوان): تقدّم كل حساب لحاله — اللي على الجهاز يتخزّن باسم صاحبه ويرجع له لما يدخل، وما ينرفع لحساب غيره
+  function progOwn() {
+    try {
+      const me = auth && auth.email; if (!me) return; const own = lsGet('qg_pown', '');
+      if (own === me) return;
+      if (own) {
+        const box = {}, keys = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i) || ''; if (k.indexOf(LS.prog) === 0) keys.push(k); }
+        keys.forEach(k => { box[k] = localStorage.getItem(k); localStorage.removeItem(k); });
+        if (keys.length) lsSet('qg_pstash_' + own, box);
+        const mine = lsGet('qg_pstash_' + me, null); if (mine) { for (const k in mine) if (k.indexOf(LS.prog) === 0) localStorage.setItem(k, mine[k]); lsDel('qg_pstash_' + me); }
+      }
+      lsSet('qg_pown', me); progReset();
+    } catch (e) {}
+  }
+  const progFlush = () => { try { if (!PSY.pulled || !progSyncOn() || !navigator.sendBeacon) return; const sets = progPack(Object.keys(PSY.dirty), 55000); if (!sets.length) return;
+    if (navigator.sendBeacon(window.QG.API, new Blob([JSON.stringify({ op: 'prog_set', session: auth.session, sets: sets.map(x => ({ id: x.id, m: x.m, d: x.d })) })], { type: 'text/plain' }))) sets.forEach(x => { delete PSY.dirty[x.id]; PSY.sig[x.id] = x.sg; PSY.srv[x.id] = x.m; }); } catch (e) {} };
+  window.addEventListener('pagehide', progFlush);
+  window.addEventListener('online', () => { if (Object.keys(PSY.dirty).length) progPushSoon(1500); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') progFlush(); });
   function flatItems(set) {
     if (set.kind === 'quant') return set.items.map((it, i) => ({ it, gi: 0, idx: i }));
     const out = []; set.groups.forEach((g, gi) => g.items.forEach(it => out.push({ it: g.src ? Object.assign({}, it, { src: g.src }) : it, gi, idx: out.length })));
@@ -276,7 +365,7 @@
   }
   function logout(msg, tellServer, good) {
     if (tellServer && auth && auth.session) { try { api({ op: 'logout', session: auth.session }); } catch (e) {} }
-    lsDel(LS.auth); auth = null; cryptoKey = null; P = null; document.onkeydown = null;
+    lsDel(LS.auth); auth = null; cryptoKey = null; P = null; document.onkeydown = null; progReset(); homePulled = false;
     try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {}
     if (msg) { location.hash = ''; renderLogin(msg, good); } else route();
   }
@@ -339,15 +428,17 @@
       <div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${wa}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>
     </div>`;
     document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
+    let acted = false;   // ضغط «ادفع» أو واتساب أو رقم الطلب؟ لو سكّر النافذة بدون ولا واحد منهم نسأله «وش وقّفك؟»
     const close = () => { ov.remove(); document.removeEventListener('keydown', onK); };
-    const onK = e => { if (e.key === 'Escape') close(); };
+    const quit = () => { const steps = !!ov.querySelector('.sub-box.slp'); close(); if (!acted && !steps && !renew) whyDlgMaybe(from === _T('صفحة الموقع')); };
+    const onK = e => { if (e.key === 'Escape') quit(); };
     document.addEventListener('keydown', onK);
-    ov.addEventListener('click', e => { if (e.target === ov) close(); });
-    ov.querySelector('.sub-x').onclick = close; (ov.querySelector('#sallago') || ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
-    const pg = ov.querySelector('#paygo'); if (pg) pg.onclick = () => payGo(pg);
-    const sg = ov.querySelector('#sallago'); if (sg) sg.onclick = () => sallaSteps(ov, what, close);
-    const sh = ov.querySelector('#slhave'); if (sh) sh.onclick = () => sallaSteps(ov, what, close, 1);   // دفع قبل (أو أبوه دفع عنه): على طول لخانة رقم الطلب
-    ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { if (isFree() && window.QGT) { QGT.ev('subgo', 'واتساب'); QGT.flush(true); } }));
+    ov.addEventListener('click', e => { if (e.target === ov) quit(); });
+    ov.querySelector('.sub-x').onclick = quit; (ov.querySelector('#sallago') || ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
+    const pg = ov.querySelector('#paygo'); if (pg) pg.onclick = () => { acted = true; payGo(pg); };
+    const sg = ov.querySelector('#sallago'); if (sg) sg.onclick = () => { acted = true; sallaSteps(ov, what, close); };
+    const sh = ov.querySelector('#slhave'); if (sh) sh.onclick = () => { acted = true; sallaSteps(ov, what, close, 1); };   // دفع قبل (أو أبوه دفع عنه): على طول لخانة رقم الطلب
+    ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { acted = true; if (isFree() && window.QGT) { QGT.ev('subgo', 'واتساب'); QGT.flush(true); } }));
     if (SL && sallaPending() && !stay) sallaSteps(ov, what, close);   // رجع للنافذة وهو فاتح صفحة الدفع: نكمل من خطوات سلة
   }
   // 🛍 خطوات الدفع عن طريق سلة (داخل نفس النافذة): ① افتح صفحة الدفع وادفع ② الصق رقم الطلب هنا ← يتفعّل اشتراكه على حسابه
@@ -362,20 +453,23 @@
       <button type="button" class="lnk slp-back">→ رجوع</button>
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
       <ol class="slp-s">
-        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a></div></li>
+        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a><button type="button" class="lnk slp-share" id="slshare">👨‍👩‍👦 أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع</button></div></li>
         <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله بعد الدفع بثواني، بدون ما تكتب شي.</small>
           <form class="slp-ref" novalidate><input id="slref" type="text" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="60" placeholder="#218402731" aria-label="رقم الطلب"><button type="submit" class="btn" id="slclaim">✓ فعّل اشتراكي</button></form>
           <div class="slp-st" role="status" aria-live="polite"></div>
           <button type="button" class="lnk slp-alt">ما تفعّل؟ اكتب رقم الطلب</button></div></li>
       </ol>
-      <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>`;
+      <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>
+      ${isFree() ? _T('<div class="slp-why"><button type="button" class="lnk" id="slwhy">ما قدرت تكمّل الدفع؟ قل لنا وش صار</button><div id="slwhyb"></div></div>') : ''}`;
     box.querySelector('.sub-x').onclick = close;
+    const swb = box.querySelector('#slwhy'); if (swb) swb.onclick = () => { swb.hidden = true; whyBox('pay', box.querySelector('#slwhyb'), { onPay: () => { const g = box.querySelector('#slopen'); if (g) { g.scrollIntoView({ block: 'center' }); g.focus({ preventScroll: true }); } }, link: () => (box.classList.contains('slk') ? box.querySelector('#slopen').href : '') }); };
+    const shb = box.querySelector('#slshare'); if (shb) shb.onclick = () => { const g = box.querySelector('#slopen'); if (g && box.classList.contains('slk')) payShare(g.href); };
     box.querySelector('.slp-back').onclick = () => { close(); subDlg(what, '', 1); };
     const go = box.querySelector('#slopen');
     go.addEventListener('click', e => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — ولو إيميله في سلة نفس إيميله هنا يتفعّل لحاله (نتحقق بالخلفية)
       if (go.classList.contains('busy')) { e.preventDefault(); return; }   // رابطه الخاص يتجهّز: ثانية أو ثانيتين
       try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {}
-      sallaHot();
+      sallaHot(); payTried();
       if (box.classList.contains('slk')) { const st = box.querySelector('.slp-st'); if (st && !st.innerHTML) slStatus({ linkwait: 1 }); }
       if (window.QGT) { QGT.ev('subgo', box.classList.contains('slk') ? 'سلة (رابط خاص)' : 'سلة'); QGT.flush(true); } });
     const f = box.querySelector('.slp-ref'), inp = f.querySelector('#slref'), btn = f.querySelector('#slclaim');
@@ -472,7 +566,7 @@
   // 💳 «ادفع واشترك»: الخادم ينشئ العملية عند تاب ويرجّع رابط صفحة الدفع (مدى، أبل باي، البطاقات) — بيانات البطاقة ما تمر علينا
   async function payGo(btn) {
     if (!btn || btn.disabled) return; btn.disabled = true; const label = btn.innerHTML; btn.innerHTML = _T('⏳ نجهّز صفحة الدفع…');
-    if (window.QGT) { QGT.ev('subgo', 'دفع'); QGT.flush(true); }
+    payTried(); if (window.QGT) { QGT.ev('subgo', 'دفع'); QGT.flush(true); }
     try {
       const r = await api({ op: 'pay_start', session: auth.session, lang: EN ? 'en' : 'ar', renew: isSub() ? 1 : undefined });
       if (r && r.ok && r.url) { location.href = r.url; return; }
@@ -489,7 +583,7 @@
       <div class="pdact"><a class="btn gold" href="#">كمّل مذاكرتك</a></div>`);
     else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
       <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
-    confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع');
+    confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع'); lsDel(PAYTRY_LS); lsDel(WHY_LS);
   }
   async function renderPaid() {
     document.title = _T('الاشتراك في الدورة | Q-Guide');
@@ -549,11 +643,113 @@
     </section>`;
   }
 
+  // ---------- 🗣 «وش وقّفك؟»: الزائر اللي ما كمّل اشتراكه نسأله عن السبب مرة (واختياري) ونرد عليه بما يفيده — والمالك يشوف الأسباب في «الزوار» ----------
+  // المراحل: pay = ضغط «ادفع» وما كمّل · dlg = سكّر نافذة الاشتراك بدون ما يضغط شي · renew = اشتراكه انتهى وما جدّد (op: 'why' {stage, code, txt})
+  const WHY_LS = 'qg_why', PAYTRY_LS = 'qg_paytry';
+  const WHY = () => ({
+    pay: [_T('وش اللي وقّفك عند الدفع؟'), [['otp', '📱', _T('ما وصلني رمز سلة')], ['err', '⚠️', _T('طلع لي خطأ')], ['method', '💳', _T('طريقة الدفع مو موجودة')], ['parent', '👨‍👩‍👦', _T('أحد ثاني بيدفع عني')], ['price', '💰', _T('السعر')], ['later', '⏰', _T('بأدفع بعدين')], ['other', '✍️', _T('سبب ثاني')]]],
+    dlg: [_T('وش اللي مخليك متردد؟'), [['price', '💰', _T('السعر')], ['try', '🧪', _T('أبي أجرّب أكثر')], ['unsure', '🤔', _T('مو متأكد إنها تفيدني')], ['far', '📅', _T('اختباري بعيد')], ['parent', '👨‍👩‍👦', _T('لازم أكلّم أهلي')], ['other', '✍️', _T('سبب ثاني')]]],
+    renew: [_T('ليش ما جددت اشتراكك؟'), [['done', '✅', _T('خلّصت اختباري')], ['price', '💰', _T('السعر')], ['later', '⏰', _T('بأجدد بعدين')], ['pay', '💳', _T('مشكلة في الدفع')], ['nohelp', '🤷', _T('ما استفدت كثير')], ['other', '✍️', _T('سبب ثاني')]]]
+  });
+  const payTried = () => { if (!isFree()) return; const t = lsGet(PAYTRY_LS, null) || {}; t.t = Date.now(); t.n = (t.n || 0) + 1; lsSet(PAYTRY_LS, t); };   // ضغط «ادفع»: لو رجع وما اشترك تذكّره الرئيسية
+  const whyMark = k => { const w = lsGet(WHY_LS, {}); w[k] = Date.now(); lsSet(WHY_LS, w); };
+  const subPrice = () => (sallaOn() && auth.salla.price) || (payOn() && auth.pay.price) || PRICE;
+  // الرد على كل سبب: كلام قصير صادق + أزرار تحل اللي وقّفه
+  function whyReply(stage, code) {
+    const price = subPrice(), pay = ['pay', stage === 'pay' ? _T('💳 جرّب الدفع مرة ثانية') : stage === 'renew' ? _T('↻ جدّد اشتراكك') : _T('💳 اشترك الحين')], wa = ['wa', _T('💬 كلّمنا على واتساب')];
+    switch (code) {
+      case 'otp': return { t: _T('سلة تطلب رقم جوالك مرة وحدة: اكتبه، ثم أدخل الرمز اللي يوصلك برسالة نصية، وبعدها يطلع لك زر الدفع. لو تأخر الرمز اطلب إرساله مرة ثانية بعد دقيقة، وإذا ما ضبط كلّمنا ونفعّل لك بتحويل بنكي.'), a: [pay, wa] };
+      case 'err': return { t: _T('لو طلع لك «اختر شركة الشحن» فمعناه إنك ضغطت الدفع قبل ما تسجّل برقم جوالك في سلة: سجّل برقمك أول ثم اضغط الدفع. وأي خطأ ثاني صوّره وأرسله لنا على واتساب ونحلّه لك.'), a: [pay, wa] };
+      case 'method': return { t: _T('صفحة الدفع فيها مدى و Apple Pay وفيزا وماستركارد و STC Pay والتحويل البنكي (يطلع لك المناسب لجهازك). تبي طريقة ثانية؟ كلّمنا على واتساب.'), a: [wa, pay] };
+      case 'parent': return { t: sallaOn() ? _T('أرسل رابط الدفع لولي أمرك أو أي أحد بيدفع عنك: يدفع من جواله، واشتراكك يتفعّل على حسابك.') : _T('كلّمنا على واتساب ونرتّب الدفع مع ولي أمرك.'), a: sallaOn() ? [['share', _T('🔗 انسخ رابط الدفع')], wa] : [wa] };
+      case 'price': return { t: _T`الاشتراك ${price} ريال للشهر كامل، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.`, a: [pay, wa] };
+      case 'later': return { t: _T('تمام 👌 حسابك المجاني يبقى شغّال، ووقت ما تبي تكمل اضغط «اشترك» من فوق.'), a: [] };
+      case 'far': return { t: _T('خذ راحتك 👌 حسابك المجاني يبقى شغّال (القسم 1 والنموذج 1 والاختبار المحاكي 1). وأول ما يقرب اختبارك اشترك ونرتّب لك خطة مذاكرة على موعده.'), a: [] };
+      case 'try': return { t: _T('خذ راحتك 👍 هذا المفتوح لك مجاناً:'), a: [['go:#q1', '📘 ' + SET_NAME('q1')], ['go:#v1', '📗 ' + SET_NAME('v1')], ['go:/test/', _T('🧪 الاختبار المحاكي 1')], ['go:#level', _T('🧭 تحديد المستوى')]] };
+      case 'unsure': return { t: _T('ملف أسئلة Q-Guide مبني على الأسئلة اللي تتكرر في اختبار القدرات الإنجليزي، ومع كل سؤال شرحه المكتوب وبالفيديو، ومرشد ذكي يتابعك لين اختبارك. جرّب القسم 1 وشوف الشرح بنفسك، وأي سؤال كلّمنا.'), a: [['go:#q1', _T('📘 جرّب القسم 1')], wa] };
+      case 'done': return { t: _T('مبروك، وبالتوفيق في نتيجتك 🎉 لو تعرف أحد يستعد للقدرات الإنجليزي أرسل له الموقع.'), a: [['ref', _T('🔗 انسخ رابط الموقع')]] };
+      case 'pay': return { t: _T('كلّمنا على واتساب ونحلّها لك على طول، أو جرّب الدفع مرة ثانية.'), a: [wa, pay] };
+      case 'nohelp': return { t: _T('يهمنا نعرف وش اللي نقص عليك عشان نحسّنه:'), a: [wa], txt: 1 };
+      default: return { t: '', a: [wa], txt: 1 };
+    }
+  }
+  // 🔗 رابط دفع يقدر يدفع منه غيره (ولي أمره): صفحة دفعه الخاصة في سلة لو متاحة (يتفعّل على حسابه لحاله)، وإلا رابط المنتج
+  async function payShare(url) {
+    if (!url) { let r = null; try { r = auth.salla && auth.salla.link ? await api({ op: 'salla_go', session: auth.session, ua: navigator.userAgent.slice(0, 120) }) : null; } catch (e) {}
+      url = r && r.ok && /^https:\/\/[^\s"'<>]+$/.test(r.url || '') ? r.url : ''; }
+    const own = !!url; if (!url) url = (auth.salla && auth.salla.url) || ''; if (!url) return;
+    if (window.QGT) { QGT.ev('subgo', 'رابط لولي الأمر'); QGT.flush(true); }
+    if (own) { try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {} sallaHot(); }   // لو دفع الحين: يتفعّل هنا خلال ثواني
+    const txt = _T`رابط دفع اشتراك Q-Guide (${subPrice()} ريال للشهر) لحساب ${auth.display || auth.name || auth.email}:`;
+    try { if (navigator.share && window.matchMedia && matchMedia('(pointer:coarse)').matches) { await navigator.share({ text: txt, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(txt + '\n' + url); toast(own ? _T('انسخ رابط الدفع ✓ أرسله له، وأول ما يدفع يتفعّل اشتراكك لحاله') : _T('انسخ رابط الدفع ✓ بعد ما يدفع اكتب رقم الطلب هنا')); } catch (e) { QGDlg.alert(url); }
+  }
+  // خانة الأسباب (تنحط في بطاقة الرئيسية، أو نافذة الدفع، أو الشريط اللي يطلع بعد إغلاق نافذة الاشتراك)
+  function whyBox(stage, host, o) {
+    const W = WHY()[stage]; if (!W || !host) return; o = o || {};
+    host.innerHTML = `<div class="whyb"><p class="whyb-h">${W[0]}<small>${_T('جوابك يساعدنا نخدمك أحسن')}</small></p><div class="whyb-c" role="group" aria-label="${esc(W[0])}">${W[1].map(([k, ic, t]) => `<button type="button" class="whyc" data-c="${k}" aria-pressed="false"><span aria-hidden="true">${ic}</span>${t}</button>`).join('')}</div><div class="whyb-r" role="status" aria-live="polite"></div></div>`;
+    const R = host.querySelector('.whyb-r');
+    const send = (code, txt) => { whyMark(stage); try { api({ op: 'why', session: auth.session, stage, code, txt: txt || '' }).catch(() => {}); } catch (e) {} };
+    host.querySelectorAll('.whyc').forEach(b => b.onclick = () => {
+      host.querySelectorAll('.whyc').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      const code = b.dataset.c, rp = whyReply(stage, code), label = b.textContent.trim(); send(code);
+      const waH = WA((stage === 'renew' || auth.ended ? _T('السلام عليكم، أبي أجدد اشتراكي في دورة Q-Guide') : _T('السلام عليكم، أبي أشترك في دورة Q-Guide')) + ' — ' + label + (auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
+      R.innerHTML = (rp.t ? `<p>${rp.t}</p>` : '') + (rp.txt ? `<form class="whyb-f"><textarea rows="2" maxlength="300" placeholder="${_T('اكتب لنا باختصار…')}" aria-label="${_T('ملاحظتك')}"></textarea><button type="submit" class="btn sm">${_T('إرسال')}</button></form>` : '')
+        + (rp.a.length ? `<div class="whyb-a">${rp.a.map(([k, t], i) => k === 'wa' ? `<a class="btn sm${i ? ' ghost' : ''}" data-a="wa" href="${waH}" target="_blank" rel="noopener">${t}</a>` : /^go:/.test(k) ? `<a class="btn sm ghost" data-a="go" href="${k.slice(3)}">${t}</a>` : `<button type="button" class="btn sm${i ? ' ghost' : ' gold'}" data-a="${k}">${t}</button>`).join('')}</div>` : '');
+      R.querySelectorAll('[data-a]').forEach(x => { const a = x.dataset.a;
+        if (a === 'wa') x.addEventListener('click', () => { if (window.QGT) { QGT.ev('subgo', 'واتساب'); QGT.flush(true); } });
+        else if (a === 'go') x.addEventListener('click', () => { if (o.onClose) o.onClose(); });
+        else x.onclick = async () => {
+          if (a === 'pay') { if (o.onPay) o.onPay(); else subDlg(); }
+          else if (a === 'share') { x.disabled = true; await payShare(o.link ? o.link() : ''); x.disabled = false; }
+          else if (a === 'ref') { try { await navigator.clipboard.writeText('https://q-guide.online/'); toast(_T('انسخ رابط الموقع ✓')); } catch (e) { QGDlg.alert('https://q-guide.online/'); } } }; });
+      const f = R.querySelector('.whyb-f'); if (f) { const ta = f.querySelector('textarea'); f.onsubmit = e => { e.preventDefault(); const v = ta.value.trim(); if (!v) return ta.focus(); send(code, v); f.outerHTML = `<p class="whyb-ok">${_T('✓ وصلت ملاحظتك، شكراً لك 🙏')}</p>`; }; if (!window.matchMedia || matchMedia('(pointer:fine)').matches) ta.focus({ preventScroll: true }); }
+      if (o.onPick) o.onPick(code);
+    });
+  }
+  // 🔓 الرئيسية: ضغط «ادفع» وما اكتمل اشتراكه → بطاقة ترجّعه للدفع وتسأله وش وقّفه (تختفي لو جاوب أو سكّرها، وترجع لو ضغط «ادفع» مرة ثانية)
+  function payNudge() {
+    if (!isFree() || !(sallaOn() || payOn()) || payPending()) return '';
+    const t = lsGet(PAYTRY_LS, null), w = lsGet(WHY_LS, {}); if (!t || !t.t) return '';
+    const age = Date.now() - t.t; if (age < 3 * 60e3 || age > 21 * 864e5 || (w.pay || 0) >= t.t || (w.payx || 0) >= t.t) return '';
+    return _T`<section class="pnd" id="pnd" aria-label="إكمال الاشتراك"><button type="button" class="pnd-x" aria-label="إخفاء">✕</button>
+      <div class="pnd-m"><span class="pnd-i" aria-hidden="true">🔓</span><div class="pnd-t"><b>باقي لك خطوة وحدة وتنفتح لك الدورة كاملة</b><span>فتحت صفحة الدفع وما اكتمل اشتراكك. كمّل الدفع، أو قل لنا وش وقّفك ونساعدك.</span></div><button type="button" class="btn gold" id="pndgo">💳 كمّل الدفع</button></div>
+      <div id="pndw"></div></section>`;
+  }
+  function payNudgeBind() {
+    const s = $('#pnd'); if (!s) return;
+    s.querySelector('.pnd-x').onclick = () => { whyMark('payx'); s.remove(); };
+    s.querySelector('#pndgo').onclick = () => subDlg();
+    whyBox('pay', s.querySelector('#pndw'), { onPay: () => subDlg() });
+  }
+  // سكّر نافذة الاشتراك بدون ما يضغط شي: شريط صغير تحت يسأله (مرة كل 3 أيام · من ثاني مرة يفتحها، أو من أول مرة لو جاء من زر «اشترك الآن» أو اشتراكه منتهي)
+  function whyDlgMaybe(join) {
+    try {
+      if (!isFree()) return; const w = lsGet(WHY_LS, {}); w.n = (w.n || 0) + 1; lsSet(WHY_LS, w);
+      const stage = auth.ended ? 'renew' : 'dlg', t = lsGet(PAYTRY_LS, null);
+      if (w.n < (join || auth.ended ? 1 : 2) || Date.now() - Math.max(w[stage] || 0, w[stage + 'x'] || 0) < 3 * 864e5) return;
+      if (t && t.t && Date.now() - t.t < 30 * 60e3) return;   // توه ضغط «ادفع»: بطاقة الرئيسية تسأله
+      whySheet(stage);
+    } catch (e) { CERR('why: ' + (e && e.message)); }
+  }
+  function whySheet(stage) {
+    document.querySelectorAll('.whys').forEach(x => x.remove());
+    const s = document.createElement('div'); s.className = 'whys'; s.setAttribute('role', 'dialog'); s.setAttribute('aria-label', _T('سؤال سريع')); s.dir = EN ? 'ltr' : 'rtl';
+    s.innerHTML = `<button type="button" class="whys-x" aria-label="${_T('إغلاق')}">✕</button><div class="whys-b"></div>`;
+    document.body.appendChild(s); requestAnimationFrame(() => s.classList.add('in'));
+    const close = x => { if (x) whyMark(stage + 'x'); s.remove(); window.removeEventListener('hashchange', onH); document.removeEventListener('keydown', onK); };
+    const onH = () => close(), onK = e => { if (e.key === 'Escape') close(1); };
+    window.addEventListener('hashchange', onH); document.addEventListener('keydown', onK);
+    s.querySelector('.whys-x').onclick = () => close(1);
+    whyBox(stage, s.querySelector('.whys-b'), { onPay: () => { close(); subDlg(); }, onClose: () => close() });
+  }
+
   // ---------- routing ----------
   function route() {
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
     if (!auth) { if (window.QGAI) QGAI.fab(false); tabbar(null); if (location.hash === '#join') { try { sessionStorage.setItem('qg_join', '1'); } catch (e) {} } return renderLogin(); }
+    progOwn(); if (Object.keys(PSY.dirty).length) progPushSoon(500);   // 💾 تقدّم هذا الحساب (مو حساب ثاني على نفس المتصفح) · واللي تغيّر ينرفع مع الانتقال
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
@@ -639,6 +835,7 @@
   // ---------- login ----------
   function renderLogin(err, good) {
     document.title = _T('تسجيل الدخول | Q-Guide'); tabbar(null); document.body.classList.remove('adm-on');
+    if (!err && window.QGT && QGT.hit) QGT.hit('login', QGT.src0());   // 👣 وصل صفحة الدخول (عدّاد مجهول، مرة في اليوم)
     const mem = /[?&]m=1(&|$)/.test(location.search);   // جا من «دخول المشتركين» في الصفحة الرئيسية: صفحة دخول للمشترك بدون «جرّب مجاناً»
     if (!emSt) { emSt = emSaved(); if (!emSt && /[?&]em=1(&|$)/.test(location.search)) emSt = { step: 'ask', e: '' }; }   // ✉️ رجع من تطبيق الإيميل · جا من «الدخول بالإيميل» في صفحة الاختبارات
     app.innerHTML = _T`<div class="login"><div class="card">${QGL.btn('lng lgl')}
@@ -855,7 +1052,7 @@
     const toolB = (id, i, b, s) => FR ? lockTool(i, b, s) : `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
     app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: اشتراكك واسمك وصورتك">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
-      ${FR ? freeHero() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
+      ${FR ? freeHero() + payNudge() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
@@ -895,7 +1092,7 @@
       return `<button class="sheet ${st.done ? 'done' : st.ans ? 'doing' : ''}${isFree() ? ' fr' : ''}" data-id="${s.id}"><span class="sh-h"><b>${SET_NAME(s.id)}</b>${stamp}</span><span class="sh-s">${sub}</span><span class="sh-dots" aria-hidden="true" style="--c:${cols(s.n, 16)};--cm:${cols(s.n, 12)}">${dotsHtml(s.id, s.n, -1)}</span><span class="sh-f">${foot}</span></button>`;
     }).join('');
     grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { if (b.classList.contains('lk')) { if (window.QGT) QGT.ev('lock', SET_NAME(b.dataset.id)); return subDlg(SET_NAME(b.dataset.id)); } location.hash = b.dataset.id; });
-    bindSub(app);
+    bindSub(app); payNudgeBind();
     const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast(_T('هدفك اليومي صار ') + nx + _T(' سؤال')); }; };
     bindGoal();
     const rb = $('#rem'); if (rb) rb.onclick = () => remDlg().then(() => { const l = $('#reml'); if (l) l.textContent = remLabel(); });
@@ -903,6 +1100,7 @@
     const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; };
     if (!isFree()) paintTrip();
     const bindFocus = () => { const b = $('#fxask'); if (b) b.onclick = () => { if (window.QGAI) QGAI.help(); }; bindSub($('#focus')); advBind($('#focus'), () => { const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } paintTrip(); }); }; bindFocus();
+    if (!homePulled) { progPull().then(ch => { if (ch.length && auth && (location.hash === '' || location.hash === '#')) renderHome(); }).catch(() => {}); }   // 🔄 تقدّمه من جهازه الثاني: البطاقات و«كمّل» تتحدّث
     if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } } }).catch(() => {}); }
     if (!isFree()) renderWorkbooks();
     prefetchSets();
@@ -1521,6 +1719,11 @@
     if (RULES_ON && !isFree()) ruleMapLoad();   // خريطة «راجع القاعدة» تنزل مع الأسئلة
     let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + _T('<div class="center">تعذّر فتح الأسئلة (') + esc(e.message) + _T('). <a href="#">رجوع</a></div>'); return; }
     if (set.kind === 'verbal') await loadVocab(); else if (rmapP) await rmapP;
+    if (progSyncOn() && !PSY.pulled && PROG_ID.test(id)) {   // 🔄 أول فتح بعد الدخول: ننتظر نسخة حسابه (لو حل من جهاز ثاني يكمل من وين وقف)
+      const pull = progPull(); await Promise.race([pull, new Promise(r => setTimeout(r, 3000))]);
+      if (!PSY.pulled) pull.then(ch => { if (ch.indexOf(id) >= 0 && P && P.id === id && location.hash.replace(/^#/, '').replace(/@\d+$/, '') === id) renderPlayer(id); });
+    }
+    if (location.hash.replace(/^#/, '').replace(/@\d+$/, '') !== id) return;   // طلع من الصفحة والأسئلة تتحمّل: ما نرسم القسم فوق الصفحة اللي راح لها
     const items = flatItems(set); const prog = progGet(id);
     if (!items.length) { const star = /^t-star-/.test(id); app.innerHTML = topbar(`<span class="ttl">${esc(set.title)}</span>`, _T`<a class="ib" href="${star ? '#notes' : '#skills'}" title="رجوع">→</a>`) + (star ? _T`<div class="center"><div style="font-size:40px">⭐</div><p>ما حفظت أسئلة في هذا القسم من دفترك.<br><span class="mut">اضغط ⭐ على أي سؤال وأنت تحل عشان ينحفظ هنا وتتدرّب عليه.</span></p><a class="btn" href="#notes">📒 دفتري</a></div>` : _T`<div class="center"><div style="font-size:40px">🎉</div><p>ما عندك أخطاء محفوظة في هذا القسم حالياً.<br><span class="mut">حل أسئلة من الأقسام أو التدريب الموجّه، وأي سؤال تخطئ فيه يُجمع لك هنا.</span></p><a class="btn" href="#skills">🎯 نقاط القوة والضعف</a></div>`); bindCtl(); return; }
     if (!prog.started) prog.started = Date.now();
@@ -1539,11 +1742,11 @@
       _T`<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${sbHtml()}</div><main class="wrap" id="pm"></main>
       <aside class="sheetp" aria-label="ورقة الإجابة"><div class="sp-h"><b>ورقة الإجابة</b><span id="spn"></span></div><div class="qgrid" id="spg"></div></aside>
       <div class="nav" id="nav" role="dialog" aria-modal="true" aria-label="كل الأسئلة"><div class="bg"></div><div class="sh"><div class="nvh"><b>كل الأسئلة</b><span class="nlg"><span><i class="ok"></i>صحيحة</span><span><i class="bad"></i>خاطئة</span><span><i></i>ما جاوبتها</span></span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة من البداية</button></div><div class="qgrid big" id="ng"></div></div></div>`;
-    $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); const c = $('#ng .cur'); if (c) c.focus({ preventScroll: true }); };
+    $('#navb').onclick = () => { renderNav(); $('#nav').classList.add('open'); const c = $('#ng .cur'); if (c) { c.focus({ preventScroll: true }); if (P.items.length > 60) c.scrollIntoView({ block: 'center' }); } };
     bindCtl();
     $('#nav .bg').onclick = () => $('#nav').classList.remove('open');
     const spg = $('#spg'); spg.innerHTML = sheetBtns(); spg.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) showQ(+b.dataset.i); };
-    $('#reset').onclick = async () => { if (await QGDlg.confirm(_T('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟'), { ok: _T('ابدأ من جديد'), danger: true })) { const best = prog.best; progSet(id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(id); } };
+    $('#reset').onclick = async () => { if (await QGDlg.confirm(_T('تُحذف إجاباتك في هذا القسم وتبدأ من جديد؟'), { ok: _T('ابدأ من جديد'), danger: true })) { const best = prog.best; progSet(id, progFresh(best)); renderPlayer(id); } };
     showQ(cur);
     document.onkeydown = onKey;
   }
@@ -1559,11 +1762,13 @@
   function updateCounter() {
     const n = P.items.length, ans = Object.keys(P.prog.a).length, p = P.pos[P.cur]; $('#cnt').textContent = (p + 1) + ' / ' + n;
     const sb = $('#sb'); if (sb) { const o = sb.querySelector('i.cur'); if (o) o.classList.remove('cur'); const c = sb.children[p]; if (c) c.classList.add('cur'); }
-    const g = $('#spg'); if (g) { const o = g.querySelector('.cur'); if (o) o.classList.remove('cur'); const c = g.children[p]; if (c) { c.classList.add('cur'); if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight) g.scrollTop = c.offsetTop - g.clientHeight / 2; } }
+    const g = $('#spg'); if (g) { const o = g.querySelector('.cur'); if (o) o.classList.remove('cur'); const c = g.querySelector('button[data-i="' + P.cur + '"]'); if (c) { c.classList.add('cur'); if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight) g.scrollTop = c.offsetTop - g.clientHeight / 2; } }
     const sn = $('#spn'); if (sn) sn.textContent = _T`أجبت ${ans} من ${n}`;
   }
   // أزرار ورقة الإجابة (اللوحة الجانبية + نافذة كل الأسئلة): كل سؤال متاح بضغطة
-  function sheetBtns() { return P.ord.map((i, p) => { const a = P.prog.a[i]; return _T`<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${p + 1}${a ? (a.c ? _T('، إجابتك صحيحة') : _T('، إجابتك خاطئة')) : ''}">${p + 1}</button>`; }).join(''); }
+  // أرقام الأسئلة (ورقة الإجابة + «كل الأسئلة»). في التدريب الموجّه الأسئلة من أقسام/نماذج كثيرة: اسم كل قسم أو نموذج فوق أسئلته عشان يروح له على طول
+  function sheetBtns() { let src = ''; return P.ord.map((i, p) => { const a = P.prog.a[i], sc = P.set.topicSet ? (P.items[i].it.src || '') : '', hd = sc && sc !== src ? `<div class="qg-h">${esc(SET_NAME(sc))}</div>` : ''; src = sc;
+    return hd + _T`<button type="button" class="${a ? (a.c ? 'ok' : 'bad') : ''}${i === P.cur ? ' cur' : ''}" data-i="${i}" aria-label="سؤال ${p + 1}${a ? (a.c ? _T('، إجابتك صحيحة') : _T('، إجابتك خاطئة')) : ''}">${p + 1}</button>`; }).join(''); }
   // أقرب سؤال بدون إجابة بعد i بترتيب المحاولة (ويرجع من البداية)، أو -1
   function nextOpen(i) { const n = P.items.length, p0 = P.pos[i]; for (let k = 1; k < n; k++) { const j = P.ord[(p0 + k) % n]; if (!P.prog.a[j]) return j; } return -1; }
   function showQ(i) {
@@ -1753,7 +1958,7 @@
     const nowT = Date.now(); const ms = Math.min(Math.max(0, nowT - (P.lastAct || nowT)), Q_CAP); P.lastAct = nowT;
     P.prog.a[i] = { s: k, c: k === it.ans ? 1 : 0, t: nowT, ms }; progSet(P.id, P.prog);
     const good = k === it.ans; if (isFree() && window.QGT) QGT.ans(P.id, good); const sbi = $('#sb') && $('#sb').children[P.pos[i]]; if (sbi) sbi.className = (good ? 'ok' : 'bad') + ' cur';
-    const gbi = $('#spg') && $('#spg').children[P.pos[i]]; if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', _T`سؤال ${P.pos[i] + 1}، إجابتك ${good ? _T('صحيحة') : _T('خاطئة')}`); }
+    const gbi = $('#spg') && $('#spg').querySelector('button[data-i="' + i + '"]'); if (gbi) { gbi.className = (good ? 'ok' : 'bad') + ' cur'; gbi.setAttribute('aria-label', _T`سؤال ${P.pos[i] + 1}، إجابتك ${good ? _T('صحيحة') : _T('خاطئة')}`); }
     const shc = $('#shuf'); if (shc) shc.remove();   // 🔀 أول إجابة تثبّت ترتيب المحاولة
     P.run = good ? (P.run || 0) + 1 : 0; const rc = $('#run'); if (rc) { if (P.run >= 3) { rc.hidden = false; rc.textContent = '🔥 ' + P.run + _T(' صح ورا بعض'); rc.classList.remove('bump'); void rc.offsetWidth; rc.classList.add('bump'); } else rc.hidden = true; }
     const today = daysAdd(), goal = goalGet(); if (today === goal) setTimeout(() => toast(_T('🎉 حققت هدف اليوم: ') + goal + _T(' سؤال!')), 700); else badgeCheckSoon();
@@ -1763,7 +1968,8 @@
     $('#fb').innerHTML = feedback(it, P.prog.a[i]); if (window.QGAI) QGAI.fill($('#fb'));
     const sk = $('#skip'); if (sk) sk.remove();
     const nxo = nextOpen(i);   // بعد الإجابة: التالي = أقرب سؤال ما جاوبته، والنتيجة لما تخلص كل الأسئلة
-    if (nxo < 0 && !P.set.topicSet) { resDone(P.prog, P.items.length, 1); progSet(P.id, P.prog); resSave(P.id, P.set, P.items, P.prog); }   // 📨 آخر سؤال: النتيجة تنحفظ على طول (حتى لو طلع قبل «النتيجة»)
+    if (nxo < 0 && !P.set.topicSet) { if (isFree() && window.QGT) QGT.ev('fin', P.id, Math.round(Object.values(P.prog.a).filter(a => a.c).length * 100 / P.items.length));   // 👀 الزائر خلّص القسم المجاني (ونسبته)
+      resDone(P.prog, P.items.length, 1); progSet(P.id, P.prog); resSave(P.id, P.set, P.items, P.prog); }   // 📨 آخر سؤال: النتيجة تنحفظ على طول (حتى لو طلع قبل «النتيجة»)
     const cf = $('#confirm'); if (cf) { cf.outerHTML = `<button class="btn" id="next">${nxo < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>`; $('#next').onclick = () => { if (nxo >= 0) showQ(nxo); else finish(); }; }
     const kb = $('.kbd'); if (kb) kb.textContent = _T('Enter للتالي');
     updateCounter();
@@ -1796,14 +2002,14 @@
       <h2>${pct >= 85 ? _T('ممتاز! 🌟') : pct >= 70 ? _T('جيد جداً 👏') : pct >= 50 ? _T('جيد، كمّل تدريب 💪') : _T('راجع الشرح وأعد المحاولة 📘')}</h2>
       <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
-      ${paceHtml}
+      ${paceHtml}${isFree() && nm ? _T`<div class="s-sub"><div class="s-sub-t"><b>${pct >= 70 ? _T('مستواك يبشّر بالخير 👏 كمّل على باقي الدورة') : _T('كل ما تحل أكثر ترتفع درجتك 💪 كمّل على باقي الدورة')}</b><span>باقي في الدورة 13 قسم كمي و13 نموذج لفظي و16 اختبار محاكي، وكلها بشرح الفيديو ومرشدك الذكي.</span></div><button type="button" class="btn gold" data-sub>${auth.ended ? _T('↻ جدّد اشتراكك') : _T('💳 اشترك وكمّل')} <small>${subPrice()} ريال</small></button></div>` : ''}
       <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? _T`<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : _T`<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? _T`<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? _T`<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
       <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${shufOk(P.id) ? _T('<button class="lnk2" id="againS">🔀 أعد الحل بترتيب ملخبط</button>') : ''}${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${rulesHtml}
       ${wrong.length ? _T`<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${P.pos[i] + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
-    $('#again').onclick = () => { const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };
-    const ags = $('#againS'); if (ags) ags.onclick = () => { lsSet(SHUF_LS, 1); const best = prog.best; progSet(P.id, { a: {}, best, started: Date.now(), last: 0, done: 0 }); renderPlayer(P.id); };   // 🔀 محاولة جديدة ملخبطة
+    $('#again').onclick = () => { const best = prog.best; progSet(P.id, progFresh(best)); renderPlayer(P.id); };
+    const ags = $('#againS'); if (ags) ags.onclick = () => { lsSet(SHUF_LS, 1); const best = prog.best; progSet(P.id, progFresh(best)); renderPlayer(P.id); };   // 🔀 محاولة جديدة ملخبطة
     bindSub($('#pm'));
     const rv = $('#rev'); if (rv) rv.onclick = () => { document.onkeydown = onKey; showQ(wrong[0]); };
     document.querySelectorAll('.wl button').forEach(b => b.onclick = () => { document.onkeydown = onKey; showQ(+b.dataset.i); });
@@ -3654,14 +3860,18 @@
     if (x.v) add('🚪 ' + vCnt(x.v, 'زيارة وحدة', 'زيارتين', 'زيارات', 'زيارة'));
     if (x.s) add('⏱ ' + vMin(x.s));
     if (x.an) add(`✍️ ${vCnt(x.an, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال')} · ${Math.round(x.ac * 100 / x.an)}% صح`);
+    Object.keys(x.fn || {}).forEach(k => add(`🏁 خلّص ${/^[qv]\d+$/.test(k) ? SET_NAME(k) : esc(k)} · ${x.fn[k]}%`));
     if (x.lv) add('🧭 مستواه ' + esc(x.lv.k));
     if (x.ar) add('⚔️ ' + vCnt(x.ar, 'مباراة وحدة', 'مباراتين', 'مباريات', 'مباراة'));
     if (x.ex && x.ex.att) add('🧪 ' + (x.ex.done ? 'خلّص المحاكي' + (x.ex.best != null ? ' · ' + x.ex.best + '%' : '') : 'بدأ المحاكي وما خلّصه'));
     if (Object.keys(x.fd || {}).length) add('🔎 بحث عن سؤال');
     if (x.ai) add('🤖 ' + vCnt(x.ai, 'شرح واحد', 'شرحين', 'شروحات', 'شرح'));
     const lk = Object.keys(x.lk || {}).length; if (lk) add('🔒 حاول يفتح ' + vCnt(lk, 'شي مقفل', 'شيئين مقفلين', 'أشياء مقفلة', 'شي مقفل'), 'lk');
-    const sg = Object.keys(x.sg || {}); if (sg.length) add('💬 ضغط ' + sg.map(esc).join(' و'), 'hot');
-    else if (Object.keys(x.sb || {}).length) add('⭐ فتح نافذة الاشتراك', 'sb');
+    const sg = Object.keys(x.sg || {}), paid = (x.pl && x.pl.n) || sg.some(k => /سلة|^دفع$|رقم طلب/.test(k));
+    if (paid) add('💳 ضغط «ادفع»' + (x.pl && x.pl.n > 1 ? ' ' + x.pl.n + ' مرات' : ''), 'hot');
+    if (sg.indexOf('واتساب') >= 0) add('💬 ضغط واتساب', 'hot'); if (sg.indexOf('يوتيوب') >= 0) add('▶️ ضغط يوتيوب', 'hot'); if (sg.indexOf('رابط لولي الأمر') >= 0) add('👨‍👩‍👦 نسخ رابط الدفع لغيره', 'hot');
+    if (!paid && !sg.length && Object.keys(x.sb || {}).length) add('⭐ فتح نافذة الاشتراك', 'sb');
+    if (x.why && x.why[0]) add('🗣 ' + (V_WHY[x.why[0].c] || x.why[0].c).replace(/^\S+\s/, ''), 'why');
     return c.length ? `<div class="vact">${c.join('')}</div>` : '';
   }
   function visInsights(F) {
@@ -3679,23 +3889,59 @@
       <div class="vfun">${F1.map(([ic, t, v, , cls]) => `<div class="vf${cls ? ' ' + cls : ''}"><span class="vfl"><span aria-hidden="true">${ic}</span>${t}</span><span class="vfb"><i style="width:${Math.round(v * 100 / n)}%"></i></span><b>${v} <small>من ${n}</small></b></div>`).join('')}</div>
       <div class="vbreak">${card('↗ من وين جوا', tally(x => vSrc(x.src0 || x.src)), '—')}${card('📱 أجهزتهم', tally(x => vDev(x)), '—')}${card('📍 مدنهم', tally(x => vCity(x)), 'ما وصلتنا مدن للحين')}${card('🔒 وش حاولوا يفتحون', tally(x => Object.keys(x.lk)), 'ما حاول أحد يفتح شي مقفل')}</div>`;
   }
+  // 🗣 ليه ما اشتركوا: وين وقف كل زائر (من نشاطه) + السبب اللي قاله بنفسه لما سأله الموقع «وش وقّفك؟» + كم واحد وصل الموقع قبل تسجيل الدخول
+  const V_STOP = [['pay', '💳', 'ضغطوا «ادفع» وما كمّلوا', 'hot'], ['wa', '💬', 'راحوا للواتساب وما اشتركوا', 'hot'], ['renew', '⏰', 'مشتركين سابقين ما جددوا', ''], ['dlg', '⭐', 'فتحوا نافذة الاشتراك وطلعوا', ''], ['tried', '✍️', 'جرّبوا المحتوى وما فتحوا الاشتراك', ''], ['bounce', '🚪', 'دخلوا وطلعوا بدون ما يجرّبون', '']];
+  const V_WHY = { otp: '📱 ما وصله رمز سلة', err: '⚠️ طلع له خطأ في الدفع', method: '💳 طريقة الدفع مو موجودة', parent: '👨‍👩‍👦 أحد ثاني بيدفع عنه', price: '💰 السعر', later: '⏰ بيدفع بعدين', try: '🧪 يبي يجرّب أكثر', unsure: '🤔 مو متأكد إنها تفيده', far: '📅 اختباره بعيد', done: '✅ خلّص اختباره', nohelp: '🤷 ما استفاد كثير', pay: '💳 مشكلة في الدفع', other: '✍️ سبب ثاني' };
+  function vStop(x, r) {
+    x = x || {}; const sg = Object.keys(x.sg || {});
+    if ((x.pl && x.pl.n) || sg.some(k => /سلة|^دفع$|رقم طلب/.test(k))) return 'pay';
+    if (sg.length) return 'wa'; if (r && r.ended) return 'renew';
+    if (Object.keys(x.sb || {}).length) return 'dlg';
+    if (x.an > 0 || x.lv || x.ar > 0 || (x.ex && x.ex.att) || x.ai > 0 || Object.keys(x.fd || {}).length) return 'tried';
+    return 'bounce';
+  }
+  function visWhyHtml(F) {
+    const A = F.act || {}, non = F.rows.filter(r => !r.conv), n = non.length; if (!n) return '';
+    const cnt = {}; non.forEach(r => { const k = vStop(A[r.email], r); cnt[k] = (cnt[k] || 0) + 1; });
+    const mx = Math.max(1, ...V_STOP.map(x => cnt[x[0]] || 0));
+    const said = {}, notes = []; let nSaid = 0;
+    non.forEach(r => { const w = (A[r.email] || {}).why || [], seen = new Set(); if (w.length) nSaid++;
+      w.forEach(y => { if (!seen.has(y.c)) { seen.add(y.c); said[y.c] = (said[y.c] || 0) + 1; } if (y.t) notes.push({ n: r.name || r.email.split('@')[0], t: y.t, ts: y.ts }); }); });
+    const SL = Object.entries(said).sort((a, b) => b[1] - a[1]), smx = Math.max(1, ...SL.map(x => x[1]));
+    const d7 = Date.now() - 7 * 864e5, H = { land: 0, login: 0 }; let h0 = 0;
+    (F.hits || []).forEach(h => { if (!h0 || h.day < h0) h0 = h.day; if (h.day >= d7 - 864e5 && H[h.p] != null) H[h.p] += h.n; });
+    const c7 = F.rows.filter(r => r.conv && r.conv >= d7).length, step = (v, t, cls) => `<div class="vps${cls ? ' ' + cls : ''}"><b>${v}</b><span>${t}</span></div>`;
+    return `<div class="vhd"><h3 class="sh">ليه ما اشتركوا؟ <small>${n}</small></h3><span class="mut">وين وقف كل زائر ما اشترك، ووش قال لما سأله الموقع «وش وقّفك؟»</span></div>
+      <div class="vwhy">
+        <div class="vbc"><h4>📍 وين وقفوا <small>اضغط السطر وتطلع لك أسماؤهم تحت</small></h4>${V_STOP.map(([k, ic, t, cls]) => `<button type="button" class="vbr vsb${cls ? ' ' + cls : ''}${ADM.fstop === k ? ' on' : ''}" data-stop="${k}" aria-pressed="${ADM.fstop === k}"${cnt[k] ? '' : ' disabled'}><span class="vbl"><span aria-hidden="true">${ic}</span> ${t}</span><span class="vbb"><i style="width:${Math.round((cnt[k] || 0) * 100 / mx)}%"></i></span><b>${cnt[k] || 0}</b></button>`).join('')}</div>
+        <div class="vbc"><h4>🗣 وش قالوا${nSaid ? ` <small>${nSaid === 1 ? 'واحد جاوب' : nSaid === 2 ? 'اثنين جاوبوا' : nSaid + ' جاوبوا'}</small>` : ''}</h4>${SL.length ? SL.slice(0, 7).map(([k, v]) => `<div class="vbr"><span class="vbl">${V_WHY[k] || esc(k)}</span><span class="vbb"><i style="width:${Math.round(v * 100 / smx)}%"></i></span><b>${v}</b></div>`).join('')
+          + (notes.length ? `<ul class="vnotes">${notes.sort((a, b) => b.ts - a.ts).slice(0, 6).map(x => `<li><b>${esc(x.n)}</b><span dir="auto">«${esc(x.t)}»</span><small>${arAgo(x.ts)}</small></li>`).join('')}</ul>` : '')
+          : '<p class="mut vsaid0">ما وصل جواب للحين. الموقع صار يسأل اللي يسكّر نافذة الاشتراك بدون ما يشترك، واللي يضغط «ادفع» وما يكمّل: «وش وقّفك؟»، وجوابه يطلع لك هنا.</p>'}</div>
+      </div>
+      <div class="vpre"><h4>👣 قبل تسجيل الدخول <small>آخر 7 أيام${h0 ? ' · العدّاد بدأ ' + esc(fmtDay(h0)) : ''}</small></h4>
+        <div class="vpsr">${step(H.land, 'فتحوا الصفحة الرئيسية')}<i aria-hidden="true">←</i>${step(H.login, 'وصلوا صفحة الدخول')}<i aria-hidden="true">←</i>${step(F.week, 'سجّلوا دخول (زوار جدد)')}<i aria-hidden="true">←</i>${step(c7, 'اشتركوا', 'ok')}</div>
+        ${h0 ? '' : '<p class="mut">العدّاد بدأ الحين: أرقام الصفحة الرئيسية وصفحة الدخول تتعبّى مع أول الزيارات (بدون أي بيانات شخصية).</p>'}</div>`;
+  }
   function paintFree() {
-    const W = $('#adm'); if (!W || !ADM.free) return; const F = ADM.free, A = F.act || {}, q = (ADM.fq || '').trim().toLowerCase();
-    const list = F.rows.filter(x => !q || [x.email, x.name].some(v => String(v || '').toLowerCase().includes(q)));
+    const W = $('#adm'); if (!W || !ADM.free) return; const F = ADM.free, A = F.act || {}, q = (ADM.fq || '').trim().toLowerCase(), st = (V_STOP.find(x => x[0] === ADM.fstop) || [])[0] || '';
+    const list = F.rows.filter(x => (!q || [x.email, x.name].some(v => String(v || '').toLowerCase().includes(q))) && (!st || (!x.conv && vStop(A[x.email], x) === st)));
     const leads = F.rows.filter(x => !x.conv);
     W.innerHTML = `<div class="stf">
       <div class="fstats"><div><b>${F.total}</b><span>زائر سجّل دخول</span></div><div><b>${F.today}</b><span>اليوم</span></div><div><b>${F.week}</b><span>آخر 7 أيام</span></div><div class="ok"><b>${F.conv}</b><span>اشتركوا بعدها</span></div></div>
       <div class="facts"><button class="btn" id="fcopy" ${leads.length ? '' : 'disabled'}>📋 نسخ إيميلات الزوار (${leads.length})</button><span class="mut">الإيميلات اللي ما اشتركت للحين، كل إيميل في سطر — جاهزة تلصقها في Mailchimp.</span></div>
       ${visInsights(F)}
-      <h3 class="sh">آخر الزوار <small>${F.rows.length}</small></h3>
+      ${visWhyHtml(F)}
+      <h3 class="sh" id="vlist">${st ? `${V_STOP.find(x => x[0] === st)[2]} <small>${list.length}</small> <button type="button" class="lnk" id="vstopx">✕ اعرض كل الزوار</button>` : `آخر الزوار <small>${F.rows.length}</small>`}</h3>
       ${F.rows.length > 8 ? `<div class="abar"><input id="fq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.fq || '')}"></div>` : ''}
       <div class="slist">${list.slice(0, 300).map(x => `<div class="srow vrow"><span class="c-st">${avatarHtml('', x.name || x.email, 40)}<span class="who"><b>${esc(x.name || x.email.split('@')[0])}</b><small class="ltr">${esc(x.email)}</small></span></span>
-        <span class="rl">${x.conv ? '<span class="rbdg viewer">✓ اشترك</span>' : '<span class="rbdg wait">زائر</span>'}</span>
+        <span class="rl">${x.conv ? '<span class="rbdg viewer">✓ اشترك</span>' : x.ended ? '<span class="rbdg wait">مشترك سابق</span>' : '<span class="rbdg wait">زائر</span>'}</span>
         <span class="meta"><small>أول دخول: ${fmtD(x.created_at)}</small><small>آخر دخول: <b>${fmtD(x.last_at)}</b> (${x.logins} مرة)</small></span>
         <span class="c-act"><button type="button" class="btn sm ghost" data-vd="${esc(x.email)}">وش سوّى؟</button></span>${visChips(A[x.email])}</div>`).join('') || `<div class="sempty">${F.rows.length ? 'لا نتائج' : 'ما دخل أي زائر للحين.'}</div>`}</div></div>`;
     $('#fcopy').onclick = async () => { const em = leads.map(x => x.email).join('\n'); try { await navigator.clipboard.writeText(em); toast('انسخت ' + leads.length + ' إيميل ✓'); } catch (e) { QGDlg.alert(em); } };
     const fq = $('#fq'); if (fq) fq.oninput = e => { ADM.fq = e.target.value; const pos = e.target.selectionStart; paintFree(); const i = $('#fq'); i.focus(); i.setSelectionRange(pos, pos); };
     W.querySelectorAll('[data-vd]').forEach(b => b.onclick = () => visDetail(b.dataset.vd, b));
+    W.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => { ADM.fstop = ADM.fstop === b.dataset.stop ? '' : b.dataset.stop; paintFree(); const h = $('#vlist'); if (h && ADM.fstop) h.scrollIntoView({ block: 'start', behavior: RM() ? 'auto' : 'smooth' }); });
+    const sx = $('#vstopx'); if (sx) sx.onclick = () => { ADM.fstop = ''; paintFree(); };
   }
   // 👀 كل اللي سواه زائر واحد: خط زمني مرتّب بالأيام (الأحدث فوق)
   function visEvItem(e) {
@@ -3705,7 +3951,9 @@
       case 'page': return k === 'home' ? null : { ic: '👀', tx: 'فتح ' + vPage(k) };
       case 'lock': return { ic: '🔒', tx: `حاول يفتح «${k}» وهو للمشتركين`, cls: 'lk' };
       case 'sub': return { ic: '⭐', tx: 'فتح نافذة الاشتراك' + (k && k !== 'زر الاشتراك' ? ` (من ${k})` : ''), cls: 'sb' };
-      case 'subgo': return { ic: k === 'واتساب' ? '💬' : '▶️', tx: k === 'واتساب' ? 'ضغط «راسلنا على واتساب» عشان يشترك' : 'ضغط «اشترك من يوتيوب»', cls: 'hot' };
+      case 'subgo': return { cls: 'hot', ic: k === 'واتساب' ? '💬' : k === 'يوتيوب' ? '▶️' : k === 'رابط لولي الأمر' ? '👨‍👩‍👦' : k === 'رقم طلب سلة' ? '🔢' : '💳',
+        tx: k === 'واتساب' ? 'ضغط «راسلنا على واتساب»' : k === 'يوتيوب' ? 'ضغط «اشترك من يوتيوب»' : k === 'رابط لولي الأمر' ? 'نسخ رابط الدفع عشان أحد ثاني يدفع عنه' : k === 'رقم طلب سلة' ? 'فعّل اشتراكه برقم طلب سلة' : k === 'دفع' ? 'ضغط «ادفع» (بوابة تاب)' : 'ضغط «ادفع» وفتح صفحة الدفع في سلة' };
+      case 'fin': return { ic: '🏁', tx: `خلّص ${/^[qv]\d+$/.test(k) ? SET_NAME(k) : k}: ${n}%`, cls: 'ok' };
       case 'ans': return { ic: '✍️', tx: `حل ${vCnt(n, 'سؤال واحد', 'سؤالين', 'أسئلة', 'سؤال')} في ${/^[qv]\d+$/.test(k) ? SET_NAME(k) : k} (${e.c || 0} صح)`, k, n, c: e.c || 0 };
       case 'level': return { ic: '🧭', tx: `خلّص تحديد المستوى: ${k} (${n}%)`, cls: 'ok' };
       case 'find': return { ic: '🔎', tx: ({ 'لقاه في الدورة': 'بحث عن سؤال ولقاه في الدورة', 'لقى سؤال قريب': 'بحث عن سؤال ولقى سؤال قريب منه', 'ما لقاه في الدورة': 'بحث عن سؤال وما لقاه في الدورة', 'بحث بكلمات': 'بحث بكلمات عن أسئلة' }[k] || 'بحث عن سؤال') + (n ? ' (بصورة)' : '') };
@@ -3731,6 +3979,8 @@
       if (t.done && t.finished_at) T.push({ ts: t.finished_at, ic: '🏁', tx: `خلّص ${vTest(t.test)}: ${t.pct}%${t.vpct != null && t.qpct != null ? ` (اللفظي ${t.vpct}% · الكمي ${t.qpct}%)` : ''}`, cls: 'ok' }); });
     d.arena.forEach(a => T.push({ ts: a.ts, ic: '⚔️', tx: `لعب مباراة 1v1 ضد ${a.op}: ${a.res === 'win' ? 'فاز' : a.res === 'loss' ? 'خسر' : 'تعادل'} (${a.my} مقابل ${a.their})` }));
     d.ai.forEach(a => T.push({ ts: a.ts, ic: '🤖', tx: (a.turn ? 'سأل المساعد عن ' : 'طلب شرح من المساعد لـ ') + aiRefLabel(a.ref) }));
+    (d.why || []).forEach(w => T.push({ ts: w.ts, ic: '🗣', tx: 'قال وش وقّفه: ' + (V_WHY[w.code] || w.code).replace(/^\S+\s/, '') + (w.txt ? ` — «${w.txt}»` : ''), cls: 'hot' }));
+    (d.links || []).forEach(l => T.push({ ts: l.ts, ic: '🔗', tx: 'تجهّزت له صفحة دفع خاصة في سلة ' + (l.paid ? '(ودفع منها ✓)' : '(وما دفع منها)'), cls: l.paid ? 'ok' : 'hot' }));
     T.sort((a, b) => b.ts - a.ts);
     const days = []; T.slice(0, 250).forEach(it => { const dk = fmtDay(it.ts); let g = days[days.length - 1]; if (!g || g.k !== dk) days.push(g = { k: dk, L: [] }); g.L.push(it); });
     const lastAt = Math.max(mt.last_at || 0, u.last_at || 0), pre = !evs.length;
@@ -3764,7 +4014,8 @@
     return ref;
   }
   // 💬 السجل كمحادثات: رسائل الطالب على نفس السؤال ورا بعض (المحادثة الجديدة تبدأ لما يرجع الشرح الأول)
-  const AI_IT = { memo: 'يسأل عن الحفظ (يكفي؟ أحفظ ولا أفهم؟)', study: 'يسأل وش يذاكر', weak: 'يسأل عن مستواه وضعفه', tips: 'يبي نصايح للاختبار', solve: 'يبي حل سؤال من برا الدورة', vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)' };
+  const AI_IT = { memo: 'يسأل عن الحفظ (يكفي؟ أحفظ ولا أفهم؟)', study: 'يسأل وش يذاكر', weak: 'يسأل عن مستواه وضعفه', tips: 'يبي نصايح للاختبار', solve: 'يبي حل سؤال من برا الدورة', vague: 'ما فهم ويبي شرح أبسط', rule: 'يبي القاعدة اللي يحفظها', step: 'يسأل عن خطوة في الحل', diff: 'يقارن بين خيارين', example: 'يبي مثال مشابه', fast: 'يبي طريقة أسرع', meaning: 'يسأل عن معنى كلمة', key: 'يشك في الإجابة المعتمدة', mine: 'يسأل ليش إجابته غلط', opt: 'يسأل عن خيار معيّن', ack: 'رد بكلمة قصيرة (فهم أو شكر)',
+    lang: 'يبي نفس الرد بلغة ثانية', bug: 'يبلّغ عن مشكلة في الموقع', exam: 'يسأل عن نظام الاختبار (الأقسام، الأسئلة، الوقت، الدرجة)', site: 'يسأل وين أو كيف في الموقع', report: 'يبي تقريره', sub: 'يسأل عن اشتراكه', plan: 'يبي خطة تناسبه' };
   function aiConvs(logs) {
     const open = new Map(), out = [];
     for (const l of logs.slice().sort((a, b) => a.id - b.id)) {
@@ -3776,24 +4027,25 @@
   }
   const nReply = n => n === 1 ? 'رد واحد' : n === 2 ? 'ردّين' : n <= 10 ? n + ' ردود' : n + ' رد';
   function aiConvHtml(c, Q, open) {
-    const fl = c.msgs.some(m => m.flag), asks = c.msgs.filter(m => m.turn > 1), last = asks.length ? asks[asks.length - 1].q : '';
+    const fl = c.msgs.some(m => m.flag === 1), bug = c.msgs.some(m => m.flag === 2), asks = c.msgs.filter(m => m.turn > 1 || c.ref === 'chat'), last = asks.length ? asks[asks.length - 1].q : '';
+    const seen = m => m.flag === 1 || m.flag === 2 ? `<button type="button" class="btn sm ghost cvseen" data-seen="${m.id}">✓ راجعته</button>` : '';
     const pk = (c.msgs.find(m => m.pk != null) || {}).pk, mref = c.ref.match(/^([qv]\d+):(\d+)$/);
     const qbox = Q ? `<div class="cvq">${Q.p ? `<div class="cvp">📄 القطعة: ${esc(Q.p)}</div>` : ''}<div class="cvs" dir="ltr">${esc(Q.e || Q.a)}</div>${Q.f ? '<small class="mut">السؤال فيه رسم أو جدول</small>' : ''}
       <ol class="cvo" dir="ltr">${Q.o.map((o, i) => `<li class="${i === Q.k ? 'k' : i === pk ? 'w' : ''}"><b>${LETTERS[i]}</b> ${esc(o)}${i === Q.k ? ' <span dir="rtl">✓ الصحيحة</span>' : i === pk ? ' <span dir="rtl">✗ اختيار الطالب</span>' : ''}</li>`).join('')}</ol></div>` : '';
     const msg = m => (m.turn > 1 || c.ref === 'chat'
-      ? `<div class="cvm u"><span class="cvl">🧑‍🎓 الطالب كتب</span><p>${esc(m.q)}</p>${AI_IT[m.it] ? `<small class="cvit">🧭 فهم المساعد إنه ${AI_IT[m.it]}</small>` : ''}</div>`
+      ? `<div class="cvm u${m.flag === 2 ? ' bug' : ''}"><span class="cvl">🧑‍🎓 الطالب كتب</span><p dir="auto">${esc(m.q)}</p>${AI_IT[m.it] ? `<small class="cvit">🧭 فهم المساعد إنه ${AI_IT[m.it]}</small>` : ''}${m.flag === 2 ? `<div class="cvmeta"><b class="cvfl">🛠 الطالب يبلّغ عن مشكلة في الموقع</b>${seen(m)}</div>` : ''}</div>`
       : `<div class="cvm u sys"><span class="cvl">🧑‍🎓 الطالب</span><p>ضغط «اشرح لي أكثر»${m.pk != null && Q ? (m.pk === Q.k ? ' بعد ما جاوب صح' : ` بعد ما اختار ${LETTERS[m.pk]} وهي خطأ`) : ''}</p></div>`)
-      + `<div class="cvm a${m.flag ? ' fl' : ''}"><span class="cvl">🤖 المساعد ردّ</span><div class="aian">${window.QGAI ? QGAI.render(m.a) : esc(m.a)}</div>
-        <div class="cvmeta"><span dir="ltr">${esc(String(m.model || '').split('/').pop())}</span><span>${(m.ms / 1000).toFixed(1)} ث</span><span>${fmtD(m.ts)}</span>${m.flag ? '<b class="cvfl">🚩 الطالب بلّغ إن هذا الرد فيه غلط</b>' : ''}</div></div>`;
-    return `<details class="ailg aicv${fl ? ' fl' : ''}"${open ? ' open' : ''}><summary><span class="who"><b>${esc(c.who)}</b><small>${fmtD(c.last)}</small></span><span class="ref">${esc(aiRefLabel(c.ref))}</span><span class="fq${last ? '' : ' first'}">${last ? `«${esc(last)}»` : 'طلب شرح بس'}</span><span class="cvn">${nReply(c.msgs.length)}</span>${fl ? '<span class="rbdg flg">🚩 بلاغ</span>' : ''}</summary>
-      <div class="cvb">${qbox}<div class="cvth">${c.msgs[0].turn > 1 ? '<div class="cvcut">… أول المحادثة أقدم من آخر السجل</div>' : ''}${c.msgs.map(msg).join('')}</div>${mref ? `<div class="cvact"><a href="#${mref[1]}@${mref[2]}">افتح السؤال في الدورة ←</a></div>` : ''}</div></details>`;
+      + `<div class="cvm a${m.flag === 1 ? ' fl' : ''}"><span class="cvl">🤖 المساعد ردّ</span><div class="aian" dir="${m.lg === 'en' ? 'ltr' : 'rtl'}"${m.lg === 'en' ? ' lang="en"' : ''}>${window.QGAI ? QGAI.render(m.a) : esc(m.a)}</div>
+        <div class="cvmeta"><span dir="ltr">${esc(String(m.model || '').split('/').pop())}</span><span>${(m.ms / 1000).toFixed(1)} ث</span><span>${fmtD(m.ts)}</span>${m.flag === 1 ? '<b class="cvfl">🚩 الطالب بلّغ إن هذا الرد فيه غلط</b>' + seen(m) : ''}</div></div>`;
+    return `<details class="ailg aicv${fl || bug ? ' fl' : ''}"${open ? ' open' : ''}><summary><span class="who"><b>${esc(c.who)}</b><small>${fmtD(c.last)}</small></span><span class="ref">${esc(aiRefLabel(c.ref))}</span><span class="fq${last ? '' : ' first'}">${last ? `«${esc(last)}»` : 'طلب شرح بس'}</span><span class="cvn">${nReply(c.msgs.length)}</span>${fl ? '<span class="rbdg flg">🚩 بلاغ</span>' : ''}${bug ? '<span class="rbdg flg">🛠 مشكلة في الموقع</span>' : ''}</summary>
+      <div class="cvb">${qbox}<div class="cvth">${c.msgs[0].turn > (c.ref === 'chat' ? 2 : 1) ? '<div class="cvcut">… أول المحادثة أقدم من آخر السجل</div>' : ''}${c.msgs.map(msg).join('')}</div>${mref ? `<div class="cvact"><a href="#${mref[1]}@${mref[2]}">افتح السؤال في الدورة ←</a></div>` : ''}</div></details>`;
   }
   function paintAi() {
     const W = $('#adm'); if (!W || !ADM.ai) return; const A = ADM.ai, S = A.set, convs = aiConvs(A.logs || []);
     const nr = A.today.nr || 0, usd = Math.max(0, nr - 10000) * 0.011 / 1000;   // Cloudflare: أول 10,000 وحدة يومياً مجانية، وبعدها 0.011$ لكل 1000 وحدة
     W.innerHTML = `<div class="stf aiadm">
       ${A.on ? '' : '<div class="sum warn">⚠️ ربط الذكاء الاصطناعي (Workers AI) ما هو مفعّل في الخادم.</div>'}
-      <div class="fstats"><div><b>${A.today.n}</b><span>شرح اليوم</span></div><div><b>${A.today.u}</b><span>طالب استخدمه اليوم</span></div><div><b>${A.week.n}</b><span>شرح آخر 7 أيام</span></div><div class="${A.flagged ? 'bad' : ''}"><b>${A.flagged}</b><span>بلاغ «الشرح فيه غلط»</span></div></div>
+      <div class="fstats"><div><b>${A.today.n}</b><span>شرح اليوم</span></div><div><b>${A.today.u}</b><span>طالب استخدمه اليوم</span></div><div><b>${A.week.n}</b><span>شرح آخر 7 أيام</span></div><div class="${A.flagged + (A.bugs || 0) ? 'bad' : ''}"><b>${A.flagged + (A.bugs || 0)}</b><span>${A.bugs ? `بلاغ: ${A.flagged} «الشرح فيه غلط» و${A.bugs} عن مشكلة في الموقع` : 'بلاغ «الشرح فيه غلط»'}</span></div></div>
       <p class="aicost">استهلاك اليوم: <b dir="ltr">${nr.toLocaleString('en')}</b> وحدة من <span dir="ltr">10,000</span> مجانية يومياً${usd > 0 ? ` · التكلفة الزائدة <b dir="ltr">$${usd.toFixed(2)}</b> <small>(حوالي ${(usd * 3.75).toFixed(2)} ريال)</small>` : ' <small>(ما فيه تكلفة زائدة)</small>'}</p>
       <section class="aiset"><h3 class="sh">الإعدادات</h3>
         <div class="aimode" role="radiogroup" aria-label="حالة المساعد">${Object.entries(AI_MODE).map(([k, [t, d]]) => `<label class="${S.mode === k ? 'on' : ''}"><input type="radio" name="aimode" value="${k}" ${S.mode === k ? 'checked' : ''}><b>${t}</b><small>${d}</small></label>`).join('')}</div>
@@ -3807,6 +4059,7 @@
       try { const mode = (W.querySelector('input[name=aimode]:checked') || {}).value; ADM.ai = await admCall({ op: 'adm_ai_set', flagged: !!ADM.aiF, set: { mode, paid: +$('#aipaid').value, free: +$('#aifree').value, model: $('#aimodel').value } });
         if (window.QGAI) QGAI.status(true); paintAi(); toast('انحفظت إعدادات المساعد ✓'); } catch (er) { toast(er.message); b.disabled = false; } };
     $('#aiflg').onchange = e => { ADM.aiF = e.target.checked; ADM.ai = null; renderAiAdmin(); };
+    W.querySelectorAll('[data-seen]').forEach(b => b.onclick = async () => { b.disabled = true; try { ADM.ai = await admCall({ op: 'adm_ai_seen', id: +b.dataset.seen, flagged: !!ADM.aiF }); paintAi(); toast('تمام، انشال من البلاغات ✓'); } catch (er) { toast(er.message); b.disabled = false; } });
   }
   // ---------- 💳 نوع الاشتراك: ▶️ يوتيوب · 🎁 مجاني · 🏦 تحويل بنكي ----------
   // المجاني والتحويل ما يشوفون مقاطع الأعضاء: أزرار يوتيوب في الموقع تفتح لهم النسخ الخاصة، وتشتغل إذا المالك شاركها مع إيميلهم
@@ -4112,6 +4365,7 @@
     over: x => ['⏰', `${nStu(x.n)} خلصت مدة اشتراكهم`, x.auto ? 'الإنهاء التلقائي شغّال: اللي ما يجدّد ينتهي اشتراكه بعد المهلة.' : 'مدّد لهم شهر أو أنهِ اشتراكهم. وتقدر تشغّل الإنهاء التلقائي من الإعدادات.', '#admin-subs', 'راجعهم', 'mid'],
     soon: x => ['⏳', `${x.n === 1 ? 'اشتراك واحد ينتهي' : x.n === 2 ? 'اشتراكين ينتهون' : x.n + ' اشتراكات تنتهي'} خلال 3 أيام`, 'يطلع لهم تذكير بالتجديد في الموقع.', '#admin-subs', 'شوفهم', 'low'],
     rep: x => ['🚩', `${x.n === 1 ? 'بلاغ واحد' : x.n === 2 ? 'بلاغين' : x.n + ' بلاغات'} من الطلاب على أسئلة`, 'أسئلة قالوا إنها مو في الدورة أو نتيجة البحث غلط (آخر 7 أيام).', '#admin-find', 'افتح البلاغات', 'mid'],
+    aibug: x => ['🛠', `${x.n === 1 ? 'بلاغ واحد وصل' : x.n === 2 ? 'بلاغين وصلوا' : x.n + ' بلاغات وصلت'} للمرشد عن مشكلة في الموقع`, 'طالب كتب للمرشد إن شي ما اشتغل معه. اقرأ وش كتب وكلّمه لو يحتاج.', '#admin-ai', 'شوفها', 'hi'],
     flag: x => ['🤖', `${x.n === 1 ? 'شرح واحد' : x.n === 2 ? 'شرحين' : x.n + ' شروحات'} من المرشد بلّغ عنها الطلاب`, 'راجع الشرح وشوف وين الغلط.', '#admin-ai', 'راجعها', 'mid'],
     regs: x => ['📝', `${x.n === 1 ? 'طلب تسجيل ينتظر' : x.n === 2 ? 'طلبين تسجيل ينتظرون' : x.n + ' طلبات تسجيل تنتظر'} قرارك`, 'من فورم التسجيل القديم (الشيت).', '#admin-regs', 'افتح التسجيلات', 'mid'],
     err: x => ['🐞', `${x.n === 1 ? 'خطأ واحد' : x.n === 2 ? 'خطأين' : x.n + ' أخطاء'} في الموقع آخر 24 ساعة`, 'أخطاء صارت عند الطلاب وانسجلت لحالها.', '#admin-settings', 'شوف السجل', 'low'],

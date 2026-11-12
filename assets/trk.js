@@ -56,5 +56,22 @@
     try { if (beacon && navigator.sendBeacon && navigator.sendBeacon(QG.API, new Blob([txt], { type: 'text/plain' }))) return; } catch (e) {}
     fetch(QG.API, { method: 'POST', body: txt, headers: { 'Content-Type': 'text/plain;charset=utf-8' }, keepalive: txt.length < 60000 }).catch(() => {});
   }
-  window.QGT = { start, ev, page, ans, flush, srcOf };
+  // 👣 عدّاد مجهول قبل تسجيل الدخول (بدون أي بيانات شخصية): مرة في اليوم لكل متصفح — فتح الصفحة الرئيسية (land)، ضغط زر فيها (cta)، وصل صفحة الدخول (login)
+  const API = (window.QG && QG.API && QG.API.indexOf('__') !== 0 && QG.API) || (/(^|\.)q-guide\.online$/.test(location.hostname) ? 'https://q-guide-api.nouom01.workers.dev/' : '');
+  function hit(p, k) {
+    try {
+      if (!API || auth()) return; const day = new Date().toISOString().slice(0, 10), key = 'qg_hit_' + p + (p === 'cta' ? '_' + k : '');
+      if (localStorage.getItem(key) === day) return; localStorage.setItem(key, day);
+      const txt = JSON.stringify({ op: 'hit', p, k: String(k || '').slice(0, 30) });
+      if (navigator.sendBeacon && navigator.sendBeacon(API, new Blob([txt], { type: 'text/plain' }))) return;
+      fetch(API, { method: 'POST', body: txt, headers: { 'Content-Type': 'text/plain;charset=utf-8' }, keepalive: true }).catch(() => {});
+    } catch (e) {}
+  }
+  const src0 = () => { const f = lsGet(SRC, null); return (f && f.s) || ''; };
+  if (/^\/(index\.html)?$/.test(location.pathname)) {   // الصفحة الرئيسية: زيارة + أي زر ضغطه (اشترك · دخول المشتركين · جرّب مجاناً · الساحة)
+    hit('land', src0());
+    document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="/p/"]'); if (!a) return; const h = a.getAttribute('href');
+      hit('cta', /#join/.test(h) ? 'join' : /[?&]m=1/.test(h) ? 'member' : /#arena/.test(h) ? 'arena' : 'free'); }, true);
+  }
+  window.QGT = { start, ev, page, ans, flush, srcOf, hit, src0 };
 })();
