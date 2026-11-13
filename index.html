@@ -14,7 +14,7 @@
 <script src="/assets/lang.js?v=1"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/land.css?v=2">
+<link rel="stylesheet" href="/assets/land.css?v=3">
 <link rel="icon" href="/assets/logo.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0E2458">
@@ -44,7 +44,7 @@
         <p class="lead" data-l="ar">شرح الكمي واللفظي بالفيديو، أكثر من 1500 سؤال بشروحاتها، 17 اختبار محاكي بنفس شكل اختبار قياس، ومرشد ذكي يرتّب مذاكرتك لين يوم اختبارك.</p>
         <p class="lead" data-l="en">Video explanations for quant and verbal, more than 1,500 questions with their explanations, 17 mock tests that look exactly like the Qiyas test, and a smart advisor that plans your study until test day.</p>
         <div class="hcta">
-          <a class="b gold" href="/p/#join"><span data-l="ar">اشترك الآن</span><span data-l="en">Subscribe now</span><small><span data-l="ar">من 140 ريال للشهر</span><span data-l="en">from 140 SAR a month</span></small></a>
+          <a class="b gold" href="/p/#join"><span data-l="ar">اشترك الآن</span><span data-l="en">Subscribe now</span><small><span data-off hidden><span data-l="ar">من 149 ريال للشهر</span><span data-l="en">from 149 SAR a month</span></span><span data-reg><span data-l="ar">من 179 ريال للشهر</span><span data-l="en">from 179 SAR a month</span></span></small></a>
           <a class="b ol" href="/p/"><span data-l="ar">جرّب مجاناً</span><span data-l="en">Try it free</span></a>
         </div>
         <p class="hnote"><span data-l="ar">مشترك من قبل؟ <a href="/p/?m=1">ادخل بنفس إيميلك</a></span><span data-l="en">Already subscribed? <a href="/p/?m=1">Sign in with the same email</a></span></p>
@@ -129,7 +129,8 @@
       <div class="pks">
         <article class="pk" aria-labelledby="pk1">
           <h3 id="pk1"><span data-l="ar">التدريب</span><span data-l="en">Practice</span></h3>
-          <p class="pkp"><b>140</b><span><span data-l="ar">ريال · شهر</span><span data-l="en">SAR · one month</span></span></p>
+          <p class="pkp"><s class="pkw" data-off hidden>179</s><b><span data-off hidden>149</span><span data-reg>179</span></b><span><span data-l="ar">ريال · شهر</span><span data-l="en">SAR · one month</span></span></p>
+          <p class="pko" data-off hidden><span data-l="ar">🏷 سعر العرض لين 30 نوفمبر</span><span data-l="en">🏷 Offer price until 30 November</span></p>
           <ul>
             <li><span data-l="ar">14 قسم كمي و14 نموذج لفظي، وشرح كل قسم ونموذج بالفيديو</span><span data-l="en">14 quant sections and 14 verbal models, each explained on video</span></li>
             <li><span data-l="ar">أكثر من 1500 سؤال، ومع كل سؤال شرحه</span><span data-l="en">More than 1,500 questions, each with its explanation</span></li>
@@ -140,7 +141,8 @@
         </article>
         <article class="pk two" aria-labelledby="pk2">
           <h3 id="pk2"><span data-l="ar">التأسيس والتدريب</span><span data-l="en">Foundation + Practice</span></h3>
-          <p class="pkp"><b>279</b><span><span data-l="ar">ريال · شهرين</span><span data-l="en">SAR · two months</span></span></p>
+          <p class="pkp"><s class="pkw" data-off hidden>279</s><b><span data-off hidden>239</span><span data-reg>279</span></b><span><span data-l="ar">ريال · شهرين</span><span data-l="en">SAR · two months</span></span></p>
+          <p class="pko" data-off hidden><span data-l="ar">🏷 سعر العرض لين 30 نوفمبر</span><span data-l="en">🏷 Offer price until 30 November</span></p>
           <ul>
             <li><span data-l="ar">كل اللي في باقة التدريب، لمدة شهرين</span><span data-l="en">Everything in the Practice package, for two months</span></li>
             <li><span data-l="ar">تأسيس اللفظي بالفيديو من الصفر، واختبار قصير بعد كل درس</span><span data-l="en">Verbal foundation video lessons from zero, with a short quiz after each lesson</span></li>
@@ -185,6 +187,12 @@
 </div></footer>
 
 <script>
+// 🏷 عرض حقيقي بتاريخ نهاية (طلب المالك، وعنده ترخيص التخفيض): لين 30 نوفمبر 2026 الساعة 11:59 الليل بتوقيت الرياض يطلع سعر العرض والأصلي مشطوب، وبعدها الأصلي بس (بدون سكربت: الأصلي)
+(function () {
+  var on = Date.now() < Date.UTC(2026, 10, 30, 20, 59, 59);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-off]'), function (e) { e.hidden = !on; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-reg]'), function (e) { e.hidden = on; });
+})();
 // 🧮 سؤال تجريبي في البداية: يختار جواب ← صح/غلط + الشرح + زر يكمّل القسم 1 مجاناً
 (function () {
   var box = document.getElementById('sq'); if (!box) return;

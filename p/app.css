@@ -3176,3 +3176,8 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .pbamt small.pbpk{color:var(--ink);font-weight:700}
 @media (max-width:720px){.slpk{grid-template-columns:minmax(0,1fr) 110px}.slpk-n{grid-column:1/-1}}
 [data-theme=dark] .pkg.on{background:color-mix(in srgb,var(--royal) 12%,var(--card))}
+
+/* 🏷 عرض بتاريخ نهاية: السعر الأصلي مشطوب + سطر «سعر العرض لين …» */
+.pkg-was{font-family:var(--disp);font-size:calc(17px * var(--fs));font-weight:700;color:var(--mut);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--coral)}
+.pkg-off{align-self:flex-start;font-size:calc(12px * var(--fs));font-weight:800;color:var(--coral);background:var(--badbg);border-radius:999px;padding:2px 10px;line-height:1.6}
+.slof{color:var(--ink2);background:var(--stampbg);border-radius:10px;padding:8px 12px}

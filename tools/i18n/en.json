@@ -1864,5 +1864,10 @@
  "دروس التأسيس ضمن باقة «التأسيس والتدريب».": "The foundation lessons are part of the Foundation + Practice package.",
  "تأسيس اللفظي بالفيديو واختبار بعد كل درس": "Verbal foundation video lessons, with a quiz after each lesson",
  "بدون التأسيس": "Foundation not included",
- "كل الأقسام والنماذج والاختبارات المحاكية، بدون التأسيس.": "Every section, model and mock test. Foundation not included."
+ "كل الأقسام والنماذج والاختبارات المحاكية، بدون التأسيس.": "Every section, model and mock test. Foundation not included.",
+ "بدل {0} ريال": "instead of SAR {0}",
+ "🏷 سعر العرض لين {0}": "🏷 Offer price until {0}",
+ "(بدل {0}، العرض لين {1})": "(instead of {0}, offer until {1})",
+ "(بدل {0})": "(instead of {0})",
+ "باقة «التدريب» {0} ريال للشهر{1}، يعني أقل من {2} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» {3} ريال لشهرين{4} ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.": "The Practice package is SAR {0} a month{1}, less than SAR {2} a day: 14 quant sections and 14 verbal models with their explanations, 17 mock tests and your smart advisor. The Foundation + Practice package is SAR {3} for two months{4} and adds the foundation lessons. A question about the price? Message us."
 }

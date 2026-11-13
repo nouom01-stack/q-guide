@@ -17,7 +17,7 @@
   // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
   const isFree = () => !!(auth && auth.role === 'free');
   let CERR = () => {};   // 🐞 مرسل الأخطاء للمالك (يتعرّف تحت): نستخدمه في try/catch حول الإضافات اللي ما نبيها تكسر الصفحة
-  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, PRICE2 = 279, FREE_GAMES = 3;
+  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 179, PRICE2 = 279, FREE_GAMES = 3;   // الأسعار الأصلية (140 لين 14 نوفمبر 2026)؛ سعر العرض يجي من الخادم (pk.*.was / until)
   const isSub = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin');   // مشترك في الدورة (طالب)
   const WA = t => 'https://wa.me/966508003683?text=' + encodeURIComponent(t);   // 💬 واتساب الدعم
   // 💳 الاشتراك والتجديد من الموقع بس (اشتراك يوتيوب توقف): الزائر يدفع وتنفتح له الدورة، والمشترك يجدّد ويتمدد اشتراكه شهر من موعد نهايته
@@ -38,9 +38,11 @@
   const PKN = k => (k === 'full' ? _T('التأسيس والتدريب') : _T('التدريب'));
   const pkDur = m => (m === 2 ? _T('شهرين') : _T('شهر'));
   const pkList = () => { const g = sallaOn() ? auth.salla : payOn() ? auth.pay : null, pk = (g && g.pk) || null;
-    const L = [{ k: 'train', price: (pk && pk.train && pk.train.price) || (g && g.price) || PRICE, months: 1, url: (pk && pk.train && pk.train.url) || (g && g.url) || '' }];
-    if (!g || (pk && pk.full)) L.push({ k: 'full', price: (pk && pk.full && pk.full.price) || PRICE2, months: 2, url: (pk && pk.full && pk.full.url) || '' });
+    const T = (pk && pk.train) || {}, U = (pk && pk.full) || {};   // 🏷 وقت العرض: was = السعر الأصلي (يطلع مشطوب) · until = نهاية العرض
+    const L = [{ k: 'train', price: T.price || (g && g.price) || PRICE, was: T.was || 0, until: T.until || 0, months: 1, url: T.url || (g && g.url) || '' }];
+    if (!g || (pk && pk.full)) L.push({ k: 'full', price: U.price || PRICE2, was: U.was || 0, until: U.until || 0, months: 2, url: U.url || '' });
     return L; };
+  const offDay = t => new Date(t).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' });   // «30 نوفمبر»
   const pkTwo = () => pkList().length > 1;
   const noFound = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin' && auth.plan === 'train');   // 🔒 مشترك باقته «التدريب»: التأسيس مقفل عنه
   const foundRoute = h => /^watch-(af|sf)\d{1,2}$/.test(h) || /^fq-[1-4]$/.test(h) || /^wb-t[qv](@\d{1,3})?$/.test(h);
@@ -439,7 +441,7 @@
       full: [_T('كل اللي في باقة «التدريب»'), _T('تأسيس اللفظي بالفيديو واختبار بعد كل درس'), _T('مذكرتا التأسيس: قواعد الكمي واللفظي')] };
     const card = x => `<label class="pkg${x.k === sel.k ? ' on' : ''}" data-pk="${x.k}"><input type="radio" name="qgpkg" value="${x.k}"${x.k === sel.k ? ' checked' : ''}>
         <b class="pkg-n">${PKN(x.k)}</b>
-        <span class="pkg-p"><b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>
+        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>${x.was ? `<span class="pkg-off">${_T`🏷 سعر العرض لين ${offDay(x.until)}`}</span>` : ''}
         <span class="pkg-l">${feats[x.k].map(f => `<span>${f}</span>`).join('')}${x.k === 'train' ? `<span class="no">${_T('بدون التأسيس')}</span>` : ''}</span></label>`;
     const cards = two ? `<div class="pkgs" role="radiogroup" aria-label="${_T('اختر باقتك')}">${PK.map(card).join('')}</div>` : '';
     const head = up ? _T`<p class="sub-lock">🔒 ${esc(what)} ضمن باقة «التأسيس والتدريب»</p>
@@ -722,8 +724,9 @@
       case 'err': return { t: _T('لو طلع لك «اختر شركة الشحن» فمعناه إنك ضغطت الدفع قبل ما تسجّل برقم جوالك في سلة: سجّل برقمك أول ثم اضغط الدفع. وأي خطأ ثاني صوّره وأرسله لنا على واتساب ونحلّه لك.'), a: [pay, wa] };
       case 'method': return { t: _T('صفحة الدفع فيها مدى و Apple Pay وفيزا وماستركارد و STC Pay والتحويل البنكي (يطلع لك المناسب لجهازك). تبي طريقة ثانية؟ كلّمنا على واتساب.'), a: [wa, pay] };
       case 'parent': return { t: sallaOn() ? _T('أرسل رابط الدفع لولي أمرك أو أي أحد بيدفع عنك: يدفع من جواله، واشتراكك يتفعّل على حسابك.') : _T('كلّمنا على واتساب ونرتّب الدفع مع ولي أمرك.'), a: sallaOn() ? [['share', _T('🔗 انسخ رابط الدفع')], wa] : [wa] };
-      case 'price': { const F = pkList().find(x => x.k === 'full');   // 📦 باقتين: نذكر الاثنين بسعرهم ومدتهم
-        return { t: F ? _T`باقة «التدريب» ${price} ريال للشهر، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال لشهرين ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
+      case 'price': { const F = pkList().find(x => x.k === 'full'), T = pkList()[0];   // 📦 باقتين: نذكر الاثنين بسعرهم ومدتهم (🏷 ووقت العرض: الأصلي ونهاية العرض)
+        const offT = T.was ? _T` (بدل ${T.was}، العرض لين ${offDay(T.until)})` : '', offF = F && F.was ? _T` (بدل ${F.was})` : '';
+        return { t: F ? _T`باقة «التدريب» ${price} ريال للشهر${offT}، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال لشهرين${offF} ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
           : _T`الاشتراك ${price} ريال للشهر كامل، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.`, a: [pay, wa] }; }
       case 'later': return { t: _T('تمام 👌 حسابك المجاني يبقى شغّال، ووقت ما تبي تكمل اضغط «اشترك» من فوق.'), a: [] };
       case 'far': return { t: _T('خذ راحتك 👌 حسابك المجاني يبقى شغّال (القسم 1 والنموذج 1 والاختبار المحاكي 1). وأول ما يقرب اختبارك اشترك ونرتّب لك خطة مذاكرة على موعده.'), a: [] };
@@ -4305,9 +4308,10 @@
       ${conn}
       <form class="slset pk2" id="slform">
         <div class="slpk"><b class="slpk-n">📦 التدريب <small>شهر</small></b><label class="slu"><span>رابط المنتج في سلة</span><input id="slurl" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url || '')}" autocomplete="off"></label>
-          <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || 140))}"><small>ريال</small></span></label></div>
+          <label class="slpr"><span>${SL.offer ? 'السعر الأصلي' : 'السعر على الزر'}</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || PRICE))}"><small>ريال</small></span></label></div>
         <div class="slpk"><b class="slpk-n">📦 التأسيس والتدريب <small>شهرين</small></b><label class="slu"><span>رابط منتج «تأسيس وتدريب» في سلة</span><input id="slurl2" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url2 || '')}" autocomplete="off"></label>
-          <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice2" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price2 || PRICE2))}"><small>ريال</small></span></label></div>
+          <label class="slpr"><span>${SL.offer ? 'السعر الأصلي' : 'السعر على الزر'}</span><span class="slpi"><input id="slprice2" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price2 || PRICE2))}"><small>ريال</small></span></label></div>
+        ${SL.offer ? `<p class="slpk-h slof">🏷 عرض شغّال لين ${new Date(SL.offer.until).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' })} الساعة 11:59 الليل: «التدريب» ${SL.offer.p1} بدل ${SL.offer.was1} · «التأسيس والتدريب» ${SL.offer.p2} بدل ${SL.offer.was2}. الطلاب يشوفون السعر الأصلي مشطوب وتاريخ النهاية، وبعدها يرجع السعر الأصلي لحاله هنا وفي سلة.</p>` : ''}
         <p class="slpk-h">${SL.url2 ? 'الطالب يختار بين الباقتين في نافذة الاشتراك. السعر هنا لازم يطابق سعر المنتج في سلة، لأن الموقع يعرف الباقة من مبلغ الطلب.' : 'بدون رابط منتج «تأسيس وتدريب»: الطالب يشوف الباقتين، و«التأسيس والتدريب» يطلبها منك على واتساب وتضيفه أنت من «➕ إضافة يدوية».'}</p>
         <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
       ${openBar}
@@ -4327,12 +4331,12 @@
   function sallaBind(W) {
     const SL = ADM.salla; if (!SL || !SL.ok) return;
     const f = W.querySelector('#slform'), u = W.querySelector('#slurl'), pr = W.querySelector('#slprice'), u2 = W.querySelector('#slurl2'), pr2 = W.querySelector('#slprice2'), sv = W.querySelector('#slsave');
-    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140) && u2.value.trim() === (SL.url2 || '') && Number(pr2.value) === Number(SL.price2 || PRICE2); }; [u, pr, u2, pr2].forEach(i => i.oninput = dirty);
+    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || PRICE) && u2.value.trim() === (SL.url2 || '') && Number(pr2.value) === Number(SL.price2 || PRICE2); }; [u, pr, u2, pr2].forEach(i => i.oninput = dirty);
       f.onsubmit = async e => { e.preventDefault(); const url = u.value.trim(), url2 = u2.value.trim();
         if (url && !/^https:\/\/\S+$/.test(url)) { toast('الرابط لازم يبدأ بـ https://'); u.focus(); return; }
         if (url2 && !/^https:\/\/\S+$/.test(url2)) { toast('الرابط لازم يبدأ بـ https://'); u2.focus(); return; }
         if (url2 && url2 === url) { toast('الباقتين لازم لكل وحدة رابط منتجها'); u2.focus(); return; }
-        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140, url2, price2: Number(pr2.value) || PRICE2 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
+        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || PRICE, url2, price2: Number(pr2.value) || PRICE2 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
     const op1 = W.querySelector('#slopen1'), cl = W.querySelector('#slclose'), setOpen = async (open, btn) => {
       if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيبقى لهم زر واتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
       btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); ADM.home = null; toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); admRepaint(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
