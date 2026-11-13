@@ -704,8 +704,26 @@
           else if (a === 'share') { x.disabled = true; await payShare(o.link ? o.link() : ''); x.disabled = false; }
           else if (a === 'ref') { try { await navigator.clipboard.writeText('https://q-guide.online/'); toast(_T('انسخ رابط الموقع ✓')); } catch (e) { QGDlg.alert('https://q-guide.online/'); } } }; });
       const f = R.querySelector('.whyb-f'); if (f) { const ta = f.querySelector('textarea'); f.onsubmit = e => { e.preventDefault(); const v = ta.value.trim(); if (!v) return ta.focus(); send(code, v); f.outerHTML = `<p class="whyb-ok">${_T('✓ وصلت ملاحظتك، شكراً لك 🙏')}</p>`; }; if (!window.matchMedia || matchMedia('(pointer:fine)').matches) ta.focus({ preventScroll: true }); }
+      if ((stage === 'pay' || stage === 'renew') && code !== 'done') whyPhone(R, stage);   // 📱 «تبينا نكلّمك واتساب؟» (اختياري)
       if (o.onPick) o.onPick(code);
     });
+  }
+  // 📱 تحت رد «وش وقّفك؟»: يكتب جواله (اختياري) ← op why_phone ← يطلع للمالك في «ما كمّلوا الدفع» ويوصله تنبيه
+  function whyPhone(R, stage) {
+    if (lsGet(WHY_LS, {}).ph) { R.insertAdjacentHTML('beforeend', `<p class="whyb-ok whyb-phok">${_T('✓ رقمك عندنا، بنكلّمك على واتساب قريب.')}</p>`); return; }
+    const id = 'whyph' + Date.now().toString(36);
+    R.insertAdjacentHTML('beforeend', `<form class="whyb-ph" novalidate><label for="${id}">${_T('تبينا نكلّمك على واتساب ونساعدك؟ اكتب رقمك')}</label><div class="whyb-pr"><input id="${id}" type="tel" inputmode="tel" dir="ltr" autocomplete="tel" maxlength="20" placeholder="05xxxxxxxx"><button type="submit" class="btn sm">${_T('أرسل رقمي')}</button></div><p class="whyb-pe" role="alert" hidden></p></form>`);
+    const f = R.querySelector('.whyb-ph'), inp = f.querySelector('input'), btn = f.querySelector('button'), er = f.querySelector('.whyb-pe');
+    f.onsubmit = async e => {
+      e.preventDefault(); if (btn.disabled) return;
+      const v = enDigits(inp.value).replace(/[\s()-]/g, '');
+      if (!/^(\+?9665|009665|05|5)\d{8}$/.test(v)) { er.hidden = false; er.textContent = _T('اكتب رقم جوال صحيح، مثل 05xxxxxxxx'); inp.focus(); return; }
+      btn.disabled = true; er.hidden = true;
+      let r = null; try { r = await api({ op: 'why_phone', session: auth.session, phone: v, stage }); } catch (x) { r = null; }
+      btn.disabled = false;
+      if (r && r.ok) { const w = lsGet(WHY_LS, {}); w.ph = Date.now(); lsSet(WHY_LS, w); f.outerHTML = `<p class="whyb-ok whyb-phok">${_T('✓ وصلنا رقمك، بنكلّمك على واتساب قريب.')}</p>`; return; }
+      er.hidden = false; er.textContent = (r && r.msg) || _T('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة أخرى.');
+    };
   }
   // 🔓 الرئيسية: ضغط «ادفع» وما اكتمل اشتراكه → بطاقة ترجّعه للدفع وتسأله وش وقّفه (تختفي لو جاوب أو سكّرها، وترجع لو ضغط «ادفع» مرة ثانية)
   function payNudge() {
@@ -799,8 +817,8 @@
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
     if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
-    if (/^admin(-(home|staff|members|subs|pay|vids|settings|regs|free|ai|find))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
-      const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
+    if (/^admin(-(home|staff|members|subs|pay|unpaid|vids|settings|regs|free|ai|find))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
+      const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-unpaid': renderUnpaid, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
       return R[h](); }
     renderHome(); if (joinDlg) subDlg('', _T('صفحة الموقع'));
   }
@@ -4336,6 +4354,7 @@
     free: ['🆓', 'الزوار', 'الحسابات المجانية: من وين جاو، وش جرّبوا، ومين اشترك منهم.'],
     subs: ['💳', 'الاشتراكات', 'نوع اشتراك كل طالب وموعد نهايته: مدّد، عدّل، أو أنهِ الاشتراك.'],
     pay: ['💰', 'المدفوعات', 'الدفع من الموقع عن طريق سلة وتاب: الطلبات وحالتها وإعدادات الدفع.'],
+    unpaid: ['🛒', 'ما كمّلوا الدفع', 'اللي بدأوا الاشتراك وما دفعوا: رقمهم ووين وقفوا، وتكلّمهم على واتساب بضغطة.'],
     members: ['➕', 'إضافة يدوية', 'أضف طالب بإيميله مباشرة (مجاني أو تحويل) بدون ما يدفع من الموقع.'],
     regs: ['📝', 'التسجيلات', 'طلبات فورم التسجيل القديم (الشيت): أكّد أو ارفض.'],
     vids: ['🎬', 'المقاطع', 'ارفع مقاطع الشرح والتأسيس للموقع، واربط حسابات المدرسين عشان يرفعون مقاطعهم.'],
@@ -4343,14 +4362,14 @@
     staff: ['🛡', 'الفريق', 'المشرفين وصلاحياتهم.'],
     settings: ['⚙️', 'الإعدادات والسجل', 'انتهاء الاشتراكات، تنبيهاتك، النسخ الاحتياطي، وسجل كل اللي صار في اللوحة.'],
   };
-  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'members', 'regs']], ['المحتوى', ['vids', 'studio']], ['النظام', ['staff', 'settings']]];
-  const ADM_HREF = { home: '#admin-home', students: '#admin', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', staff: '#admin-staff', settings: '#admin-settings' };
+  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'unpaid', 'members', 'regs']], ['المحتوى', ['vids', 'studio']], ['النظام', ['staff', 'settings']]];
+  const ADM_HREF = { home: '#admin-home', students: '#admin', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', unpaid: '#admin-unpaid', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', staff: '#admin-staff', settings: '#admin-settings' };
   const ADM_ALL = { students: 1, staff: 1, studio: 1 };   // يشوفها كل مشرف · الباقي للمالك بس
   function admTop(tab) {
     const OW = isOwner(), pg = ADM_PG[tab] || ADM_PG.students, H = ADM.home;
-    const wait = H ? H.need.filter(x => x.k === 'salla_wait' || x.k === 'bank').reduce((a, x) => a + x.n, 0) : 0;
+    const wait = H ? H.need.filter(x => x.k === 'salla_wait' || x.k === 'bank').reduce((a, x) => a + x.n, 0) : 0, unp = H ? H.need.filter(x => x.k === 'unpaid').reduce((a, x) => a + x.n, 0) : 0;
     const badge = k => k === 'students' && ADM.list ? `<small>${ADM.list.length}</small>` : k === 'members' && ADM.members ? `<small>${ADM.members.length}</small>` : k === 'free' && ADM.free ? `<small>${ADM.free.total}</small>`
-      : k === 'ai' && ADM.ai && ADM.ai.flagged ? `<small class="red">${ADM.ai.flagged}</small>` : k === 'staff' && ADM.staff ? `<small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : k === 'pay' && wait ? `<small class="red" title="طلبات تنتظرك">${wait}</small>` : '';
+      : k === 'ai' && ADM.ai && ADM.ai.flagged ? `<small class="red">${ADM.ai.flagged}</small>` : k === 'staff' && ADM.staff ? `<small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : k === 'pay' && wait ? `<small class="red" title="طلبات تنتظرك">${wait}</small>` : k === 'unpaid' && unp ? `<small class="red" title="ما تواصلت معهم">${unp}</small>` : '';
     const item = k => k === 'regs' ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}"${tab === 'regs' ? ' aria-current="page"' : ''}>${regTabLabel()}</a>`
       : `<a href="${ADM_HREF[k]}" class="${tab === k ? 'on' : ''}"${tab === k ? ' aria-current="page"' : ''}><span class="i" aria-hidden="true">${ADM_PG[k][0]}</span> <span class="l">${ADM_PG[k][1]}</span>${badge(k) ? ' ' + badge(k) : ''}</a>`;
     const nav = ADM_NAV.map(([g, ks]) => { const L = ks.filter(k => OW || ADM_ALL[k]); return L.length ? `<div class="an-g"><span class="an-h">${g}</span>${L.map(item).join('')}</div>` : ''; }).join('');
@@ -4359,7 +4378,7 @@
         <main class="adm-main" id="admw"><header class="adm-hd"><h1><span aria-hidden="true">${pg[0]}</span> ${pg[1]}</h1><p>${pg[2]}</p></header><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main></div>`;
   }
   // صناديق سلة وتاب ورفع المقاطع ترسم صفحتها الحالية بعد كل إجراء
-  const admRepaint = () => { const h = location.hash; if (h === '#admin-pay') paintPay(); else if (h === '#admin-vids') paintVids(); else if (h === '#admin-subs') paintSubs(); else if (h === '#my-vids') paintMyVids(); };
+  const admRepaint = () => { const h = location.hash; if (h === '#admin-pay') paintPay(); else if (h === '#admin-unpaid') paintUnpaid(); else if (h === '#admin-vids') paintVids(); else if (h === '#admin-subs') paintSubs(); else if (h === '#my-vids') paintMyVids(); };
   const admReload = () => { const h = location.hash; if (h === '#admin-pay') renderPay(); else if (h === '#admin-vids') renderVids(); else if (h === '#admin-subs') renderSubs(); };
   const waPhone = p => { p = String(p || '').replace(/\D/g, ''); return p.startsWith('966') ? p : /^05\d{8}$/.test(p) ? '966' + p.slice(1) : /^5\d{8}$/.test(p) ? '966' + p : p; };
   const sar = n => (Math.round(n) || 0).toLocaleString('en-US');
@@ -4367,6 +4386,7 @@
 
   // ---------- 🏠 الرئيسية (المالك) ----------
   const OH_NEED = {
+    unpaid: x => ['🛒', `${x.n === 1 ? 'واحد ما كمّل الدفع وعندك رقمه' : x.n === 2 ? 'اثنين ما كمّلوا الدفع وعندك رقمهم' : x.n + ' ما كمّلوا الدفع وعندك رقمهم'}`, 'وقفوا عند الدفع وما تواصلت معهم: ' + (x.names || []).join('، ') + '. كلّمهم على واتساب بضغطة.', '#admin-unpaid', 'كلّمهم', 'hi'],
     salla_wait: x => ['🛍', x.n === 1 ? 'طلب مدفوع في سلة وما تفعّل' : `${x.n} طلبات مدفوعة في سلة وما تفعّلت`, 'الطالب دفع وما رجع للموقع. اربط الطلب بإيميله وينفتح اشتراكه.', '#admin-pay', 'افتح المدفوعات', 'hi'],
     bank: x => ['🏦', x.n === 1 ? 'تحويل بنكي ينتظر تأكيدك' : `${x.n} تحويلات بنكية تنتظر تأكيدك`, 'لما يوصلك المبلغ، حوّل الطلب في سلة إلى «قيد التنفيذ» ويتفعّل الاشتراك لحاله.', '#admin-pay', 'افتح المدفوعات', 'hi'],
     over: x => ['⏰', `${nStu(x.n)} خلصت مدة اشتراكهم`, x.auto ? 'الإنهاء التلقائي شغّال: اللي ما يجدّد ينتهي اشتراكه بعد المهلة.' : 'مدّد لهم شهر أو أنهِ اشتراكهم. وتقدر تشغّل الإنهاء التلقائي من الإعدادات.', '#admin-subs', 'راجعهم', 'mid'],
@@ -4384,11 +4404,11 @@
     gs: x => ['📧', x.err ? 'خطأ في سكربت إيميلات سلة' : 'سكربت إيميلات سلة واقف', (x.err ? x.err + ' — ' : `آخر فحص ${fmtD(x.at)}. `) + 'الدفع من سلة ما يتفعّل لحاله لين يرجع: افتح script.google.com بحساب سلة وشوف «Executions».', '#admin-pay', 'افتح المدفوعات', 'hi'],
     payoff: () => ['💳', 'الدفع من الموقع مقفل على الزوار', 'الزائر ما يشوف زر الدفع ويراسلك على واتساب. افتحه من المدفوعات لما تجهز.', '#admin-pay', 'افتح المدفوعات', 'hi'],
   };
-  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'],
+  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'], aband: ['🛒', 'ترك الدفع في سلة'], pf_phone: ['📱', 'زائر يبينا نكلّمه واتساب'], pf_mail: ['📧', 'وصله إيميل «وش وقّفك؟»'],
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
     adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
     adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
-    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'] };
+    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'] };
   const evRow = e => { const T = EV_T[e.kind] || ['•', e.kind], sys = !/^adm_/.test(e.kind), who = String(e.who || '');
     const sub = [sys ? '' : who && who.indexOf('@') > 0 ? 'بواسطة ' + who.split('@')[0] : '', e.target, e.note].filter(Boolean).map(esc).join(' · ');
     return `<li class="ev${sys ? ' sys' : ''}"><span class="evi" aria-hidden="true">${T[0]}</span><span class="evx"><b>${T[1]}${sys && who.indexOf('@') > 0 ? ` <small class="ltr">${esc(who)}</small>` : ''}</b><small>${sub || '—'}</small></span>${e.amt ? `<span class="evamt"><bdi>${sar(e.amt)}</bdi> ريال</span>` : ''}<time>${fmtD(e.at)}</time></li>`; };
@@ -4490,6 +4510,63 @@
       btn.disabled = true; try { ADM.pay = await admCall({ op: 'adm_pay_open', open: open ? 1 : 0 }); ADM.home = null; toast(open ? '🚀 الدفع صار مفتوح لكل الزوار' : '⏸ وقّفت الدفع للزوار'); admRepaint(); } catch (e) { btn.disabled = false; toast('ما انحفظ: ' + e.message); } };
     if (po) po.onclick = () => payOpen(true, po); if (pc) pc.onclick = () => payOpen(false, pc);
     W.querySelectorAll('.pbrow[data-e]:not(.slrow)').forEach(r => { r.onclick = () => admStudent(r.dataset.e); r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); admStudent(r.dataset.e); } }; });
+  }
+
+  // ---------- 🛒 ما كمّلوا الدفع (#admin-unpaid · op adm_pf): سلة متروكة فيها جواله + زوار ضغطوا «ادفع» وما اشتركوا ----------
+  const PF_HOW = { email: 'إيميله في سلة نفس إيميل حسابه', phone: 'جواله نفس جوال حسابه', link: 'سلّته من رابطه الخاص', time: 'ضغط «ادفع» في الموقع قبلها بدقايق' };
+  const pfLocal = p => /^9665\d{8}$/.test(p || '') ? '0' + p.slice(3) : '+' + p;
+  const pfMsg = x => `هلا ${firstName(x.name || '') || ''} 👋\nمعك دعم Q-Guide (دورة القدرات).\nشفنا إنك بديت ${x.stage === 'renew' ? 'تجديد اشتراكك' : 'الاشتراك'} وما اكتمل الدفع. وش وقّفك؟\nلو صار معك شي في الدفع أو عندك سؤال، رد علينا هنا ونساعدك على طول.`.replace('هلا  👋', 'هلا 👋');
+  async function renderUnpaid() {
+    document.title = 'ما كمّلوا الدفع | Q-Guide';
+    const top = () => { app.innerHTML = admTop('unpaid'); bindCtl(); $('#admref').onclick = () => { ADM.pf = null; renderUnpaid(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } ADM.pf = await admCall({ op: 'adm_pf' }); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-unpaid') return;
+    top(); paintUnpaid();
+  }
+  function pfCard(x) {
+    const nm = x.name || (x.email ? x.email.split('@')[0] : 'عميل في سلة'), ch = [], chip = (t, cls) => ch.push(`<span class="pfc${cls ? ' ' + cls : ''}">${t}</span>`);
+    const where = x.src === 'site' ? (x.stage === 'renew' ? 'اشتراكه انتهى وضغط «جدّد» وما كمّل' : 'ضغط «ادفع» في الموقع' + (x.n > 1 ? ` ${x.n} مرات` : '')) : 'وقف عند الدفع في سلة' + (x.total ? ` · <bdi>${sar(x.total)}</bdi> ريال` : '');
+    if (x.paid) chip('✅ دفع واشترك', 'ok');
+    if (x.mobile) chip(`📱 <bdi dir="ltr">${esc(pfLocal(x.mobile))}</bdi>${x.wa === 1 ? ' · عنده واتساب' : ''}`);
+    if (x.phone && x.src !== 'salla') chip('✍️ كتب رقمه بنفسه في «وش وقّفك؟»', 'hot');
+    if (x.how && PF_HOW[x.how]) chip('🔗 ' + PF_HOW[x.how]);
+    if (x.mail_at) chip(x.mail_err ? '⚠️ ما وصله إيميل «وش وقّفك؟»' : '📧 وصله إيميل «وش وقّفك؟» ' + fmtD(x.mail_at), x.mail_err ? 'bad' : '');
+    if (x.stop) chip('🔕 أوقف الرسائل');
+    (x.why || []).slice(0, 2).forEach(w => chip('🗣 ' + esc((V_WHY[w.c] || w.c).replace(/^\S+\s/, '')) + (w.src === 'mail' ? ' (من الإيميل)' : '') + (w.t ? ` <span dir="auto">«${esc(w.t.slice(0, 80))}»</span>` : ''), 'why'));
+    if (x.wa_at) chip('✓ تواصلت معه ' + fmtD(x.wa_at), 'ok');
+    const ks = esc(JSON.stringify(x.ks));
+    return `<div class="pfr${x.paid ? ' paid' : ''}${x.wa_at ? ' done' : ''}">
+      <span class="pfi" aria-hidden="true">${x.src === 'site' ? '💳' : '🛒'}</span>
+      <div class="pfx"><b>${esc(nm)}${x.sname && x.gname && x.sname !== x.gname ? ` <small>في الموقع: ${esc(x.gname)}</small>` : ''}</b>
+        <small>${where} · ${fmtD(x.last || x.at)}${x.email ? ` · <bdi class="ltr">${esc(x.email)}</bdi>` : ''}</small>
+        ${ch.length ? `<div class="pfcs">${ch.join('')}</div>` : ''}</div>
+      <div class="pfa">${x.mobile && !x.paid ? `<a class="btn sm wa" href="https://wa.me/${esc(x.mobile)}?text=${encodeURIComponent(pfMsg(x))}" target="_blank" rel="noopener" data-pfwa="${ks}" title="تنفتح المحادثة والرسالة مكتوبة، وأنت ترسلها">💬 واتساب</a>` : ''}
+        ${x.paid ? '' : x.wa_at ? `<button type="button" class="btn sm ghost" data-pfundo="${ks}">تراجع</button>` : `<button type="button" class="btn sm ghost" data-pfdone="${ks}">✓ تواصلت معه</button>`}
+        <button type="button" class="btn sm ghost" data-pfhide="${ks}" data-h="${x.hide ? 1 : 0}">${x.hide ? '↩️ إظهار' : '🙈 إخفاء'}</button></div></div>`;
+  }
+  function paintUnpaid() {
+    const W = $('#adm'), F = ADM.pf; if (!W || !F) return;
+    const R = F.rows || [], open = R.filter(x => !x.paid && !x.hide), paid = R.filter(x => x.paid && !x.hide), hid = R.filter(x => x.hide && !x.paid);
+    const M = F.mail || {}, tile = (ic, b, t1) => `<div class="sbt"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t1}</span></div>`;
+    W.innerHTML = `<div class="stf subs pfpg">
+      <div class="sbtiles n4">${tile('🛒', open.length, 'ما كمّلوا الدفع')}${tile('📱', open.filter(x => x.mobile).length, 'عندك رقمهم')}${tile('📧', R.filter(x => x.mail_at && !x.mail_err).length, 'وصلهم إيميل «وش وقّفك؟»')}${tile('✅', paid.length, 'دفعوا بعدها')}</div>
+      <div class="rgsync${M.on && M.ready ? '' : ' warn'}">📧 <span><b>إيميل «وش وقّفك؟» التلقائي: ${M.on ? (M.ready ? 'شغّال' : 'شغّال، بس خدمة الإيميل مو مربوطة') : 'متوقف'}.</b> يوصل بعد ساعة من آخر ضغطة «ادفع» في الموقع، مرة وحدة لكل شخص، وما يوصل اللي تواصلت معه على واتساب ولا اللي قال لنا السبب.</span><button type="button" class="btn sm ghost" id="pfmail">${M.on ? '⏸ إيقاف' : '▶️ تشغيل'}</button></div>
+      <p class="mut pfnote">سلة ترسل لنا السلة المتروكة بعد ما يتركها العميل بفترة (نفس وقت تذكير سلة)، ومعها اسمه وجواله. واللي يضغط «ادفع» في الموقع يطلع هنا خلال دقايق. زر «واتساب» يفتح المحادثة والرسالة مكتوبة، وأنت ترسلها.</p>
+      <h3 class="sh">🛒 ما كمّلوا الدفع <small>${open.length}</small></h3>
+      ${open.length ? `<div class="pfl">${open.map(pfCard).join('')}</div>` : '<p class="mut ohempty">ما فيه أحد الحين. أول ما أحد يترك الدفع يطلع هنا.</p>'}
+      ${paid.length ? `<h3 class="sh">✅ دفعوا بعدها <small>${paid.length}</small></h3><div class="pfl">${paid.map(pfCard).join('')}</div>` : ''}
+      ${hid.length ? `<details class="pfhid"><summary>🙈 المخفيين (${hid.length})</summary><div class="pfl">${hid.map(pfCard).join('')}</div></details>` : ''}
+    </div>`;
+    const act = async (body, msg) => { try { ADM.pf = await admCall(body); ADM.home = null; if (msg) toast(msg); paintUnpaid(); } catch (e) { toast('ما انحفظ: ' + e.message); } };
+    W.querySelectorAll('[data-pfwa]').forEach(a => a.addEventListener('click', () => { const ks = JSON.parse(a.dataset.pfwa); api({ op: 'adm_pf_wa', session: auth.session, ks }).then(r => { if (r && r.ok) { ADM.pf = r; ADM.home = null; } }).catch(() => {}); }));
+    W.querySelectorAll('[data-pfdone]').forEach(b => b.onclick = () => { b.disabled = true; act({ op: 'adm_pf_wa', ks: JSON.parse(b.dataset.pfdone) }, '✓ تمام، علّمته إنك تواصلت معه'); });
+    W.querySelectorAll('[data-pfundo]').forEach(b => b.onclick = () => { b.disabled = true; act({ op: 'adm_pf_wa', ks: JSON.parse(b.dataset.pfundo), undo: 1 }); });
+    W.querySelectorAll('[data-pfhide]').forEach(b => b.onclick = () => { b.disabled = true; act({ op: 'adm_pf_hide', ks: JSON.parse(b.dataset.pfhide), undo: b.dataset.h === '1' ? 1 : 0 }); });
+    const mb = W.querySelector('#pfmail'); if (mb) mb.onclick = async () => {
+      if (!await QGDlg.confirm(M.on ? 'توقف إيميل «وش وقّفك؟» التلقائي؟\nاللي يضغط «ادفع» وما يكمّل ما يوصله إيميل، وتقدر تكلّمه من هنا.' : 'تشغّل إيميل «وش وقّفك؟» التلقائي؟\nيوصل بعد ساعة من آخر ضغطة «ادفع»، مرة وحدة لكل شخص.', M.on ? { ok: '⏸ إيقاف', danger: true } : { ok: '▶️ تشغيل' })) return;
+      mb.disabled = true; act({ op: 'adm_pf_set', mail: M.on ? 0 : 1 }, M.on ? '⏸ وقّفت الإيميل التلقائي' : '▶️ الإيميل التلقائي شغّال'); };
   }
 
   // ---------- 🎬 المقاطع: الرفع للموقع + حسابات المدرسين ----------

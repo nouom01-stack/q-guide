@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>وش وقّفك؟ | Q-Guide</title>
+<script>try { if (JSON.parse(localStorage.getItem('qg_theme') || '""') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/land.css?v=1">
+<link rel="icon" href="/assets/logo.png">
+<style>
+/* ✉️ صفحة الرد على إيميل «وش وقّفك؟»: السبب اللي ضغطه ينحفظ (op why_mail بالتوكن اللي في الرابط) ونرد عليه بما يفيده */
+.wy{max-width:620px;margin:0 auto;padding:40px 20px 64px}
+.wyc{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 28px}
+.wyc h1{font-family:var(--disp);font-weight:800;font-size:28px;line-height:1.35;margin:0 0 10px;color:var(--h2)}
+.wyc p{margin:0 0 14px;line-height:1.85}
+.wyr{color:var(--ink)}
+.wym{color:var(--mut);font-size:15.5px}
+.wya{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.wya .b{min-height:50px;font-size:17px;padding:0 22px}
+.b.nv{background:var(--n7);color:#fff}.b.nv:hover{background:var(--n5)}
+.b.gr{color:#17875A;border-color:#BFE3CF;background:var(--card)}
+[data-theme="dark"] .b.gr{color:#5ED39B;border-color:#2C5A43}
+.wyf{display:grid;gap:10px;margin-top:6px}
+.wyf textarea{min-height:96px;resize:vertical;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:16px;line-height:1.7}
+.wyf textarea:focus-visible{outline:none;border-color:var(--n5)}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--n7);border-radius:50%;animation:sp .8s linear infinite;margin:6px 0 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (max-width:560px){.wyc{padding:24px 18px}.wya .b{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<header class="hd"><div class="w hdw"><a class="brand" href="/"><img src="/assets/logo.png" alt="" width="38" height="38"><span>Q-Guide</span></a></div></header>
+<main class="wy"><div class="wyc" id="wy" aria-live="polite"><div class="spin" aria-hidden="true"></div><p class="wym">لحظة…</p></div></main>
+<script>
+(function () {
+  var API = (window.QG && QG.API) || (/(^|\.)q-guide\.online$/.test(location.hostname) ? 'https://q-guide-api.nouom01.workers.dev/' : '');
+  var q = new URLSearchParams(location.search), tok = (q.get('t') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40), code = (q.get('c') || '').replace(/[^a-z]/g, '').slice(0, 12);
+  var box = document.getElementById('wy');
+  var WA = function (t) { return 'https://wa.me/966508003683?text=' + encodeURIComponent('السلام عليكم، بديت الاشتراك في دورة Q-Guide وما اكتمل الدفع' + (t ? ' — ' + t : '')); };
+  var L = { otp: 'ما وصلني رمز التحقق', err: 'طلع لي خطأ في الدفع', method: 'ما عندي وسيلة دفع', parent: 'أحد ثاني بيدفع عني', price: 'السعر', later: 'بشترك بعدين', other: 'سبب ثاني' };
+  var R = {
+    otp: 'سلة تطلب رقم جوالك مرة وحدة: اكتبه، ثم أدخل الرمز اللي يوصلك برسالة نصية، وبعدها يطلع لك زر الدفع. لو تأخر الرمز اطلب إرساله مرة ثانية بعد دقيقة، وإذا ما ضبط كلّمنا على واتساب ونساعدك.',
+    err: 'لو طلع لك «اختر شركة الشحن» فمعناه إنك ضغطت الدفع قبل ما تسجّل برقم جوالك في سلة: سجّل برقمك أول ثم اضغط الدفع. وأي خطأ ثاني صوّره وأرسله لنا على واتساب ونحلّه لك.',
+    method: 'صفحة الدفع فيها مدى وأبل باي وفيزا وماستركارد وإس تي سي باي والتحويل البنكي، ويطلع لك المناسب لجهازك. تبي طريقة ثانية؟ كلّمنا على واتساب.',
+    parent: 'من نافذة الاشتراك في الموقع اضغط «أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع»، ويدفع ولي أمرك من جواله، والاشتراك يتفعّل على حسابك.',
+    price: 'الاشتراك 140 ريال للشهر كامل، يعني أقل من 5 ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.',
+    later: 'تمام 👌 حسابك المجاني يبقى شغّال، ووقت ما تبي تكمل اضغط «اشترك» في الموقع.'
+  };
+  var esc = function (s) { return String(s || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var send = function (body) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ op: 'why_mail', tok: tok }, body)) }).then(function (r) { return r.json(); });
+  };
+  var acts = function (t) { return '<div class="wya"><a class="b gold" href="/p/#join">كمّل الدفع</a><a class="b gr" href="' + WA(t) + '" target="_blank" rel="noopener">كلّمنا واتساب</a></div>'; };
+  var fail = function (msg) { box.innerHTML = '<h1>ما قدرنا نحفظ جوابك</h1><p class="wyr">' + esc(msg) + '</p>' + acts(''); };
+  if (!API || !tok || !(code === 'stop' || L[code])) return fail('الرابط هذا ناقص أو قديم. تقدر تكلّمنا على واتساب ونساعدك.');
+  if (code === 'other') {
+    box.innerHTML = '<h1>وش اللي وقّفك؟</h1><p class="wym">اكتب لنا باختصار، ونقرأه بأنفسنا.</p><form class="wyf" id="wyf"><textarea maxlength="300" aria-label="السبب" placeholder="اكتب السبب هنا…"></textarea><button type="submit" class="b nv">إرسال</button></form>';
+    var f = document.getElementById('wyf'), ta = f.querySelector('textarea'); ta.focus();
+    f.onsubmit = function (e) { e.preventDefault(); var v = ta.value.trim(); if (!v) { ta.focus(); return; } f.querySelector('button').disabled = true;
+      send({ code: 'other', txt: v }).then(function (r) { if (!r || !r.ok) return fail(r && r.error === 'gone' ? 'الرابط هذا قديم. تقدر تكلّمنا على واتساب ونساعدك.' : 'صار خطأ في الاتصال. جرّب بعد شوي أو كلّمنا على واتساب.');
+        box.innerHTML = '<h1>✓ وصلنا، شكراً لك 🙏</h1><p class="wyr">نقرأ كل رد بأنفسنا. ولو تبي نساعدك الحين كلّمنا على واتساب.</p>' + acts(v.slice(0, 80)); }, function () { fail('صار خطأ في الاتصال. جرّب بعد شوي أو كلّمنا على واتساب.'); }); };
+    return;
+  }
+  send({ code: code }).then(function (r) {
+    if (!r || !r.ok) return fail(r && r.error === 'gone' ? 'الرابط هذا قديم. تقدر تكلّمنا على واتساب ونساعدك.' : 'صار خطأ في الاتصال. جرّب بعد شوي أو كلّمنا على واتساب.');
+    if (r.stop) { box.innerHTML = '<h1>وقّفنا الرسائل</h1><p class="wyr">ما يوصلك منا إيميل ثاني. ولو احتجت شي كلّمنا على واتساب.</p><div class="wya"><a class="b gr" href="' + WA('') + '" target="_blank" rel="noopener">كلّمنا واتساب</a></div>'; return; }
+    box.innerHTML = '<h1>✓ وصلنا جوابك' + (r.name ? '، شكراً ' + esc(r.name) : '') + '</h1><p class="wym">السبب: ' + esc(L[code]) + '</p><p class="wyr">' + esc(R[code]) + '</p>' + acts(L[code]);
+  }, function () { fail('صار خطأ في الاتصال. جرّب بعد شوي أو كلّمنا على واتساب.'); });
+})();
+</script>
+</body>
+</html>
