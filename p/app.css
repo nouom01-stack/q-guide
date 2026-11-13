@@ -3111,3 +3111,68 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .pfa .btn{white-space:nowrap;text-decoration:none}
 .pfhid{margin-top:16px}.pfhid summary{cursor:pointer;font-weight:800;color:var(--mut);margin-bottom:8px}
 @media (max-width:640px){.pfr{grid-template-columns:auto minmax(0,1fr)}.pfa{grid-column:1/-1;justify-content:stretch;max-width:none}.pfa .btn{flex:1 1 auto}}
+
+/* ---------- 📦 الباقتين (نوفمبر 2026): «التدريب» (شهر) و«التأسيس والتدريب» (شهرين) ---------- */
+/* نافذة الاشتراك: بطاقتين راديو جنب بعض (فوق بعض في الجوال) — المختارة بحد كحلي وعلامة ✓ */
+.subdlg .sub-box.pk2{max-width:560px}
+.qgdlg-box p.sub-pick{margin:-4px 0 10px;color:var(--mut);font-size:calc(14.5px * var(--fs));font-weight:700}
+.pkgs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 0}
+.pkg{position:relative;display:flex;flex-direction:column;gap:6px;padding:14px 14px 12px;border:1.5px solid var(--line);border-radius:16px;background:var(--card);cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s}
+.pkg input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}
+.pkg:hover{border-color:color-mix(in srgb,var(--royal) 45%,var(--line))}
+.pkg.on{border-color:var(--royal);background:color-mix(in srgb,var(--royal) 6%,var(--card));box-shadow:0 0 0 3px color-mix(in srgb,var(--royal) 16%,transparent)}
+.pkg:has(input:focus-visible){outline:2px solid var(--royal);outline-offset:2px}
+.pkg-n{font-family:var(--disp);font-weight:800;font-size:calc(17px * var(--fs));color:var(--ink2);line-height:1.35;padding-inline-end:28px}
+.pkg-p{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:calc(14px * var(--fs));color:var(--mut);font-weight:700}
+.pkg-p b{font-family:var(--disp);font-size:calc(28px * var(--fs));font-weight:800;color:var(--royal);line-height:1.1}
+.pkg-d{flex:none;align-self:center;margin-inline-start:4px;font-size:calc(12px * var(--fs));font-weight:800;color:var(--stampfg);background:var(--stampbg);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.pkg-l{display:grid;gap:4px;margin-top:2px}
+.pkg-l>span{position:relative;padding-inline-start:20px;font-size:calc(13.5px * var(--fs));line-height:1.6;color:var(--ink)}
+.pkg-l>span::before{content:"✓";position:absolute;inset-inline-start:0;color:var(--ok);font-weight:900}
+.pkg-l>span.no{color:var(--mut)}.pkg-l>span.no::before{content:"–";color:var(--mut)}
+.pkg::after{content:"";position:absolute;top:13px;inset-inline-end:13px;width:20px;height:20px;border-radius:50%;border:2px solid var(--dot);background:var(--card);box-sizing:border-box}
+.pkg.on::after{border-color:var(--royal);background:var(--royal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.4l3 3 6-6.6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
+.qgdlg-box p.pkg-keep{margin:12px 0 0;padding:9px 12px;border-radius:12px;background:var(--stampbg);color:var(--stampfg);font-size:calc(13.5px * var(--fs));line-height:1.7;font-weight:700}
+.sub-box.pk2 .sub-pay{margin-top:14px}
+.qgdlg-box p.slp-pk{display:inline-block;margin:-2px 0 6px;padding:4px 12px;border-radius:999px;background:var(--dotbg);color:var(--ink);font-size:calc(13.5px * var(--fs));font-weight:700}
+.slp-pk b{font-family:var(--disp);color:var(--ink2)}
+@media (max-width:560px){.pkgs{grid-template-columns:1fr}.pkg{padding:12px 12px 10px;gap:4px}.pkg-p b{font-size:calc(24px * var(--fs))}}
+/* النافذة أطول من الشاشة (جوال صغير أو خط كبير): تنسحب بدل ما ينقص أولها أو آخرها */
+.subdlg{align-items:flex-start;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.subdlg .sub-box{margin:auto}
+@media (max-height:700px) and (max-width:560px){.subdlg{padding:10px}.subdlg .sub-box.pk2{padding:16px 16px 14px}.qgdlg-box.sub-box.pk2 h3{font-size:calc(19px * var(--fs));margin-bottom:6px}.sub-box.pk2 p.sub-pick{display:none}.pkgs{gap:8px;margin-top:6px}.pkg{padding:10px 12px 8px}.pkg-l>span{font-size:calc(13px * var(--fs));line-height:1.5}.sub-box.pk2 .sub-pay{margin-top:10px;gap:6px}.sub-box.pk2 .sub-a.alt{margin-top:6px}}
+/* 🔒 التأسيس مقفل على باقة «التدريب»: شريط الترقية (صفحة المدرس وصفحة المرشد) + بطاقة مذكرة مقفلة + سطر الباقة في «ملفي» */
+.tpup{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:14px;background:var(--stampbg);border:1px solid var(--gold3);color:var(--stampfg)}
+.tpup-i{font-size:calc(22px * var(--fs));line-height:1}
+.tpup-t{flex:1 1 220px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tpup-t b{font-family:var(--disp);font-weight:800;font-size:calc(16px * var(--fs))}
+.tpup-t span{font-size:calc(13.5px * var(--fs));line-height:1.6}
+.tpup .btn{flex:none}
+.tpup + .tpbar{margin-top:12px}
+.advf.lk .tpup{margin-top:4px}
+.wbc.lk .ic{filter:grayscale(1);opacity:.7}
+.wbc.lk .tx b{color:var(--mut)}
+.mepk{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg)}
+.mepk-i{font-size:calc(22px * var(--fs));line-height:1}
+.mepk-t{flex:1 1 200px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.mepk-t b{font-family:var(--disp);font-weight:800;font-size:calc(16px * var(--fs));color:var(--ink2)}
+.mepk-t span{color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.6}
+.qgdlg-box p.pdpk,.pdcard p.pdpk{margin:10px 0 0;padding:9px 12px;border-radius:12px;background:var(--dotbg);font-weight:700;font-size:calc(14.5px * var(--fs));line-height:1.7}
+/* 👑 المالك: باقة الطالب في «الاشتراكات» وبطاقته · المنتجين في صندوق سلة */
+.sbpk{display:flex;align-items:center;gap:4px 6px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
+.sbpk-l{font-size:calc(13px * var(--fs))}
+.sbpk button{padding:4px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--mut);font-weight:800;font-size:calc(12.5px * var(--fs));white-space:nowrap}
+.sbpk button:hover{color:var(--ink);border-color:var(--navy3)}
+.sbpk button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.sbpk small{flex-basis:100%;text-align:end;color:var(--mut);font-size:calc(11.5px * var(--fs));font-weight:600}
+.sdpk{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin:-4px 0 12px;padding:10px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-size:calc(14px * var(--fs))}
+.sdpk b{color:var(--ink)}.sdpk small{color:var(--mut);font-size:calc(12.5px * var(--fs))}.sdpk .lnk{margin-inline-start:auto}
+.slset.pk2{grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch}
+.slpk{display:grid;grid-template-columns:150px minmax(0,1fr) 130px;gap:10px;align-items:end;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.slpk-n{align-self:center;font-size:calc(14.5px * var(--fs));color:var(--ink);line-height:1.5}
+.slpk-n small{display:block;color:var(--mut);font-weight:700;font-size:calc(12px * var(--fs))}
+.slset p.slpk-h{margin:0;color:var(--mut);font-size:calc(12.5px * var(--fs));line-height:1.7}
+.slset.pk2 .btn{justify-self:start}
+.pbamt small.pbpk{color:var(--ink);font-weight:700}
+@media (max-width:720px){.slpk{grid-template-columns:minmax(0,1fr) 110px}.slpk-n{grid-column:1/-1}}
+[data-theme=dark] .pkg.on{background:color-mix(in srgb,var(--royal) 12%,var(--card))}

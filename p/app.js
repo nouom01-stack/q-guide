@@ -17,7 +17,7 @@
   // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
   const isFree = () => !!(auth && auth.role === 'free');
   let CERR = () => {};   // 🐞 مرسل الأخطاء للمالك (يتعرّف تحت): نستخدمه في try/catch حول الإضافات اللي ما نبيها تكسر الصفحة
-  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, FREE_GAMES = 3;
+  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, PRICE2 = 239, FREE_GAMES = 3;
   const isSub = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin');   // مشترك في الدورة (طالب)
   const WA = t => 'https://wa.me/966508003683?text=' + encodeURIComponent(t);   // 💬 واتساب الدعم
   // 💳 الاشتراك والتجديد من الموقع بس (اشتراك يوتيوب توقف): الزائر يدفع وتنفتح له الدورة، والمشترك يجدّد ويتمدد اشتراكه شهر من موعد نهايته
@@ -32,6 +32,21 @@
   const SAL_SS = 'qg_salla';   // متى فتح صفحة الدفع في سلة (نتحقق من طلبه لين 45 دقيقة)
   const SAL_FAST = 600e3;      // ⚡ أول 10 دقايق: نسأل كل 3 ثواني والخادم يفحص إيميل سلة بسرعة
   const sallaOn = () => !!(auth && auth.role !== 'admin' && auth.salla && auth.salla.on && auth.salla.url);
+  // 📦 الباقتين (نوفمبر 2026): train = «التدريب» (شهر) · full = «التأسيس والتدريب» (شهرين) — السعر والرابط من الخادم (auth.salla.pk / auth.pay.pk)، وبدون بوابة دفع: السعرين الافتراضيين والاشتراك بواتساب
+  //    auth.plan = اللي مفتوح للمشترك الحين: 'train' = بدون التأسيس (دروس التأسيس بالفيديو واختباراتها ومذكرتا التأسيس) · غيرها = كل شي. المشترك من قبل الباقات يبقى له كل شي.
+  //    auth.pkg = الباقة اللي اشتراها ('' = قديم) · auth.fu = التأسيس باقي مفتوح له لين هالوقت (جدّد «التدريب» وكان عنده كل شي)
+  const PKN = k => (k === 'full' ? _T('التأسيس والتدريب') : _T('التدريب'));
+  const pkDur = m => (m === 2 ? _T('شهرين') : _T('شهر'));
+  const pkList = () => { const g = sallaOn() ? auth.salla : payOn() ? auth.pay : null, pk = (g && g.pk) || null;
+    const L = [{ k: 'train', price: (pk && pk.train && pk.train.price) || (g && g.price) || PRICE, months: 1, url: (pk && pk.train && pk.train.url) || (g && g.url) || '' }];
+    if (!g || (pk && pk.full)) L.push({ k: 'full', price: (pk && pk.full && pk.full.price) || PRICE2, months: 2, url: (pk && pk.full && pk.full.url) || '' });
+    return L; };
+  const pkTwo = () => pkList().length > 1;
+  const noFound = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin' && auth.plan === 'train');   // 🔒 مشترك باقته «التدريب»: التأسيس مقفل عنه
+  const foundRoute = h => /^watch-(af|sf)\d{1,2}$/.test(h) || /^fq-[1-4]$/.test(h) || /^wb-t[qv](@\d{1,3})?$/.test(h);
+  const PK_SS = 'qg_pkg';   // الباقة اللي اختارها في نافذة الاشتراك (لو رجع من صفحة الدفع نكمل عليها)
+  const pkSel = () => { try { return sessionStorage.getItem(PK_SS) === 'full' ? 'full' : 'train'; } catch (e) { return 'train'; } };
+  const pkSet = k => { try { sessionStorage.setItem(PK_SS, k === 'full' ? 'full' : 'train'); } catch (e) {} };
   const sallaPending = () => { try { const t = +sessionStorage.getItem(SAL_SS) || 0; return t && Date.now() - t < 45 * 60e3 ? t : 0; } catch (e) { return 0; } };
   const sallaDone = () => { try { sessionStorage.removeItem(SAL_SS); } catch (e) {} };
   // 🎬 مقاطع الشرح على قناة Q-guide1 (نفس روابط باركود المذكرات) · مقطعا القواعد (الكمي واللفظي) انشالوا من الموقع بطلب المالك
@@ -385,6 +400,9 @@
         auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-(salman|abdullah)(\/[ft])?)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
       if (r && r.ok && auth && auth.role !== 'admin' && auth.role !== 'free' && r.sub && (r.sub !== auth.sub || JSON.stringify(r.yt || null) !== JSON.stringify(auth.yt || null))) {   // 💳 المالك غيّر نوع اشتراكه
         auth.sub = r.sub; auth.yt = r.yt || null; lsSet(LS.auth, auth); if (!location.hash || location.hash === '#') renderHome(); }
+      if (r && r.ok && auth && isSub() && r.plan && (r.plan !== auth.plan || (r.pkg || '') !== (auth.pkg || '') || (r.fu || 0) !== (auth.fu || 0))) {   // 📦 باقته تغيّرت (اشترى، أو المالك غيّرها، أو خلصت مدة التأسيس)
+        const was = auth.plan || 'full'; auth.plan = r.plan; auth.pkg = r.pkg || ''; auth.fu = r.fu || 0; lsSet(LS.auth, auth);
+        if (was !== r.plan && (!location.hash || /^#($|sharh|advisor|me$|watch-(af|sf)|fq-|wb-t)/.test(location.hash))) route(); }   // الأقفال تتحدّث في الصفحة المفتوحة
       if (r && r.ok && isSub()) setTimeout(resRecover, 1500);   // 📨 نتائج اكتملت وما وصلت للخادم (مرة كل 10 دقائق)
     } catch (e) {} finally { hbBusy = false; }
   }
@@ -402,58 +420,93 @@
   // ⏰ كم يوم باقي على نهاية اشتراك الطالب (بتقويم الرياض) — auth.renew = {until, nag: قرب يخلص أو خلص, auto: ينتهي تلقائياً, grace} من الخادم
   const renewLeft = () => { const R = auth && auth.renew; return R && R.until ? rDay(R.until) - rDay(Date.now()) : null; };
   // نافذة وحدة للاشتراك (الزائر) وللتجديد (المشترك): الدفع من الموقع — سلة أول لو المالك شغّلها، وإلا تاب، وإلا واتساب الدعم
-  function subDlg(what, from, stay) {
+  //    📦 لو فيه باقتين: بطاقتين يختار منهم (الافتراضي «التدريب»)، وزر الدفع بسعر اللي اختارها. pkg0 = الباقة المختارة من برا (زر باقة في صفحة الموقع، أو الترقية)
+  //    up = ترقية: مشترك باقته «التدريب» ضغط شي من التأسيس (upDlg) — نفس نافذة التجديد و«التأسيس والتدريب» مختارة
+  const upDlg = what => subDlg(what || _T('التأسيس'), '', 1, 'full', 1);
+  function bindUp(root) { (root || document).querySelectorAll('[data-up]').forEach(b => b.onclick = e => { e.preventDefault(); upDlg(b.dataset.up ? _T(b.dataset.up) : ''); }); }
+  function subDlg(what, from, stay, pkg0, up) {
     const renew = isSub();
     if (isFree() && window.QGT) QGT.ev('sub', what || from || 'زر الاشتراك');   // 👀 فتح نافذة الاشتراك (وش اللي فتحها)
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
     const ov = document.createElement('div'); ov.className = 'qgdlg subdlg' + (renew ? ' rn' : ''); ov.setAttribute('dir', EN ? 'ltr' : 'rtl');
-    const wa = WA((renew ? _T('السلام عليكم، أبي أجدد اشتراكي في دورة Q-Guide') : _T('السلام عليكم، أبي أشترك في دورة Q-Guide')) + (auth && auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
-    const SL = sallaOn() ? auth.salla : null, PAY = !SL && payOn() ? auth.pay : null;   // 🛍 سلة أول (لو المالك شغّلها)، وإلا 💳 الدفع من الموقع (تاب)
-    const price = (SL && SL.price) || (PAY && PAY.price) || PRICE, R = (renew && auth.renew) || {}, left = renew ? renewLeft() : null;
-    const head = renew ? _T`<h3 id="subh">جدّد اشتراكك</h3>
-      <p class="sub-rn${left != null && left < 0 ? ' over' : ''}">${left == null ? _T('التجديد يضيف شهر كامل على اشتراكك.') : left < 0 ? _T`انتهت مدة اشتراكك ${meDay(R.until)}. جدّد الحين عشان ما ينقطع دخولك للدورة.` : _T`اشتراكك ينتهي ${meDay(R.until)}. التجديد يضيف شهر على هذا التاريخ، فما يضيع عليك ولا يوم.`}</p>`
+    const SL0 = sallaOn() ? auth.salla : null, SL = SL0, PAY = !SL && payOn() ? auth.pay : null;   // 🛍 سلة أول (لو المالك شغّلها)، وإلا 💳 الدفع من الموقع (تاب)
+    const PK = pkList(), two = PK.length > 1, fnd = !!(up && two); up = fnd && renew;   // fnd = جا من قفل شي من التأسيس (زائر أو مشترك) · up = مشترك يرقّي
+    let sel = PK.find(x => x.k === (pkg0 || (renew && auth.pkg === 'full' ? 'full' : ''))) || PK[0];   // المشترك في «التأسيس والتدريب» يجدّد نفسها · الباقي يبدأ على «التدريب»
+    const price = PK[0].price, R = (renew && auth.renew) || {}, left = renew ? renewLeft() : null;
+    const waOf = () => WA((renew ? _T('السلام عليكم، أبي أجدد اشتراكي في دورة Q-Guide') : _T('السلام عليكم، أبي أشترك في دورة Q-Guide')) + (two ? ' — ' + _T('باقة') + ' ' + PKN(sel.k) : '') + (auth && auth.email ? _T('\nإيميلي في الموقع: ') + auth.email : ''));
+    // 📦 بطاقتا الباقات (راديو): الاسم والمدة والسعر ووش تفتح
+    const feats = { train: [_T('14 قسم كمي و14 نموذج لفظي بالشرح والفيديو'), _T('17 اختبار محاكي بنفس نظام قياس'), _T('مرشدك الأكاديمي ومذكرات التدريب')],
+      full: [_T('كل اللي في باقة «التدريب»'), _T('تأسيس اللفظي بالفيديو واختبار بعد كل درس'), _T('مذكرتا التأسيس: قواعد الكمي واللفظي')] };
+    const card = x => `<label class="pkg${x.k === sel.k ? ' on' : ''}" data-pk="${x.k}"><input type="radio" name="qgpkg" value="${x.k}"${x.k === sel.k ? ' checked' : ''}>
+        <b class="pkg-n">${PKN(x.k)}</b>
+        <span class="pkg-p"><b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>
+        <span class="pkg-l">${feats[x.k].map(f => `<span>${f}</span>`).join('')}${x.k === 'train' ? `<span class="no">${_T('بدون التأسيس')}</span>` : ''}</span></label>`;
+    const cards = two ? `<div class="pkgs" role="radiogroup" aria-label="${_T('اختر باقتك')}">${PK.map(card).join('')}</div>` : '';
+    const head = up ? _T`<p class="sub-lock">🔒 ${esc(what)} ضمن باقة «التأسيس والتدريب»</p>
+      <h3 id="subh">رقّ باقتك وافتح التأسيس</h3>
+      <p class="sub-rn">التأسيس ينفتح لك على طول، ومدة الباقة تنضاف على نهاية اشتراكك الحالي.</p>${cards}`
+      : renew ? _T`<h3 id="subh">جدّد اشتراكك</h3>
+      <p class="sub-rn${left != null && left < 0 ? ' over' : ''}">${left == null ? (two ? _T('مدة الباقة اللي تختارها تنضاف على اشتراكك.') : _T('التجديد يضيف شهر كامل على اشتراكك.')) : left < 0 ? _T`انتهت مدة اشتراكك ${meDay(R.until)}. جدّد الحين عشان ما ينقطع دخولك للدورة.` : two ? _T`اشتراكك ينتهي ${meDay(R.until)}. مدة الباقة اللي تختارها تنضاف على هذا التاريخ، فما يضيع عليك ولا يوم.` : _T`اشتراكك ينتهي ${meDay(R.until)}. التجديد يضيف شهر على هذا التاريخ، فما يضيع عليك ولا يوم.`}</p>${cards}`
+      : two ? _T`${what ? (fnd ? _T`<p class="sub-lock">🔒 ${esc(what)} ضمن باقة «التأسيس والتدريب»</p>` : _T`<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>`) : ''}
+      <h3 id="subh">اشترك في دورة Q-Guide</h3>
+      <p class="sub-pick">اختر باقتك:</p>${cards}`
       : _T`${what ? _T`<p class="sub-lock">🔒 ${esc(what)} للمشتركين في الدورة</p>` : ''}
       <h3 id="subh">اشترك في دورة Q-Guide</h3>
       <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li>دروس التأسيس واختباراتها مع مدرسين الدورة</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>مرشدك الأكاديمي الذكي وخطة مذاكرة على موعد اختبارك</li><li>الساحة 1v1 بدون حد، والمذكرات ولوحات الصدارة</li></ul>`;
-    const go = renew ? _T`💳 ادفع ${price} ريال وجدّد شهر` : _T`💳 ادفع ${price} ريال واشترك الحين`;
-    const body = SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">${go}</button>
-        <p class="sub-payn">${renew ? (SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا ويتمدد اشتراكك شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، ويتمدد اشتراكك شهر.')) : SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك الدورة كاملة لمدة شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.')}</p>
+    // زر الدفع وما تحته: ينرسم من جديد كل ما غيّر الباقة (السعر والمدة يتبعونها)
+    const goTxt = () => renew ? (sel.months === 2 ? _T`💳 ادفع ${sel.price} ريال وجدّد شهرين` : _T`💳 ادفع ${sel.price} ريال وجدّد شهر`) : _T`💳 ادفع ${sel.price} ريال واشترك الحين`;
+    const keep = () => !(two && renew && auth.plan !== 'train' && sel.k === 'train') ? '' : `<p class="pkg-keep">${left != null && left >= 0 ? _T`التأسيس يبقى مفتوح لك لين ${meDay(auth.pkg === 'train' && auth.fu > Date.now() ? auth.fu : R.until)}، وبعدها تكمّل على «التدريب» بدون التأسيس.` : _T('باقة «التدريب» بدون التأسيس: دروس التأسيس واختباراتها ومذكرتا التأسيس تنقفل عنك.')}</p>`;
+    const bodyOf = () => { const SL = SL0 && (!two || sel.url) ? SL0 : null;   // 📦 الباقة اللي ما لها رابط منتج في سلة (المالك ما حطه): تنطلب بواتساب
+      return keep() + (SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">${goTxt()}</button>
+        <p class="sub-payn">${two ? (renew ? (SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا ويتمدد اشتراكك.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، ويتمدد اشتراكك.')) : SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك باقتك على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك باقتك.'))
+          : renew ? (SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا ويتمدد اشتراكك شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، ويتمدد اشتراكك شهر.')) : SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك الدورة كاملة لمدة شهر.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك الدورة كاملة لمدة شهر.')}</p>
         <button type="button" class="lnk sub-have" id="slhave">${renew ? _T('دفعت؟ جدّد اشتراكك برقم الطلب') : _T('دفعت؟ فعّل اشتراكك برقم الطلب')}</button></div>`
-      : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">${go}</button>
-        <p class="sub-payn">${renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد شهر على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.')}</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>`
-      : _T`<p class="sub-nopay">${renew ? _T`التجديد <b>${price} ريال</b> للشهر. راسلنا على واتساب ونجدّد لك اشتراكك على نفس حسابك.` : _T`الاشتراك <b>${price} ريال</b> للشهر. راسلنا على واتساب ونفعّل لك الدورة كاملة على نفس حسابك.`}</p>`;
-    ov.innerHTML = _T`<div class="qgdlg-box sub-box" role="dialog" aria-modal="true" aria-labelledby="subh">
+      : PAY ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="paygo">${goTxt()}</button>
+        <p class="sub-payn">${two ? (renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. باقتك تنفتح لك على طول.')) : renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد شهر على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.')}</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>`
+      : two ? `<p class="sub-nopay">${renew ? _T('راسلنا على واتساب ونجدّد لك بالباقة اللي اخترتها على نفس حسابك.') : _T('راسلنا على واتساب ونفعّل لك الباقة اللي اخترتها على نفس حسابك.')}</p>`
+      : _T`<p class="sub-nopay">${renew ? _T`التجديد <b>${price} ريال</b> للشهر. راسلنا على واتساب ونجدّد لك اشتراكك على نفس حسابك.` : _T`الاشتراك <b>${price} ريال</b> للشهر. راسلنا على واتساب ونفعّل لك الدورة كاملة على نفس حسابك.`}</p>`)
+      + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>`; };
+    ov.innerHTML = _T`<div class="qgdlg-box sub-box${two ? ' pk2' : ''}" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
-      ${head}${body}
-      <div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${wa}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>
+      ${head}<div class="sub-dyn"></div>
     </div>`;
     document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
     let acted = false;   // ضغط «ادفع» أو واتساب أو رقم الطلب؟ لو سكّر النافذة بدون ولا واحد منهم نسأله «وش وقّفك؟»
     const close = () => { ov.remove(); document.removeEventListener('keydown', onK); };
+    ov._qgClose = close;   // الانتقال لصفحة ثانية يسكّر النافذة (hashchange)
     const quit = () => { const steps = !!ov.querySelector('.sub-box.slp'); close(); if (!acted && !steps && !renew) whyDlgMaybe(from === _T('صفحة الموقع')); };
     const onK = e => { if (e.key === 'Escape') quit(); };
     document.addEventListener('keydown', onK);
     ov.addEventListener('click', e => { if (e.target === ov) quit(); });
-    ov.querySelector('.sub-x').onclick = quit; (ov.querySelector('#sallago') || ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
-    const pg = ov.querySelector('#paygo'); if (pg) pg.onclick = () => { acted = true; payGo(pg); };
-    const sg = ov.querySelector('#sallago'); if (sg) sg.onclick = () => { acted = true; sallaSteps(ov, what, close); };
-    const sh = ov.querySelector('#slhave'); if (sh) sh.onclick = () => { acted = true; sallaSteps(ov, what, close, 1); };   // دفع قبل (أو أبوه دفع عنه): على طول لخانة رقم الطلب
-    ov.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { acted = true; if (isFree() && window.QGT) { QGT.ev('subgo', 'واتساب'); QGT.flush(true); } }));
-    if (SL && sallaPending() && !stay) sallaSteps(ov, what, close);   // رجع للنافذة وهو فاتح صفحة الدفع: نكمل من خطوات سلة
+    ov.querySelector('.sub-x').onclick = quit;
+    const paint = () => {
+      const D = ov.querySelector('.sub-dyn'); if (!D) return; D.innerHTML = bodyOf();
+      const pg = D.querySelector('#paygo'); if (pg) pg.onclick = () => { acted = true; pkSet(sel.k); payGo(pg, sel.k); };
+      const sg = D.querySelector('#sallago'); if (sg) sg.onclick = () => { acted = true; pkSet(sel.k); sallaSteps(ov, what, close, 0, sel.k, fnd); };
+      const sh = D.querySelector('#slhave'); if (sh) sh.onclick = () => { acted = true; sallaSteps(ov, what, close, 1, sel.k, fnd); };   // دفع قبل (أو أبوه دفع عنه): على طول لخانة رقم الطلب
+      D.querySelectorAll('.sub-a a').forEach(a => a.addEventListener('click', () => { acted = true; if (isFree() && window.QGT) { QGT.ev('subgo', 'واتساب'); QGT.flush(true); } }));
+    };
+    paint();
+    ov.querySelectorAll('.pkg input').forEach(i => i.onchange = () => { if (!i.checked) return; sel = PK.find(x => x.k === i.value) || sel;
+      ov.querySelectorAll('.pkg').forEach(c => c.classList.toggle('on', c.dataset.pk === sel.k)); paint(); });
+    (ov.querySelector('.pkg input:checked') || ov.querySelector('#sallago') || ov.querySelector('#paygo') || ov.querySelector('.sub-a a')).focus({ preventScroll: true });
+    if (SL && sallaPending() && !stay) sallaSteps(ov, what, close, 0, pkSel(), fnd);   // رجع للنافذة وهو فاتح صفحة الدفع: نكمل من خطوات سلة (بنفس الباقة)
   }
   // 🛍 خطوات الدفع عن طريق سلة (داخل نفس النافذة): ① افتح صفحة الدفع وادفع ② الصق رقم الطلب هنا ← يتفعّل اشتراكه على حسابه
   //    ref = جا من «دفعت؟ فعّل اشتراكك برقم الطلب» (أو أبوه دفع عنه): نركّز على خانة الرقم على طول
   const slWa = () => WA(_T('السلام عليكم، دفعت عن طريق سلة وما تفعّل اشتراكي') + '\n' + ((auth && auth.email) || ''));
   const enDigits = s => String(s || '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6f0);
-  function sallaSteps(ov, what, close, ref) {
+  function sallaSteps(ov, what, close, ref, pkg, up) {
     const SL = auth && auth.salla; if (!SL || !SL.url) return;
     const box = ov.querySelector('.sub-box'); if (!box) return;
+    const PK = pkList(), P0 = PK.find(x => x.k === pkg), P = P0 && P0.url ? P0 : PK[0], two = PK.length > 1, purl = P.url || SL.url;   // 📦 الباقة اللي اختارها: رابط منتجها وسعرها (باقة بدون رابط منتج ما تدخل هنا)
     box.classList.add('slp');
     box.innerHTML = _T`<button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       <button type="button" class="lnk slp-back">→ رجوع</button>
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
+      ${two && !ref ? `<p class="slp-pk"><span aria-hidden="true">📦</span> <b>${PKN(P.k)}</b> · ${P.price} ${_T('ريال')} · ${pkDur(P.months)}</p>` : ''}
       <ol class="slp-s">
-        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(SL.url)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a><button type="button" class="lnk slp-share" id="slshare">👨‍👩‍👦 أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع</button></div></li>
+        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(purl)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a><button type="button" class="lnk slp-share" id="slshare">👨‍👩‍👦 أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع</button></div></li>
         <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله بعد الدفع بثواني، بدون ما تكتب شي.</small>
           <form class="slp-ref" novalidate><input id="slref" type="text" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="60" placeholder="#218402731" aria-label="رقم الطلب"><button type="submit" class="btn" id="slclaim">✓ فعّل اشتراكي</button></form>
           <div class="slp-st" role="status" aria-live="polite"></div>
@@ -462,9 +515,9 @@
       <p class="slp-help">دفعت وما تفعّل اشتراكك؟ <a href="${slWa()}" target="_blank" rel="noopener">راسلنا على واتساب</a></p>
       ${isFree() ? _T('<div class="slp-why"><button type="button" class="lnk" id="slwhy">ما قدرت تكمّل الدفع؟ قل لنا وش صار</button><div id="slwhyb"></div></div>') : ''}`;
     box.querySelector('.sub-x').onclick = close;
-    const swb = box.querySelector('#slwhy'); if (swb) swb.onclick = () => { swb.hidden = true; whyBox('pay', box.querySelector('#slwhyb'), { onPay: () => { const g = box.querySelector('#slopen'); if (g) { g.scrollIntoView({ block: 'center' }); g.focus({ preventScroll: true }); } }, link: () => (box.classList.contains('slk') ? box.querySelector('#slopen').href : '') }); };
-    const shb = box.querySelector('#slshare'); if (shb) shb.onclick = () => { const g = box.querySelector('#slopen'); if (g && box.classList.contains('slk')) payShare(g.href); };
-    box.querySelector('.slp-back').onclick = () => { close(); subDlg(what, '', 1); };
+    const swb = box.querySelector('#slwhy'); if (swb) swb.onclick = () => { swb.hidden = true; whyBox('pay', box.querySelector('#slwhyb'), { onPay: () => { const g = box.querySelector('#slopen'); if (g) { g.scrollIntoView({ block: 'center' }); g.focus({ preventScroll: true }); } }, link: () => (box.classList.contains('slk') ? box.querySelector('#slopen').href : ''), pkg: P.k }); };
+    const shb = box.querySelector('#slshare'); if (shb) shb.onclick = () => { const g = box.querySelector('#slopen'); if (g && box.classList.contains('slk')) payShare(g.href, P.k); };
+    box.querySelector('.slp-back').onclick = () => { close(); subDlg(what, '', 1, P.k, up); };
     const go = box.querySelector('#slopen');
     go.addEventListener('click', e => {   // الرابط يفتح صفحة سلة بنفسه (تبويب جديد) — ولو إيميله في سلة نفس إيميله هنا يتفعّل لحاله (نتحقق بالخلفية)
       if (go.classList.contains('busy')) { e.preventDefault(); return; }   // رابطه الخاص يتجهّز: ثانية أو ثانيتين
@@ -482,7 +535,7 @@
         if (url) { go.href = url; box.classList.add('slk'); if (sallaPending()) { const st = box.querySelector('.slp-st'); if (st && !st.innerHTML) slStatus({ linkwait: 1 }); } }
         go.classList.remove('busy'); go.removeAttribute('aria-disabled'); go.innerHTML = label; };
       setTimeout(() => fin(''), 12000);
-      api({ op: 'salla_go', session: auth.session, ua: navigator.userAgent.slice(0, 120) }).then(r => fin(r && r.ok && /^https:\/\/[^\s"'<>]+$/.test(r.url || '') ? r.url : ''), () => fin(''));
+      api({ op: 'salla_go', session: auth.session, pkg: P.k, ua: navigator.userAgent.slice(0, 120) }).then(r => fin(r && r.ok && /^https:\/\/[^\s"'<>]+$/.test(r.url || '') ? r.url : ''), () => fin(''));
     }
     let slT = 0;   // ⏳ الطلب ما وصلنا للحين (إيميل سلة يوصل بعد الدفع بثواني): نعيد نفس الرقم لحاله
     inp.addEventListener('input', () => { clearTimeout(slT); const st = box.querySelector('.slp-st'); if (st && /\b(bad|na|mw)\b/.test(st.className)) slStatus({}); });
@@ -547,7 +600,9 @@
     if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
     else if (was && r.until) { auth.renew = Object.assign({}, auth.renew || {}, { until: r.until, nag: 0 }); lsSet(LS.auth, auth); }   // 🔁 جدّد: موعده الجديد
     document.querySelectorAll('.subdlg').forEach(x => x.remove());
-    PAID_OK = { until: r.until || 0, months: r.months || 1, renew: was ? 1 : 0 };
+    PAID_OK = { until: r.until || 0, months: r.months || 1, renew: was ? 1 : 0, pkg: r.pkg || '', opened: was && r.pkg === 'full' && auth.plan === 'train' ? 1 : 0 };
+    if (was && r.pkg === 'full' && auth.plan === 'train') { auth.plan = 'full'; auth.pkg = 'full'; auth.fu = 0; lsSet(LS.auth, auth); }   // 📦 رقّى: التأسيس ينفتح على طول (والنبضة تأكد من الخادم)
+    if (was) setTimeout(heartbeat, 800);
     if (location.hash === '#paid') renderPaid(); else location.hash = 'paid';
   }
   // ⚡ ضغط «افتح صفحة الدفع»: نبلّغ الخادم إنه يدفع الحين (يفحص إيميل سلة كل 3 ثواني بدل كل دقيقة). sendBeacon يوصل حتى لو الصفحة راحت للخلفية
@@ -564,11 +619,11 @@
     const back = () => { if (!document.hidden && sallaPending() && auth && auth.role !== 'admin') sallaPoll(); };
     document.addEventListener('visibilitychange', back); window.addEventListener('focus', back); }
   // 💳 «ادفع واشترك»: الخادم ينشئ العملية عند تاب ويرجّع رابط صفحة الدفع (مدى، أبل باي، البطاقات) — بيانات البطاقة ما تمر علينا
-  async function payGo(btn) {
+  async function payGo(btn, pkg) {
     if (!btn || btn.disabled) return; btn.disabled = true; const label = btn.innerHTML; btn.innerHTML = _T('⏳ نجهّز صفحة الدفع…');
     payTried(); if (window.QGT) { QGT.ev('subgo', 'دفع'); QGT.flush(true); }
     try {
-      const r = await api({ op: 'pay_start', session: auth.session, lang: EN ? 'en' : 'ar', renew: isSub() ? 1 : undefined });
+      const r = await api({ op: 'pay_start', session: auth.session, lang: EN ? 'en' : 'ar', renew: isSub() ? 1 : undefined, pkg: pkg || pkSel() });
       if (r && r.ok && r.url) { location.href = r.url; return; }
       if (r && (r.error === 'kicked' || r.error === 'session')) return logout(esc(r.msg || ''));
       toast((r && r.msg) || _T('تعذّر فتح صفحة الدفع، حاول بعد شوي.'));
@@ -577,11 +632,12 @@
   }
   // 💳 الرجوع من صفحة الدفع (#paid): نتحقق من العملية عند تاب — لو انخصمت تنفتح الدورة على طول بجلسة المشترك الجديدة
   let PAID_OK = null;   // 🛍 دفع سلة تفعّل: صفحة «تم الاشتراك» تطلع مرة وحدة
-  function paidOk(show, until, months, renew) {
+  function paidOk(show, until, months, renew, pkg, opened) {
     const end = until ? new Date(until).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }) : '';
-    if (renew) show('🎉', 'ok', _T`<h2>تم تجديد اشتراكك</h2><p>انضاف ${months > 1 ? _T`${months} شهور` : _T('شهر')} على اشتراكك، وتقدّمك ونتائجك كلها مثل ما هي.</p>${end ? _T`<p class="pdend">اشتراكك الحين ينتهي <b>${end}</b></p>` : ''}
-      <div class="pdact"><a class="btn gold" href="#">كمّل مذاكرتك</a></div>`);
-    else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
+    const named = pkg === 'full' || (pkg === 'train' && pkTwo());   // 📦 نسمّي الباقة لما فيه باقتين (ومع باقة وحدة يبقى الكلام مثل قبل)
+    if (renew) show('🎉', 'ok', _T`<h2>تم تجديد اشتراكك</h2><p>انضاف ${months === 2 ? _T('شهرين') : months > 1 ? _T`${months} شهور` : _T('شهر')} على اشتراكك، وتقدّمك ونتائجك كلها مثل ما هي.</p>${opened ? _T('<p class="pdpk">📦 باقتك صارت «التأسيس والتدريب»: دروس التأسيس واختباراتها ومذكرتا التأسيس انفتحت لك.</p>') : ''}${end ? _T`<p class="pdend">اشتراكك الحين ينتهي <b>${end}</b></p>` : ''}
+      <div class="pdact"><a class="btn gold" href="#">كمّل مذاكرتك</a>${opened ? _T('<a class="btn ghost" href="#sharh">🧱 دروس التأسيس</a>') : ''}</div>`);
+    else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>${!named ? _T('الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.') : pkg === 'full' ? _T('باقة «التأسيس والتدريب» مفتوحة لك الحين: دروس التأسيس واختباراتها ومذكرتا التأسيس، وكل الأقسام والنماذج بالشرح، والاختبارات المحاكية.') : _T('باقة «التدريب» مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، ومذكرات التدريب.')}</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
       <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
     confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع'); lsDel(PAYTRY_LS); lsDel(WHY_LS);
   }
@@ -592,7 +648,7 @@
         `<main class="wrap paid"><div class="pdcard ${cls}" role="status" aria-live="polite"><div class="pdic" aria-hidden="true">${ic}</div>${body}</div></main>`;
       bindCtl();
     };
-    if (PAID_OK) { const K = PAID_OK; PAID_OK = null; return paidOk(show, K.until, K.months, K.renew); }
+    if (PAID_OK) { const K = PAID_OK; PAID_OK = null; return paidOk(show, K.until, K.months, K.renew, K.pkg, K.opened); }
     const id = payPending(); if (!id) { location.hash = ''; return; }
     const wa = WA(_T('السلام عليكم، دفعت في موقع Q-Guide وعندي استفسار') + '\n' + (auth.email || '') + '\n' + id), was = isSub();
     show('<div class="spin"></div>', 'wait', _T('<h2>نتحقق من عملية الدفع…</h2><p>لا تسكّر الصفحة، ثواني بس.</p>'));
@@ -608,7 +664,10 @@
     if (r && r.ok && r.paid) {
       payDone(); if (r.auth) { auth = authFrom(r.auth); lsSet(LS.auth, auth); P = null; cryptoKey = null; Object.keys(cache).forEach(k => delete cache[k]); }   // مفتاح الدورة الكامل بدل مفتاح الزائر
       else if (was && r.until) { auth.renew = Object.assign({}, auth.renew || {}, { until: r.until, nag: 0 }); lsSet(LS.auth, auth); }   // 🔁 جدّد: موعده الجديد
-      return paidOk(show, r.until, 1, was);
+      const opened = was && r.pkg === 'full' && auth.plan === 'train';   // 📦 رقّى لباقة «التأسيس والتدريب»: التأسيس ينفتح على طول
+      if (opened) { auth.plan = 'full'; auth.pkg = 'full'; auth.fu = 0; lsSet(LS.auth, auth); }
+      if (was) setTimeout(heartbeat, 800);
+      return paidOk(show, r.until, r.months || 1, was, r.pkg || '', opened ? 1 : 0);
     }
     if (r && r.ok && r.failed) {
       payDone();
@@ -624,7 +683,7 @@
     const ag = $('#pdagain'); if (ag) ag.onclick = () => renderPaid();
   }
   // أي زر فيه data-lock أو data-sub يفتح نافذة الاشتراك
-  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || ''; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w && _T(w)); }); }   // 🌐 اسم المقفول بالإنجليزي لو له ترجمة
+  function bindSub(root) { (root || document).querySelectorAll('[data-lock],[data-sub]').forEach(b => b.onclick = e => { e.preventDefault(); const w = b.dataset.lock || '', fd = b.dataset.pk === 'full'; if (w && isFree() && window.QGT) QGT.ev('lock', w); subDlg(w && _T(w), '', 0, fd ? 'full' : '', fd); }); }   // data-pk="full" = شي من التأسيس: النافذة تفتح على باقة «التأسيس والتدريب»   // 🌐 اسم المقفول بالإنجليزي لو له ترجمة
   const lockTool = (i, b, s) => _T`<button type="button" class="tool lk" data-lock="${esc(b)}"><span class="ti">${i}</span><span class="tx"><b>${b}<span class="lkb">🔒 للمشتركين</span></b><small>${s}</small></span></button>`;
   // ⏰ اشتراكه قرب يخلص (أو خلص وما جدّد): شريط فوق الرئيسية فيه زر التجديد — متى يطلع يحدده المالك (auth.renew.nag من الخادم)
   function renewBar() { try { return renewBar0(); } catch (e) { CERR('renewBar: ' + (e && e.message)); return ''; } }
@@ -638,8 +697,8 @@
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
     return _T`<section class="fhero" aria-label="الحساب المجاني">
-      <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة كاملة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة كاملة.</p>`}</div>
-      <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${subPrice()} ريال</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
+      <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة.</p>`}</div>
+      <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${subFrom()}</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
     </section>`;
   }
 
@@ -654,6 +713,7 @@
   const payTried = () => { if (!isFree()) return; const t = lsGet(PAYTRY_LS, null) || {}; t.t = Date.now(); t.n = (t.n || 0) + 1; lsSet(PAYTRY_LS, t); };   // ضغط «ادفع»: لو رجع وما اشترك تذكّره الرئيسية
   const whyMark = k => { const w = lsGet(WHY_LS, {}); w[k] = Date.now(); lsSet(WHY_LS, w); };
   const subPrice = () => (sallaOn() && auth.salla.price) || (payOn() && auth.pay.price) || PRICE;
+  const subFrom = () => (pkTwo() ? _T`من ${subPrice()} ريال` : _T`${subPrice()} ريال`);   // 📦 على الأزرار: أقل سعر (باقة «التدريب»)
   // الرد على كل سبب: كلام قصير صادق + أزرار تحل اللي وقّفه
   function whyReply(stage, code) {
     const price = subPrice(), pay = ['pay', stage === 'pay' ? _T('💳 جرّب الدفع مرة ثانية') : stage === 'renew' ? _T('↻ جدّد اشتراكك') : _T('💳 اشترك الحين')], wa = ['wa', _T('💬 كلّمنا على واتساب')];
@@ -662,7 +722,9 @@
       case 'err': return { t: _T('لو طلع لك «اختر شركة الشحن» فمعناه إنك ضغطت الدفع قبل ما تسجّل برقم جوالك في سلة: سجّل برقمك أول ثم اضغط الدفع. وأي خطأ ثاني صوّره وأرسله لنا على واتساب ونحلّه لك.'), a: [pay, wa] };
       case 'method': return { t: _T('صفحة الدفع فيها مدى و Apple Pay وفيزا وماستركارد و STC Pay والتحويل البنكي (يطلع لك المناسب لجهازك). تبي طريقة ثانية؟ كلّمنا على واتساب.'), a: [wa, pay] };
       case 'parent': return { t: sallaOn() ? _T('أرسل رابط الدفع لولي أمرك أو أي أحد بيدفع عنك: يدفع من جواله، واشتراكك يتفعّل على حسابك.') : _T('كلّمنا على واتساب ونرتّب الدفع مع ولي أمرك.'), a: sallaOn() ? [['share', _T('🔗 انسخ رابط الدفع')], wa] : [wa] };
-      case 'price': return { t: _T`الاشتراك ${price} ريال للشهر كامل، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.`, a: [pay, wa] };
+      case 'price': { const F = pkList().find(x => x.k === 'full');   // 📦 باقتين: نذكر الاثنين بسعرهم ومدتهم
+        return { t: F ? _T`باقة «التدريب» ${price} ريال للشهر، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال لشهرين ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
+          : _T`الاشتراك ${price} ريال للشهر كامل، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.`, a: [pay, wa] }; }
       case 'later': return { t: _T('تمام 👌 حسابك المجاني يبقى شغّال، ووقت ما تبي تكمل اضغط «اشترك» من فوق.'), a: [] };
       case 'far': return { t: _T('خذ راحتك 👌 حسابك المجاني يبقى شغّال (القسم 1 والنموذج 1 والاختبار المحاكي 1). وأول ما يقرب اختبارك اشترك ونرتّب لك خطة مذاكرة على موعده.'), a: [] };
       case 'try': return { t: _T('خذ راحتك 👍 هذا المفتوح لك مجاناً:'), a: [['go:#q1', '📘 ' + SET_NAME('q1')], ['go:#v1', '📗 ' + SET_NAME('v1')], ['go:/test/', _T('🧪 الاختبار المحاكي 1')], ['go:#level', _T('🧭 تحديد المستوى')]] };
@@ -674,13 +736,14 @@
     }
   }
   // 🔗 رابط دفع يقدر يدفع منه غيره (ولي أمره): صفحة دفعه الخاصة في سلة لو متاحة (يتفعّل على حسابه لحاله)، وإلا رابط المنتج
-  async function payShare(url) {
-    if (!url) { let r = null; try { r = auth.salla && auth.salla.link ? await api({ op: 'salla_go', session: auth.session, ua: navigator.userAgent.slice(0, 120) }) : null; } catch (e) {}
+  async function payShare(url, pkg) {
+    const P1 = pkList().find(x => x.k === (pkg || pkSel())), P = P1 && P1.url ? P1 : pkList()[0];   // 📦 رابط الباقة اللي اختارها (لو لها رابط منتج)
+    if (!url) { let r = null; try { r = auth.salla && auth.salla.link ? await api({ op: 'salla_go', session: auth.session, pkg: P.k, ua: navigator.userAgent.slice(0, 120) }) : null; } catch (e) {}
       url = r && r.ok && /^https:\/\/[^\s"'<>]+$/.test(r.url || '') ? r.url : ''; }
-    const own = !!url; if (!url) url = (auth.salla && auth.salla.url) || ''; if (!url) return;
+    const own = !!url; if (!url) url = P.url || (auth.salla && auth.salla.url) || ''; if (!url) return;
     if (window.QGT) { QGT.ev('subgo', 'رابط لولي الأمر'); QGT.flush(true); }
     if (own) { try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {} sallaHot(); }   // لو دفع الحين: يتفعّل هنا خلال ثواني
-    const txt = _T`رابط دفع اشتراك Q-Guide (${subPrice()} ريال للشهر) لحساب ${auth.display || auth.name || auth.email}:`;
+    const txt = P.k === 'full' ? _T`رابط دفع باقة «التأسيس والتدريب» في Q-Guide (${P.price} ريال لشهرين) لحساب ${auth.display || auth.name || auth.email}:` : _T`رابط دفع اشتراك Q-Guide (${P.price} ريال للشهر) لحساب ${auth.display || auth.name || auth.email}:`;
     try { if (navigator.share && window.matchMedia && matchMedia('(pointer:coarse)').matches) { await navigator.share({ text: txt, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(txt + '\n' + url); toast(own ? _T('انسخ رابط الدفع ✓ أرسله له، وأول ما يدفع يتفعّل اشتراكك لحاله') : _T('انسخ رابط الدفع ✓ بعد ما يدفع اكتب رقم الطلب هنا')); } catch (e) { QGDlg.alert(url); }
   }
@@ -701,7 +764,7 @@
         else if (a === 'go') x.addEventListener('click', () => { if (o.onClose) o.onClose(); });
         else x.onclick = async () => {
           if (a === 'pay') { if (o.onPay) o.onPay(); else subDlg(); }
-          else if (a === 'share') { x.disabled = true; await payShare(o.link ? o.link() : ''); x.disabled = false; }
+          else if (a === 'share') { x.disabled = true; await payShare(o.link ? o.link() : '', o.pkg); x.disabled = false; }
           else if (a === 'ref') { try { await navigator.clipboard.writeText('https://q-guide.online/'); toast(_T('انسخ رابط الموقع ✓')); } catch (e) { QGDlg.alert('https://q-guide.online/'); } } }; });
       const f = R.querySelector('.whyb-f'); if (f) { const ta = f.querySelector('textarea'); f.onsubmit = e => { e.preventDefault(); const v = ta.value.trim(); if (!v) return ta.focus(); send(code, v); f.outerHTML = `<p class="whyb-ok">${_T('✓ وصلت ملاحظتك، شكراً لك 🙏')}</p>`; }; if (!window.matchMedia || matchMedia('(pointer:fine)').matches) ta.focus({ preventScroll: true }); }
       if ((stage === 'pay' || stage === 'renew') && code !== 'done') whyPhone(R, stage);   // 📱 «تبينا نكلّمك واتساب؟» (اختياري)
@@ -731,7 +794,7 @@
     const t = lsGet(PAYTRY_LS, null), w = lsGet(WHY_LS, {}); if (!t || !t.t) return '';
     const age = Date.now() - t.t; if (age < 3 * 60e3 || age > 21 * 864e5 || (w.pay || 0) >= t.t || (w.payx || 0) >= t.t) return '';
     return _T`<section class="pnd" id="pnd" aria-label="إكمال الاشتراك"><button type="button" class="pnd-x" aria-label="إخفاء">✕</button>
-      <div class="pnd-m"><span class="pnd-i" aria-hidden="true">🔓</span><div class="pnd-t"><b>باقي لك خطوة وحدة وتنفتح لك الدورة كاملة</b><span>فتحت صفحة الدفع وما اكتمل اشتراكك. كمّل الدفع، أو قل لنا وش وقّفك ونساعدك.</span></div><button type="button" class="btn gold" id="pndgo">💳 كمّل الدفع</button></div>
+      <div class="pnd-m"><span class="pnd-i" aria-hidden="true">🔓</span><div class="pnd-t"><b>باقي لك خطوة وحدة وتنفتح لك الدورة</b><span>فتحت صفحة الدفع وما اكتمل اشتراكك. كمّل الدفع، أو قل لنا وش وقّفك ونساعدك.</span></div><button type="button" class="btn gold" id="pndgo">💳 كمّل الدفع</button></div>
       <div id="pndw"></div></section>`;
   }
   function payNudgeBind() {
@@ -766,18 +829,22 @@
   function route() {
     auth = lsGet(LS.auth, null);
     if (auth && auth.exp && auth.exp < Date.now()) { auth = null; lsDel(LS.auth); }
-    if (!auth) { if (window.QGAI) QGAI.fab(false); tabbar(null); if (location.hash === '#join') { try { sessionStorage.setItem('qg_join', '1'); } catch (e) {} } return renderLogin(); }
+    if (!auth) { if (window.QGAI) QGAI.fab(false); tabbar(null); const jm = /^#join(?:-(train|full))?$/.exec(location.hash); if (jm) { try { sessionStorage.setItem('qg_join', jm[1] || '1'); } catch (e) {} } return renderLogin(); }
     progOwn(); if (Object.keys(PSY.dirty).length) progPushSoon(500);   // 💾 تقدّم هذا الحساب (مو حساب ثاني على نفس المتصفح) · واللي تغيّر ينرفع مع الانتقال
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
-    let h = location.hash.replace('#', ''), joinDlg = false;
-    // 🛒 #join (زر «اشترك» في صفحة الموقع الرئيسية): الزائر تنفتح له نافذة الاشتراك · المشترك يروح لملفه (التجديد) · المشرف للرئيسية
-    if (h === 'join' || (() => { try { return sessionStorage.getItem('qg_join'); } catch (e) { return ''; } })()) { try { sessionStorage.removeItem('qg_join'); } catch (e) {}
+    let h = location.hash.replace('#', ''), joinDlg = false, joinPk = '', upNm = null;
+    // 🛒 #join (زر «اشترك» في صفحة الموقع الرئيسية): الزائر تنفتح له نافذة الاشتراك · المشترك يروح لملفه (التجديد) · المشرف للرئيسية — #join-full / #join-train = الباقة اللي ضغطها هناك
+    const jn = /^join(?:-(train|full))?$/.exec(h), js = (() => { try { return sessionStorage.getItem('qg_join'); } catch (e) { return ''; } })();
+    if (jn || js) { try { sessionStorage.removeItem('qg_join'); } catch (e) {}
+      joinPk = (jn && jn[1]) || (js === 'train' || js === 'full' ? js : '');
       if (isSub()) { history.replaceState(null, '', location.pathname + '#me'); h = 'me'; }
       else { history.replaceState(null, '', location.pathname); h = ''; joinDlg = isFree(); } }
+    // 📦 باقته «التدريب» وفتح شي من التأسيس (درس، اختبار درس، مذكرة تأسيس): الرئيسية + نافذة الترقية لباقة «التأسيس والتدريب»
+    if (noFound() && foundRoute(h)) { upNm = lockName(h) || _T('التأسيس'); history.replaceState(null, '', location.pathname); h = ''; }
     if (h === 'qall' || h === 'vall' || (!RULES_ON && /^rules(-v)?(\/|$)/.test(h))) { history.replaceState(null, '', location.pathname); return route(); }   // 🗑 الاختبار الشامل وملخص القوانين/القواعد انشالوا: الروابط القديمة ترجع للرئيسية
     if (EN) { const adm = /^(admin|studio|cards)/.test(h), H = document.documentElement;   // 🌐 صفحات المشرفين تبقى عربي (يمين ← يسار) حتى لو الواجهة إنجليزي
       H.dir = adm ? 'rtl' : 'ltr'; H.lang = adm ? 'ar' : 'en'; H.classList.toggle('l-en', !adm); H.classList.toggle('l-ar', adm); }
@@ -785,7 +852,7 @@
     if (h !== 'arena' && !/^duel-/.test(h)) arLeave();
     if (window.QGAI) QGAI.fab(helpOn(isFree() && !freeRoute(h) ? '' : h));   // 🎓 الزر العائم «مرشدك الأكاديمي»
     tabbar(isFree() && !freeRoute(h) ? '' : h);   // 📱 شريط التنقل تحت (الجوال)
-    if (isFree() && !freeRoute(h)) { const nm = lockName(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? _T('الاختبارات المحاكية') : ''); }   // 🔒 للمشتركين
+    if (isFree() && !freeRoute(h)) { const nm = lockName(h), fd = foundRoute(h); if (h !== 'sub' && window.QGT) QGT.ev('lock', nm || h); history.replaceState(null, '', location.pathname); renderHome(); return subDlg(nm, h === 'sub' ? _T('الاختبارات المحاكية') : '', 0, fd ? 'full' : '', fd); }   // 🔒 للمشتركين (شي من التأسيس: على باقة «التأسيس والتدريب»)
     if (isFree() && window.QGT) QGT.page(h === '' ? 'home' : /^duel-/.test(h) ? 'duel' : h.replace(/@\d+$/, ''));   // 👀 وش فتح الزائر
     if (h === 'paid') return renderPaid();
     if (h === 'arena') return renderArena();
@@ -820,9 +887,9 @@
     if (/^admin(-(home|staff|members|subs|pay|unpaid|vids|settings|regs|free|ai|find))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
       const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-unpaid': renderUnpaid, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
       return R[h](); }
-    renderHome(); if (joinDlg) subDlg('', _T('صفحة الموقع'));
+    renderHome(); if (joinDlg) subDlg('', _T('صفحة الموقع'), 0, joinPk); else if (upNm != null) upDlg(upNm);
   }
-  window.addEventListener('hashchange', route);
+  window.addEventListener('hashchange', () => { document.querySelectorAll('.subdlg').forEach(x => (x._qgClose ? x._qgClose() : x.remove())); route(); });   // نافذة الاشتراك المفتوحة تتسكّر مع الانتقال (والمسار يفتحها من جديد لو الصفحة مقفلة)
 
   // 📱 شريط التنقل تحت في الجوال (الصفحات الرئيسية بس، مو داخل حل الأسئلة ولا الساحة ولا الإدارة): الرئيسية · الشرح · مرشدي · الساحة · ملفي
   //    زر «مرشدي» في النص: المشترك يفتح صفحة مرشده (#advisor)، والزائر يفتح محادثة المرشد. الزر العائم ينخفي في الجوال لما الشريط موجود.
@@ -981,7 +1048,7 @@
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
-  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, renew: r.renew || null, teach: r.teach || '' });
+  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, renew: r.renew || null, teach: r.teach || '', plan: r.plan || '', pkg: r.pkg || '', fu: r.fu || 0 });
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
@@ -1141,7 +1208,10 @@
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a>${drive(id)}</div></div>`
       : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? _T('المشرف ليس له مذكرة شخصية') : _T('تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً')}</span></div></div>`;
     // 🧱 مذكرات التأسيس (لكل المشتركين): تنقرا وينكتب عليها بالقلم داخل الموقع، وما تتحمّل
-    const fcard = (k, icon, desc, more) => _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]}</b><span class="mut">${desc}</span></div>
+    const pkl = noFound();   // 📦 باقة «التدريب»: مذكرتا التأسيس مقفلتين (زر الترقية)
+    const fcard = (k, icon, desc, more) => pkl ? _T`<div class="wbc lk"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]} <span class="lkb">🔒 باقة التأسيس</span></b><span class="mut">${desc}</span></div>
+        <div class="ac"><button type="button" class="btn sm ghost" data-up="${WB_T[k][0]}">⬆️ رقّ باقتك</button></div></div>`
+      : _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]}</b><span class="mut">${desc}</span></div>
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة (مع القلم)</a>${more || ''}</div></div>`;
     el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 257 صفحة · 24 درس، كل قانون مع أمثلة محلولة وترجمة عربية')) +
       fcard('tv', '📖', _T('قواعد اللفظي · طريقة حل كل نوع من أسئلة اللفظي')) +
@@ -1149,6 +1219,7 @@
       card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
       card(f.verbal, _T('مذكرة اللفظي'), '📖', man ? _T('نسختك الخاصة باسمك وإيميلك · 193 صفحة · 14 نموذجاً') : _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
       `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">${man ? _T('المذكرة مسجّلة باسمك وإيميلك، وتفتحها من حسابك في الموقع. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.') : _T('المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.')}<br>${_T('📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.')}</p>`;
+    bindUp(el);
   }
 
   // ---------- interactive workbook viewer (pages + pen) ----------
@@ -1296,6 +1367,7 @@
       let r; try { r = await api({ op: 'vid_url', session: auth.session, v: cur.key }); } catch (e) { r = null; }
       if (!VID || VID.v !== v) return;
       if (r && r.error === 'missing') { toYT(fd ? _T('الدرس هذا ينزل قريباً.') : X ? _T('التدريب هذا ينزل قريباً.') : _T('المقطع هذا ما انرفع للموقع للحين.')); return; }
+      if (r && r.error === 'pkg') { auth.plan = 'train'; lsSet(LS.auth, auth); say(esc(r.msg || '')); upDlg(what); return; }   // 📦 باقته «التدريب»: الدرس من التأسيس
       if (!r || !r.ok) { say(esc((r && r.msg) || _T('تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.'))); return; }
       v.src = r.url; v.load();
     };
@@ -1330,17 +1402,19 @@
   };
   function renderTeach(id, tabHint) {
     const C = TP[id], t = TEACHERS[C.t]; document.title = t.name + ' | Q-Guide';
-    const W = lsGet(VW_LS, {}), free = isFree(), adm = auth.role === 'admin', seen = k => W[k] && W[k].w;
+    const W = lsGet(VW_LS, {}), free = isFree(), adm = auth.role === 'admin', seen = k => W[k] && W[k].w, pkl = noFound();   // 📦 pkl = باقته «التدريب»: التأسيس مقفل (يفتح نافذة الترقية)
     const fkeys = Array.from({ length: C.fn }, (_, i) => C.fk + ':' + (i + 1)), fUp = fkeys.filter(vidHas).length, fSeen = fkeys.filter(seen).length;
     // حالة كل درس: الزائر 🔒 (يفتح نافذة الاشتراك) · شاهده ✓ · انرفع ▶ · ما انرفع ⏳
     // 📝 اختبار الدرس (دروس عبدالله): زر جنب كل درس فيه أفضل نتيجة للطالب
     const quiz = n => { if (!C.quiz) return ''; const B = fqBest(n);
-      if (free) return _T`<button type="button" class="tlq lock" data-lock="اختبارات التأسيس"><span class="tlqi" aria-hidden="true">📝</span><span class="tlqx"><b>اختبار الدرس</b><small>🔒 للمشتركين</small></span></button>`;
+      if (free) return _T`<button type="button" class="tlq lock" data-lock="اختبارات التأسيس" data-pk="full"><span class="tlqi" aria-hidden="true">📝</span><span class="tlqx"><b>اختبار الدرس</b><small>🔒 للمشتركين</small></span></button>`;
+      if (pkl) return _T`<button type="button" class="tlq lock" data-up="اختبارات التأسيس"><span class="tlqi" aria-hidden="true">📝</span><span class="tlqx"><b>اختبار الدرس</b><small>🔒 باقة التأسيس</small></span></button>`;
       return _T`<a class="tlq${B ? (B.best >= FQ_PASS ? ' ok' : ' mid') : ''}" href="#fq-${n}"><span class="tlqi" aria-hidden="true">${B && B.best >= FQ_PASS ? '✓' : '📝'}</span><span class="tlqx"><b>اختبار الدرس</b><small>${B ? _T`أفضل نتيجة لك <bdi dir="ltr">${B.best}/${B.n}</bdi>` : _T('12 سؤال تتأكد فيها من فهمك')}</small></span></a>`; };
     const lesson0 = n => { const key = C.fk + ':' + n, w = seen(key), has = vidHas(key) || adm;
       const ar = id === 'salman' ? QR_L[n - 1][0] : PART_AR[n], en = id === 'salman' ? QR_L[n - 1][1] : ABD.en[n];
       const body = `<span class="tln" aria-hidden="true">${n}</span><span class="tlx"><b>${EN ? en : ar}</b>${EN ? '' : `<small dir="ltr">${en}</small>`}</span>`;
-      if (free) return _T`<button type="button" class="tle lock" data-lock="${C.ft}">${body}<span class="tls">🔒 للمشتركين</span></button>`;
+      if (free) return _T`<button type="button" class="tle lock" data-lock="${C.ft}" data-pk="full">${body}<span class="tls">🔒 للمشتركين</span></button>`;
+      if (pkl) return _T`<button type="button" class="tle lock" data-up="${C.ft}">${body}<span class="tls">🔒 باقة التأسيس</span></button>`;
       if (!has) return _T`<div class="tle soon" aria-disabled="true">${body}<span class="tls">⏳ قريباً</span></div>`;
       return _T`<a class="tle${w ? ' ok' : ''}" href="#watch-${C.fk}${n}">${body}<span class="tls">${w ? _T('✓ شاهدته') : _T('▶ شاهد الدرس')}</span></a>`; };
     const lesson = n => C.quiz ? `<div class="tlw">${lesson0(n)}${quiz(n)}</div>` : lesson0(n);
@@ -1349,9 +1423,10 @@
           <div class="tles">${QR_L.map((x, i) => x[3] === ui + 1 ? lesson(i + 1) : '').join('')}</div>`).join('')
       : `<div class="tles${C.quiz ? ' wq' : ''}">${ABD.found.map(lesson).join('')}</div>`;
     const pct = Math.round(fSeen * 100 / C.fn), fN = EN ? enN(C.fn, 'lesson', 'lessons') : C.fn + (C.fn <= 10 ? ' دروس' : ' درس');   // i18n:skip
-    const fSoon = !fUp && !adm ? _T`<div class="tpsoon"><b>⏳ التأسيس ينزل قريباً</b><span>${t.name} يشرح ${C.ft} درس درس (${fN}). لين ينزل، ابدأ من <a href="#wb-${C.wb}">مذكرة التأسيس</a>.</span></div>` : '';
-    const fBar = _T`<div class="tpbar"><div class="tpbt"><b>${C.ft}</b><span>${free ? (id === 'salman' ? _T`${fN}: كل قواعد الكمي من الأساس` : _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي')) : fSeen ? _T`شاهدت ${fSeen} من ${C.fn}` : fUp ? _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة') : _T`${fN} بنفس ترتيب مذكرة التأسيس`}</span></div>
-      ${free || !fUp ? '' : `<i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>`}${free ? _T`<button type="button" class="btn sm ghost" data-lock="${C.ft}">📘 مذكرة التأسيس 🔒</button>` : _T`<a class="btn sm ghost" href="#wb-${C.wb}">📘 مذكرة التأسيس</a>`}</div>`;
+    const fUpg = pkl ? _T`<div class="tpup"><span class="tpup-i" aria-hidden="true">🔒</span><div class="tpup-t"><b>التأسيس ضمن باقة «التأسيس والتدريب»</b><span>باقتك الحين «التدريب». رقّها وتنفتح لك دروس التأسيس واختباراتها ومذكرتا التأسيس.</span></div><button type="button" class="btn gold sm" data-up="${C.ft}">⬆️ رقّ باقتك</button></div>` : '';
+    const fSoon = pkl ? '' : !fUp && !adm ? _T`<div class="tpsoon"><b>⏳ التأسيس ينزل قريباً</b><span>${t.name} يشرح ${C.ft} درس درس (${fN}). لين ينزل، ابدأ من <a href="#wb-${C.wb}">مذكرة التأسيس</a>.</span></div>` : '';
+    const fBar = _T`<div class="tpbar"><div class="tpbt"><b>${C.ft}</b><span>${free || pkl ? (id === 'salman' ? _T`${fN}: كل قواعد الكمي من الأساس` : _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي')) : fSeen ? _T`شاهدت ${fSeen} من ${C.fn}` : fUp ? _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة') : _T`${fN} بنفس ترتيب مذكرة التأسيس`}</span></div>
+      ${free || pkl || !fUp ? '' : `<i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>`}${free ? _T`<button type="button" class="btn sm ghost" data-lock="${C.ft}" data-pk="full">📘 مذكرة التأسيس 🔒</button>` : pkl ? _T`<button type="button" class="btn sm ghost" data-up="${C.ft}">📘 مذكرة التأسيس 🔒</button>` : _T`<a class="btn sm ghost" href="#wb-${C.wb}">📘 مذكرة التأسيس</a>`}</div>`;
     // 🏋️ التدريب — سلمان: الأقسام والنماذج · عبدالله: النماذج الـ14 داخل الموقع (at)
     let tN, tPane;
     if (id === 'salman') {
@@ -1373,7 +1448,7 @@
         + `<div class="wvlist tpmods">${Array.from({ length: ABD.models }, (_, i) => mod(i + 1)).join('')}</div>`;
     }
     // القسم: من الرابط (/f أو /t) · وإلا آخر واحد فتحه · وإلا التأسيس (سلمان: التدريب لين ينزل تأسيسه)
-    const last = lsGet(C.ls, ''); let tab = tabHint || (last === 'f' || last === 't' ? last : id === 'salman' && !fUp ? 't' : 'f');
+    const last = lsGet(C.ls, ''); let tab = tabHint || (pkl ? 't' : last === 'f' || last === 't' ? last : id === 'salman' && !fUp ? 't' : 'f');   // 📦 باقة «التدريب»: يفتح على التدريب
     app.innerHTML = topbar(_T`<span class="ttl">👨‍🏫 ${t.name}</span><span class="sp"></span>`, _T`<a class="ib" href="#sharh" title="المدرسين">→</a>`) +
       _T`<main class="wrap sharh tpage">
         <div class="tphead"><span class="tav" aria-hidden="true">${t.name[0]}</span>
@@ -1382,10 +1457,10 @@
           <button type="button" role="tab" id="tpt-f" aria-controls="tp-f">🧱 التأسيس <small>${fN}</small></button>
           <button type="button" role="tab" id="tpt-t" aria-controls="tp-t">🏋️ التدريب <small>${tN}</small></button>
         </div>
-        <section class="tppane" id="tp-f" role="tabpanel" aria-labelledby="tpt-f">${fSoon}${fBar}${lessons}</section>
+        <section class="tppane" id="tp-f" role="tabpanel" aria-labelledby="tpt-f">${fUpg}${fSoon}${fBar}${lessons}</section>
         <section class="tppane" id="tp-t" role="tabpanel" aria-labelledby="tpt-t">${tPane}</section></main>`;
-    bindCtl(); bindSub(app); window.scrollTo({ top: 0 });
-    const show = x => { tab = x; lsSet(C.ls, x); ['f', 't'].forEach(k => { const on = k === x, b = $('#tpt-' + k); b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; $('#tp-' + k).hidden = !on; }); };
+    bindCtl(); bindSub(app); bindUp(app); window.scrollTo({ top: 0 });
+    const show = x => { tab = x; if (!pkl) lsSet(C.ls, x); ['f', 't'].forEach(k => { const on = k === x, b = $('#tpt-' + k); b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; $('#tp-' + k).hidden = !on; }); };
     $('#tpt-f').onclick = () => show('f'); $('#tpt-t').onclick = () => show('t');
     $('.tptabs').onkeydown = e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const x = tab === 'f' ? 't' : 'f'; show(x); $('#tpt-' + x).focus(); e.preventDefault(); } };
     show(tab);
@@ -1546,7 +1621,7 @@
     if (dl != null && !plan) { const id = advPlan(dl, (A && A.mins) || 120), pl = PLANS.find(p => p.id === id);
       return { k: 'noplan', i: '📅', tag: _T('خطتك'), t: _T`باقي ${dLabel(dl)} على اختبارك، ${pl.name} تناسبك`, s: _T`${pl.daily}، وتخلّص فيها كل الأقسام والنماذج مع مراجعة آخر الأيام.`, a: [{ t: _T`▶ ابدأ ${pl.name}`, act: `data-advplan="${pl.id}"` }, { t: _T('كل الخطط'), h: '#plan', g: 1 }] }; }
     // ⑦ أضعف مهاراته لفظية وما أتقن درس تأسيسها: الدرس واختباره قبل التدريب
-    if (w && ADV_LESSON[w.k] && w.p < 65) { const n = ADV_LESSON[w.k], B = fqBest(n), has = vidHas('af:' + n);
+    if (w && ADV_LESSON[w.k] && w.p < 65 && !noFound()) { const n = ADV_LESSON[w.k], B = fqBest(n), has = vidHas('af:' + n);
       if (!(B && B.best >= FQ_PASS)) return { k: 'found', i: '🧱', tag: _T('التأسيس'), t: _T`أساسك في ${esc(w.t)} يبي له تقوية`, s: _T`دقتك فيه ${w.p}%. ${has ? _T('شاهد درس التأسيس') : _T('راجع قواعد الدرس')} وحل اختباره، وبعدها ارجع للتدريب.`,
         a: [has ? { t: _T('🎬 درس التأسيس'), h: '#watch-af' + n } : { t: _T('📘 قواعد الدرس'), h: '#wb-tv@' + TV_PAGE[n] }, { t: _T('📝 اختبار الدرس'), h: '#fq-' + n, g: 1 }] }; }
     // ⑧ أضعف مهارة
@@ -1665,13 +1740,15 @@
         <p class="advv">${verdict}</p>
         ${weak.length || strong.length ? `<div class="advts">${weak.length ? _T`<div><h3>يبي لها شغل</h3>${weak.map(x => topic(x, 'weak')).join('')}</div>` : ''}${strong.length ? _T`<div><h3>نقطة قوتك</h3>${strong.map(x => topic(x, 'strong')).join('')}</div>` : ''}</div>` : ''}
         ${R && R.cur.exams ? _T`<p class="advex">🧪 اختبارات محاكية هالأسبوع: <b>${R.cur.exams}</b>${R.cur.exam_best != null ? _T` · أفضل نتيجة <b>${R.cur.exam_best}%</b>` : ''}</p>` : ''}</section>
-      <section class="advf" aria-labelledby="advfh"><div class="advwt"><h2 id="advfh">🧱 تأسيسك</h2><a class="lnk2" href="#sharh">${_T('كل الدروس')}</a></div>
+      ${noFound() ? _T`<section class="advf lk" aria-labelledby="advfh"><div class="advwt"><h2 id="advfh">🧱 التأسيس</h2></div>
+        <div class="tpup"><span class="tpup-i" aria-hidden="true">🔒</span><div class="tpup-t"><b>التأسيس ضمن باقة «التأسيس والتدريب»</b><span>باقتك الحين «التدريب». رقّها وتنفتح لك دروس التأسيس واختباراتها ومذكرتا التأسيس.</span></div><button type="button" class="btn gold sm" data-up="التأسيس">⬆️ رقّ باقتك</button></div></section>`
+      : `<section class="advf" aria-labelledby="advfh"><div class="advwt"><h2 id="advfh">${_T('🧱 تأسيسك')}</h2><a class="lnk2" href="#sharh">${_T('كل الدروس')}</a></div>
         <h3 class="advfh3">${_T('اللفظي · عبدالله الشمراني')}</h3><div class="advls">${[1, 2, 3, 4].map(fl).join('')}</div>
-        <a class="advsf" href="#sharh-salman/f"><span aria-hidden="true">📐</span><span class="advlx"><b>${_T('الكمي · سلمان الفرج')}</b><small>${_T`شاهدت ${sfSeen} من ${QR_L.length} درس`}</small></span><i class="pg" aria-hidden="true"><span style="width:${Math.round(sfSeen * 100 / QR_L.length)}%"></span></i></a></section>
+        <a class="advsf" href="#sharh-salman/f"><span aria-hidden="true">📐</span><span class="advlx"><b>${_T('الكمي · سلمان الفرج')}</b><small>${_T`شاهدت ${sfSeen} من ${QR_L.length} درس`}</small></span><i class="pg" aria-hidden="true"><span style="width:${Math.round(sfSeen * 100 / QR_L.length)}%"></span></i></a></section>`}
       <section class="advqs" aria-labelledby="advqh"><h2 id="advqh">💬 اسأل مرشدك</h2><div class="advqc">${asks.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div></section>`;
     $('#advask').onclick = () => { if (window.QGAI) QGAI.help(); };
     W.querySelectorAll('.advqc [data-q]').forEach(b => b.onclick = () => { if (window.QGAI) QGAI.ask(b.dataset.q); });
-    advBind(W, advPaint);
+    bindUp(W); advBind(W, advPaint);
   }
 
   // ---------- player ----------
@@ -2020,7 +2097,7 @@
       <h2>${pct >= 85 ? _T('ممتاز! 🌟') : pct >= 70 ? _T('جيد جداً 👏') : pct >= 50 ? _T('جيد، كمّل تدريب 💪') : _T('راجع الشرح وأعد المحاولة 📘')}</h2>
       <p class="ssub">${esc(set.title)} <bdi dir="ltr">${esc(set.sub)}</bdi></p>
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
-      ${paceHtml}${isFree() && nm ? _T`<div class="s-sub"><div class="s-sub-t"><b>${pct >= 70 ? _T('مستواك يبشّر بالخير 👏 كمّل على باقي الدورة') : _T('كل ما تحل أكثر ترتفع درجتك 💪 كمّل على باقي الدورة')}</b><span>باقي في الدورة 13 قسم كمي و13 نموذج لفظي و16 اختبار محاكي، وكلها بشرح الفيديو ومرشدك الذكي.</span></div><button type="button" class="btn gold" data-sub>${auth.ended ? _T('↻ جدّد اشتراكك') : _T('💳 اشترك وكمّل')} <small>${subPrice()} ريال</small></button></div>` : ''}
+      ${paceHtml}${isFree() && nm ? _T`<div class="s-sub"><div class="s-sub-t"><b>${pct >= 70 ? _T('مستواك يبشّر بالخير 👏 كمّل على باقي الدورة') : _T('كل ما تحل أكثر ترتفع درجتك 💪 كمّل على باقي الدورة')}</b><span>باقي في الدورة 13 قسم كمي و13 نموذج لفظي و16 اختبار محاكي، وكلها بشرح الفيديو ومرشدك الذكي.</span></div><button type="button" class="btn gold" data-sub>${auth.ended ? _T('↻ جدّد اشتراكك') : _T('💳 اشترك وكمّل')} <small>${subFrom()}</small></button></div>` : ''}
       <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? _T`<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : _T`<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? _T`<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? _T`<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
       <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${shufOk(P.id) ? _T('<button class="lnk2" id="againS">🔀 أعد الحل بترتيب ملخبط</button>') : ''}${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${rulesHtml}
@@ -2591,6 +2668,7 @@
     me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'] };
   function helpLink(tok) {
     if (!RULES_ON && /^rules/.test(tok)) return '';   // ملخص القوانين/القواعد انشال: الرمز ينشال من الرد
+    if (noFound() && /^(wb-t[qv]|fq-[1-4])$/.test(tok)) return '';   // 📦 باقته «التدريب»: روابط التأسيس ما تنحط له
     let m; const a = (ic, t, h) => `<a class="qgai-lk" href="${h}"><span aria-hidden="true">${ic}</span>${t}</a>`;
     if (HELP_PAGES[tok]) return a(...HELP_PAGES[tok]);
     if ((m = /^([qv])(\d{1,2})$/.exec(tok)) && +m[2] >= 1 && +m[2] <= (m[1] === 'v' ? 15 : 14)) return a(m[1] === 'q' ? '📘' : '📗', SET_NAME(tok), '#' + tok);
@@ -3418,10 +3496,15 @@
     // 📅 الاشتراك: الأيام الباقية بتقويم الرياض + شريط من البداية للنهاية
     let subHtml = '', chip = '';
     if (S.state === 'staff') { chip = S.role === 'owner' ? _T('👑 المالك') : _T('🛡 مشرف'); subHtml = _T`<p class="msubtx">${S.role === 'owner' ? _T('أنت مالك الموقع، ما تحتاج اشتراك.') : _T('حسابك مشرف، ما يحتاج اشتراك.')}</p>`; }
-    else if (S.state === 'free') { chip = _T('🆓 حساب مجاني'); subHtml = _T`<p class="msubtx">حسابك مجاني: تقدر تجرّب القسم 1 والنموذج 1 والاختبار المحاكي 1. اشترك عشان تنفتح لك الدورة كاملة.</p><div class="msubact"><button type="button" class="btn gold" data-sub>⭐ اشترك في الدورة</button></div>`; }
+    else if (S.state === 'free') { chip = _T('🆓 حساب مجاني'); subHtml = _T`<p class="msubtx">حسابك مجاني: تقدر تجرّب القسم 1 والنموذج 1 والاختبار المحاكي 1. اشترك عشان تنفتح لك الدورة.</p><div class="msubact"><button type="button" class="btn gold" data-sub>⭐ اشترك في الدورة</button></div>`; }
     else if (S.state === 'ended') { chip = _T('⛔ اشتراك منتهي'); subHtml = _T`<p class="msubtx">انتهى اشتراكك في الدورة. جدّده وترجع لك كل الأقسام والنماذج مع تقدّمك.</p><div class="msubact"><button type="button" class="btn gold" data-sub>↻ جدّد اشتراكك</button></div>`; }
     else {
       const L = SUB_LBL[S.t] || SUB_LBL.yt; chip = L[0] + ' ' + L[1];
+      // 📦 باقته: «التدريب» (مع زر الترقية لو الباقة الثانية تنباع) · «التأسيس والتدريب» · القديم (بدون باقة) = كل المحتوى
+      const pkRow = S.plan === 'train' ? _T`<div class="mepk"><span class="mepk-i" aria-hidden="true">📦</span><div class="mepk-t"><b>باقتك: التدريب</b><span>كل الأقسام والنماذج والاختبارات المحاكية، بدون التأسيس.</span></div>${pkTwo() ? _T('<button type="button" class="btn sm" data-up="">⬆️ رقّ للتأسيس والتدريب</button>') : ''}</div>`
+        : S.pkg === 'train' && S.fu ? _T`<div class="mepk"><span class="mepk-i" aria-hidden="true">📦</span><div class="mepk-t"><b>باقتك: التدريب</b><span>التأسيس مفتوح لك لين ${meDay(S.fu)}، وبعدها بدون التأسيس.</span></div></div>`
+        : S.pkg === 'full' ? _T`<div class="mepk"><span class="mepk-i" aria-hidden="true">📦</span><div class="mepk-t"><b>باقتك: التأسيس والتدريب</b><span>كل المحتوى مفتوح لك: التأسيس والتدريب والاختبارات المحاكية.</span></div></div>`
+        : S.plan ? _T`<div class="mepk"><span class="mepk-i" aria-hidden="true">📦</span><div class="mepk-t"><b>كل المحتوى مفتوح لك</b><span>التأسيس والتدريب والاختبارات المحاكية.</span></div></div>` : '';
       if (S.until) {
         const left = rDay(S.until) - rDay(now), span = Math.max(1, S.until - (S.start || S.until - 30 * 864e5)), pct = Math.min(100, Math.max(0, Math.round((now - (S.start || S.until - span)) * 100 / span)));
         const tone = left < 0 ? 'bad' : left <= 3 ? 'warn' : left <= 7 ? 'mid' : 'ok';
@@ -3431,9 +3514,11 @@
         subHtml = _T`<div class="msub ${tone}"><div class="msubn"><b>${big}</b><span>${left < 0 ? _T`كان آخر يوم ${meDay(S.until)}` : _T`ينتهي اشتراكك ${meDay(S.until, 1)}`}</span></div>
           <i class="pg" aria-hidden="true"><span style="width:${pct}%"></span></i>
           <div class="msubm"><span>${S.start ? _T`بدأ ${meDay(S.start)}` : ''}</span><span>${L[0]} ${L[1]}</span></div></div>
+          ${pkRow}
           ${soon ? _T`<div class="msubact"><p>${left < 0 ? _T('جدّد اشتراكك عشان ما ينقفل حسابك.') : _T('اشتراكك قرب يخلص. جدّده عشان تكمّل بدون انقطاع.')}</p><button type="button" class="btn gold" data-sub>↻ جدّد اشتراكك</button></div>`
+            : pkTwo() ? _T`<div class="msubact quiet"><p>تبي تمدّد اشتراكك؟ مدة الباقة تنضاف على تاريخ النهاية.</p><button type="button" class="btn sm ghost" data-sub>↻ جدّد من الحين</button></div>`
             : _T`<div class="msubact quiet"><p>تبي تمدّد اشتراكك؟ التجديد يضيف شهر على تاريخ النهاية.</p><button type="button" class="btn sm ghost" data-sub>↻ جدّد من الحين</button></div>`}`;
-      } else subHtml = _T`<p class="msubtx">✓ اشتراكك فعّال (${L[0]} ${L[1]}).</p>`;
+      } else subHtml = pkRow + _T`<p class="msubtx">✓ اشتراكك فعّال (${L[0]} ${L[1]}).</p>`;
     }
     // 🖼 الصورة: ارفع صورة · صورة قناتك في يوتيوب · أشكال جاهزة · بدون صورة — تتغيّر على طول
     const cur = P.avatar || '', opt = (u, inner, t, cls) => `<button type="button" class="meopt${cls ? ' ' + cls : ''}${u === cur ? ' on' : ''}" data-u="${esc(u)}" title="${t}" aria-label="${t}" aria-pressed="${u === cur}">${inner}</button>`;
@@ -3458,7 +3543,7 @@
         <div class="meavs">${avs}</div>
         <p class="mut menote">اضغط على أي صورة وتتغيّر على طول.</p></section>
       <section class="mecard mefoot"><a class="btn ghost" href="${waUrl()}"${TGT}>💬 الدعم الفني على واتساب</a><button type="button" class="btn ghost melo" id="me-lo">${LOSVG} تسجيل الخروج</button></section>`;
-    bindSub(W);
+    bindSub(W); bindUp(W);
     $('#me-lo').onclick = async () => { if (await QGDlg.confirm(_T('تسجيل الخروج؟'), { ok: _T('خروج') })) logout('', true); };
     // ✏️ الاسم والمدرسة: زر الحفظ يشتغل لما يتغيّر شي
     const nm = $('#me-name'), sc = $('#me-school'), sv = $('#me-save'), stt = $('#me-st');
@@ -3596,7 +3681,8 @@
       <div class="kv"><div><span>${mb ? 'الاسم' : 'الاسم في الشيت'}</span><b>${esc((mb ? mb.name : st.name) || '—')}</b></div><div><span>الجوال</span><b class="ltr">${esc(st.phone || '—')}</b></div><div><span>الجنس</span><b>${esc(st.gender || '—')}</b></div><div><span>يوزر يوتيوب</span><b>${esc(st.user || '—')}</b></div><div><span>الاسم المعروض</span><b>${esc(pf.name || '—')}</b></div><div><span>المدرسة</span><b>${esc(pf.school || '—')}</b></div><div><span>آخر دخول</span><b>${d.logins[0] ? fmtD(d.logins[0].ts) : 'لم يدخل'}</b></div></div>
       ${isOwner() && (d.student || d.member) && !d.ban ? (() => { const D = d.dates || {}, L = subLeft(D.until);
         return `<div class="sdbox ${d.ended ? 'na' : L.c}"><div class="sdl"><span>📅 بداية الاشتراك <b>${D.start ? admDay(D.start, 1) : '—'}</b></span><span>⏰ ينتهي <b>${D.until ? admDay(D.until, 1) : '—'}</b>${d.ended ? '' : ` <em>${L.t}</em>`}</span></div>
-          <div class="sdb"><button class="btn sm" id="a_sm">＋ شهر</button><button class="btn sm ghost" id="a_sd">تعديل التاريخ</button></div></div>`; })() : ''}
+          <div class="sdb"><button class="btn sm" id="a_sm">＋ شهر</button><button class="btn sm ghost" id="a_sd">تعديل التاريخ</button></div></div>
+          ${d.pk ? `<div class="sdpk">📦 الباقة: <b>${d.pk.plan === 'train' ? 'التدريب' : 'التأسيس والتدريب'}</b><small>${d.pk.plan === 'train' ? 'بدون التأسيس' : d.pk.fu ? `اشترى «التدريب»، والتأسيس مفتوح له لين ${admDay(d.pk.fu)}` : d.pk.pkg ? 'كل المحتوى' : 'مشترك من قبل الباقات: كل المحتوى'}</small><a class="lnk" href="#admin-subs" id="a_pk">تغيير الباقة</a></div>` : ''}`; })() : ''}
       <div class="acts">${isOwner() ? `<a class="btn sm gold" href="#admin-report/${encodeURIComponent(email)}" id="a_rep">📊 التقرير الشامل</a>` : ''}<button class="btn sm ghost" id="a_name">✏️ تعديل الاسم المعروض</button><button class="btn sm ghost" id="a_av">🖼 مسح الصورة</button><button class="btn sm ghost" id="a_kick">⎋ طرد الجلسة</button>${isOwner() && !d.ban && !d.ended && (d.student || d.member) ? '<button class="btn sm ghost dang" id="a_send">⛔ إنهاء الاشتراك</button>' : ''}${d.ban ? `<button class="btn sm" id="a_unban">فك الحظر</button>` : `<button class="btn sm danger" id="a_ban">⛔ حظر نهائي</button>`}</div>
       ${skillsBarsHtml(d.skills && d.skills.data ? histAgg(JSON.parse(d.skills.data)) : null, true)}
       <h4>📚 نتائج الأقسام (${d.results.length})${d.results.length ? ' <button class="lnk" id="a_rr">حذف الكل</button>' : ''}</h4>
@@ -3686,7 +3772,7 @@
       card('🔔', 'التذكير اليومي', d.push ? `<p><b>مفعّل</b>${d.push.mins != null ? ` <span class="mut">الساعة <bdi dir="ltr">${String(Math.floor(d.push.mins / 60)).padStart(2, '0')}:${String(d.push.mins % 60).padStart(2, '0')}</bdi></span>` : ''}</p>` : '<p class="mut">مو مفعّل.</p>')].join('');
     W().innerHTML = `<section class="rphead">
         <div class="rpwho">${avatarHtml(w.avatar, nm, 64)}<div class="rpwt"><h1>${esc(nm)}${w.display && w.name && w.display !== w.name ? ` <small>(${esc(w.name)})</small>` : ''}</h1><p class="ltr rpem">${esc(email)}</p><p class="rpch">${status}${chips}</p></div></div>
-        <div class="rpsub ${S.ended || S.ban ? 'na' : L.c}"><div><span>نوع الاشتراك</span><b>${RP_TYPE[S.t] || '—'}</b></div><div><span>📅 بداية الاشتراك</span><b>${admDay(S.start, 1)}</b></div><div><span>⏰ ينتهي</span><b>${admDay(S.until, 1)}</b>${S.ended || S.ban || !S.until ? '' : `<em>${L.t}</em>`}</div>
+        <div class="rpsub ${S.ended || S.ban ? 'na' : L.c}"><div><span>نوع الاشتراك</span><b>${RP_TYPE[S.t] || '—'}</b></div><div><span>📦 الباقة</span><b>${S.plan === 'train' ? 'التدريب' : 'التأسيس والتدريب'}</b>${S.plan === 'train' ? '<em>بدون التأسيس</em>' : S.fu ? `<em>التأسيس لين ${admDay(S.fu)}</em>` : ''}</div><div><span>📅 بداية الاشتراك</span><b>${admDay(S.start, 1)}</b></div><div><span>⏰ ينتهي</span><b>${admDay(S.until, 1)}</b>${S.ended || S.ban || !S.until ? '' : `<em>${L.t}</em>`}</div>
           ${S.ban ? '' : '<div class="rpsb"><button class="btn sm" id="rp_sm">＋ شهر</button><button class="btn sm ghost" id="rp_sd">تعديل التاريخ</button></div>'}</div></section>
       <section class="rptiles">
         <div><span class="i" aria-hidden="true">✍️</span><b>${T.answered || 0}</b><span>سؤال حلّه</span></div>
@@ -4176,9 +4262,9 @@
     const L = ADM.payAll ? PY.rows : PY.rows.slice(0, 6);
     return `<section class="paybox" aria-labelledby="pbh"><div class="pbtop"><h3 id="pbh">💳 الدفع من الموقع</h3>${mode}</div>
       ${openBar}
-      <p class="pbsum">${PY.paid ? `${PY.paid === 1 ? 'عملية ناجحة وحدة' : PY.paid === 2 ? 'عمليتين ناجحة' : PY.paid + ' عمليات ناجحة'} · المجموع <b>${PY.total} ريال</b>` : 'ما فيه دفع حقيقي للحين'} · سعر الشهر <b>${PY.price} ريال</b>${PY.test_price ? ` · حساب التجربة يدفع <b>${PY.test_price} ريال</b>` : ''}</p>
+      <p class="pbsum">${PY.paid ? `${PY.paid === 1 ? 'عملية ناجحة وحدة' : PY.paid === 2 ? 'عمليتين ناجحة' : PY.paid + ' عمليات ناجحة'} · المجموع <b>${PY.total} ريال</b>` : 'ما فيه دفع حقيقي للحين'} · «التدريب» <b>${PY.price} ريال</b>${PY.price2 ? ` · «التأسيس والتدريب» <b>${PY.price2} ريال</b>` : ''}${PY.test_price ? ` · حساب التجربة يدفع <b>${PY.test_price} ريال</b>` : ''}</p>
       ${PY.rows.length ? `<div class="pblist">${L.map(p => { const S = PB_ST[p.status] || ['na', esc(p.status)], m = PB_M[String(p.method || '').toUpperCase()] || p.method || '';
-        return `<div class="pbrow" data-e="${esc(p.email)}" role="button" tabindex="0" title="${p.err ? esc('السبب: ' + p.err) : 'بطاقة الطالب'}"><span class="pbwho"><b>${esc(p.display || p.name || p.email.split('@')[0])}</b><small class="ltr">${esc(p.email)}</small></span><span class="pbamt">${p.amount} ريال${m ? `<small>${esc(m)}</small>` : ''}</span><span class="pbst ${S[0]}">${S[1]}${p.live ? '' : '<small>🧪 تجربة</small>'}</span><span class="pbdt">${fmtD(p.paid_at || p.created_at)}</span></div>`; }).join('')}</div>
+        return `<div class="pbrow" data-e="${esc(p.email)}" role="button" tabindex="0" title="${p.err ? esc('السبب: ' + p.err) : 'بطاقة الطالب'}"><span class="pbwho"><b>${esc(p.display || p.name || p.email.split('@')[0])}</b><small class="ltr">${esc(p.email)}</small></span><span class="pbamt">${p.amount} ريال${m ? `<small>${esc(m)}</small>` : ''}${p.pkg === 'full' ? '<small class="pbpk">📦 تأسيس وتدريب · شهرين</small>' : ''}</span><span class="pbst ${S[0]}">${S[1]}${p.live ? '' : '<small>🧪 تجربة</small>'}</span><span class="pbdt">${fmtD(p.paid_at || p.created_at)}</span></div>`; }).join('')}</div>
         ${PY.rows.length > 6 ? `<button type="button" class="lnk" id="pball">${ADM.payAll ? 'عرض أقل' : `عرض كل العمليات (${PY.rows.length})`}</button>` : ''}` : '<p class="mut pbempty">أول ما يدفع أحد من الموقع يطلع هنا.</p>'}
     </section>`;
   }
@@ -4217,8 +4303,12 @@
     const last = (SL.events || []).find(e => e.ok && e.ev !== 'pull' && e.ev !== 'cart'), bad = (SL.events || []).find(e => !e.ok);
     return `<section class="paybox slbox" aria-labelledby="slh"><div class="pbtop"><h3 id="slh">🛍 الدفع عن طريق سلة</h3>${mode}</div>
       ${conn}
-      <form class="slset" id="slform"><label class="slu"><span>رابط المنتج في سلة</span><input id="slurl" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url || '')}" autocomplete="off"></label>
-        <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || 140))}"><small>ريال</small></span></label>
+      <form class="slset pk2" id="slform">
+        <div class="slpk"><b class="slpk-n">📦 التدريب <small>شهر</small></b><label class="slu"><span>رابط المنتج في سلة</span><input id="slurl" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url || '')}" autocomplete="off"></label>
+          <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || 140))}"><small>ريال</small></span></label></div>
+        <div class="slpk"><b class="slpk-n">📦 التأسيس والتدريب <small>شهرين</small></b><label class="slu"><span>رابط منتج «تأسيس وتدريب» في سلة</span><input id="slurl2" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url2 || '')}" autocomplete="off"></label>
+          <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice2" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price2 || 239))}"><small>ريال</small></span></label></div>
+        <p class="slpk-h">${SL.url2 ? 'الطالب يختار بين الباقتين في نافذة الاشتراك. السعر هنا لازم يطابق سعر المنتج في سلة، لأن الموقع يعرف الباقة من مبلغ الطلب.' : 'بدون رابط منتج «تأسيس وتدريب»: الطالب يشوف الباقتين، و«التأسيس والتدريب» يطلبها منك على واتساب وتضيفه أنت من «➕ إضافة يدوية».'}</p>
         <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
       ${openBar}
       ${linkBar}
@@ -4227,7 +4317,7 @@
       ${miss ? `<div class="rgsync warn">⚠️ ${miss === 1 ? 'فيه طلب مدفوع من أكثر من 3 ساعات وما فعّله صاحبه' : `فيه ${miss} طلبات مدفوعة من أكثر من 3 ساعات وما فعّلها أصحابها`}: كلّمه على جواله (تحت رقم الطلب)، أو اضغط «🔗 ربط» واكتب إيميله.</div>` : ''}
       ${rows.length ? `<div class="pblist">${L.map(o => { const S = slState(o), who = o.display || o.cname || '—', em = o.applied_email || o.email;
         return `<div class="pbrow slrow" data-id="${esc(o.id)}"${em ? ` data-e="${esc(em)}" role="button" tabindex="0" title="بطاقة الطالب"` : ''}><span class="pbwho"><b${o.display && o.cname && o.cname !== o.display ? ` title="اسمه في حساب سلة: ${esc(o.cname)}"` : ''}>${esc(who)}</b><small class="ltr">${em ? esc(em) : o.ftxt ? `«${esc(o.ftxt)}»` : 'بدون إيميل'}</small><small>#<bdi>${esc(o.ref || o.id)}</bdi>${o.esrc && SL_SRC[o.esrc] ? ' · ' + SL_SRC[o.esrc] : ''}${o.cphone ? ` · <bdi dir="ltr">${esc(o.cphone)}</bdi>` : ''}</small></span>
-          <span class="pbamt">${o.total ? o.total + ' ريال' : '—'}<small>${esc(SL_PM[o.pm] || o.pm || '')}</small></span>
+          <span class="pbamt">${o.total ? o.total + ' ريال' : '—'}<small>${esc(SL_PM[o.pm] || o.pm || '')}</small><small class="pbpk">📦 ${o.pkg === 'full' ? 'تأسيس وتدريب' : 'تدريب'}${o.months === 2 ? ' · شهرين' : o.months > 2 ? ' · ' + o.months + ' شهور' : ''}</small></span>
           <span class="pbst ${S[0]}">${S[1]}${S[2] ? `<small>${esc(S[2])}</small>` : ''}${!o.applied_at ? `<span class="slact"><button type="button" class="lnk" data-link="${esc(o.id)}">🔗 ربط</button><button type="button" class="lnk" data-hide="${esc(o.id)}" title="إخفاء الطلب من القائمة">🙈 إخفاء</button></span>` : ''}</span>
           <span class="pbdt">${fmtD(o.created_at)}</span></div>`; }).join('')}</div>
         ${rows.length > 6 ? `<button type="button" class="lnk" id="slall">${ADM.sallaAll ? 'عرض أقل' : `عرض كل الطلبات (${rows.length})`}</button>` : ''}` : `<p class="mut pbempty">${linked || mailOk ? 'أول ما يشتري أحد من متجرك يطلع هنا.' : 'أول ما توصل إيميلات سلة للموقع، الطلبات تطلع هنا.'}</p>`}
@@ -4236,11 +4326,13 @@
   }
   function sallaBind(W) {
     const SL = ADM.salla; if (!SL || !SL.ok) return;
-    const f = W.querySelector('#slform'), u = W.querySelector('#slurl'), pr = W.querySelector('#slprice'), sv = W.querySelector('#slsave');
-    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140); }; u.oninput = dirty; pr.oninput = dirty;
-      f.onsubmit = async e => { e.preventDefault(); const url = u.value.trim();
+    const f = W.querySelector('#slform'), u = W.querySelector('#slurl'), pr = W.querySelector('#slprice'), u2 = W.querySelector('#slurl2'), pr2 = W.querySelector('#slprice2'), sv = W.querySelector('#slsave');
+    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140) && u2.value.trim() === (SL.url2 || '') && Number(pr2.value) === Number(SL.price2 || 239); }; [u, pr, u2, pr2].forEach(i => i.oninput = dirty);
+      f.onsubmit = async e => { e.preventDefault(); const url = u.value.trim(), url2 = u2.value.trim();
         if (url && !/^https:\/\/\S+$/.test(url)) { toast('الرابط لازم يبدأ بـ https://'); u.focus(); return; }
-        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
+        if (url2 && !/^https:\/\/\S+$/.test(url2)) { toast('الرابط لازم يبدأ بـ https://'); u2.focus(); return; }
+        if (url2 && url2 === url) { toast('الباقتين لازم لكل وحدة رابط منتجها'); u2.focus(); return; }
+        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140, url2, price2: Number(pr2.value) || 239 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
     const op1 = W.querySelector('#slopen1'), cl = W.querySelector('#slclose'), setOpen = async (open, btn) => {
       if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيبقى لهم زر واتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
       btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); ADM.home = null; toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); admRepaint(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
@@ -4291,7 +4383,8 @@
       <span class="c-st">${avatarHtml(x.avatar, nm(x), 40)}<span class="who"><b>${esc(nm(x))}</b><small class="ltr">${esc(x.typed || x.email)}${x.user ? ' · @' + esc(x.user) : ''}</small><small>${x.via === 'salla' ? '🛍 اشترك بالدفع عن طريق سلة' : x.via === 'tap' ? '💳 اشترك بالدفع من الموقع' : x.src === 'panel' ? '➕ أضفته من اللوحة' : '📊 من الشيت'} · آخر دخول ${x.last ? fmtD(x.last) : '—'}</small></span></span>
       ${x.t === 'pay' ? `<span class="sbseg pay" aria-label="نوع اشتراك ${esc(nm(x))}: دفع إلكتروني"><span class="sbpay">💳 دفع إلكتروني</span></span>` : `<span class="sbseg" role="radiogroup" aria-label="نوع اشتراك ${esc(nm(x))}"${x.end ? ' aria-disabled="true"' : ''}>${['yt', 'free', 'bank'].map(t => `<button type="button" role="radio" data-t="${t}" class="${x.t === t ? 'on ' + t : ''}" aria-checked="${x.t === t}"${x.end ? ' disabled' : ''}>${SUB_N[t][0]} ${SUB_N[t][1]}</button>`).join('')}</span>`}
       <span class="sbsh">${x.end ? `<small class="sbendst">⛔ انتهى اشتراكه ${fmtD(x.end)}${x.eb === 'auto' ? ' (تلقائي)' : ''}</small>` : ''}${x.end ? '' : (() => { const L = subLeft(x.until);
-        return `<span class="sbdt ${L.c}"><span>📅 ينتهي <b>${x.until ? admDay(x.until) : '—'}</b> · ${L.t}</span><span class="sbdtb"><button type="button" class="lnk" data-add title="يمدّد الاشتراك شهر من موعد نهايته (أو من اليوم لو خلص)">＋ شهر</button><button type="button" class="lnk" data-dates>تعديل</button></span></span>`; })()}</span>
+        return `<span class="sbdt ${L.c}"><span>📅 ينتهي <b>${x.until ? admDay(x.until) : '—'}</b> · ${L.t}</span><span class="sbdtb"><button type="button" class="lnk" data-add title="يمدّد الاشتراك شهر من موعد نهايته (أو من اليوم لو خلص)">＋ شهر</button><button type="button" class="lnk" data-dates>تعديل</button></span></span>
+          <span class="sbpk" role="radiogroup" aria-label="باقة ${esc(nm(x))}"><span class="sbpk-l" aria-hidden="true">📦</span>${[['train', 'التدريب'], ['full', 'التأسيس والتدريب']].map(([k, t]) => `<button type="button" role="radio" data-pk="${k}" class="${(x.plan === 'train' ? 'train' : 'full') === k ? 'on' : ''}" aria-checked="${(x.plan === 'train' ? 'train' : 'full') === k}" title="${k === 'train' ? 'بدون دروس التأسيس واختباراتها ومذكرتي التأسيس' : 'كل المحتوى'}">${t}</button>`).join('')}${x.fu ? `<small>اشترى «التدريب»، والتأسيس مفتوح له لين ${admDay(x.fu)}</small>` : !x.pkg ? '<small>مشترك من قبل الباقات: كل المحتوى</small>' : ''}</span>`; })()}</span>
       <span class="sbend">${x.end ? '<button type="button" class="btn sm ghost" data-restore>↩️ إرجاع الاشتراك</button><button type="button" class="btn sm gone" data-gone title="احذفه من القوائم">🗑 حذف</button>' : '<button type="button" class="btn sm ghost dang" data-end>⛔ إنهاء الاشتراك</button>'}</span></div>`;
     const lifeLine = !LF ? '' : `<div class="rgsync${LF.on ? '' : ' warn'} sblife"><span>${LF.on ? `⏰ الإنهاء التلقائي شغّال: اللي تخلص مدته وما يجدّد ينتهي اشتراكه بعد ${LF.grace ? arDays(LF.grace) : 'نهاية المدة على طول'} (${LF.types.map(t => SUB_N[t] ? SUB_N[t][1] : t).join('، ')}).` : '⏰ الإنهاء التلقائي مطفي: اللي تخلص مدته يبقى مشترك لين تنهيه أنت.'}${LF.remind ? ` الطالب يتذكّر بالتجديد قبل النهاية بـ${arDays(LF.remind)}.` : ''}</span><a class="lnk" href="#admin-settings">⚙️ غيّر الإعداد</a></div>`;
     W.innerHTML = `<div class="stf subs">
@@ -4300,7 +4393,7 @@
       ${B && B.n ? `<div class="rgsync warn sbundo"><span>⛔ أنهيت كل الاشتراكات ${fmtD(B.at)}، واللي باقي اشتراكهم منتهي منها ${nStu(B.n)}.</span><button type="button" class="lnk" id="sbundo">↩️ تراجع وأرجعهم</button></div>` : ''}
       <div class="abar"><input id="sbq" type="search" placeholder="ابحث بالاسم أو الإيميل أو اليوزر…" value="${esc(ADM.sq)}">${f !== 'all' ? `<button type="button" class="btn sm ghost" id="sball">عرض الكل (${all.length})</button>` : ''}</div>
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${q ? 'لا نتائج' : 'ما فيه طلاب هنا'}</div>`}</div>
-      <p class="mut sbnote">اللي يدفع من الموقع يطلع «دفع إلكتروني» لحاله. واللي تضيفه من «➕ إضافة يدوية» يطلع بالنوع اللي تختاره هناك. كل المشتركين يشوفون مقاطع الشرح داخل الموقع.</p>
+      <p class="mut sbnote">اللي يدفع من الموقع يطلع «دفع إلكتروني» لحاله وبالباقة اللي دفعها. واللي تضيفه من «➕ إضافة يدوية» يطلع بالنوع والباقة اللي تختارهم هناك. كل المشتركين يشوفون مقاطع الشرح داخل الموقع. 📦 باقة «التدريب» بدون التأسيس (دروس التأسيس واختباراتها ومذكرتي التأسيس)، و«التأسيس والتدريب» تفتح كل شي.</p>
       <section class="sbdz" aria-labelledby="sbdzh"><div class="sbdzt"><h3 id="sbdzh">⛔ إنهاء كل الاشتراكات</h3><p>ينهي اشتراك كل الطلاب دفعة وحدة: يطلعون من الموقع فوراً، ولو دخلوا مرة ثانية يدخلون بالحساب المجاني. أنت والمشرفين ما تتأثرون، وتقدر تتراجع بعدها.</p></div>
         <button type="button" class="btn sm danger" id="sbendall"${all.some(on) ? '' : ' disabled'}>⛔ إنهاء كل الاشتراكات</button></section></div>`;
     W.querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { ADM.sf = ADM.sf === b.dataset.sf ? 'all' : b.dataset.sf; paintSubs(); });
@@ -4310,6 +4403,10 @@
       try { await admCall(Object.assign({ op: 'adm_sub_set', email: x.email }, patch)); toast(msg); } catch (e) { Object.assign(x, undo); paintSubs(); toast('ما انحفظ: ' + e.message); } };
     W.querySelectorAll('.sbrow').forEach(r => { const x = all.find(y => y.email === r.dataset.e); if (!x) return;
       r.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = b.dataset.t; if (t === x.t || x.end) return; save(x, { t }, { t: x.t }, `${nm(x)}: ${SUB_N[t][0]} ${SUB_N[t][1]} ✓`); });
+      r.querySelectorAll('[data-pk]').forEach(b => b.onclick = async () => { const k = b.dataset.pk, cur = x.plan === 'train' ? 'train' : 'full'; if (k === cur && x.pkg && !x.fu) return;   // 📦 باقة الطالب بيد المالك
+        if (k === 'train' && !await QGDlg.confirm(`تحوّل ${nm(x)} لباقة «التدريب»؟\nتنقفل عنه دروس التأسيس واختباراتها ومذكرتا التأسيس من الحين، والباقي يبقى مفتوح.`, { ok: 'حوّله للتدريب' })) return;
+        const old = { pkg: x.pkg, plan: x.plan, fu: x.fu }; Object.assign(x, { pkg: k, plan: k, fu: 0 }); paintSubs();
+        try { await admCall({ op: 'adm_sub_pkg', email: x.email, pkg: k }); toast(`${nm(x)}: باقة «${k === 'train' ? 'التدريب' : 'التأسيس والتدريب'}» ✓`); ADM.home = null; } catch (e) { Object.assign(x, old); paintSubs(); toast('ما انحفظ: ' + e.message); } });
       const e1 = r.querySelector('[data-end]'); if (e1) e1.onclick = async () => { const at = await subEndOne(x.email, nm(x)); if (at) { x.end = at; x.eb = ''; paintSubs(); } };
       const g1 = r.querySelector('[data-gone]'); if (g1) g1.onclick = async () => { g1.disabled = true; if (await subGoneOne(x.email, nm(x))) { ADM.subs = all.filter(y => y.email !== x.email); ADM.list = null; paintSubs(); } else g1.disabled = false; };
       const r1 = r.querySelector('[data-restore]'); if (r1) r1.onclick = async () => { if (await subRestoreOne(x.email, nm(x))) { x.end = 0; x.eb = ''; if (B) B.n = all.filter(y => y.end && y.eb === B.batch).length; ADM.subs = null; renderSubs(); } };
@@ -4406,7 +4503,7 @@
   };
   const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'], aband: ['🛒', 'ترك الدفع في سلة'], pf_phone: ['📱', 'زائر يبينا نكلّمه واتساب'], pf_mail: ['📧', 'وصله إيميل «وش وقّفك؟»'],
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
-    adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
+    adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_pkg: ['📦', 'تغيير باقة طالب'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
     adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
     adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'] };
   const evRow = e => { const T = EV_T[e.kind] || ['•', e.kind], sys = !/^adm_/.test(e.kind), who = String(e.who || '');
@@ -4429,7 +4526,7 @@
     const needHtml = need.length ? need.map(x => `<li class="ohn ${x.v[5]}" data-k="${x.k}"><span class="ohni" aria-hidden="true">${x.v[0]}</span><span class="ohnx"><b>${x.v[1]}</b><small>${esc(x.v[2])}</small></span><a class="btn sm${x.v[5] === 'hi' ? '' : ' ghost'}" href="${x.v[3]}" data-need="${x.k}">${x.v[4]}</a></li>`).join('')
       : '<li class="ohn none"><span class="ohni" aria-hidden="true">✓</span><span class="ohnx"><b>ما فيه شي ينتظرك</b><small>كل الطلبات مفعّلة، وما فيه بلاغات ولا أخطاء.</small></span></li>';
     const by = K.by || {}, tile = (ic, b, t1, s, href, cls) => `<a class="oht${cls ? ' ' + cls : ''}" href="${href}"><span class="ohti" aria-hidden="true">${ic}</span><b>${b}</b><span class="ohtt">${t1}</span><small>${s}</small></a>`;
-    const tiles = tile('👥', K.subs, 'مشترك الحين', `💳 ${by.pay || 0} · 🏦 ${by.bank || 0} · 🎁 ${by.free || 0} · ▶️ ${by.yt || 0}`, '#admin-subs')
+    const tiles = tile('👥', K.subs, 'مشترك الحين', `💳 ${by.pay || 0} · 🏦 ${by.bank || 0} · 🎁 ${by.free || 0} · ▶️ ${by.yt || 0}${K.pk ? `<br>📦 تدريب ${K.pk.train || 0} · تأسيس وتدريب ${K.pk.full || 0}` : ''}`, '#admin-subs')
       + tile('💰', `<bdi>${sar(K.rev_m.a)}</bdi>`, 'ريال هالشهر', `${K.rev_m.n === 1 ? 'اشتراك واحد' : K.rev_m.n === 2 ? 'اشتراكين' : K.rev_m.n + ' اشتراك'} مدفوع${K.rev_d.a ? ` · اليوم <bdi>${sar(K.rev_d.a)}</bdi>` : ''}`, '#admin-pay', 'gold')
       + tile('🆕', K.new7, 'اشتركوا آخر 7 أيام', K.soon ? `${K.soon} ينتهي اشتراكهم قريب` : 'ما فيه اشتراك ينتهي قريب', '#admin-subs')
       + tile('🔥', K.active, 'طالب نشط اليوم', K.active_free ? `ومعهم ${K.active_free === 1 ? 'زائر واحد' : K.active_free + ' زوار'}` : `من ${K.subs} مشترك`, '#admin')
@@ -4822,9 +4919,10 @@
       <form class="sadd" id="madd" autocomplete="off"><h3>➕ إضافة مشتركين</h3>
         <div class="sgrid"><label class="wide"><span>إيميلات Google — كل إيميل في سطر، وتقدر تكتب اسم الطالب بعد الإيميل</span><textarea id="m_em" rows="5" dir="ltr" spellcheck="false" placeholder="ahmed@gmail.com أحمد محمد&#10;sara@gmail.com"></textarea></label></div>
         <div class="sroles" role="radiogroup" aria-label="نوع اشتراكهم">${[['free', '🎁 مجاني', 'هدية أو استثناء، بدون دفع'], ['bank', '🏦 تحويل بنكي', 'حوّل لك المبلغ على حسابك']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_sub" value="${v}" ${(ADM.msub === 'bank' ? 'bank' : 'free') === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
+        <div class="sroles" role="radiogroup" aria-label="باقتهم">${[['train', '📦 التدريب · شهر', 'كل شي ما عدا التأسيس'], ['full', '📦 التأسيس والتدريب · شهرين', 'كل المحتوى مع دروس التأسيس']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_pkg" value="${v}" ${(ADM.mpkg === 'full' ? 'full' : 'train') === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
         <div class="acts"><button class="btn gold" type="submit" id="m_go" disabled>إضافة</button><span class="mcnt" id="m_cnt"></span></div>
         ${resHtml}
-        <p class="mnote">يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة تطلع لهم داخل الموقع (التفاعلية والمحلولة) باسمهم وإيميلهم، ونسخة PDF في Drive تنعمل من الشيت بس.</p></form>
+        <p class="mnote">مدة الاشتراك تبدأ من الحين: شهر لباقة «التدريب» وشهرين لباقة «التأسيس والتدريب»، وتقدر تغيّر الباقة أو التاريخ بعدين من «الاشتراكات». يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة تطلع لهم داخل الموقع (التفاعلية والمحلولة) باسمهم وإيميلهم، ونسخة PDF في Drive تنعمل من الشيت بس.</p></form>
       <h3 class="sh">المضافون من اللوحة <small>${M.length}</small></h3>
       ${M.length > 8 ? `<div class="abar"><input id="mq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.mq)}"></div>` : ''}
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${M.length ? 'لا نتائج' : 'ما أضفت أحد بعد — اكتب الإيميلات فوق واضغط «إضافة».'}</div>`}</div></div>`;
@@ -4837,7 +4935,8 @@
       e.preventDefault(); const p = parseMembers(ta.value); if (!p.items.length) return;
       go.disabled = true; go.textContent = 'جارٍ الإضافة…';
       const sub = ((W.querySelector('input[name=m_sub]:checked') || {}).value) || 'free'; ADM.msub = sub;
-      try { const r = await admCall({ op: 'adm_members_add', items: p.items, sub });
+      const pkg = ((W.querySelector('input[name=m_pkg]:checked') || {}).value) === 'full' ? 'full' : 'train'; ADM.mpkg = pkg;   // 📦 الباقة: التدريب (شهر) أو التأسيس والتدريب (شهرين)
+      try { const r = await admCall({ op: 'adm_members_add', items: p.items, sub, pkg });
         ADM.draft = p.bad.join('\n'); ADM.members = (await admCall({ op: 'adm_members_list' })).members; ADM.list = null; ADM.subs = null;
         toast(r.added.length ? 'تمت الإضافة ✓' : r.restored && r.restored.length ? '↩️ رجع اشتراكهم ✓' : 'ما فيه إيميلات جديدة'); app.innerHTML = admTop('members'); bindCtl(); $('#admref').onclick = () => { ADM.members = null; renderMembers(); }; paintMembers(r);
       } catch (err) { toast(err.message); upd(); }
