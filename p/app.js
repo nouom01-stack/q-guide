@@ -42,7 +42,7 @@
     const L = [{ k: 'train', price: T.price || (g && g.price) || PRICE, was: T.was || 0, until: T.until || 0, months: 1, url: T.url || (g && g.url) || '' }];
     if (!g || (pk && pk.full)) L.push({ k: 'full', price: U.price || PRICE2, was: U.was || 0, until: U.until || 0, months: 2, url: U.url || '' });
     return L; };
-  const offDay = t => new Date(t).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' });   // «30 نوفمبر»
+  // 🏷 وقت العرض الكتابة «عرض لفترة محدودة» (طلب المالك 14 نوفمبر: بدون تاريخ، والعرض فعلاً ينتهي لحاله في until — صندوق المالك يعرض التاريخ)   // «30 نوفمبر»
   const pkTwo = () => pkList().length > 1;
   const noFound = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin' && auth.plan === 'train');   // 🔒 مشترك باقته «التدريب»: التأسيس مقفل عنه
   const foundRoute = h => /^watch-(af|sf)\d{1,2}$/.test(h) || /^fq-[1-4]$/.test(h) || /^wb-t[qv](@\d{1,3})?$/.test(h);
@@ -441,7 +441,7 @@
       full: [_T('كل اللي في باقة «التدريب»'), _T('تأسيس اللفظي بالفيديو واختبار بعد كل درس'), _T('مذكرتا التأسيس: قواعد الكمي واللفظي')] };
     const card = x => `<label class="pkg${x.k === sel.k ? ' on' : ''}" data-pk="${x.k}"><input type="radio" name="qgpkg" value="${x.k}"${x.k === sel.k ? ' checked' : ''}>
         <b class="pkg-n">${PKN(x.k)}</b>
-        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>${x.was ? `<span class="pkg-off">${_T`🏷 سعر العرض لين ${offDay(x.until)}`}</span>` : ''}
+        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>${x.was ? `<span class="pkg-off">${_T('🏷 عرض لفترة محدودة')}</span>` : ''}
         <span class="pkg-l">${feats[x.k].map(f => `<span>${f}</span>`).join('')}${x.k === 'train' ? `<span class="no">${_T('بدون التأسيس')}</span>` : ''}</span></label>`;
     const cards = two ? `<div class="pkgs" role="radiogroup" aria-label="${_T('اختر باقتك')}">${PK.map(card).join('')}</div>` : '';
     const head = up ? _T`<p class="sub-lock">🔒 ${esc(what)} ضمن باقة «التأسيس والتدريب»</p>
@@ -725,7 +725,7 @@
       case 'method': return { t: _T('صفحة الدفع فيها مدى و Apple Pay وفيزا وماستركارد و STC Pay والتحويل البنكي (يطلع لك المناسب لجهازك). تبي طريقة ثانية؟ كلّمنا على واتساب.'), a: [wa, pay] };
       case 'parent': return { t: sallaOn() ? _T('أرسل رابط الدفع لولي أمرك أو أي أحد بيدفع عنك: يدفع من جواله، واشتراكك يتفعّل على حسابك.') : _T('كلّمنا على واتساب ونرتّب الدفع مع ولي أمرك.'), a: sallaOn() ? [['share', _T('🔗 انسخ رابط الدفع')], wa] : [wa] };
       case 'price': { const F = pkList().find(x => x.k === 'full'), T = pkList()[0];   // 📦 باقتين: نذكر الاثنين بسعرهم ومدتهم (🏷 ووقت العرض: الأصلي ونهاية العرض)
-        const offT = T.was ? _T` (بدل ${T.was}، العرض لين ${offDay(T.until)})` : '', offF = F && F.was ? _T` (بدل ${F.was})` : '';
+        const offT = T.was ? _T` (بدل ${T.was}، عرض لفترة محدودة)` : '', offF = F && F.was ? _T` (بدل ${F.was})` : '';
         return { t: F ? _T`باقة «التدريب» ${price} ريال للشهر${offT}، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال لشهرين${offF} ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
           : _T`الاشتراك ${price} ريال للشهر كامل، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.`, a: [pay, wa] }; }
       case 'later': return { t: _T('تمام 👌 حسابك المجاني يبقى شغّال، ووقت ما تبي تكمل اضغط «اشترك» من فوق.'), a: [] };
