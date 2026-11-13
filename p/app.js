@@ -17,7 +17,7 @@
   // 🆓 الحساب المجاني (زائر غير مشترك): القسم 1، النموذج 1، الاختبار المحاكي 1، تحديد المستوى، البحث (يعرف مكان السؤال بدون الحل)، والساحة 1v1 بحد يومي
   const isFree = () => !!(auth && auth.role === 'free');
   let CERR = () => {};   // 🐞 مرسل الأخطاء للمالك (يتعرّف تحت): نستخدمه في try/catch حول الإضافات اللي ما نبيها تكسر الصفحة
-  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, PRICE2 = 239, FREE_GAMES = 3;
+  const FREE_SETS = ['q1', 'v1', 'placement'], PRICE = 140, PRICE2 = 279, FREE_GAMES = 3;
   const isSub = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin');   // مشترك في الدورة (طالب)
   const WA = t => 'https://wa.me/966508003683?text=' + encodeURIComponent(t);   // 💬 واتساب الدعم
   // 💳 الاشتراك والتجديد من الموقع بس (اشتراك يوتيوب توقف): الزائر يدفع وتنفتح له الدورة، والمشترك يجدّد ويتمدد اشتراكه شهر من موعد نهايته
@@ -4307,7 +4307,7 @@
         <div class="slpk"><b class="slpk-n">📦 التدريب <small>شهر</small></b><label class="slu"><span>رابط المنتج في سلة</span><input id="slurl" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url || '')}" autocomplete="off"></label>
           <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || 140))}"><small>ريال</small></span></label></div>
         <div class="slpk"><b class="slpk-n">📦 التأسيس والتدريب <small>شهرين</small></b><label class="slu"><span>رابط منتج «تأسيس وتدريب» في سلة</span><input id="slurl2" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url2 || '')}" autocomplete="off"></label>
-          <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice2" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price2 || 239))}"><small>ريال</small></span></label></div>
+          <label class="slpr"><span>السعر على الزر</span><span class="slpi"><input id="slprice2" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price2 || PRICE2))}"><small>ريال</small></span></label></div>
         <p class="slpk-h">${SL.url2 ? 'الطالب يختار بين الباقتين في نافذة الاشتراك. السعر هنا لازم يطابق سعر المنتج في سلة، لأن الموقع يعرف الباقة من مبلغ الطلب.' : 'بدون رابط منتج «تأسيس وتدريب»: الطالب يشوف الباقتين، و«التأسيس والتدريب» يطلبها منك على واتساب وتضيفه أنت من «➕ إضافة يدوية».'}</p>
         <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
       ${openBar}
@@ -4327,12 +4327,12 @@
   function sallaBind(W) {
     const SL = ADM.salla; if (!SL || !SL.ok) return;
     const f = W.querySelector('#slform'), u = W.querySelector('#slurl'), pr = W.querySelector('#slprice'), u2 = W.querySelector('#slurl2'), pr2 = W.querySelector('#slprice2'), sv = W.querySelector('#slsave');
-    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140) && u2.value.trim() === (SL.url2 || '') && Number(pr2.value) === Number(SL.price2 || 239); }; [u, pr, u2, pr2].forEach(i => i.oninput = dirty);
+    if (f) { const dirty = () => { sv.disabled = u.value.trim() === (SL.url || '') && Number(pr.value) === Number(SL.price || 140) && u2.value.trim() === (SL.url2 || '') && Number(pr2.value) === Number(SL.price2 || PRICE2); }; [u, pr, u2, pr2].forEach(i => i.oninput = dirty);
       f.onsubmit = async e => { e.preventDefault(); const url = u.value.trim(), url2 = u2.value.trim();
         if (url && !/^https:\/\/\S+$/.test(url)) { toast('الرابط لازم يبدأ بـ https://'); u.focus(); return; }
         if (url2 && !/^https:\/\/\S+$/.test(url2)) { toast('الرابط لازم يبدأ بـ https://'); u2.focus(); return; }
         if (url2 && url2 === url) { toast('الباقتين لازم لكل وحدة رابط منتجها'); u2.focus(); return; }
-        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140, url2, price2: Number(pr2.value) || 239 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
+        sv.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', url, price: Number(pr.value) || 140, url2, price2: Number(pr2.value) || PRICE2 }); toast('✓ انحفظ'); admRepaint(); } catch (x) { sv.disabled = false; toast('ما انحفظ: ' + x.message); } }; }
     const op1 = W.querySelector('#slopen1'), cl = W.querySelector('#slclose'), setOpen = async (open, btn) => {
       if (!await QGDlg.confirm(open ? 'تفتح الدفع عن طريق سلة لكل الزوار؟\nيطلع لهم زر «💳 ادفع واشترك» في نافذة الاشتراك، ويوديهم لصفحة المنتج في متجرك. اللي يدفع يلصق رقم الطلب في الموقع ويتفعّل اشتراكه على طول.' : 'توقف الدفع عن طريق سلة للزوار؟\nيبقى لهم زر واتساب بس. اللي دفعوا قبل يبقى اشتراكهم.', open ? { ok: '🚀 افتح سلة' } : { ok: '⏸ إيقاف', danger: true })) return;
       btn.disabled = true; try { ADM.salla = await admCall({ op: 'adm_salla_set', open: open ? 1 : 0 }); ADM.home = null; toast(open ? '🚀 سلة صارت مفتوحة لكل الزوار' : '⏸ وقّفت سلة للزوار'); admRepaint(); } catch (x) { btn.disabled = false; toast('ما انحفظ: ' + x.message); } };
