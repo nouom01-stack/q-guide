@@ -139,6 +139,32 @@ img{max-width:100%}
 .ig li em.tg{display:inline-block;font-style:normal;font-size:13px;font-weight:700;line-height:1.6;color:#8A5A10;background:var(--gold-t);border-radius:999px;padding:1px 10px;margin-inline-start:4px;white-space:nowrap}
 [data-theme="dark"] .ig li em.tg{color:var(--gold-l)}
 
+/* ---------- 🏆 نتائج طلابنا: صورة حلقة الدرجة من صفحة قياس (الضغط يفتح الصورة كاملة) + درجة الكمي واللفظي + كلام الطالب ---------- */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.rcs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.rc{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px}
+.rct{display:flex;align-items:center;gap:18px;margin-bottom:18px}
+.rim{flex:0 0 132px;display:block;border-radius:18px;overflow:hidden;background:#0F1420;line-height:0;cursor:zoom-in;transition:transform .15s}
+.rim:hover{transform:scale(1.03)}
+.rim img{display:block;width:132px;height:132px}
+.rsb{flex:1;min-width:0;margin:0}
+.rsb div{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:8px 0}
+.rsb div+div{border-top:1px solid var(--line)}
+.rsb dt{font-size:16px;font-weight:700;color:var(--mut)}
+.rsb dd{margin:0;font-family:var(--disp);font-weight:800;font-size:27px;line-height:1.25;color:var(--h2);direction:ltr}
+.rq{flex:1;margin:0;padding-inline-start:14px;border-inline-start:3px solid var(--gold)}
+.rq p{margin:0;font-size:16.5px;line-height:1.85;color:var(--ink)}
+.rby{margin:14px 0 0;font-size:14.5px;font-weight:500;color:var(--mut)}
+.rnt{margin:18px 0 0;font-size:15px;color:var(--mut);max-width:44em}
+.rlb{border:0;padding:0;background:transparent;width:min(92vw,400px);max-height:94vh;overflow:visible}
+.rlb::backdrop{background:rgba(5,10,28,.8)}
+.rlb form{display:flex;justify-content:flex-end;margin:0 0 10px}
+.rlx{font:inherit;font-weight:700;font-size:15px;line-height:1.6;color:#fff;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.5);border-radius:999px;padding:5px 20px;cursor:pointer}
+.rlx:hover{background:rgba(255,255,255,.26)}
+.rlb img{display:block;width:100%;height:auto;max-height:82vh;object-fit:contain;border-radius:18px;background:#0F1420}
+.pgr{margin:20px 0 0;font-size:16px}
+.pgr a{color:var(--gold-l);font-weight:700}
+
 /* أسئلة تتكرر */
 .faq{max-width:820px}
 .qa{border-top:1px solid var(--line)}
@@ -157,6 +183,7 @@ img{max-width:100%}
 
 /* ---------- الجوال والتابلت ---------- */
 @media (max-width:960px){
+  .rcs{grid-template-columns:1fr;max-width:560px}
   .hw{grid-template-columns:1fr;gap:36px}
   .sq{max-width:560px}
   .ig section{padding:24px 24px}
@@ -179,6 +206,7 @@ img{max-width:100%}
   .lead{font-size:17.5px;margin-bottom:24px}
   .hcta .b{flex:1 1 100%}
   .sq{padding:18px 16px 16px;border-radius:18px}
+  .rc{padding:16px}.rct{gap:14px}.rim{flex-basis:116px}.rim img{width:116px;height:116px}.rsb dd{font-size:25px}
   .sec{padding:48px 0}
   .fl a{padding:16px}
   .ig{grid-template-columns:1fr}

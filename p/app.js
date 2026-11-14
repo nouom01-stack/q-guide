@@ -411,7 +411,7 @@
   setInterval(heartbeat, 3 * 60 * 1000);
 
   // ---------- 🆓 الزائر: المسارات المفتوحة + نافذة الاشتراك ----------
-  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || /^sharh-(salman|abdullah)(\/[ft])?$/.test(h) || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || /^[qv]1(@\d+)?$/.test(h);
+  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || /^sharh-(salman|abdullah)(\/[ft])?$/.test(h) || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || h === 'results' || /^[qv]1(@\d+)?$/.test(h);
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
@@ -467,7 +467,7 @@
         <p class="sub-payn">${two ? (renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. باقتك تنفتح لك على طول.')) : renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد شهر على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.')}</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>`
       : two ? `<p class="sub-nopay">${renew ? _T('راسلنا على واتساب ونجدّد لك بالباقة اللي اخترتها على نفس حسابك.') : _T('راسلنا على واتساب ونفعّل لك الباقة اللي اخترتها على نفس حسابك.')}</p>`
       : _T`<p class="sub-nopay">${renew ? _T`التجديد <b>${price} ريال</b> للشهر. راسلنا على واتساب ونجدّد لك اشتراكك على نفس حسابك.` : _T`الاشتراك <b>${price} ريال</b> للشهر. راسلنا على واتساب ونفعّل لك الدورة كاملة على نفس حسابك.`}</p>`)
-      + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>`; };
+      + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div><p class="sub-pol"><a href="/terms/#refund" target="_blank" rel="noopener">سياسة الاسترجاع وضمان الدرجة</a></p>`; };
     ov.innerHTML = _T`<div class="qgdlg-box sub-box${two ? ' pk2' : ''}" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       ${head}<div class="sub-dyn"></div>
@@ -704,6 +704,33 @@
     </section>`;
   }
 
+  // ---------- 🏆 نتائج طلابنا (نوفمبر 2026): درجات حقيقية أرسلها طلاب الدورة للمالك — شريط للزائر في الرئيسية + صفحة #results (نفس قسم #results في صفحة الموقع الرئيسية) ----------
+  //    الصور في /assets/results/ (rN.jpg = حلقة الدرجة · rN-full.jpg = صفحة النتيجة) بدون أسماء ولا أرقام؛ والكلام كلام الطلاب نفسهم بدون أسمائهم
+  const RES = () => [
+    { n: 97, q: '98.5', v: '95', t: _T('«تخيل مجهود ٤ ايام بس جبت 97، يخي مدري كيف اشكركم. والله اني شفت دورتكم بالصدفة على اليوتيوب، سبحان من ساقني لكم.»'), by: _T('من طلاب الدورة · نوفمبر 2026') },
+    { n: 94, q: '92.7', v: '96.3', t: _T('«والله ما ارضى إلى بال100، وإن شاء الله الدرجه الجايه 100. الله يسعدك انت و استاذ سلمان ما قصرتو.»'), by: _T('من طلاب الدورة · اختبار 2 نوفمبر 2026') },
+    { n: 92, q: '89.8', v: '95', t: _T('«الحمدلله جبت ٩٢ وارتفعت درجتي ١٢ درجة عن اختباري الاول بمذاكرة ثلاث اسابيع بس، والله ابدا ما كنت متوقعة اجيب هالدرجة.»'), by: _T('من طالبات الدورة · اختبار 2 نوفمبر 2026') }];
+  const resStrip = () => _T`<a class="rstrip" href="#results"><span class="rs-n" aria-hidden="true"><b>97</b><b>94</b><b>92</b></span><span class="rs-t"><b>نتائج طلابنا في اختبار القدرات</b><small>درجات حقيقية أرسلها لنا طلاب الدورة في نوفمبر</small></span><span class="rs-go">شوف النتائج ‹</span></a>`;
+  function renderResults() {
+    document.title = _T('نتائج طلابنا | Q-Guide');
+    const card = r => `<li class="rc"><div class="rct"><button type="button" class="rim" data-full="/assets/results/r${r.n}-full.jpg" aria-label="${_T`صورة النتيجة من موقع قياس: الدرجة الكلية ${r.n}`}"><img src="/assets/results/r${r.n}.jpg" alt="" width="360" height="360"></button>
+        <dl class="rsb"><div><dt>${_T('الكمي')}</dt><dd>${r.q}</dd></div><div><dt>${_T('اللفظي')}</dt><dd>${r.v}</dd></div></dl></div>
+      <blockquote class="rq"><p>${r.t}</p></blockquote><p class="rby">${r.by}</p></li>`;
+    app.innerHTML = topbar(_T`<span class="ttl">🏆 نتائج طلابنا</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      _T`<main class="wrap resp">
+        <div class="hero"><div><h1>نتائج طلابنا</h1><p>درجات حقيقية في اختبار القدرات (الإنجليزي) أرسلها لنا طلاب الدورة في نوفمبر 2026. اضغط أي صورة وتشوف صفحة النتيجة من موقع قياس.</p></div></div>
+        <ul class="rcs">${RES().map(card).join('')}</ul>
+        <p class="rnt">الكلام كلام الطلاب نفسهم، والنتائج تختلف من طالب لطالب حسب مستواه ومذاكرته.</p>
+        ${isFree() ? _T`<div class="rcta"><button type="button" class="btn gold" data-sub>اشترك في الدورة <small>${subFrom()}</small></button><a class="btn ghost" href="#q1">جرّب القسم 1 مجاناً</a></div>` : ''}
+        <dialog class="rlb" id="rlb"><form method="dialog"><button class="rlx" type="submit">إغلاق</button></form><img alt=""></dialog>
+      </main>`;
+    bindCtl(); bindSub(app);
+    const d = $('#rlb'), im = d && d.querySelector('img');   // الضغط على حلقة الدرجة يفتح صورة صفحة النتيجة كاملة
+    app.querySelectorAll('.rim').forEach(b => b.onclick = () => { if (!d || !d.showModal) { window.open(b.dataset.full, '_blank', 'noopener'); return; } im.src = b.dataset.full; im.alt = b.getAttribute('aria-label') || ''; d.showModal(); });
+    if (d) d.onclick = e => { if (e.target === d) d.close(); };
+    window.scrollTo({ top: 0 });
+  }
+
   // ---------- 🗣 «وش وقّفك؟»: الزائر اللي ما كمّل اشتراكه نسأله عن السبب مرة (واختياري) ونرد عليه بما يفيده — والمالك يشوف الأسباب في «الزوار» ----------
   // المراحل: pay = ضغط «ادفع» وما كمّل · dlg = سكّر نافذة الاشتراك بدون ما يضغط شي · renew = اشتراكه انتهى وما جدّد (op: 'why' {stage, code, txt})
   const WHY_LS = 'qg_why', PAYTRY_LS = 'qg_paytry';
@@ -876,6 +903,7 @@
     if (h === 'advisor') return renderAdvisor();   // 🎓 مرشدك الأكاديمي
     if (h === 'me') return renderProfile();   // 👤 ملفي
     if (h === 'sharh') return renderSharh();
+    if (h === 'results') return renderResults();   // 🏆 نتائج طلابنا
     const tm = /^sharh-(salman|abdullah)(?:\/([ft]))?$/.exec(h); if (tm) return renderTeach(tm[1], tm[2]);   // 👨‍🏫 صفحة المدرس: /f التأسيس · /t التدريب
     if (h === 'board' || h === 'board-week' || h === 'board-month' || h === 'board-exam') return renderBoard(h === 'board-exam' ? 'exam' : 'week');   // 🏆 الافتراضي: هذا الأسبوع
     if (/^board-set-[qv]\d{1,2}$/.test(h)) return renderBoard('set:' + h.slice(10));
@@ -1140,7 +1168,7 @@
     const toolB = (id, i, b, s) => FR ? lockTool(i, b, s) : `<button type="button" class="tool" id="${id}"><span class="ti">${i}</span><span class="tx"><b>${b}</b><small id="${id}l">${s}</small></span></button>`;
     app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: اشتراكك واسمك وصورتك">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
-      ${FR ? freeHero() + payNudge() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
+      ${FR ? freeHero() + payNudge() + resStrip() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
       ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
@@ -3956,7 +3984,7 @@
   const vMin = s => s < 60 ? 'أقل من دقيقة' : s < 3600 ? Math.round(s / 60) + ' د' : (s / 3600).toFixed(1).replace(/\.0$/, '') + ' س';
   const vCnt = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n <= 10 ? n + ' ' + few : n + ' ' + many;
   const vTest = id => 'الاختبار المحاكي ' + String(id || '').replace(/^t/, '');
-  const vPage = k => ({ home: 'الرئيسية', arena: 'الساحة 1v1', duel: 'تحدي 1v1 برابط', 'board-arena': 'صدارة الساحة', level: 'تحديد المستوى', find: 'صفحة «ابحث عن سؤال»', test: 'صفحة الاختبارات المحاكية' }[k]
+  const vPage = k => ({ home: 'الرئيسية', arena: 'الساحة 1v1', duel: 'تحدي 1v1 برابط', 'board-arena': 'صدارة الساحة', level: 'تحديد المستوى', find: 'صفحة «ابحث عن سؤال»', test: 'صفحة الاختبارات المحاكية', results: 'صفحة نتائج الطلاب' }[k]
     || (/^test:t\d+$/.test(k) ? vTest(k.slice(5)) : /^[qv]\d+$/.test(k) ? SET_NAME(k) : k));
   const vTracked = x => !!(x && x.v !== undefined);
   function visChips(x) {
