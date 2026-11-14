@@ -159,6 +159,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
+  const SET_V = { studio: 4 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
@@ -171,7 +172,7 @@
       cache[id] = obj; return obj;
     }
     if (/^t-/.test(id)) return loadTopicSet(id);
-    const r = await fetch('/p/data/' + (isFree() ? 'free/' : '') + id + '.bin?v=' + DATA_V, { cache: 'force-cache' });
+    const r = await fetch('/p/data/' + (isFree() ? 'free/' : '') + id + '.bin?v=' + (SET_V[id] || DATA_V), { cache: 'force-cache' });
     if (!r.ok) throw new Error('data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     const key = await getKey();
@@ -863,6 +864,7 @@
     progOwn(); if (Object.keys(PSY.dirty).length) progPushSoon(500);   // 💾 تقدّم هذا الحساب (مو حساب ثاني على نفس المتصفح) · واللي تغيّر ينرفع مع الانتقال
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
+    ['__stSay', '__stView'].forEach(k => { if (window[k]) { try { window[k].destroy(); } catch (e) {} window[k] = null; } });   // 🎙️ شريط السكربت / شاشة التسجيل
     heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
@@ -911,6 +913,7 @@
     if (/^t-[a-z-]+$/.test(h)) return renderPlayer(h);
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
+    if (h === 'studio-view') { if (auth.role === 'admin') return renderStView(); location.hash = ''; return; }
     if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
@@ -3356,7 +3359,8 @@
     rnd: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M12 12h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/>'),
     post: SI('<rect x="3" y="3" width="18" height="18" rx="3"/>'), posted: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
     hide: SI('<path d="M10.73 5.08A10.74 10.74 0 0 1 21.94 11.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>'),
-    panel: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>')
+    panel: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>'),
+    say: SI('<path d="M5 5h14v10h-8l-4 4v-4H5z"/><path d="M8.5 8.8h7M8.5 11.6h4.5"/>')
   };
   // 🔤 ترجمة الكلمة بالضغط: كل طرف من التناظر وحدة، ترجمته من ترجمة السؤال نفسه (ar) · غيره من القاموس · وخيارات المقارنة في الكمي
   const ST_PHRASE = { 'a is greater': 'A أكبر', 'b is greater': 'B أكبر', equal: 'متساويتان', 'not enough information': 'المعطيات غير كافية', mango: 'مانجو', lemon: 'ليمون', banana: 'موز', peach: 'خوخ', oats: 'شوفان', 'south-west': 'جنوب غرب', 'south-east': 'جنوب شرق', 'north-east': 'شمال شرق', 'north-west': 'شمال غرب' };
@@ -3370,49 +3374,23 @@
       return m[1] + w.split(/([A-Za-z][A-Za-z'’]*)/).map((x, j) => { if (!(j % 2)) return esc(x); const t = STOP.has(x.toLowerCase()) ? '' : vocLook(x); return t ? stTw(x, t) : esc(x); }).join('') + m[3];
     }).join(':');
   }
-  async function renderRec(kind, n) {
-    stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
-    let data; try { [data] = await Promise.all([stData(), stPosted(), loadVocab()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
-    const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
-    ST.reveal = false; document.body.classList.add('rec-on');
-    const key = kind + n, P = ST.posted[key], itAr = it.ar || {};
+  // 🃏 البطاقة نفسها (صفحة التصوير + شاشة التسجيل)
+  function stCard(kind, it, n) {
+    const itAr = it.ar || {};
     const opts = it.opts.map((o, i) => `<div class="tk-o" data-i="${i}"><span class="tk-l">${STL[i]}</span><span class="tk-t">${stTr(o, (itAr.o || [])[i])}</span></div>`).join('');
     const q = kind === 'v' ? `<div class="tk-kind">Analogy · التناظر اللفظي</div><div class="tk-qv">${stTr(it.q, itAr.q)}</div>` : `<div class="tk-kind">Quant · القسم الكمي</div><div class="tk-qi"><img src="${it.img}" alt=""></div>`;
-    const hasTw = /class="tw"/.test(q + opts);
-    const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
-    const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
-    const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
-    const rlink = (h, ic, lb, tt) => `<a class="rb" href="${h}" title="${tt}" aria-label="${tt}"><i aria-hidden="true">${ic}</i><small>${lb}</small></a>`;
-    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', P ? ST_IC.posted : ST_IC.post, 'نُشر', P ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»', P ? 'ok' : '')}<span class="rsep"></span>${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
-    const railDraw = `<nav class="rail rdraw" aria-label="أدوات الكتابة">${ST_TOOLS.map(([t, , lb], i) => rb(`data-tool="${t}" aria-pressed="${!i}"`, ST_IC[t], lb, lb + ({ pen: ' · P', text: ' (اضغط على البطاقة واكتب) · T', eraser: ' · E' }[t] || ''), i ? '' : 'on')).join('')}<span class="rsep"></span>${ST_W.map(([w, , lb, tt], i) => rb(`data-w="${w}" aria-pressed="${!i}"`, ST_IC[w], lb, tt, i ? '' : 'on')).join('')}<span class="rsep"></span><div class="rcols">${ST_COLS.map((c, i) => `<button type="button" class="rsw${i ? '' : ' on'}" data-col="${c}" style="--c:${c}" title="لون" aria-label="لون" aria-pressed="${!i}"></button>`).join('')}</div></nav>`;
-    app.innerHTML = `<div class="rec ${ST.ui ? '' : 'noui'} ${ST.bare ? 'bare' : ''}">
-      <div class="stage">${railActs}<div class="tk" id="tk">
+    return { hasTw: /class="tw"/.test(q + opts), html: `<div class="tk" id="tk">
         <div class="tk-top"><span class="tk-brand"><img src="/assets/logo.png" alt=""><b>Q-Guide1</b>${YTSVG}</span></div>
         <div class="tk-panel"><span class="tk-badge">Q ${n}</span>${q}<div class="tk-opts ${it.opts.some(o => o.length > 13) ? 'one' : ''}">${opts}</div>
           <div class="tk-sol"><span>الحل</span></div></div>
         <div class="tk-foot">اكتب إجابتك في التعليقات 👇</div>
-      </div>${railDraw}</div>
-      <aside class="rp">
-        <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>Q ${n} · ${kind === 'v' ? 'التناظر اللفظي' : 'الكمي'}</b><span class="sp"></span><a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a><button class="ib2" id="rrnd" title="سؤال عشوائي لم يُنشر">🎲</button></div>
-        <div class="rp-sec"><div class="rp-lbl">✍️ القلم والنص</div>
-          <div class="rp-tools">${ST_TOOLS.map(([t, ic, lb], i) => `<button type="button" data-tool="${t}" class="${i ? '' : 'on'}${t === 'text' ? ' tt' : ''}" title="${t === 'text' ? 'نص: اضغط على البطاقة واكتب' : lb}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span>${ST_COLS.map((c, i) => `<button type="button" data-col="${c}" class="sw ${i ? '' : 'on'}" style="--c:${c}" title="لون" aria-pressed="${!i}"></button>`).join('')}<span class="sep"></span>${ST_W.map(([w, ic, lb, tt], i) => `<button type="button" data-w="${w}" title="${tt}" class="${i ? '' : 'on'}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span><button type="button" id="rundo" title="تراجع">↶</button><button type="button" id="rclr" title="مسح الكتابة">🗑</button></div>
-          <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label>
-          ${hasTw ? '<div class="rp-hint">🔤 اضغط على أي كلمة في البطاقة تطلع ترجمتها تحتها، واضغطها مرة ثانية تختفي.</div>' : ''}</div>
-        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
-        ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
-        <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
-          <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
-          ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
-        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة · H وضع التصوير · Esc رجوع للوحة</div>
-      </aside>
-      <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
-      <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
-    </div>`;
-    const tk = $('#tk');
-    // 🔤 اضغط على كلمة → ترجمتها تحتها (فوقها لو تحتها سطر ثاني من نفس النص) · ضغطة ثانية عليها أو على الترجمة تخفيها · «مسح» يخفي الكل
+      </div>` };
+  }
+  // 🔤 اضغط على كلمة → ترجمتها تحتها (فوقها لو تحتها سطر ثاني من نفس النص) · ضغطة ثانية عليها أو على الترجمة تخفيها · «مسح» يخفي الكل
+  function stBubbles(tk) {
     const trl = document.createElement('div'); trl.className = 'tk-trl'; tk.appendChild(trl);
     const TR = new Map();   // الكلمة → فقاعة ترجمتها
-    const twAt = (x, y) => {
+    const at = (x, y) => {
       let best = null, bd = 1e9;
       tk.querySelectorAll('.tw').forEach(w => { const r = w.getBoundingClientRect(), pad = Math.max(6, r.height * .18); if (x < r.left - pad || x > r.right + pad || y < r.top - pad || y > r.bottom + pad) return; const d = Math.hypot(x - (r.left + r.right) / 2, y - (r.top + r.bottom) / 2); if (d < bd) { bd = d; best = w; } });
       if (!best) TR.forEach((b, w) => { const r = b.getBoundingClientRect(); if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) best = w; });
@@ -3424,7 +3402,7 @@
       const m = MC.measureText(w.textContent), line = r => { const base = r.top + (m.fontBoundingBoxAscent || r.height * .78); return { r, cx: (r.left + r.right) / 2, top: base - (m.actualBoundingBoxAscent || fs * .72), bot: Math.max(base + (m.actualBoundingBoxDescent || 0), base + fs * .3) }; };
       return { first: line(rs[0]), last: line(rs[rs.length - 1]) };
     };
-    const trPlace = () => {
+    const place = () => {
       if (!TR.size || !tk.isConnected) return; const kr = tk.getBoundingClientRect(), cw = kr.width, pad = cw * .025, rows = new Map();
       TR.forEach((b, w) => {
         if (!w.getClientRects().length) return; const g = glyphs(w), bw = b.offsetWidth, bh = b.offsetHeight, ah = parseFloat(getComputedStyle(b).fontSize) * .3 + 2;
@@ -3441,17 +3419,254 @@
         l.forEach(o => { o.b.style.left = o.x + 'px'; o.b.style.top = o.y + 'px'; o.b.style.setProperty('--ax', Math.max(12, Math.min(o.bw - 12, o.cx - o.x)) + 'px'); });
       });
     };
-    const trToggle = w => {
-      const old = TR.get(w);
-      if (old) { old.remove(); TR.delete(w); w.classList.remove('on'); }
-      else { const b = document.createElement('div'); b.className = 'tk-trb' + (w.closest('.tk-qv') ? ' big' : ''); b.textContent = w.dataset.ar; trl.appendChild(b); TR.set(w, b); w.classList.add('on'); }
-      trPlace();
+    const show = (w, still) => { if (!w || TR.has(w)) return false; const b = document.createElement('div'); b.className = 'tk-trb' + (w.closest('.tk-qv') ? ' big' : '') + (still ? ' still' : ''); b.textContent = w.dataset.ar; trl.appendChild(b); TR.set(w, b); w.classList.add('on'); place(); return true; };
+    const hide = w => { const b = TR.get(w); if (!b) return false; b.remove(); TR.delete(w); w.classList.remove('on'); place(); return true; };
+    const ro = new ResizeObserver(() => { if (!tk.isConnected) return ro.disconnect(); place(); }); ro.observe(tk); if (document.fonts) document.fonts.ready.then(place);
+    return { TR, at, show, hide, place, has: w => TR.has(w), toggle: w => TR.has(w) ? hide(w) : show(w), clear() { TR.forEach((b, w) => { b.remove(); w.classList.remove('on'); }); TR.clear(); } };
+  }
+  // 🎙️ «الشرح التلقائي» — نفس «عرض شرح قواعد الكمي»: سكربت تقرأه سطر سطر، الكلمة اللي تقولها الحين تنوّر، والقلم يكتب ويرسم على البطاقة بنفس توقيت كلامك.
+  // مسافة / Enter / PageDown = السطر الجاي · Backspace / PageUp = اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل (البطاقة لحالها في نافذة ثانية)
+  // السكربت: it.say (سكربت مكتوب للسؤال، يجي مع ملف الأسئلة المشفّر) وإلا يتولّد من الترجمة والشرح (QGHand.gen) · المحرّك في /p/sthand.js (يتحمّل وقت الحاجة بس)
+  const STH_V = 1;
+  let stHandP = null;
+  const stHandLoad = () => stHandP || (stHandP = new Promise((res, rej) => {
+    if (window.QGHand) return res(window.QGHand);
+    const s = document.createElement('script'); s.src = '/p/sthand.js?v=' + STH_V;
+    s.onload = () => window.QGHand ? res(window.QGHand) : rej(new Error('sthand'));
+    s.onerror = () => { stHandP = null; s.remove(); rej(new Error('sthand')); };
+    document.head.appendChild(s);
+  }));
+  const stSayOf = it => { const s = it && it.say, L = Array.isArray(s) ? s : s && s.lines; return L && L.length ? L : null; };
+  const stLines = (kind, it) => stSayOf(it) || QGHand.gen(kind, it);
+  // أهداف القلم على البطاقة · B = الفقاعات (null = شاشة التسجيل: الفقاعات والإجابة تجيها من الصفحة نفسها) · after = بعد كل تغيير (يوصل لشاشة التسجيل)
+  function stHandApi(tk, kind, it, B, rev, after) {
+    const nth = (s, i) => tk.querySelectorAll(s)[i] || null, done = r => { if (r && after) after(); return r; };
+    return {
+      stem: () => tk.querySelector(kind === 'v' ? '.tk-qv' : '.tk-qi img'),
+      tw: (k, i, side) => k === 'q' ? nth('.tk-qv .tw', i) : nth(`.tk-o[data-i="${i}"] .tw`, side || 0),
+      opt: i => tk.querySelector(`.tk-o[data-i="${i}"]`),
+      optText: i => tk.querySelector(`.tk-o[data-i="${i}"] .tk-t`),
+      sol: () => tk.querySelector('.tk-sol'),
+      tr: (w, still) => !B ? '' : B.has(w) ? 'had' : done(B.show(w, still)) ? 'new' : '',
+      trOff: w => !!B && done(B.hide(w)),
+      reveal: on => !!rev && rev(on),
+      ans: () => it.ans
     };
-    const trClear = () => { TR.forEach((b, w) => { b.remove(); w.classList.remove('on'); }); TR.clear(); };
-    const tro = new ResizeObserver(() => { if (!tk.isConnected) return tro.disconnect(); trPlace(); }); tro.observe(tk); if (document.fonts) document.fonts.ready.then(trPlace);
-    tk.addEventListener('click', e => { if (ST.pen.isOn()) return; const w = twAt(e.clientX, e.clientY); if (w) trToggle(w); });   // الكتابة مقفلة: الضغط يوصل للكلمة مباشرة
-    ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, onTap: (x, y) => { const w = twAt(x, y); if (!w) return false; trToggle(w); return true; } });
+  }
+  const SAY_IC = {
+    play: '<svg class="i-play" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M7.5 4.8v14.4L19 12z" fill="currentColor"/></svg>',
+    pause: '<svg class="i-pause" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>',
+    back: SI('<path d="m9 18 6-6-6-6"/>'), fwd: SI('<path d="m15 18-6-6 6-6"/>'),
+    re: SI('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),
+    view: SI('<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>'),
+    x: SI('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')
+  };
+  // 🖥 شاشة التسجيل (#studio-view): نافذة ثانية فيها البطاقة لحالها، تمشي مع هذي الصفحة (postMessage) · تقول «هلا» كل 1.5 ث، والمخفية تنحسب لين تنقفل
+  // المتصفح يوقّف رسم النافذة المغطّاة أو المصغّرة → الزر يصير برتقالي ويطلع تنبيه لين ترجع ظاهرة
+  const STV = { win: null, seen: 0, vis: 'visible', cur: null, iv: 0, on: false };
+  const stvOn = () => !!STV.win && !STV.win.closed && (STV.vis === 'hidden' || Date.now() - STV.seen < 4000);
+  const stvIdle = () => { try { if (STV.win && !STV.win.closed) STV.win.postMessage({ qg: 'stv', kind: null }, location.origin); } catch (e) {} };
+  function stvListen() {
+    if (STV.on) return; STV.on = true;
+    addEventListener('message', e => {
+      const m = e.data; if (!m || m.qg !== 'stc' || !e.source || e.origin !== location.origin) return;
+      if (STV.win && !STV.win.closed && e.source !== STV.win && stvOn()) return;   // شاشة تسجيل وحدة بس
+      const fresh = e.source !== STV.win || !stvOn() || (STV.vis === 'hidden' && m.vis !== 'hidden');
+      STV.win = e.source; STV.seen = Date.now(); if (m.t === 'hello') STV.vis = m.vis === 'hidden' ? 'hidden' : 'visible';
+      const c = STV.cur; if (c) { c.mark(); if (fresh || m.need) c.cast(true); if (m.t === 'key') c.fromView(m.k); } else if (fresh || m.need) stvIdle();
+    });
+    STV.iv = setInterval(() => { if (STV.cur) STV.cur.mark(); }, 2000);
+  }
+  function stSay(o) {   // o = { rec, stage, tk, kind, n, it, B, setRev(on) → تغيّر؟, pen() }
+    const P = Object.assign({ on: innerWidth > 820 ? 1 : 0, hand: 1, sp: 1, free: 0, x: 0, y: 0, w: 0, h: 0, dh: 0 }, lsGet('qg_stsay', null) || {}), save = () => lsSet('qg_stsay', P);   // الجوال: الشريط مقفل لين يفتحه
+    const lines = stLines(o.kind, o.it), N = lines.length, key = o.kind + o.n, mine = !!stSayOf(o.it);
+    const S = { i: -1, auto: false, sp: Math.min(1.6, Math.max(.5, +P.sp || 1)), seq: 0, tm: 0, raf: 0, lit: -2, els: [], ct: 0, ink: '', cur: null, gone: false };
+    const bar = document.createElement('div'); bar.className = 'stsay'; bar.id = 'stsay'; bar.dir = 'rtl'; bar.lang = 'ar';
+    bar.innerHTML = `<i class="stsay-p" id="stsayp"></i><span class="stsay-g" id="stsayg" title="اسحب الشريط لأي مكان · نقرتين ترجّعه تحت"></span>
+      <div class="stsay-t" id="stsayt"><div class="stsay-k"><b id="stsayk"></b><span>${mine ? 'سكربت مكتوب لهذا السؤال' : 'سكربت تلقائي من الترجمة والشرح'}</span><span class="stsay-wn" id="stsayw" hidden>⚠️ شاشة التسجيل مخفية: خلّها ظاهرة عشان يتسجّل اللي ينرسم</span></div><div class="stsay-x" id="stsayx" aria-live="polite"></div></div>
+      <div class="stsay-c">
+        <div class="stsay-r"><button type="button" class="sb" id="stsayprev" title="السطر اللي قبل · Backspace">${SAY_IC.back}<span>السابق</span></button><button type="button" class="sb pri" id="stsaynext" title="السطر الجاي: القلم يكتب ويرسم مع كلامك · مسافة">${SAY_IC.fwd}<span id="stsaynl">ابدأ</span><kbd>مسافة</kbd></button></div>
+        <div class="stsay-r"><button type="button" class="sb" id="stsayauto" aria-pressed="false" title="تشغيل تلقائي: الأسطر تمشي لحالها مع كلامك · A">${SAY_IC.play}${SAY_IC.pause}<span>تلقائي</span><kbd>A</kbd></button><div class="spd" role="group" aria-label="سرعة القراءة"><button type="button" class="sb" id="stsayslow" title="أبطأ · −" aria-label="أبطأ">−</button><output id="stsayspd">1.0×</output><button type="button" class="sb" id="stsayfast" title="أسرع · +" aria-label="أسرع">+</button></div></div>
+        <div class="stsay-r ic"><button type="button" class="sb" id="stsayre" title="من البداية: يمسح اللي كتبه القلم ويرجعك لأول سطر" aria-label="من البداية">${SAY_IC.re}</button><button type="button" class="sb" id="stsayview" title="شاشة التسجيل: البطاقة لحالها في نافذة ثانية · V" aria-label="شاشة التسجيل">${SAY_IC.view}</button><button type="button" class="sb" id="stsayhide" title="إخفاء الشريط · S" aria-label="إخفاء الشريط">${SAY_IC.x}</button></div>
+      </div><i class="stsay-z" id="stsayz" title="اسحب لتكبير الشريط أو تصغيره"></i>`;
+    o.stage.appendChild(bar);
+    const Q = s => bar.querySelector(s), R = o.rec;
+    const tws = () => [...o.tk.querySelectorAll('.tw')];
+    let api = null;
+    const hand = QGHand.hand(o.tk, stHandApi(o.tk, o.kind, o.it, o.B, on => o.setRev(on), () => cast()));
+    hand.setOn(!!P.hand);
+    // 📡 شاشة التسجيل: السطر + وقته (تلحق لو انفتحت متأخرة) + الإجابة + الفقاعات + كتابتك (والخط وهو ينرسم)
+    const inkSig = s => s.length + '|' + s.map(x => x.t === 'txt' ? [x.s, (+x.x).toFixed(3), (+x.y).toFixed(3), x.c, x.z].join('~') : (x.p ? x.p.length : 0) + (x.c || '')).join(',');
+    const cast = force => {
+      if (S.gone || STV.cur !== api || !STV.win || STV.win.closed) return; if (force) S.ink = '';
+      if (S.ct) return;
+      S.ct = setTimeout(() => {
+        S.ct = 0; if (S.gone || STV.cur !== api || !STV.win || STV.win.closed) return;
+        const pen = o.pen(), strokes = pen ? pen.getStrokes() : [], sig = inkSig(strokes), all = tws();
+        const m = { qg: 'stv', kind: o.kind, n: o.n, i: S.i, seq: S.seq, el: hand.live() ? performance.now() - hand.t0() : -1, sp: S.sp, hand: !!P.hand, rev: !!ST.reveal, trs: [...o.B.TR.keys()].map(w => all.indexOf(w)).filter(i => i >= 0), cur: S.cur };
+        if (sig !== S.ink) { m.ink = strokes; S.ink = sig; }
+        try { STV.win.postMessage(m, location.origin); } catch (e) {}
+      }, 15);
+    };
+    const mark = () => {
+      const on = stvOn(), hid = on && STV.vis === 'hidden', b = Q('#stsayview');
+      b.classList.toggle('on', on && !hid); b.classList.toggle('warn', hid); Q('#stsayw').hidden = !hid;
+      const rv = $('#rview'); if (rv) rv.classList.toggle('on', on);
+    };
+    const openView = () => {
+      stvListen();
+      if (STV.win && !STV.win.closed) { try { STV.win.focus(); } catch (e) {} cast(true); return; }
+      let w = null; try { w = window.open('/p/#studio-view', 'qg-stview', 'popup=yes,width=540,height=960'); } catch (e) {}
+      if (!w) return toast('المتصفح منع فتح شاشة التسجيل. اسمح بالنوافذ المنبثقة لهذا الموقع وجرّب مرة ثانية.');
+      STV.win = w; STV.seen = 0; STV.vis = 'visible'; mark();   // أول «هلا» منها تجيب لها البطاقة
+    };
+    // 📜 الشريط: تحت الصفحة (البطاقة تصغر فوقه) أو حر في أي مكان (اسحبه من مقبضه) · طرفه يكبّره ويصغّره
+    const fit = () => {
+      if (bar.hidden) return; const t = Q('#stsayt'), x = Q('#stsayx'), k = t.firstElementChild, H = t.clientHeight - k.offsetHeight - 8; if (H < 20) return;
+      let f = Math.max(16, Math.min(34, Math.floor(H / 2.7), Math.floor(t.clientWidth / 13)));
+      for (; f > 12; f--) { x.style.fontSize = f + 'px'; if (x.offsetHeight <= H) break; }
+    };
+    const sync = () => R.style.setProperty('--sayh', (P.on && !P.free ? bar.offsetHeight + 12 : 0) + 'px');
+    const place = () => {
+      bar.hidden = !P.on; bar.classList.toggle('free', !!P.free); R.classList.toggle('sayd', !!P.on && !P.free);
+      if (P.free) {
+        const w = Math.min(Math.max(320, P.w || 760), innerWidth - 16), h = Math.min(Math.max(96, P.h || 150), innerHeight * .6);
+        P.x = Math.min(Math.max(8, P.x), innerWidth - w - 8); P.y = Math.min(Math.max(8, P.y), innerHeight - h - 8);
+        Object.assign(bar.style, { left: P.x + 'px', top: P.y + 'px', width: w + 'px', height: h + 'px' });
+      } else Object.assign(bar.style, { left: '', top: '', width: '', height: P.dh ? Math.min(Math.max(96, P.dh), innerHeight * .45) + 'px' : '' });
+      sync(); fit();
+      const l = $('#lsay'); if (l) { l.classList.toggle('on', !!P.on); l.setAttribute('aria-pressed', !!P.on); }
+      const rs = $('#rsay'); if (rs) rs.textContent = P.on ? '📜 إخفاء شريط السكربت' : '📜 إظهار شريط السكربت';
+    };
+    const drag = (el, move) => el.addEventListener('pointerdown', e => {
+      if (e.button) return; e.preventDefault(); el.setPointerCapture(e.pointerId);
+      const r = bar.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY; let moved = false;
+      const mv = ev => { if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return; if (!moved) { moved = true; bar.classList.add('drag'); } move(r, ev.clientX - x0, ev.clientY - y0); place(); };
+      const end = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', end); el.removeEventListener('pointercancel', end); bar.classList.remove('drag'); if (moved) save(); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    });
+    drag(Q('#stsayg'), (r, dx, dy) => { if (!P.free) { P.free = 1; P.w = Math.min(r.width, 820); P.h = r.height; } P.x = r.right - P.w + dx; P.y = r.top + dy; });   // المقبض يمين: يبقى تحت الماوس
+    drag(Q('#stsayz'), (r, dx, dy) => { if (P.free) { P.w = Math.max(320, r.width - dx); P.x = r.right - P.w; P.h = Math.max(96, r.height + dy); } else P.dh = Math.max(96, r.height - dy); });
+    Q('#stsayg').addEventListener('dblclick', () => { P.free = 0; save(); place(); });
+    const bro = new ResizeObserver(() => { sync(); fit(); }); bro.observe(bar);
+    addEventListener('resize', place);
+    // ✨ الكلمة المنوّرة: نفس ساعة القلم، فاللي يقول كل كلمة وقت ما تنوّر يقولها وقت ما يبدأ رسمها
+    const kPaint = () => {
+      const ln = lines[S.i]; if (!ln || !S.els.length) return false;
+      const c = QGHand.litAt(ln, performance.now() - hand.t0(), S.sp);
+      if (c !== S.lit) { S.lit = c; S.els.forEach(e => { const k = +e.dataset.k; e.classList.toggle('said', k < c); e.classList.toggle('now', k === c); }); }
+      return c < QGHand.sched(ln).w.length;
+    };
+    const kLoop = () => { S.raf = 0; if (!S.gone && kPaint()) S.raf = requestAnimationFrame(kLoop); };
+    const render = () => {
+      const ln = lines[S.i], x = Q('#stsayx');
+      Q('#stsayk').textContent = S.i < 0 ? 'جاهز؟' : `السطر ${S.i + 1} من ${N}`;
+      x.innerHTML = ln ? QGHand.sayHtml(ln, esc) : `<span class="mute">اضغط مسافة وابدأ: السطر يطلع هنا والكلمة اللي تقولها تنوّر، والقلم يكتب ويرسم على البطاقة مع كلامك.</span>`;
+      Q('#stsayprev').disabled = S.i < 0; Q('#stsaynext').disabled = S.i >= N - 1; Q('#stsaynl').textContent = S.i < 0 ? 'ابدأ' : 'التالي';
+      S.els = [...x.querySelectorAll('.kw')]; S.lit = -2; fit(); cancelAnimationFrame(S.raf); S.raf = 0; kLoop();
+    };
+    // ⏱ التشغيل التلقائي: السطر يخلص (وقت قراءته أو رسمه، الأطول) → اللي بعده
+    const schedule = () => {
+      clearTimeout(S.tm); S.tm = 0; const p = Q('#stsayp'); p.style.transition = 'none'; p.style.width = '0';
+      if (!S.auto) return;
+      if (S.i < 0) { S.tm = setTimeout(next, 350); return; }
+      const d = Math.max(QGHand.dur(lines[S.i]) / S.sp, hand.total() ? hand.total() + 500 / S.sp : 0);
+      void p.offsetWidth; p.style.transition = `width ${d}ms linear`; p.style.width = '100%';
+      S.tm = setTimeout(() => { if (S.i >= N - 1) setAuto(false); else next(); }, d);
+    };
+    const go = (i, mode) => {
+      S.i = Math.max(-1, Math.min(N - 1, i)); S.seq++;
+      hand.enter(lines, key, S.i, mode === 'step' ? 'step' : 'jump', 0, S.sp);
+      render(); schedule(); cast();
+    };
+    const next = () => { if (S.i >= N - 1) { if (S.auto) setAuto(false); else toast('خلص السكربت · ↺ يرجّعك لأول سطر'); return; } go(S.i + 1, 'step'); };
+    const prev = () => { if (S.i >= 0) go(S.i - 1, 'jump'); };
+    const setAuto = v => {
+      const was = S.auto; S.auto = !!v; const b = Q('#stsayauto'); b.classList.toggle('on', S.auto); b.setAttribute('aria-pressed', S.auto);
+      if (S.auto && !was && S.i >= 0) go(S.i, 'step');   // يبدأ السطر من أول كلمة، مع اللي يرسمه
+      else schedule();
+    };
+    const setSpeed = d => { S.sp = Math.min(1.6, Math.max(.5, Math.round((S.sp + d) * 10) / 10)); P.sp = S.sp; save(); Q('#stsayspd').textContent = S.sp.toFixed(1) + '×'; if (S.auto && S.i >= 0) go(S.i, 'step'); else schedule(); };
+    const setBar = on => { P.on = on ? 1 : 0; save(); if (!on) setAuto(false); place(); render(); };
+    const setHand = on => { P.hand = on ? 1 : 0; save(); hand.setOn(!!on); go(S.i, 'jump'); const c = $('#rhand'); if (c) c.checked = !!on; toast(on ? 'القلم التلقائي شغّال ✓' : 'القلم التلقائي موقّف: السكربت يمشي وأنت ترسم بنفسك'); };
+    // الأزرار ما تاخذ التركيز (المسافة بعدها تمشي السكربت، مو تضغط الزر مرة ثانية)
+    bar.querySelectorAll('.sb').forEach(b => b.addEventListener('pointerdown', e => e.preventDefault()));
+    Q('#stsaynext').onclick = next; Q('#stsayprev').onclick = prev; Q('#stsayauto').onclick = () => setAuto(!S.auto);
+    Q('#stsayslow').onclick = () => setSpeed(-.1); Q('#stsayfast').onclick = () => setSpeed(.1);
+    Q('#stsayre').onclick = () => { setAuto(false); go(-1, 'jump'); }; Q('#stsayview').onclick = openView; Q('#stsayhide').onclick = () => setBar(false);
+    Q('#stsayspd').textContent = S.sp.toFixed(1) + '×';
+    const key1 = e => {
+      const c = e.code, k = e.key;
+      if (c === 'Space' || k === 'Enter' || k === 'PageDown') { e.preventDefault(); if (!e.repeat) next(); return true; }
+      if (k === 'Backspace' || k === 'PageUp') { e.preventDefault(); if (!e.repeat) prev(); return true; }
+      if (c === 'KeyA') { setAuto(!S.auto); return true; }
+      if (c === 'KeyS') { setBar(!P.on); return true; }
+      if (c === 'KeyV') { openView(); return true; }
+      if (c === 'KeyW') { setHand(!P.hand); return true; }
+      if (c === 'Equal' || c === 'NumpadAdd') { setSpeed(.1); return true; }
+      if (c === 'Minus' || c === 'NumpadSubtract') { setSpeed(-.1); return true; }
+      return false;
+    };
+    api = {
+      key: key1, cast, mark, openView, setBar, setHand, next, prev, go, hand, lines,
+      bar: () => P.on, handOn: () => !!P.hand,
+      draw(c) { S.cur = c ? { t: c.t, c: c.c, w: c.w, p: c.p } : null; cast(); },
+      fromView(k) { if (k === 'next') next(); else if (k === 'prev') prev(); },
+      state: () => { kPaint(); return { key, i: S.i, n: N, auto: S.auto, sp: S.sp, seq: S.seq, lit: S.lit, mine, free: !!P.free, on: !!P.on, hand: !!P.hand }; },
+      destroy() {
+        S.gone = true; clearTimeout(S.tm); clearTimeout(S.ct); cancelAnimationFrame(S.raf); bro.disconnect(); removeEventListener('resize', place);
+        hand.destroy(); bar.remove(); R.classList.remove('sayd'); R.style.removeProperty('--sayh');
+        if (STV.cur === api) { STV.cur = null; setTimeout(() => { if (!STV.cur) stvIdle(); }, 600); }
+      }
+    };
+    STV.cur = api; stvListen();
+    place(); render(); mark(); cast(true);
+    return api;
+  }
+  async function renderRec(kind, n) {
+    stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
+    let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {})]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
+    if (location.hash !== `#studio-${kind}-${n}`) return;   // راح لصفحة ثانية وهو ينتظر التحميل
+    const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
+    ST.reveal = false; document.body.classList.add('rec-on');
+    const key = kind + n, P = ST.posted[key], card = stCard(kind, it, n), hasTw = card.hasTw;
+    let SAYC = null;
+    const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
+    const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
+    const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
+    const rlink = (h, ic, lb, tt) => `<a class="rb" href="${h}" title="${tt}" aria-label="${tt}"><i aria-hidden="true">${ic}</i><small>${lb}</small></a>`;
+    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', P ? ST_IC.posted : ST_IC.post, 'نُشر', P ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»', P ? 'ok' : '')}<span class="rsep"></span>${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
+    const railDraw = `<nav class="rail rdraw" aria-label="أدوات الكتابة">${ST_TOOLS.map(([t, , lb], i) => rb(`data-tool="${t}" aria-pressed="${!i}"`, ST_IC[t], lb, lb + ({ pen: ' · P', text: ' (اضغط على البطاقة واكتب) · T', eraser: ' · E' }[t] || ''), i ? '' : 'on')).join('')}<span class="rsep"></span>${ST_W.map(([w, , lb, tt], i) => rb(`data-w="${w}" aria-pressed="${!i}"`, ST_IC[w], lb, tt, i ? '' : 'on')).join('')}<span class="rsep"></span><div class="rcols">${ST_COLS.map((c, i) => `<button type="button" class="rsw${i ? '' : ' on'}" data-col="${c}" style="--c:${c}" title="لون" aria-label="لون" aria-pressed="${!i}"></button>`).join('')}</div></nav>`;
+    const sayP = lsGet('qg_stsay', null) || {};
+    const saySec = QH ? `<div class="rp-sec rp-say"><div class="rp-lbl">🎙️ الشرح التلقائي</div>
+          <div class="rp-hint">اقرأ السكربت من الشريط: كل ما تضغط <b>مسافة</b> يطلع السطر الجاي، والكلمة اللي تقولها الحين تنوّر، والقلم يكتب ويرسم على البطاقة مع كلامك.</div>
+          <div class="rp-sayb"><button type="button" class="btn ghost" id="rsay">📜 شريط السكربت</button><button type="button" class="btn ghost" id="rview" title="البطاقة لحالها في نافذة ثانية: سجّلها هي">🖥 شاشة التسجيل</button></div>
+          <label class="rp-sw"><input type="checkbox" id="rhand" ${sayP.hand === 0 ? '' : 'checked'}><span>القلم يكتب ويرسم لحاله</span></label>
+          <div class="rp-src">${stSayOf(it) ? '✍️ لهذا السؤال سكربت مكتوب' : '⚙️ السكربت تلقائي: من ترجمة السؤال والشرح'}</div></div>` : '';
+    app.innerHTML = `<div class="rec ${ST.ui ? '' : 'noui'} ${ST.bare ? 'bare' : ''}">
+      <div class="stage">${railActs}${card.html}${railDraw}</div>
+      <aside class="rp">
+        <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>Q ${n} · ${kind === 'v' ? 'التناظر اللفظي' : 'الكمي'}</b><span class="sp"></span><a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a><button class="ib2" id="rrnd" title="سؤال عشوائي لم يُنشر">🎲</button></div>
+        <div class="rp-sec"><div class="rp-lbl">✍️ القلم والنص</div>
+          <div class="rp-tools">${ST_TOOLS.map(([t, ic, lb], i) => `<button type="button" data-tool="${t}" class="${i ? '' : 'on'}${t === 'text' ? ' tt' : ''}" title="${t === 'text' ? 'نص: اضغط على البطاقة واكتب' : lb}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span>${ST_COLS.map((c, i) => `<button type="button" data-col="${c}" class="sw ${i ? '' : 'on'}" style="--c:${c}" title="لون" aria-pressed="${!i}"></button>`).join('')}<span class="sep"></span>${ST_W.map(([w, ic, lb, tt], i) => `<button type="button" data-w="${w}" title="${tt}" class="${i ? '' : 'on'}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span><button type="button" id="rundo" title="تراجع">↶</button><button type="button" id="rclr" title="مسح الكتابة">🗑</button></div>
+          <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label>
+          ${hasTw ? '<div class="rp-hint">🔤 اضغط على أي كلمة في البطاقة تطلع ترجمتها تحتها، واضغطها مرة ثانية تختفي.</div>' : ''}</div>
+        ${saySec}
+        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
+        ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
+        <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
+          <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
+          ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
+        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة · H وضع التصوير · Esc رجوع للوحة${QH ? '<br>🎙️ مسافة السطر الجاي · Backspace اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل' : ''}</div>
+      </aside>
+      <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
+      <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
+    </div>`;
+    const tk = $('#tk'), B = stBubbles(tk), cast = () => { if (SAYC) SAYC.cast(); };
+    tk.addEventListener('click', e => { if (ST.pen.isOn()) return; const w = B.at(e.clientX, e.clientY); if (w) { B.toggle(w); cast(); } });   // الكتابة مقفلة: الضغط يوصل للكلمة مباشرة
+    ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, onTap: (x, y) => { const w = B.at(x, y); if (!w) return false; B.toggle(w); cast(); return true; }, onDraw: c => { if (SAYC) SAYC.draw(c); } });
     ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
+    ['pointerup', 'keyup', 'focusout'].forEach(t => tk.addEventListener(t, () => setTimeout(cast, 0)));   // كتابتك توصل لشاشة التسجيل
     const rec = $('.rec');
     // نفس الأداة/اللون/السماكة تتعلّم في اللوحة والعمودين مع بعض
     const mark = (a, v) => rec.querySelectorAll(`[data-${a}]`).forEach(x => { const on = x.dataset[a] === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
@@ -3462,9 +3677,14 @@
     const setUI = on => { ST.ui = on; rec.classList.toggle('noui', !on); if (!on) rec.classList.remove('sheet'); };
     const setBare = on => { ST.bare = on; rec.classList.toggle('bare', on); };
     const recMode = () => { setUI(false); setBare(false); };
-    const reveal = () => { ST.reveal = !ST.reveal; tk.classList.toggle('rev', ST.reveal); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', ST.reveal && +o.dataset.i === it.ans)); $('#rrev').textContent = ST.reveal ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة';
-      const l = $('#lrev'); l.classList.toggle('on', ST.reveal); l.title = ST.reveal ? 'إخفاء الإجابة · R' : 'كشف الإجابة · R'; l.setAttribute('aria-label', l.title); };
-    const clear = () => { ST.pen.clear(); trClear(); }, undo = () => ST.pen.undo();
+    const setRev = on => {   // يرجّع: تغيّرت؟ (القلم التلقائي يكشفها بنفسه ويرجّعها)
+      on = !!on; if (ST.reveal === on) return false; ST.reveal = on;
+      tk.classList.toggle('rev', on); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === it.ans)); $('#rrev').textContent = on ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة';
+      const l = $('#lrev'); l.classList.toggle('on', on); l.title = on ? 'إخفاء الإجابة · R' : 'كشف الإجابة · R'; l.setAttribute('aria-label', l.title);
+      B.place(); cast(); return true;
+    };
+    const reveal = () => setRev(!ST.reveal);
+    const clear = () => { ST.pen.clear(); B.clear(); cast(); }, undo = () => { ST.pen.undo(); cast(); };
     // الضغط على الأدوات ما ياخذ التركيز من النص اللي ينكتب (عشان اللون والحجم يتغيّرون عليه)
     rec.querySelectorAll('[data-tool],[data-col],[data-w],#rundo,#rclr,#lundo,#lclr,#mtxt,#mundo,#mclr').forEach(b => b.addEventListener('pointerdown', e => e.preventDefault()));
     rec.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
@@ -3486,12 +3706,69 @@
     const paintPost = on => { const b = $('#rpost'), l = $('#lpost'); b.className = 'btn ' + (on ? 'okb' : 'ghost'); b.textContent = on ? '✓ تم النشر' : '☐ علّمه «تم النشر»';
       l.classList.toggle('ok', on); l.querySelector('i').innerHTML = on ? ST_IC.posted : ST_IC.post; l.title = on ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»'; l.setAttribute('aria-label', l.title); };
     $('#rpost').onclick = $('#lpost').onclick = async () => { const on = !ST.posted[key], bs = [$('#rpost'), $('#lpost')]; bs.forEach(b => b.disabled = true); if (await stMark(key, on)) { paintPost(on); toast(on ? 'تم التعليم كمنشور ✓' : 'أُلغي التعليم'); } bs.forEach(b => b.disabled = false); };
+    // 🎙️ الشرح التلقائي (لو انحمّل محرّكه)
+    if (QH) {
+      try { SAYC = window.__stSay = stSay({ rec, stage: rec.querySelector('.stage'), tk, kind, n, it, B, setRev, pen: () => ST.pen }); }
+      catch (e) { SAYC = null; CERR('stSay: ' + (e && e.message)); }
+      if (SAYC) {
+        $('#lsay').onclick = $('#rsay').onclick = () => SAYC.setBar(!SAYC.bar());
+        $('#rview').onclick = () => SAYC.openView();
+        $('#rhand').onchange = e => { SAYC.setHand(e.target.checked); e.target.blur(); };
+        $('#lsay').addEventListener('pointerdown', e => e.preventDefault());
+      } else { const s = $('.rp-say'); if (s) s.remove(); const l = $('#lsay'); if (l) l.remove(); }
+    }
     // اختصارات الكيبورد بمكان الزر (تشتغل حتى لو الكيبورد عربي)
     const KEYS = { KeyR: reveal, KeyZ: undo, KeyC: clear, KeyP: () => setTool('pen'), KeyT: () => setTool('text'), KeyE: () => setTool('eraser'), KeyH: () => ST.ui ? recMode() : setBare(!ST.bare) };
-    window.__stKey = e => { if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return; if (e.ctrlKey || e.metaKey || e.altKey) return;
+    window.__stKey = e => { if (e.target.closest && e.target.closest('input:not([type=checkbox]),textarea,[contenteditable]')) return; if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (SAYC && SAYC.key(e)) return;
       if (e.key === 'ArrowLeft') location.hash = `studio-${kind}-${next}`; else if (e.key === 'ArrowRight') location.hash = `studio-${kind}-${prev}`;
       else if (e.key === 'Escape') setUI(true); else if (KEYS[e.code]) { e.preventDefault(); KEYS[e.code](); } };
     document.addEventListener('keydown', window.__stKey);
+  }
+  // 🖥 شاشة التسجيل: البطاقة لحالها (بدون أي أدوات)، تمشي مع صفحة التصوير اللي فتحتها: السطر والقلم التلقائي، الإجابة، الترجمات، وكتابتك
+  // نقرتين أو F = ملء الشاشة · المسافة / Backspace هنا تمشّي السكربت هناك · سجّل هذي النافذة ببرنامج التسجيل
+  async function renderStView() {
+    stFont(); document.title = 'شاشة التسجيل | Q-Guide'; document.body.classList.add('rec-on');
+    const wait = `<div class="stv-w"><b>🖥 شاشة التسجيل</b><span>${window.opener ? 'افتح سؤال في استوديو تيك توك بالنافذة الثانية، والبطاقة تطلع هنا لحالها. سجّل هذي النافذة.' : 'افتح هذي الشاشة من زر 🖥 في صفحة التصوير، عشان تمشي معها.'}</span><small>نقرتين أو F = ملء الشاشة</small></div>`;
+    app.innerHTML = `<div class="stv" id="stv">${wait}</div>`;
+    let data; try { [data] = await Promise.all([stData(), stHandLoad(), loadVocab()]); } catch (e) { const w = $('#stv'); if (w) w.innerHTML = '<div class="stv-w"><b>تعذّر التحميل</b><span>حدّث الصفحة.</span></div>'; return; }
+    if (location.hash !== '#studio-view') return;
+    const W = $('#stv'), V = { k: '', tk: null, B: null, pen: null, hand: null, lines: null, it: null, seen: '' };
+    const kill = () => { if (V.hand) V.hand.destroy(); if (V.pen) V.pen.destroy(); V.hand = V.pen = V.B = V.tk = V.it = null; V.k = V.seen = ''; };
+    const build = (kind, n) => {
+      kill(); const it = (data[kind === 'v' ? 'verbal' : 'quant'] || []).find(x => x.n === n); if (!it) { W.innerHTML = wait; return; }
+      W.innerHTML = stCard(kind, it, n).html; V.tk = W.querySelector('#tk'); V.B = stBubbles(V.tk); V.k = kind + n; V.it = it;
+      V.pen = QGPen.attach(V.tk, { bar: false, storageKey: null, text: true }); V.pen.toggle(false);
+      V.hand = QGHand.hand(V.tk, stHandApi(V.tk, kind, it, null, null)); V.lines = stLines(kind, it);
+    };
+    const setRev = on => { V.tk.classList.toggle('rev', on); V.tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === V.it.ans)); V.B.place(); };
+    const show = m => {
+      if (!m.kind) { if (V.k) { kill(); W.innerHTML = wait; } return; }
+      const k = m.kind + m.n; if (k !== V.k) build(m.kind, m.n); if (!V.tk) return;
+      if (m.ink) V.pen.setKey(null, m.ink);
+      V.pen.setCur(m.cur || null);
+      if (V.tk.classList.contains('rev') !== !!m.rev) setRev(!!m.rev);
+      const all = [...V.tk.querySelectorAll('.tw')], want = new Set((m.trs || []).map(i => all[i]).filter(Boolean));
+      want.forEach(w => { if (!V.B.has(w)) V.B.show(w); }); V.B.TR.forEach((b, w) => { if (!want.has(w)) V.B.hide(w); });
+      V.hand.setOn(!!m.hand);
+      const hk = [k, m.i, m.seq, m.hand ? 1 : 0].join(':');
+      if (hk !== V.seen) { V.seen = hk; V.hand.enter(V.lines, k, m.i, m.el >= 0 ? 'step' : 'jump', Math.max(0, m.el || 0), m.sp); }
+    };
+    const onMsg = e => { if (e.source !== window.opener || e.origin !== location.origin) return; const m = e.data; if (!m || m.qg !== 'stv') return; try { show(m); } catch (err) { CERR('stview: ' + (err && err.message)); } };
+    addEventListener('message', onMsg);
+    const hello = () => { try { if (window.opener && !window.opener.closed) window.opener.postMessage({ qg: 'stc', t: 'hello', vis: document.visibilityState, need: V.tk ? 0 : 1 }, location.origin); } catch (e) {} };
+    hello(); const hi = setInterval(hello, 1500); document.addEventListener('visibilitychange', hello);
+    const full = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) {} };
+    let idleT = 0; const wake = () => { W.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => W.classList.add('idle'), 1800); };
+    W.addEventListener('dblclick', () => { try { getSelection().removeAllRanges(); } catch (e) {} full(); }); W.addEventListener('mousemove', wake); wake();
+    window.__stKey = e => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.code === 'KeyF') { e.preventDefault(); return full(); }
+      const k = e.key, nx = e.code === 'Space' || k === 'Enter' || k === 'PageDown', pv = k === 'Backspace' || k === 'PageUp'; if (!nx && !pv) return;
+      e.preventDefault(); if (e.repeat) return; try { if (window.opener) window.opener.postMessage({ qg: 'stc', t: 'key', k: nx ? 'next' : 'prev' }, location.origin); } catch (err) {}
+    };
+    document.addEventListener('keydown', window.__stKey);
+    window.__stView = { destroy() { clearInterval(hi); clearTimeout(idleT); removeEventListener('message', onMsg); document.removeEventListener('visibilitychange', hello); kill(); } };
   }
   // i18n:on
   // ---------- avatar / profile ----------

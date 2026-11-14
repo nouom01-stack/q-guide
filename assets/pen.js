@@ -3,6 +3,7 @@
    Drawing coordinates are stored relative to the host size (0..1) so they survive resizing.
    Text (opts.text): press anywhere to type · drag a text to move it · press it to edit · empty it or rub it with the eraser to delete it.
    opts.onTap(x, y): a press without moving (pen / highlighter / text) is offered to the page first (e.g. tap a word → its translation); return true to keep it from drawing a dot or opening a text box.
+   opts.onDraw(cur): the stroke being drawn, on every move (null when it ends) · api.setCur(cur) draws one sent from another window.
    Texts live in the same list as the strokes ({t:'txt', x, y, s, c, z, d}), so undo / clear / save cover both. */
 (function () {
   'use strict';
@@ -43,9 +44,9 @@
     function redraw() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); st.strokes.forEach(drawStroke); if (st.cur) drawStroke(st.cur); }
     function paint() { redraw(); syncText(); }
     function pos(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; }
-    cv.addEventListener('pointerdown', e => { if (!st.on || st.tool === 'text') return; if (e.pointerType === 'mouse' && e.button !== 0) return; cv.setPointerCapture(e.pointerId); st.cur = { t: st.tool, c: st.color, w: st.width, p: [pos(e)] }; st.dels = null; st.down = { x: e.clientX, y: e.clientY, far: false }; if (st.tool === 'eraser') eraseText(e); e.preventDefault(); });
-    cv.addEventListener('pointermove', e => { if (!st.cur) return; if (st.down && !st.down.far && Math.hypot(e.clientX - st.down.x, e.clientY - st.down.y) > 6) st.down.far = true; st.cur.p.push(pos(e)); if (st.cur.t === 'eraser') eraseText(e); redraw(); e.preventDefault(); });
-    const up = e => { if (!st.cur) return; const d = st.down; st.down = null;
+    cv.addEventListener('pointerdown', e => { if (!st.on || st.tool === 'text') return; if (e.pointerType === 'mouse' && e.button !== 0) return; cv.setPointerCapture(e.pointerId); st.cur = { t: st.tool, c: st.color, w: st.width, p: [pos(e)] }; st.dels = null; st.down = { x: e.clientX, y: e.clientY, far: false }; if (st.tool === 'eraser') eraseText(e); if (opts.onDraw) opts.onDraw(st.cur); e.preventDefault(); });
+    cv.addEventListener('pointermove', e => { if (!st.cur) return; if (st.down && !st.down.far && Math.hypot(e.clientX - st.down.x, e.clientY - st.down.y) > 6) st.down.far = true; st.cur.p.push(pos(e)); if (st.cur.t === 'eraser') eraseText(e); redraw(); if (opts.onDraw) opts.onDraw(st.cur); e.preventDefault(); });
+    const up = e => { if (!st.cur) return; const d = st.down; st.down = null; if (opts.onDraw) opts.onDraw(null);
       if (e.type === 'pointerup' && d && !d.far && st.cur.t !== 'eraser' && opts.onTap && opts.onTap(d.x, d.y)) { st.cur = null; st.dels = null; redraw(); return; }   // ضغطة على كلمة = للصفحة (ترجمة)، مو نقطة
       st.strokes.push(st.cur); st.hist.push({ a: 'add', it: st.cur, dels: st.dels }); st.cur = null; st.dels = null; redraw(); persist(); };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
@@ -166,6 +167,7 @@
       commit,
       setKey(key, strokes) { commit(); persist(); st.key = key; st.strokes = strokes || (key ? (() => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; } })() : []); st.hist = []; paint(); },
       getStrokes() { return st.strokes.slice(); },
+      setCur(s) { st.cur = s || null; redraw(); },   // شاشة ثانية تعرض الخط وهو ينرسم (opts.onDraw في الشاشة الأولى)
       clear: clearAll,
       resize: size,
       destroy() { ro.disconnect(); cv.remove(); bar.remove(); if (TL) TL.remove(); }
