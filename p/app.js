@@ -159,7 +159,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
-  const SET_V = { studio: 4 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
+  const SET_V = { studio: 5 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
@@ -440,9 +440,11 @@
     // 📦 بطاقتا الباقات (راديو): الاسم والمدة والسعر ووش تفتح
     const feats = { train: [_T('14 قسم كمي و14 نموذج لفظي بالشرح والفيديو'), _T('17 اختبار محاكي بنفس نظام قياس'), _T('مرشدك الأكاديمي ومذكرات التدريب')],
       full: [_T('كل اللي في باقة «التدريب»'), _T('تأسيس اللفظي بالفيديو واختبار بعد كل درس'), _T('مذكرتا التأسيس: قواعد الكمي واللفظي')] };
+    const trPk = PK.find(p => p.k === 'train');   // 💡 الباقة الطويلة: كم تطلع بالشهر وكم يوفّر مقابل «التدريب» (السعر الحالي، عرض أو أصلي)
+    const perM = x => { if (!trPk || x.months < 2) return ''; const pm = Math.round(x.price / x.months), sv = trPk.price - pm; return sv > 0 ? `<span class="pkg-m">${_T`تطلع ${pm} ريال بالشهر، وتوفّر ${sv} ريال كل شهر`}</span>` : ''; };
     const card = x => `<label class="pkg${x.k === sel.k ? ' on' : ''}" data-pk="${x.k}"><input type="radio" name="qgpkg" value="${x.k}"${x.k === sel.k ? ' checked' : ''}>
         <b class="pkg-n">${PKN(x.k)}</b>
-        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>${x.was ? `<span class="pkg-off">${_T('🏷 عرض لفترة محدودة')}</span>` : ''}
+        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>${x.was ? `<span class="pkg-off">${_T('🏷 عرض لفترة محدودة')}</span>` : ''}${perM(x)}
         <span class="pkg-l">${feats[x.k].map(f => `<span>${f}</span>`).join('')}${x.k === 'train' ? `<span class="no">${_T('بدون التأسيس')}</span>` : ''}</span></label>`;
     const cards = two ? `<div class="pkgs" role="radiogroup" aria-label="${_T('اختر باقتك')}">${PK.map(card).join('')}</div>` : '';
     const head = up ? _T`<p class="sub-lock">🔒 ${esc(what)} ضمن باقة «التأسيس والتدريب»</p>
@@ -459,6 +461,7 @@
     // زر الدفع وما تحته: ينرسم من جديد كل ما غيّر الباقة (السعر والمدة يتبعونها)
     const goTxt = () => renew ? (sel.months === 2 ? _T`💳 ادفع ${sel.price} ريال وجدّد شهرين` : _T`💳 ادفع ${sel.price} ريال وجدّد شهر`) : _T`💳 ادفع ${sel.price} ريال واشترك الحين`;
     const keep = () => !(two && renew && auth.plan !== 'train' && sel.k === 'train') ? '' : `<p class="pkg-keep">${left != null && left >= 0 ? _T`التأسيس يبقى مفتوح لك لين ${meDay(auth.pkg === 'train' && auth.fu > Date.now() ? auth.fu : R.until)}، وبعدها تكمّل على «التدريب» بدون التأسيس.` : _T('باقة «التدريب» بدون التأسيس: دروس التأسيس واختباراتها ومذكرتا التأسيس تنقفل عنك.')}</p>`;
+    const grt = _T`<p class="sub-grt"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p>`;   // 🛡 الرسالة الأساسية (طلب المالك 14 نوفمبر): تحت زر الدفع على طول (الزر يبقى أول وقفة بعد الباقات بالكيبورد)
     const bodyOf = () => { const SL = SL0 && (!two || sel.url) ? SL0 : null;   // 📦 الباقة اللي ما لها رابط منتج في سلة (المالك ما حطه): تنطلب بواتساب
       return keep() + (SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">${goTxt()}</button>
         <p class="sub-payn">${two ? (renew ? (SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا ويتمدد اشتراكك.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، ويتمدد اشتراكك.')) : SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك باقتك على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك باقتك.'))
@@ -468,7 +471,7 @@
         <p class="sub-payn">${two ? (renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. باقتك تنفتح لك على طول.')) : renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد شهر على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.')}</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>`
       : two ? `<p class="sub-nopay">${renew ? _T('راسلنا على واتساب ونجدّد لك بالباقة اللي اخترتها على نفس حسابك.') : _T('راسلنا على واتساب ونفعّل لك الباقة اللي اخترتها على نفس حسابك.')}</p>`
       : _T`<p class="sub-nopay">${renew ? _T`التجديد <b>${price} ريال</b> للشهر. راسلنا على واتساب ونجدّد لك اشتراكك على نفس حسابك.` : _T`الاشتراك <b>${price} ريال</b> للشهر. راسلنا على واتساب ونفعّل لك الدورة كاملة على نفس حسابك.`}</p>`)
-      + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div><p class="sub-pol"><a href="/terms/#refund" target="_blank" rel="noopener">سياسة الاسترجاع وضمان الدرجة</a></p>`; };
+      + grt + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>`; };
     ov.innerHTML = _T`<div class="qgdlg-box sub-box${two ? ' pk2' : ''}" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       ${head}<div class="sub-dyn"></div>
@@ -700,7 +703,7 @@
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
     return _T`<section class="fhero" aria-label="الحساب المجاني">
-      <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة.</p>`}</div>
+      <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة.</p>`}<p class="fh-g"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p></div>
       <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${subFrom()}</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
     </section>`;
   }
@@ -3427,7 +3430,7 @@
   // 🎙️ «الشرح التلقائي» — نفس «عرض شرح قواعد الكمي»: سكربت تقرأه سطر سطر، الكلمة اللي تقولها الحين تنوّر، والقلم يكتب ويرسم على البطاقة بنفس توقيت كلامك.
   // مسافة / Enter / PageDown = السطر الجاي · Backspace / PageUp = اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل (البطاقة لحالها في نافذة ثانية)
   // السكربت: it.say (سكربت مكتوب للسؤال، يجي مع ملف الأسئلة المشفّر) وإلا يتولّد من الترجمة والشرح (QGHand.gen) · المحرّك في /p/sthand.js (يتحمّل وقت الحاجة بس)
-  const STH_V = 1;
+  const STH_V = 2;
   let stHandP = null;
   const stHandLoad = () => stHandP || (stHandP = new Promise((res, rej) => {
     if (window.QGHand) return res(window.QGHand);

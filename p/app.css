@@ -3236,6 +3236,12 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .pkg-l>span.no{color:var(--mut)}.pkg-l>span.no::before{content:"–";color:var(--mut)}
 .pkg::after{content:"";position:absolute;top:13px;inset-inline-end:13px;width:20px;height:20px;border-radius:50%;border:2px solid var(--dot);background:var(--card);box-sizing:border-box}
 .pkg.on::after{border-color:var(--royal);background:var(--royal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.4l3 3 6-6.6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
+.pkg-m{font-size:calc(12.5px * var(--fs));line-height:1.5;font-weight:800;color:var(--okt)}
+/* 🛡 ضمان الدرجة = الرسالة الأساسية: فوق زر الدفع في نافذة الاشتراك، وتحت نص الحساب المجاني في الصفحة الرئيسية */
+.qgdlg-box p.sub-grt,.fh-g{margin:14px 0 0;padding:9px 12px;border-radius:12px;background:var(--okbg);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ink);font-size:calc(13.5px * var(--fs));line-height:1.7}
+.sub-grt b,.fh-g b{color:var(--okt);font-weight:800}
+.sub-grt a,.fh-g a{color:var(--royal);font-weight:800;white-space:nowrap}
+.fh-t p.fh-g{margin-top:10px;max-width:70ch}
 .qgdlg-box p.pkg-keep{margin:12px 0 0;padding:9px 12px;border-radius:12px;background:var(--stampbg);color:var(--stampfg);font-size:calc(13.5px * var(--fs));line-height:1.7;font-weight:700}
 .sub-box.pk2 .sub-pay{margin-top:14px}
 .qgdlg-box p.slp-pk{display:inline-block;margin:-2px 0 6px;padding:4px 12px;border-radius:999px;background:var(--dotbg);color:var(--ink);font-size:calc(13.5px * var(--fs));font-weight:700}
