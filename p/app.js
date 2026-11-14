@@ -4881,7 +4881,7 @@
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
     adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_pkg: ['📦', 'تغيير باقة طالب'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
     adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
-    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'], adm_ref_set: ['🎁', 'إعدادات «ادعُ صديقك»'] };
+    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'], adm_ref_set: ['🎁', 'إعدادات «ادعُ صديقك»'], adm_tg_setup: ['🤖', 'ربط بوت تيليقرام'] };
   const evRow = e => { const T = EV_T[e.kind] || ['•', e.kind], sys = !/^adm_/.test(e.kind), who = String(e.who || '');
     const sub = [sys ? '' : who && who.indexOf('@') > 0 ? 'بواسطة ' + who.split('@')[0] : '', e.target, e.note].filter(Boolean).map(esc).join(' · ');
     return `<li class="ev${sys ? ' sys' : ''}"><span class="evi" aria-hidden="true">${T[0]}</span><span class="evx"><b>${T[1]}${sys && who.indexOf('@') > 0 ? ` <small class="ltr">${esc(who)}</small>` : ''}</b><small>${sub || '—'}</small></span>${e.amt ? `<span class="evamt"><bdi>${sar(e.amt)}</bdi> ريال</span>` : ''}<time>${fmtD(e.at)}</time></li>`; };
@@ -5078,7 +5078,7 @@
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
     await admCall({ op: 'own_push_sub', sub: sub.toJSON() }); return sub.endpoint;
   }
-  const SET = { cfg: null, audit: null, errs: null, ak: '', aq: '', ep: '', life: null, ref: null, rf: null };   // ref = «ادعُ صديقك» من الخادم · rf = التعديل قبل الحفظ
+  const SET = { cfg: null, audit: null, errs: null, ak: '', aq: '', ep: '', life: null, ref: null, rf: null, tg: null };   // ref = «ادعُ صديقك» من الخادم · rf = التعديل قبل الحفظ
   // ---------- 🎁 «ادعُ صديقك» (المالك، صفحة الإعدادات): تشغيل/إيقاف + أيام الهدية + الأرقام + آخر الدعوات ----------
   const refDaysAr = n => n === 7 ? 'أسبوع' : n === 14 ? 'أسبوعين' : arDays(n);
   function refBox() {
@@ -5110,13 +5110,34 @@
       catch (e) { sv.disabled = false; toast('ما انحفظ: ' + e.message); } };
   }
 
+  // ---------- 🤖 بوت كويز تيليقرام (المالك، صفحة الإعدادات): الحالة + «اربط البوت» + الأرقام ----------
+  function tgBox() {
+    const T = SET.tg; if (!T) return '<section class="setc"><h2>🤖 بوت تيليقرام</h2><p class="mut setd">تعذّر تحميل حالة البوت. حدّث الصفحة.</p></section>';
+    const linked = T.on && T.bot && T.hook && /\/tg\/webhook$/.test(T.hook.url || ''), K = T.kpi || {}, pct = K.n ? Math.round(K.ok * 100 / K.n) + '%' : '—';
+    const st = !T.on ? ['⚠️ ما فيه توكن للحين', 'أنشئ البوت من BotFather، وحط التوكن في Cloudflare باسم TG_BOT_TOKEN، وبعدها اضغط «اربط البوت».']
+      : !linked ? ['🔌 التوكن موجود والبوت ما انربط', 'اضغط «اربط البوت» عشان يبدأ يرد على الطلاب.']
+      : [`✓ شغّال: <a dir="ltr" href="https://t.me/${esc(T.bot.username)}" target="_blank" rel="noopener">@${esc(T.bot.username)}</a>`, 'الطلاب يفتحون الرابط ويضغطون «Start».'];
+    return `<section class="setc" aria-labelledby="set7"><h2 id="set7">🤖 بوت تيليقرام</h2>
+        <p class="mut setd">بوت كويز فيه ${(T.bank && T.bank.q) || 100} سؤال كمي و${(T.bank && T.bank.v) || 100} سؤال لفظي من تجميعات الدورة، وكل سؤال معه الجواب والشرح، وكل 10 أسئلة يذكّرهم بالدورة.</p>
+        <div class="setrow"><div class="setl"><b>${st[0]}</b><small>${st[1]}</small>${T.hook && T.hook.err ? `<small class="tgerr">آخر خطأ من تيليقرام: ${esc(T.hook.err)}</small>` : ''}</div>
+          <button type="button" class="btn sm${linked ? ' ghost' : ''}" id="tg-link"${T.on ? '' : ' disabled'}>${linked ? '🔄 اربطه من جديد' : '🔗 اربط البوت'}</button></div>
+        <div class="rfk"><div><b>${K.users || 0}</b><span>دخلوا البوت</span></div><div><b>${K.week || 0}</b><span>نشطين آخر 7 أيام</span></div><div><b>${K.n || 0}</b><span>سؤال انحل</span></div><div><b>${pct}</b><span>إجابات صحيحة</span></div><div><b>${K.site || 0}</b><span>زيارة للموقع من تيليقرام (30 يوم)</span></div></div>
+      </section>`;
+  }
+  function tgBind(repaint, auditReload) {
+    const b = $('#tg-link'); if (!b) return;
+    b.onclick = async () => { b.disabled = true; b.textContent = '⏳ نربطه…';
+      try { SET.tg = await admCall({ op: 'adm_tg_setup' }); await auditReload(); toast('🤖 البوت مربوط وشغّال'); repaint(); }
+      catch (e) { toast(e.message); b.disabled = false; b.textContent = '🔗 اربط البوت'; } };
+  }
+
   async function renderSettings() {
     document.title = 'الإعدادات والسجل | Q-Guide';
     const top = () => { app.innerHTML = admTop('settings'); bindCtl(); $('#admref').onclick = () => { SET.cfg = null; renderSettings(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
-      const [c, a, e, ep, rf] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp(), admCall({ op: 'adm_ref' }).catch(() => null)]);
-      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); SET.ref = rf; SET.rf = rf ? { on: rf.on, days: rf.days } : null; }
+      const [c, a, e, ep, rf, tg] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp(), admCall({ op: 'adm_ref' }).catch(() => null), admCall({ op: 'adm_tg' }).catch(() => null)]);
+      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); SET.ref = rf; SET.rf = rf ? { on: rf.on, days: rf.days } : null; SET.tg = tg; }
     catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#admin-settings') return;
     top(); paintSettings();
@@ -5145,6 +5166,7 @@
         <div class="setact"><button type="button" class="btn sm" id="lf-save"${same ? ' disabled' : ''}>حفظ</button><span class="mut" id="lf-st">${same ? (sv.on ? `شغّال: ينتهي الاشتراك بعد ${sv.grace ? arDays(sv.grace) + ' من' : ''} نهاية المدة.` : 'الإنهاء التلقائي مطفي: أنت تقرر من «الاشتراكات».') : 'فيه تغييرات ما انحفظت'}</span></div></section>
 
 ${refBox()}
+${tgBox()}
       <section class="setc" aria-labelledby="set2"><h2 id="set2">🔔 تنبيهاتك</h2>
         <p class="mut setd">يوصلك تنبيه على هذا الجهاز لما: يشترك طالب أو يجدّد · تحويل بنكي ينتظر تأكيدك · طلب مدفوع ما تفعّل · اشتراكات انتهت تلقائياً · وملخص اليوم الساعة 9 الليل.</p>
         <div class="setrow"><div class="setl"><b>${mine ? '🔔 مفعّلة على هذا الجهاز' : '🔕 مو مفعّلة على هذا الجهاز'}</b><small>${(C.push || []).length ? `مفعّلة على ${(C.push || []).length === 1 ? 'جهاز واحد' : (C.push || []).length + ' أجهزة'} من أجهزتك.` : 'ما فعّلتها على أي جهاز للحين.'}${!sup ? (isIOS() && !isStandalone() ? ' على الآيفون: أضف الموقع للشاشة الرئيسية من Safari أول.' : ' المتصفح هذا ما يدعم التنبيهات.') : ''}</small></div>
@@ -5185,7 +5207,7 @@ ${refBox()}
       try { for (let i = 0; i < 12; i++) { b.textContent = '⏳ ينسخ…' + (r && r.run && r.run.files ? ' ' + r.run.files + ' ملف' : ''); r = await admCall({ op: 'adm_backup_now' }); if (!r.backup || !r.backup.run) break; }
         SET.cfg = r; ADM.home = null; await auditReload(); toast(r.backup && r.backup.done ? '💾 خلص النسخ الاحتياطي' : 'النسخ بدأ وبيكمل لحاله'); repaint(); }
       catch (e) { toast('تعذّر النسخ: ' + e.message); b.disabled = false; b.textContent = 'انسخ الحين'; } };
-    refBind(repaint, auditReload);
+    refBind(repaint, auditReload); tgBind(repaint, auditReload);
     W.querySelectorAll('[data-ak]').forEach(b => b.onclick = async () => { SET.ak = b.dataset.ak; try { SET.audit = (await admCall({ op: 'adm_audit', kind: SET.ak })).rows || []; } catch (e) {} repaint(); });
     $('#au-q').oninput = e => { SET.aq = e.target.value; const pos = e.target.selectionStart; repaint(); const i = $('#au-q'); i.focus(); i.setSelectionRange(pos, pos); };
     const ec = $('#er-clear'); if (ec) ec.onclick = async () => { if (!await QGDlg.confirm('تمسح سجل الأخطاء؟', { ok: 'مسح', danger: true })) return; try { await admCall({ op: 'adm_err_clear' }); SET.errs = []; ADM.home = null; await auditReload(); toast('انمسح السجل'); repaint(); } catch (e) { toast(e.message); } };

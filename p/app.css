@@ -3344,3 +3344,4 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .rfby{color:var(--mut)}.rfby b{color:var(--ink)}
 .rfs{color:var(--mut)}.rfs.ok{color:var(--okt);font-weight:700}
 @media (max-width:640px){.ivh{padding:20px 16px;border-radius:20px}.ivh h1{font-size:calc(24px * var(--fs))}.ivl .btn,.ivb .btn{flex:1 1 100%}.ivc{padding:16px}.rfk{grid-template-columns:repeat(3,1fr)}.rfl li{grid-template-columns:1fr}.meinv-go,.ist-go{flex:1 1 100%}}
+.setl small.tgerr{color:var(--badt)}
