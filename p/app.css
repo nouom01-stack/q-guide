@@ -3291,3 +3291,56 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .pkg-was{font-family:var(--disp);font-size:calc(17px * var(--fs));font-weight:700;color:var(--mut);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--coral)}
 .pkg-off{align-self:flex-start;font-size:calc(12px * var(--fs));font-weight:800;color:var(--coral);background:var(--badbg);border-radius:999px;padding:2px 10px;line-height:1.6}
 .slof{color:var(--ink2);background:var(--stampbg);border-radius:10px;padding:8px 12px}
+
+/* ---------- 🎁 «ادعُ صديقك» (v102): سطر الدعوة للزائر · شريط المشترك في الرئيسية · بطاقة «ملفي» · صفحة #invite · صندوق المالك ---------- */
+.fh-t p.fh-inv,.qgdlg-box p.sub-inv{margin:0 0 10px;padding:8px 12px;border-radius:12px;background:var(--stampbg);border:1px solid color-mix(in srgb,var(--gold3) 55%,transparent);color:var(--ink);font-size:calc(14.5px * var(--fs));line-height:1.65;font-weight:600}
+.fh-inv b,.sub-inv b{color:var(--stampfg);font-weight:800}
+.pdcard p.pdgift{margin:12px auto 0;max-width:34em;padding:8px 14px;border-radius:12px;background:var(--stampbg);color:var(--stampfg);font-weight:800;font-size:calc(15px * var(--fs));line-height:1.6}
+.istrip{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--line);border-inline-start:5px solid var(--gold3);border-radius:18px;margin:0 0 16px;overflow:hidden}
+.ist-a{flex:1;display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:12px 16px;color:var(--ink);text-decoration:none;min-width:0}
+.ist-a:hover .ist-go{text-decoration:underline}
+.ist-i,.meinv-i{font-size:calc(28px * var(--fs));line-height:1}
+.ist-t,.meinv-t{flex:1 1 200px;min-width:0}
+.ist-t b,.meinv-t b{display:block;font-family:var(--disp);font-weight:800;font-size:calc(17px * var(--fs));line-height:1.4;color:var(--ink2)}
+.ist-t small,.meinv-t span{display:block;font-size:calc(14px * var(--fs));line-height:1.6;color:var(--mut)}
+.ist-go,.meinv-go{font-weight:800;font-size:calc(15px * var(--fs));color:var(--royal);white-space:nowrap}
+.ist-x{flex:none;width:46px;border:0;border-inline-start:1px solid var(--line);background:none;color:var(--mut);font-size:15px;cursor:pointer}
+.ist-x:hover{color:var(--ink);background:var(--bg)}
+.mecard.meinv{padding:0;overflow:hidden;border-inline-start:5px solid var(--gold3)}
+.meinv-a{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding:16px 20px;color:var(--ink);text-decoration:none}
+.meinv-a:hover .meinv-go{text-decoration:underline}
+.invp{max-width:760px}
+.ivh{background:#0E2458;color:#fff;border-radius:24px;padding:24px 24px 22px;margin:18px 0 14px}
+.ivh-i{display:block;font-size:calc(40px * var(--fs));line-height:1;margin-bottom:10px}
+.ivh h1{font-family:var(--disp);font-weight:800;font-size:calc(28px * var(--fs));line-height:1.3;margin:0 0 8px;color:#fff}
+.ivh p{margin:0 0 16px;color:rgba(255,255,255,.86);font-size:calc(16px * var(--fs));line-height:1.75;max-width:40em}
+.ivl{display:flex;gap:8px;flex-wrap:wrap}
+.ivl input{flex:1 1 240px;min-width:0;font:inherit;font-size:calc(16px * var(--fs));padding:11px 14px;border-radius:12px;border:1.5px solid rgba(255,210,122,.55);background:rgba(255,255,255,.08);color:#fff;text-align:left}
+.ivl input:focus-visible{outline:2.5px solid var(--gold3);outline-offset:1px}
+.ivb{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ivh .btn.ghost{color:#fff;border-color:rgba(255,255,255,.4)}.ivh .btn.ghost:hover{background:rgba(255,255,255,.1)}
+.ivh :focus-visible{outline-color:var(--gold3)}
+.ivc{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 20px;margin:0 0 14px;box-shadow:var(--sh)}
+.ivc h2{font-family:var(--disp);font-weight:800;font-size:calc(19px * var(--fs));color:var(--ink2);margin:0 0 10px}
+.ivo{margin:0;padding-inline-start:1.4em;line-height:1.95;font-size:calc(15.5px * var(--fs))}
+.ivn{margin:8px 0 0;font-size:calc(13.5px * var(--fs));line-height:1.7}
+.ivk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ivk div{background:var(--bg);border-radius:14px;padding:10px 6px;text-align:center}
+.ivk b{display:block;font-family:var(--disp);font-weight:800;font-size:calc(26px * var(--fs));line-height:1.2;color:var(--ink2);font-variant-numeric:tabular-nums}
+.ivk span{display:block;color:var(--mut);font-size:calc(13px * var(--fs));line-height:1.4}
+.ivw{margin:10px 0 0;padding:8px 12px;border-radius:12px;background:var(--stampbg);color:var(--stampfg);font-weight:700;font-size:calc(14px * var(--fs))}
+.ivf{list-style:none;margin:12px 0 0;padding:0}
+.ivf li{display:flex;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--line);font-size:calc(15px * var(--fs))}
+.ivf-n{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ivf-s{color:var(--mut);white-space:nowrap}.ivf-s.ok{color:var(--okt);font-weight:800}
+.rfk{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0 6px}
+.rfk div{background:var(--bg);border-radius:12px;padding:9px 6px;text-align:center}
+.rfk b{display:block;font-family:var(--disp);font-weight:800;font-size:calc(22px * var(--fs));line-height:1.2;color:var(--ink2);font-variant-numeric:tabular-nums}
+.rfk span{display:block;color:var(--mut);font-size:calc(12.5px * var(--fs));line-height:1.35}
+.rftop{margin:8px 0;font-size:calc(14px * var(--fs));line-height:1.7}
+.rfl{list-style:none;margin:8px 0 0;padding:0;max-height:420px;overflow:auto}
+.rfl li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.4fr);gap:4px 12px;align-items:center;padding:9px 2px;border-top:1px solid var(--line);font-size:calc(14px * var(--fs))}
+.rfp b{display:block}.rfp small{display:block;color:var(--mut);font-size:calc(12px * var(--fs));overflow:hidden;text-overflow:ellipsis}
+.rfby{color:var(--mut)}.rfby b{color:var(--ink)}
+.rfs{color:var(--mut)}.rfs.ok{color:var(--okt);font-weight:700}
+@media (max-width:640px){.ivh{padding:20px 16px;border-radius:20px}.ivh h1{font-size:calc(24px * var(--fs))}.ivl .btn,.ivb .btn{flex:1 1 100%}.ivc{padding:16px}.rfk{grid-template-columns:repeat(3,1fr)}.rfl li{grid-template-columns:1fr}.meinv-go,.ist-go{flex:1 1 100%}}

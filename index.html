@@ -14,7 +14,7 @@
 <script src="/assets/lang.js?v=1"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/land.css?v=5">
+<link rel="stylesheet" href="/assets/land.css?v=6">
 <link rel="icon" href="/assets/logo.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0E2458">
@@ -40,6 +40,7 @@
   <section class="hero">
     <div class="w hw">
       <div class="ht">
+        <p class="hinv" id="hinv" hidden></p>
         <h1><span data-l="ar">دورة القدرات الإنجليزي كاملة في موقع واحد</span><span data-l="en">The complete English GAT course, in one place</span></h1>
         <p class="lead" data-l="ar">شرح الكمي واللفظي بالفيديو، أكثر من 1500 سؤال بشروحاتها، 17 اختبار محاكي بنفس شكل اختبار قياس، ومرشد ذكي يرتّب مذاكرتك لين يوم اختبارك.</p>
         <p class="lead" data-l="en">Video explanations for quant and verbal, more than 1,500 questions with their explanations, 17 mock tests that look exactly like the Qiyas test, and a smart advisor that plans your study until test day.</p>
@@ -243,6 +244,24 @@
   var on = Date.now() < Date.UTC(2027, 0, 29, 20, 59, 59);
   Array.prototype.forEach.call(document.querySelectorAll('[data-off]'), function (e) { e.hidden = !on; });
   Array.prototype.forEach.call(document.querySelectorAll('[data-reg]'), function (e) { e.hidden = on; });
+})();
+// 🎁 «ادعُ صديقك»: رابط صديقه q-guide.online/?r=<كود> — نحفظ الكود (منصة التدريب تربطه بحسابه بعد ما يسجّل) ونطلع «دعوة من …» فوق العنوان
+(function () {
+  var m = /[?&]r=([A-Za-z0-9]{4,12})(?:&|$)/.exec(location.search); if (!m) return;
+  var c = m[1].toLowerCase();
+  try { localStorage.setItem('qg_ref', JSON.stringify({ c: c, at: Date.now() })); } catch (e) {}
+  try { var u = new URL(location.href); u.searchParams.delete('r'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {}
+  var box = document.getElementById('hinv'), API = (window.QG && QG.API && QG.API.indexOf('__') !== 0 && QG.API) || (/(^|\.)q-guide\.online$/.test(location.hostname) ? 'https://q-guide-api.nouom01.workers.dev/' : '');
+  if (!box || !API || !window.fetch) return;
+  fetch(API, { method: 'POST', body: JSON.stringify({ op: 'ref_info', code: c }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }).then(function (r) { return r.json(); }).then(function (r) {
+    if (!r || !r.ok) return;
+    if (!r.on) { try { localStorage.removeItem('qg_ref'); } catch (e) {} return; }   // كود غلط أو البرنامج موقّف
+    var d = +r.d || 7, ar = d === 7 ? 'أسبوع' : d === 14 ? 'أسبوعين' : d === 1 ? 'يوم' : d === 2 ? 'يومين' : d <= 10 ? d + ' أيام' : d + ' يوم', en = d === 7 ? 'a week' : d === 14 ? 'two weeks' : d === 1 ? '1 day' : d + ' days';
+    var part = function (lang, before, after) { var s = document.createElement('span'); s.setAttribute('data-l', lang); s.appendChild(document.createTextNode(before)); if (r.n) { var b = document.createElement('b'); b.textContent = r.n; s.appendChild(b); } s.appendChild(document.createTextNode(after)); return s; };
+    box.appendChild(part('ar', r.n ? '🎁 دعوة من ' : '🎁 جاتك دعوة من صديقك', ': اشترك وتاخذ ' + ar + ' مجاناً فوق اشتراكك.'));
+    box.appendChild(part('en', r.n ? '🎁 Invitation from ' : '🎁 A friend invited you', ': subscribe and get ' + en + ' free on top of your subscription.'));
+    box.hidden = false;
+  }).catch(function () {});
 })();
 // 🏆 نتائج طلابنا: الضغط على صورة الحلقة يفتح صورة صفحة النتيجة كاملة (بدون سكربت: الرابط يفتح الصورة نفسها)
 (function () {

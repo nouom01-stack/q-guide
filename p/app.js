@@ -396,8 +396,8 @@
       if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 👨‍🏫 صار يرفع مقاطعه؟
-      if (r && r.ok && auth && auth.role !== 'admin' && ['pay', 'salla', 'renew'].some(k => JSON.stringify(r[k] || null) !== JSON.stringify(auth[k] || null))) {   // 💳🛍 الدفع انفتح/انقفل · ⏰ موعد اشتراكه تغيّر
-        const rn = JSON.stringify(r.renew || null) !== JSON.stringify(auth.renew || null); auth.pay = r.pay || null; auth.salla = r.salla || null; auth.renew = r.renew || null; lsSet(LS.auth, auth);
+      if (r && r.ok && auth && auth.role !== 'admin' && ['pay', 'salla', 'renew', 'inv', 'ref'].some(k => JSON.stringify(r[k] || null) !== JSON.stringify(auth[k] || null))) {   // 💳🛍 الدفع انفتح/انقفل · ⏰ موعد اشتراكه تغيّر · 🎁 الدعوة
+        const rn = JSON.stringify(r.renew || null) !== JSON.stringify(auth.renew || null); auth.pay = r.pay || null; auth.salla = r.salla || null; auth.renew = r.renew || null; auth.inv = r.inv || null; auth.ref = r.ref || 0; lsSet(LS.auth, auth);
         if (rn && (!location.hash || location.hash === '#')) { const b = $('#rnw'); if (b) { b.innerHTML = renewBar(); bindSub(b); } } }
       if (r && r.ok && auth && auth.role !== 'free' && Array.isArray(r.vids) && JSON.stringify(r.vids) !== JSON.stringify(auth.vids || [])) {   // 🎬 مقاطع جديدة انرفعت للموقع
         auth.vids = r.vids; lsSet(LS.auth, auth); if (/^#sharh(-(salman|abdullah)(\/[ft])?)?$/.test(location.hash)) route(); }   // صفحة المدرسين مفتوحة: نحدّث حالة الدروس
@@ -474,7 +474,7 @@
       + grt + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>`; };
     ov.innerHTML = _T`<div class="qgdlg-box sub-box${two ? ' pk2' : ''}" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
-      ${head}<div class="sub-dyn"></div>
+      ${renew ? '' : invLine('sub-inv')}${head}<div class="sub-dyn"></div>
     </div>`;
     document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
     let acted = false;   // ضغط «ادفع» أو واتساب أو رقم الطلب؟ لو سكّر النافذة بدون ولا واحد منهم نسأله «وش وقّفك؟»
@@ -639,11 +639,14 @@
   // 💳 الرجوع من صفحة الدفع (#paid): نتحقق من العملية عند تاب — لو انخصمت تنفتح الدورة على طول بجلسة المشترك الجديدة
   let PAID_OK = null;   // 🛍 دفع سلة تفعّل: صفحة «تم الاشتراك» تطلع مرة وحدة
   function paidOk(show, until, months, renew, pkg, opened) {
+    const g = !renew && auth && auth.rg > 0 ? auth.rg : 0;   // 🎁 اشترك بدعوة صديقه: الخادم أضاف الأيام لاشتراكه
+    if (auth && auth.renew && auth.renew.until > (until || 0)) until = auth.renew.until;   // موعده من الجلسة الجديدة (فيه أيام الهدية)
+    if (g) { auth.rg = 0; auth.inv = null; lsSet(LS.auth, auth); }
     const end = until ? new Date(until).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }) : '';
     const named = pkg === 'full' || (pkg === 'train' && pkTwo());   // 📦 نسمّي الباقة لما فيه باقتين (ومع باقة وحدة يبقى الكلام مثل قبل)
     if (renew) show('🎉', 'ok', _T`<h2>تم تجديد اشتراكك</h2><p>انضاف ${months === 2 ? _T('شهرين') : months > 1 ? _T`${months} شهور` : _T('شهر')} على اشتراكك، وتقدّمك ونتائجك كلها مثل ما هي.</p>${opened ? _T('<p class="pdpk">📦 باقتك صارت «التأسيس والتدريب»: دروس التأسيس واختباراتها ومذكرتا التأسيس انفتحت لك.</p>') : ''}${end ? _T`<p class="pdend">اشتراكك الحين ينتهي <b>${end}</b></p>` : ''}
       <div class="pdact"><a class="btn gold" href="#">كمّل مذاكرتك</a>${opened ? _T('<a class="btn ghost" href="#sharh">🧱 دروس التأسيس</a>') : ''}</div>`);
-    else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>${!named ? _T('الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.') : pkg === 'full' ? _T('باقة «التأسيس والتدريب» مفتوحة لك الحين: دروس التأسيس واختباراتها ومذكرتا التأسيس، وكل الأقسام والنماذج بالشرح، والاختبارات المحاكية.') : _T('باقة «التدريب» مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، ومذكرات التدريب.')}</p>${end ? (months > 1 ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
+    else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>${!named ? _T('الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.') : pkg === 'full' ? _T('باقة «التأسيس والتدريب» مفتوحة لك الحين: دروس التأسيس واختباراتها ومذكرتا التأسيس، وكل الأقسام والنماذج بالشرح، والاختبارات المحاكية.') : _T('باقة «التدريب» مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، ومذكرات التدريب.')}</p>${g ? _T`<p class="pdgift">🎁 وانضاف لك ${refDays(g)} مجاناً لأن صديقك دعاك.</p>` : ''}${end ? (months > 1 || g ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
       <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
     confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع'); lsDel(PAYTRY_LS); lsDel(WHY_LS);
   }
@@ -703,9 +706,65 @@
   function freeHero() {
     const lv = lsGet(LVL_LS, null);
     return _T`<section class="fhero" aria-label="الحساب المجاني">
-      <div class="fh-t">${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة.</p>`}<p class="fh-g"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p></div>
+      <div class="fh-t">${invLine('fh-inv')}${auth.ended ? _T`<h2>⛔ انتهى اشتراكك في الدورة</h2><p>حسابك الحين مجاني: تقدر تحل القسم 1 والنموذج 1 والاختبار المحاكي 1، وتلعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. جدّد اشتراكك وترجع لك الدورة.</p>` : _T`<h2>أنت على الحساب المجاني</h2><p>جرّب القسم 1 والنموذج 1 والاختبار المحاكي 1 وتحديد المستوى، والعب ${FREE_GAMES} مباريات كل يوم في الساحة 1v1. اشترك وتنفتح لك الدورة.</p>`}<p class="fh-g"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p></div>
       <div class="fh-a"><button type="button" class="btn gold" data-sub>${auth.ended ? _T('جدّد اشتراكك') : _T('اشترك في الدورة')} <small>${subFrom()}</small></button>${lv ? '' : _T('<a class="btn ghost" href="#level">🧭 اعرف مستواك أول</a>')}</div>
     </section>`;
+  }
+
+  // ---------- 🎁 «ادعُ صديقك» (v102، طلب المالك 14 نوفمبر 2026): لكل مشترك رابط q-guide.online/?r=<كود> ----------
+  //    الصديق يفتح الرابط ← الكود ينحفظ في qg_ref (30 يوم) ← يسجّل دخوله زائر ← refSend يربطه بصاحب الرابط (ref_set) ← auth.inv = {n, d}: سطر في الرئيسية ونافذة الاشتراك
+  //    يدفع أول اشتراك ← الخادم يضيف الأيام للاثنين (refer.js) ← صفحة «تم الاشتراك» تقول له (auth.rg). المشترك: صفحة #invite + بطاقة في «ملفي» + شريط في الرئيسية (✕ يخفيه 30 يوم)
+  const REF_LS = 'qg_ref', INVX_LS = 'qg_inv_x';
+  const refDays = d => EN ? (d === 7 ? 'a week' : d === 14 ? 'two weeks' : enN(d, 'day', 'days')) : d === 7 ? 'أسبوع' : d === 14 ? 'أسبوعين' : d === 1 ? 'يوم' : d === 2 ? 'يومين' : d <= 10 ? d + ' أيام' : d + ' يوم';   // i18n:skip
+  const cap1 = s => EN ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  const refShare = (url, d) => EN ? `I'm preparing for the English GAT with Q-Guide: every section and model question is explained on video, plus 17 mock tests. Subscribe with my link and get ${refDays(d)} free on top of your subscription:\n${url}`
+    : `أذاكر القدرات الإنجليزي في Q-Guide: كل أسئلة الأقسام والنماذج مشروحة بالفيديو، و17 اختبار محاكي. اشترك من رابطي وتاخذ ${refDays(d)} مجاناً فوق اشتراكك:\n${url}`;   // i18n:skip
+  const invLine = cls => { const I = auth && auth.inv; if (!I || !isFree()) return ''; const d = refDays(I.d || 7);
+    return `<p class="${cls}">${I.n ? _T`🎁 دعوة من <b>${esc(I.n)}</b>: اشترك وتاخذ ${d} مجاناً فوق اشتراكك.` : _T`🎁 جاتك دعوة من صديقك: اشترك وتاخذ ${d} مجاناً فوق اشتراكك.`}</p>`; };
+  let refBusy = false;
+  async function refSend() {
+    const R = lsGet(REF_LS, null); if (!R || !R.c || !auth || !auth.session || refBusy) return;
+    if (auth.role === 'admin' || isSub() || !(Date.now() - (R.at || 0) < 30 * 864e5)) { lsDel(REF_LS); return; }   // الدعوة للزوار بس (المشترك والمشرف: ننساها)
+    refBusy = true;
+    try {
+      const r = await api({ op: 'ref_set', session: auth.session, code: R.c });
+      if (r && r.ok) { lsDel(REF_LS);
+        if (r.st === 'set' && auth && isFree()) { auth.inv = { n: r.by || '', d: r.d || 7 }; lsSet(LS.auth, auth); const t = $('.fhero .fh-t'); if (t && !t.querySelector('.fh-inv')) t.insertAdjacentHTML('afterbegin', invLine('fh-inv')); } }
+    } catch (e) {} finally { refBusy = false; }
+  }
+  // شريط المشترك في الرئيسية (تحت بطاقة المرشد): يفتح صفحة رابطه
+  const invStrip = () => (!auth || isFree() || auth.role === 'admin' || !(auth.ref > 0) || lsGet(INVX_LS, 0) > Date.now()) ? '' :
+    _T`<div class="istrip"><a class="ist-a" href="#invite"><span class="ist-i" aria-hidden="true">🎁</span><span class="ist-t"><b>ادعُ صديقك</b><small>${_T`إذا اشترك من رابطك، تاخذون الاثنين ${refDays(auth.ref)} مجاناً.`}</small></span><span class="ist-go">رابطك ‹</span></a><button type="button" class="ist-x" id="istx" title="إخفاء" aria-label="إخفاء">✕</button></div>`;
+  async function renderInvite() {
+    document.title = _T('ادعُ صديقك | Q-Guide');
+    app.innerHTML = topbar(_T`<span class="ttl">🎁 ادعُ صديقك</span><span class="sp"></span>`, _T`<a class="ib" href="#me" title="ملفي">→</a>`) + '<main class="wrap invp"><div class="center" style="padding:60px 0"><div class="spin" style="margin:0 auto"></div></div></main>';
+    bindCtl();
+    let R; try { R = await api({ op: 'ref_me', session: auth.session }); } catch (e) { R = null; }
+    if (location.hash !== '#invite') return;
+    const W = $('.invp'); if (!W) return;
+    if (R && !R.ok && (R.error === 'kicked' || R.error === 'session')) return logout(esc(R.msg || ''));
+    if (!R || !R.ok) { W.innerHTML = `<div class="sum">${esc((R && R.msg) || _T('تعذّر تحميل رابطك، تأكد من النت وحدّث الصفحة.'))}</div>`; return; }
+    if (!R.on) { W.innerHTML = `<div class="sum">${R.who === 'staff' ? _T('رابط الدعوة للمشتركين، وحسابك حساب مشرف.') : _T('«ادعُ صديقك» متوقّف الحين.')}</div>`; if (auth.ref) { auth.ref = 0; lsSet(LS.auth, auth); } return; }
+    if (auth.ref !== R.d) { auth.ref = R.d; lsSet(LS.auth, auth); }
+    const d = refDays(R.d), txt = refShare(R.url, R.d);
+    const list = (R.list || []).length ? `<ul class="ivf">${R.list.map(f => `<li><span class="ivf-n">${esc(f.n || _T('صديق'))}</span><span class="ivf-s${f.st ? ' ok' : ''}">${f.st ? _T('✓ اشترك') : _T('⏳ ما اشترك للحين')}</span></li>`).join('')}</ul>`
+      : `<p class="mut ivn">${_T('ما دخل أحد من رابطك للحين. أرسله لأصحابك اللي يذاكرون للقدرات.')}</p>`;
+    W.innerHTML = _T`<section class="ivh" aria-labelledby="ivh1">
+        <span class="ivh-i" aria-hidden="true">🎁</span>
+        <h1 id="ivh1">${cap1(d)} مجاناً لك ولصديقك</h1>
+        <p>أرسل رابطك لصديقك. إذا اشترك في الدورة من رابطك، ينضاف لكم الاثنين ${d} مجاناً فوق اشتراككم.</p>
+        <div class="ivl"><input id="ivu" readonly dir="ltr" value="${esc(R.url)}" aria-label="رابطك"><button type="button" class="btn gold" id="ivc">📋 انسخ الرابط</button></div>
+        <div class="ivb"><a class="btn ghost" id="ivwa" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">💬 أرسله على واتساب</a>${navigator.share ? _T('<button type="button" class="btn ghost" id="ivs">📤 شارك الرابط</button>') : ''}</div>
+      </section>
+      <section class="ivc" aria-labelledby="ivh2"><h2 id="ivh2">كيف تمشي؟</h2>
+        <ol class="ivo"><li>انسخ رابطك وأرسله لصديقك.</li><li>صديقك يفتح الموقع من رابطك ويسجّل دخوله.</li><li>إذا اشترك أول مرة، ينضاف لكم الاثنين ${d} مجاناً.</li></ol>
+        <p class="mut ivn">الهدية لصديق جديد ما اشترك قبل، وتنضاف لحالها بعد ما يدفع.</p></section>
+      <section class="ivc" aria-labelledby="ivh3"><h2 id="ivh3">أصحابك</h2>
+        <div class="ivk"><div><b>${R.n}</b><span>دخلوا من رابطك</span></div><div><b>${R.p}</b><span>اشتركوا</span></div><div><b>${R.got}</b><span>أيام انضافت لك</span></div></div>
+        ${R.wait ? _T`<p class="ivw">⏳ لك ${refDays(R.wait)} مجاناً تنضاف أول ما تجدّد اشتراكك.</p>` : ''}${list}</section>`;
+    const inp = $('#ivu'); inp.onfocus = () => inp.select();
+    $('#ivc').onclick = async () => { let ok = false; try { await navigator.clipboard.writeText(R.url); ok = true; } catch (e) { try { inp.focus(); inp.select(); ok = document.execCommand('copy'); } catch (e2) {} } toast(ok ? _T('نسخت رابطك ✓') : _T('حدّد الرابط وانسخه')); };
+    const sb = $('#ivs'); if (sb) sb.onclick = () => { navigator.share({ text: txt }).catch(() => {}); };
   }
 
   // ---------- 🏆 نتائج طلابنا (نوفمبر 2026): درجات حقيقية أرسلها طلاب الدورة للمالك — شريط للزائر في الرئيسية + صفحة #results (نفس قسم #results في صفحة الموقع الرئيسية) ----------
@@ -868,7 +927,7 @@
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     ['__stSay', '__stView'].forEach(k => { if (window[k]) { try { window[k].destroy(); } catch (e) {} window[k] = null; } });   // 🎙️ شريط السكربت / شاشة التسجيل
-    heartbeat(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
+    heartbeat(); refSend(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     let h = location.hash.replace('#', ''), joinDlg = false, joinPk = '', upNm = null;
@@ -907,6 +966,7 @@
     if (/^fq-[1-4]$/.test(h)) return renderFq(+h.slice(3));   // 📝 اختبار درس التأسيس
     if (h === 'advisor') return renderAdvisor();   // 🎓 مرشدك الأكاديمي
     if (h === 'me') return renderProfile();   // 👤 ملفي
+    if (h === 'invite') return renderInvite();   // 🎁 ادعُ صديقك
     if (h === 'sharh') return renderSharh();
     if (h === 'results') return renderResults();   // 🏆 نتائج طلابنا
     const tm = /^sharh-(salman|abdullah)(?:\/([ft]))?$/.exec(h); if (tm) return renderTeach(tm[1], tm[2]);   // 👨‍🏫 صفحة المدرس: /f التأسيس · /t التدريب
@@ -930,13 +990,13 @@
 
   // 📱 شريط التنقل تحت في الجوال (الصفحات الرئيسية بس، مو داخل حل الأسئلة ولا الساحة ولا الإدارة): الرئيسية · الشرح · مرشدي · الساحة · ملفي
   //    زر «مرشدي» في النص: المشترك يفتح صفحة مرشده (#advisor)، والزائر يفتح محادثة المرشد. الزر العائم ينخفي في الجوال لما الشريط موجود.
-  const TB_ON = h => h === '' || /^(sharh(-(salman|abdullah)(\/[ft])?)?|advisor|me|skills|plan|notes|badges)$/.test(h) || /^board/.test(h) || /^vocab/.test(h);
+  const TB_ON = h => h === '' || /^(sharh(-(salman|abdullah)(\/[ft])?)?|advisor|me|invite|skills|plan|notes|badges)$/.test(h) || /^board/.test(h) || /^vocab/.test(h);
   function tabbar(h) { try { tabbar0(h); } catch (e) { CERR('tabbar: ' + (e && e.message)); } }
   function tabbar0(h) {
     let el = document.querySelector('.tbar'); const on = !!auth && h != null && TB_ON(h);
     document.documentElement.classList.toggle('tb-on', on);
     if (!on) { if (el) el.remove(); return; }
-    const cur = h === '' ? 'home' : /^sharh/.test(h) ? 'sharh' : h === 'advisor' ? 'adv' : h === 'me' ? 'me' : '';
+    const cur = h === '' ? 'home' : /^sharh/.test(h) ? 'sharh' : h === 'advisor' ? 'adv' : h === 'me' || h === 'invite' ? 'me' : '';
     const it = (k, href, ic, t) => `<a class="tb${cur === k ? ' on' : ''}" href="${href}"${cur === k ? ' aria-current="page"' : ''}><span class="tbi" aria-hidden="true">${ic}</span><span class="tbl">${t}</span></a>`;
     if (!el) { el = document.createElement('nav'); el.className = 'tbar'; document.body.appendChild(el); }
     el.setAttribute('dir', EN ? 'ltr' : 'rtl'); el.setAttribute('aria-label', _T('التنقل الرئيسي'));
@@ -1085,7 +1145,7 @@
       google.accounts.id.renderButton(host, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with', locale: EN ? 'en' : 'ar', width: 280 });
     } catch (e) { host.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
-  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, renew: r.renew || null, teach: r.teach || '', plan: r.plan || '', pkg: r.pkg || '', fu: r.fu || 0 });
+  const authFrom = r => ({ name: r.name, email: r.email, phone: r.phone || '', key: r.key, exp: r.exp, session: r.session, gender: r.gender || '', role: r.role || 'student', staff: r.staff || '', files: r.files || null, member: r.member || '', display: r.display || r.name, avatar: r.avatar || '', sub: r.sub || '', yt: r.yt || null, vids: r.vids || [], ended: r.ended ? 1 : 0, pay: r.pay || null, salla: r.salla || null, renew: r.renew || null, teach: r.teach || '', plan: r.plan || '', pkg: r.pkg || '', fu: r.fu || 0, inv: r.inv || null, ref: r.ref || 0, rg: r.rg || 0 });   // 🎁 inv = صديق دعاه (زائر) · ref = أيام «ادعُ صديقك» (0 = موقّف) · rg = أيام هدية انضافت له الحين
   async function onCredential(resp) {
     const host = $('#gbtn'); if (host) host.innerHTML = _T('<div class="spin"></div><span style="margin-inline-start:10px;color:var(--mut)">جارٍ تسجيل الدخول…</span>');
     try {
@@ -1175,7 +1235,7 @@
     app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: اشتراكك واسمك وصورتك">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
       ${FR ? freeHero() + payNudge() + resStrip() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
-      ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>
+      ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>${FR ? '' : invStrip()}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
       <div class="sheets" id="grid"></div>
@@ -1215,6 +1275,7 @@
     }).join('');
     grid.querySelectorAll('.sheet').forEach(b => b.onclick = () => { if (b.classList.contains('lk')) { if (window.QGT) QGT.ev('lock', SET_NAME(b.dataset.id)); return subDlg(SET_NAME(b.dataset.id)); } location.hash = b.dataset.id; });
     bindSub(app); payNudgeBind();
+    const ix = $('#istx'); if (ix) ix.onclick = () => { lsSet(INVX_LS, Date.now() + 30 * 864e5); const st = ix.closest('.istrip'); if (st) st.remove(); };   // 🎁 ✕ = يختفي 30 يوم
     const bindGoal = () => { const g = $('#goal'); if (g) g.onclick = () => { const cur = goalGet(); const nx = GOALS[(GOALS.indexOf(cur) + 1) % GOALS.length]; lsSet(GOAL_LS, nx); $('#rz').innerHTML = rzHtml(); bindGoal(); toast(_T('هدفك اليومي صار ') + nx + _T(' سؤال')); }; };
     bindGoal();
     const rb = $('#rem'); if (rb) rb.onclick = () => remDlg().then(() => { const l = $('#reml'); if (l) l.textContent = remLabel(); });
@@ -2702,10 +2763,11 @@
   const HELP_PAGES = { rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
     vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], 'wb-tq': ['🧱', _T('تأسيس الكمي'), '#wb-tq'], 'wb-tv': ['🧱', _T('تأسيس اللفظي'), '#wb-tv'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
     't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'],
-    me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'] };
+    me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], invite: ['🎁', _T('ادعُ صديقك'), '#invite'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'] };
   function helpLink(tok) {
     if (!RULES_ON && /^rules/.test(tok)) return '';   // ملخص القوانين/القواعد انشال: الرمز ينشال من الرد
     if (noFound() && /^(wb-t[qv]|fq-[1-4])$/.test(tok)) return '';   // 📦 باقته «التدريب»: روابط التأسيس ما تنحط له
+    if (tok === 'invite' && !(isSub() && auth.ref > 0)) return '';   // 🎁 رابط الدعوة للمشترك بس (والبرنامج شغّال)
     let m; const a = (ic, t, h) => `<a class="qgai-lk" href="${h}"><span aria-hidden="true">${ic}</span>${t}</a>`;
     if (HELP_PAGES[tok]) return a(...HELP_PAGES[tok]);
     if ((m = /^([qv])(\d{1,2})$/.exec(tok)) && +m[2] >= 1 && +m[2] <= (m[1] === 'v' ? 15 : 14)) return a(m[1] === 'q' ? '📘' : '📗', SET_NAME(tok), '#' + tok);
@@ -3831,6 +3893,8 @@
             : _T`<div class="msubact quiet"><p>تبي تمدّد اشتراكك؟ التجديد يضيف شهر على تاريخ النهاية.</p><button type="button" class="btn sm ghost" data-sub>↻ جدّد من الحين</button></div>`}`;
       } else subHtml = pkRow + _T`<p class="msubtx">✓ اشتراكك فعّال (${L[0]} ${L[1]}).</p>`;
     }
+    // 🎁 «ادعُ صديقك»: للمشترك اشتراكه شغّال والبرنامج شغّال
+    const invCard = !['staff', 'free', 'ended'].includes(S.state) && auth.ref > 0 ? _T`<section class="mecard meinv"><a class="meinv-a" href="#invite"><span class="meinv-i" aria-hidden="true">🎁</span><span class="meinv-t"><b>ادعُ صديقك</b><span>${_T`إذا اشترك صديقك من رابطك، تاخذون الاثنين ${refDays(auth.ref)} مجاناً.`}</span></span><span class="meinv-go">رابطك ‹</span></a></section>` : '';
     // 🖼 الصورة: ارفع صورة · صورة قناتك في يوتيوب · أشكال جاهزة · بدون صورة — تتغيّر على طول
     const cur = P.avatar || '', opt = (u, inner, t, cls) => `<button type="button" class="meopt${cls ? ' ' + cls : ''}${u === cur ? ' on' : ''}" data-u="${esc(u)}" title="${t}" aria-label="${t}" aria-pressed="${u === cur}">${inner}</button>`;
     const avs = `<label class="meopt up" title="${_T('ارفع صورة من جهازك')}"><span aria-hidden="true">📷</span><small>${_T('ارفع صورة')}</small><input type="file" id="me-file" accept="image/*" hidden></label>`
@@ -3844,7 +3908,7 @@
         <div class="mehx"><h1>${esc(name)}</h1><span class="memail" dir="ltr">${esc(P.email || auth.email || '')}</span>
           <div class="mechips"><span class="mechip s-${S.state || 'active'}">${chip}</span>${P.school ? `<span class="mechip">🏫 ${esc(P.school)}</span>` : ''}</div></div>
       </section>
-      <section class="mecard" aria-labelledby="me-h1"><h2 id="me-h1">📅 اشتراكك</h2>${subHtml}</section>
+      <section class="mecard" aria-labelledby="me-h1"><h2 id="me-h1">📅 اشتراكك</h2>${subHtml}</section>${invCard}
       <section class="mecard" aria-labelledby="me-h2"><h2 id="me-h2">✏️ بياناتك</h2>
         <div class="mefields"><label class="mef"><span>اسمك في لوحة الصدارة</span><input id="me-name" maxlength="30" autocomplete="nickname" value="${esc(name)}"></label>
           <label class="mef"><span>مدرستك</span><input id="me-school" maxlength="60" placeholder="مثال: ثانوية الملك فهد" value="${esc(P.school || '')}"></label></div>
@@ -4813,11 +4877,11 @@
     gs: x => ['📧', x.err ? 'خطأ في سكربت إيميلات سلة' : 'سكربت إيميلات سلة واقف', (x.err ? x.err + ' — ' : `آخر فحص ${fmtD(x.at)}. `) + 'الدفع من سلة ما يتفعّل لحاله لين يرجع: افتح script.google.com بحساب سلة وشوف «Executions».', '#admin-pay', 'افتح المدفوعات', 'hi'],
     payoff: () => ['💳', 'الدفع من الموقع مقفل على الزوار', 'الزائر ما يشوف زر الدفع ويراسلك على واتساب. افتحه من المدفوعات لما تجهز.', '#admin-pay', 'افتح المدفوعات', 'hi'],
   };
-  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'], aband: ['🛒', 'ترك الدفع في سلة'], pf_phone: ['📱', 'زائر يبينا نكلّمه واتساب'], pf_mail: ['📧', 'وصله إيميل «وش وقّفك؟»'],
+  const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'], aband: ['🛒', 'ترك الدفع في سلة'], pf_phone: ['📱', 'زائر يبينا نكلّمه واتساب'], pf_mail: ['📧', 'وصله إيميل «وش وقّفك؟»'], ref: ['🎁', 'اشتراك بدعوة صديق'],
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
     adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_pkg: ['📦', 'تغيير باقة طالب'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
     adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
-    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'] };
+    adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'], adm_ref_set: ['🎁', 'إعدادات «ادعُ صديقك»'] };
   const evRow = e => { const T = EV_T[e.kind] || ['•', e.kind], sys = !/^adm_/.test(e.kind), who = String(e.who || '');
     const sub = [sys ? '' : who && who.indexOf('@') > 0 ? 'بواسطة ' + who.split('@')[0] : '', e.target, e.note].filter(Boolean).map(esc).join(' · ');
     return `<li class="ev${sys ? ' sys' : ''}"><span class="evi" aria-hidden="true">${T[0]}</span><span class="evx"><b>${T[1]}${sys && who.indexOf('@') > 0 ? ` <small class="ltr">${esc(who)}</small>` : ''}</b><small>${sub || '—'}</small></span>${e.amt ? `<span class="evamt"><bdi>${sar(e.amt)}</bdi> ريال</span>` : ''}<time>${fmtD(e.at)}</time></li>`; };
@@ -5014,14 +5078,45 @@
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
     await admCall({ op: 'own_push_sub', sub: sub.toJSON() }); return sub.endpoint;
   }
-  const SET = { cfg: null, audit: null, errs: null, ak: '', aq: '', ep: '', life: null };
+  const SET = { cfg: null, audit: null, errs: null, ak: '', aq: '', ep: '', life: null, ref: null, rf: null };   // ref = «ادعُ صديقك» من الخادم · rf = التعديل قبل الحفظ
+  // ---------- 🎁 «ادعُ صديقك» (المالك، صفحة الإعدادات): تشغيل/إيقاف + أيام الهدية + الأرقام + آخر الدعوات ----------
+  const refDaysAr = n => n === 7 ? 'أسبوع' : n === 14 ? 'أسبوعين' : arDays(n);
+  function refBox() {
+    const R = SET.ref, F = SET.rf; if (!R || !F) return '<section class="setc"><h2>🎁 ادعُ صديقك</h2><p class="mut setd">تعذّر تحميل أرقام الدعوات. حدّث الصفحة.</p></section>';
+    const same = F.on === R.on && F.days === R.days, K = R.kpi || {}, opt = v => `<option value="${v}"${v === F.days ? ' selected' : ''}>${refDaysAr(v)}</option>`;
+    const st = r => r.why === 'renew' ? ['', '— كان مشترك قبل (ما ينحسب)'] : r.why === 'off' ? ['', '— اشترك والبرنامج موقّف'] : r.paid ? ['ok', `✓ اشترك ${fmtD(r.paid)} · ${refDaysAr(r.days)} لكل واحد${r.rok ? '' : ' · صاحب الرابط ينتظر تجديده'}`] : ['', `⏳ دخل ${fmtD(r.at)} وما اشترك`];
+    const row = r => { const [c, t] = st(r); return `<li><span class="rfp"><b>${esc(r.fname || r.friend.split('@')[0])}</b><small class="ltr">${esc(r.friend)}</small></span><span class="rfby">بدعوة من <b>${esc(r.rname || r.ref.split('@')[0])}</b></span><span class="rfs ${c}">${t}</span></li>`; };
+    const rows = (R.rows || []).slice(0, 40);
+    return `<section class="setc" aria-labelledby="set6"><h2 id="set6">🎁 ادعُ صديقك</h2>
+        <p class="mut setd">كل مشترك له رابط في صفحة «ادعُ صديقك». لو فتح صديقه الموقع من رابطه واشترك أول مرة، تنضاف الأيام للاثنين لحالها بعد الدفع.</p>
+        <div class="setrow"><div class="setl"><b>البرنامج شغّال</b><small>لو وقّفته يختفي رابط الدعوة من الموقع، واللي ما اشتركوا للحين ما ياخذون شي.</small></div>
+          <button type="button" class="sw${F.on ? ' on' : ''}" id="rf-on" role="switch" aria-checked="${!!F.on}" aria-label="«ادعُ صديقك»"><span></span></button></div>
+        <div class="setrow"><div class="setl"><b>الهدية لكل واحد</b><small>للصديق ولصاحب الرابط، فوق اشتراكهم.</small></div>
+          <label class="setv"><select id="rf-days" aria-label="أيام الهدية">${[3, 5, 7, 10, 14].concat([3, 5, 7, 10, 14].includes(F.days) ? [] : [F.days]).map(opt).join('')}</select></label></div>
+        <div class="setact"><button type="button" class="btn sm" id="rf-save"${same ? ' disabled' : ''}>حفظ</button><span class="mut" id="rf-st">${same ? (R.on ? `شغّال: ${refDaysAr(R.days)} مجاناً لكل واحد.` : 'موقّف.') : 'عندك تغيير ما انحفظ.'}</span></div>
+        <div class="rfk"><div><b>${K.codes || 0}</b><span>رابط انعمل</span></div><div><b>${K.inv || 0}</b><span>دخلوا من رابط</span></div><div><b>${K.paid || 0}</b><span>اشتركوا</span></div><div><b>${Math.round(K.amt || 0)}</b><span>ريال دخلت منهم</span></div><div><b>${K.given || 0}</b><span>يوم انعطى هدية</span></div></div>
+        ${(R.top || []).length ? `<p class="rftop"><b>🏅 أكثر اللي جابوا مشتركين:</b> ${R.top.map(t => `${esc(t.name || t.email.split('@')[0])} (${t.n})`).join('، ')}</p>` : ''}
+        ${rows.length ? `<ul class="rfl">${rows.map(row).join('')}</ul>` : '<p class="mut ohempty">ما دخل أحد من رابط دعوة للحين.</p>'}
+      </section>`;
+  }
+  function refBind(repaint, auditReload) {
+    const F = SET.rf; if (!F) return;
+    const on = $('#rf-on'); if (on) on.onclick = () => { F.on = F.on ? 0 : 1; repaint(); };
+    const dy = $('#rf-days'); if (dy) dy.onchange = e => { F.days = +e.target.value; repaint(); };
+    const sv = $('#rf-save'); if (sv) sv.onclick = async () => {
+      if (!F.on && SET.ref.on && !await QGDlg.confirm('توقّف «ادعُ صديقك»؟\nرابط الدعوة يختفي من الموقع، واللي دخلوا من رابط وما اشتركوا للحين ما ياخذون شي.', { ok: 'إيقاف', danger: true })) return;
+      sv.disabled = true;
+      try { SET.ref = await admCall({ op: 'adm_ref_set', on: F.on, days: F.days }); SET.rf = { on: SET.ref.on, days: SET.ref.days }; await auditReload(); toast('تم الحفظ ✓'); repaint(); }
+      catch (e) { sv.disabled = false; toast('ما انحفظ: ' + e.message); } };
+  }
+
   async function renderSettings() {
     document.title = 'الإعدادات والسجل | Q-Guide';
     const top = () => { app.innerHTML = admTop('settings'); bindCtl(); $('#admref').onclick = () => { SET.cfg = null; renderSettings(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
-      const [c, a, e, ep] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp()]);
-      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); }
+      const [c, a, e, ep, rf] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp(), admCall({ op: 'adm_ref' }).catch(() => null)]);
+      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); SET.ref = rf; SET.rf = rf ? { on: rf.on, days: rf.days } : null; }
     catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#admin-settings') return;
     top(); paintSettings();
@@ -5049,6 +5144,7 @@
         </div>
         <div class="setact"><button type="button" class="btn sm" id="lf-save"${same ? ' disabled' : ''}>حفظ</button><span class="mut" id="lf-st">${same ? (sv.on ? `شغّال: ينتهي الاشتراك بعد ${sv.grace ? arDays(sv.grace) + ' من' : ''} نهاية المدة.` : 'الإنهاء التلقائي مطفي: أنت تقرر من «الاشتراكات».') : 'فيه تغييرات ما انحفظت'}</span></div></section>
 
+${refBox()}
       <section class="setc" aria-labelledby="set2"><h2 id="set2">🔔 تنبيهاتك</h2>
         <p class="mut setd">يوصلك تنبيه على هذا الجهاز لما: يشترك طالب أو يجدّد · تحويل بنكي ينتظر تأكيدك · طلب مدفوع ما تفعّل · اشتراكات انتهت تلقائياً · وملخص اليوم الساعة 9 الليل.</p>
         <div class="setrow"><div class="setl"><b>${mine ? '🔔 مفعّلة على هذا الجهاز' : '🔕 مو مفعّلة على هذا الجهاز'}</b><small>${(C.push || []).length ? `مفعّلة على ${(C.push || []).length === 1 ? 'جهاز واحد' : (C.push || []).length + ' أجهزة'} من أجهزتك.` : 'ما فعّلتها على أي جهاز للحين.'}${!sup ? (isIOS() && !isStandalone() ? ' على الآيفون: أضف الموقع للشاشة الرئيسية من Safari أول.' : ' المتصفح هذا ما يدعم التنبيهات.') : ''}</small></div>
@@ -5089,6 +5185,7 @@
       try { for (let i = 0; i < 12; i++) { b.textContent = '⏳ ينسخ…' + (r && r.run && r.run.files ? ' ' + r.run.files + ' ملف' : ''); r = await admCall({ op: 'adm_backup_now' }); if (!r.backup || !r.backup.run) break; }
         SET.cfg = r; ADM.home = null; await auditReload(); toast(r.backup && r.backup.done ? '💾 خلص النسخ الاحتياطي' : 'النسخ بدأ وبيكمل لحاله'); repaint(); }
       catch (e) { toast('تعذّر النسخ: ' + e.message); b.disabled = false; b.textContent = 'انسخ الحين'; } };
+    refBind(repaint, auditReload);
     W.querySelectorAll('[data-ak]').forEach(b => b.onclick = async () => { SET.ak = b.dataset.ak; try { SET.audit = (await admCall({ op: 'adm_audit', kind: SET.ak })).rows || []; } catch (e) {} repaint(); });
     $('#au-q').oninput = e => { SET.aq = e.target.value; const pos = e.target.selectionStart; repaint(); const i = $('#au-q'); i.focus(); i.setSelectionRange(pos, pos); };
     const ec = $('#er-clear'); if (ec) ec.onclick = async () => { if (!await QGDlg.confirm('تمسح سجل الأخطاء؟', { ok: 'مسح', danger: true })) return; try { await admCall({ op: 'adm_err_clear' }); SET.errs = []; ADM.home = null; await auditReload(); toast('انمسح السجل'); repaint(); } catch (e) { toast(e.message); } };
@@ -5981,5 +6078,7 @@
   applyFs(); applyTheme();
   // 💳 الرجوع من صفحة الدفع: تاب يضيف ?tap_id=chg_… لرابط الرجوع — نحفظه ونروح لصفحة التحقق
   (function () { const m = /[?&]tap_id=(chg_[A-Za-z0-9]+)/.exec(location.search); if (!m) return; try { sessionStorage.setItem(PAY_SS, m[1]); } catch (e) {} history.replaceState(null, '', location.pathname + '#paid'); })();
+  // 🎁 رابط «ادعُ صديقك» (/p/?r=<كود>): نحفظ الكود 30 يوم ونشيله من الرابط — refSend يربطه بحسابه بعد ما يسجّل
+  (function () { const m = /[?&]r=([A-Za-z0-9]{4,12})(?:&|$)/.exec(location.search); if (!m) return; lsSet(REF_LS, { c: m[1].toLowerCase(), at: Date.now() }); try { const u = new URL(location.href); u.searchParams.delete('r'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {} })();
   if (!gsiFromHash()) route();
 })();

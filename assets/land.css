@@ -39,6 +39,9 @@ img{max-width:100%}
 .hero h1{font-family:var(--disp);font-weight:800;font-size:clamp(32px,4.4vw,50px);line-height:1.22;margin:0 0 16px;color:#fff;letter-spacing:0}
 .lead{font-size:19px;line-height:1.85;color:#C8D3F1;margin:0 0 28px;max-width:34em}
 /* 🛡 ضمان الدرجة: الرسالة الأساسية تحت العنوان، قبل الأزرار */
+.hinv{display:inline-block;margin:0 0 14px;padding:7px 15px;border-radius:999px;border:1px solid rgba(255,210,122,.55);background:rgba(233,162,59,.16);color:#fff;font-size:15.5px;line-height:1.6;font-weight:700}
+.hinv b{color:var(--gold-l)}
+.hinv[hidden]{display:none}
 .hg{display:flex;gap:12px;align-items:flex-start;max-width:34em;margin:-6px 0 26px;padding:13px 16px;border:1.5px solid rgba(255,210,122,.5);border-radius:16px;background:rgba(233,162,59,.1)}
 .hg svg{flex:none;width:28px;height:28px;margin-top:3px;color:var(--gold-l)}
 .hg p{margin:0;font-size:16.5px;line-height:1.75;color:#E3E9FA}
