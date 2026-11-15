@@ -1396,7 +1396,7 @@
     at: { t: 1, page: 'abdullah', tab: 't', sv: 'v', head: _T('🏋️ تدريب اللفظي') },
     sf: { t: 0, page: 'salman', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_L[n - 1][2] },
     ss: { t: 0, page: 'salman', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_S[n - 1][2] },   // 🧱 الوحدة 0: مهارات قبل التأسيس
-    // 👨‍🏫 طلال العنزي: تأسيس الكمي (ts مهارات الوحدة 0 + tf الدروس) · تأسيس اللفظي tb · تدريب الكمي tq (الأقسام) · تدريب اللفظي tm (النماذج)
+    // 👨‍🏫 طلال وايل: تأسيس الكمي (ts مهارات الوحدة 0 + tf الدروس) · تأسيس اللفظي tb · تدريب الكمي tq (الأقسام) · تدريب اللفظي tm (النماذج)
     ts: { t: 2, page: 'talal', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_S[n - 1][2] },
     tf: { t: 2, page: 'talal', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_L[n - 1][2] },
     tb: { t: 2, page: 'talal', tab: 'f', head: _T('🧱 تأسيس اللفظي'), wb: n => '#wb-tv@' + TV_PAGE[n] },
@@ -1495,7 +1495,7 @@
   const TEACHERS = [
     { id: 'salman', name: _T('سلمان الفرج'), s: ['q', 'v'], on: 1, href: '#sharh-salman', note: _T('تأسيس وتدريب') },
     { id: 'abdullah', name: _T('عبدالله الشمراني'), s: ['v'], on: 1, href: '#sharh-abdullah', note: _T('تأسيس وتدريب') },
-    { id: 'talal', name: _T('طلال العنزي'), s: ['q', 'v'], on: 1, href: '#sharh-talal', note: _T('تأسيس وتدريب') },
+    { id: 'talal', name: _T('طلال وايل'), s: ['q', 'v'], on: 1, href: '#sharh-talal', note: _T('تأسيس وتدريب') },
   ];
   const SUBJ = { q: _T('الكمي'), v: _T('اللفظي') };
   function renderSharh() {
@@ -1515,7 +1515,7 @@
   //    عبدالله: التأسيس = 4 دروس اللفظي (af) · التدريب = النماذج الـ14 (at)
   const TP = {
     salman: { t: 0, ls: 'qg_tp_sal', fk: 'sf', fn: QR_S.length + QR_L.length, pre: QR_S.length, wb: 'tq', ft: _T('تأسيس الكمي'), desc: _T('مدرس الكمي واللفظي. يأسّسك في قواعد الكمي درس درس، ويشرح لك أقسام الكمي ونماذج اللفظي.') },
-    // 👨‍🏫 طلال العنزي: تأسيس الكمي (نفس دروس سلمان: ts + tf) + تأسيس اللفظي (نفس دروس عبدالله: tb، ومعها اختباراتها) · التدريب: أقسام الكمي tq + نماذج اللفظي tm
+    // 👨‍🏫 طلال وايل: تأسيس الكمي (نفس دروس سلمان: ts + tf) + تأسيس اللفظي (نفس دروس عبدالله: tb، ومعها اختباراتها) · التدريب: أقسام الكمي tq + نماذج اللفظي tm
     talal: { t: 2, ls: 'qg_tp_tal', fk: 'tf', fn: QR_S.length + QR_L.length + ABD.found.length, pre: QR_S.length, wb: 'tq', ft: _T('التأسيس'), desc: _T('مدرس الكمي واللفظي. يأسّسك في قواعد الكمي واللفظي درس درس، ويدرّبك على أقسام الكمي ونماذج اللفظي.') },
     abdullah: { t: 1, ls: 'qg_tp_abd', fk: 'af', fn: ABD.found.length, wb: 'tv', quiz: 1, ft: _T('تأسيس اللفظي'), desc: _T('مدرس اللفظي. يبدأ معك من الأساس بطريقة حل كل نوع من أسئلة اللفظي الأربعة، وبعدها يدرّبك على النماذج.') },
   };
@@ -2800,7 +2800,7 @@
   const HELP_PAGES = { rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
     vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], 'wb-tq': ['🧱', _T('تأسيس الكمي'), '#wb-tq'], 'wb-tv': ['🧱', _T('تأسيس اللفظي'), '#wb-tv'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
     't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'],
-    me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], invite: ['🎁', _T('ادعُ صديقك'), '#invite'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'], 'sharh-talal': ['👨‍🏫', _T('دروس طلال العنزي'), '#sharh-talal'] };
+    me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], invite: ['🎁', _T('ادعُ صديقك'), '#invite'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'], 'sharh-talal': ['👨‍🏫', _T('دروس طلال وايل'), '#sharh-talal'] };
   function helpLink(tok) {
     if (!RULES_ON && /^rules/.test(tok)) return '';   // ملخص القوانين/القواعد انشال: الرمز ينشال من الرد
     if (noFound() && /^(wb-t[qv]|fq-[1-4])$/.test(tok)) return '';   // 📦 باقته «التدريب»: روابط التأسيس ما تنحط له
@@ -5116,7 +5116,7 @@
     const W = $('#adm'), V = ADM.vids; if (!W) return;
     if (!V || !V.map) { W.innerHTML = '<div class="rgsync warn">⚠️ تعذّر قراءة حالة المقاطع. حدّث الصفحة.</div>'; return; }
     const keys = Object.keys(V.map), have = new Set(V.files || []), grp = (re) => { const k = keys.filter(x => re.test(x)); return [k.filter(x => have.has(x)).length, k.length]; };
-    const G = [['📐📖', 'شرح سلمان (الأقسام والنماذج)', grp(/^[qv]:/)], ['🧱', 'تأسيس الكمي · سلمان', grp(/^s[fs]:/)], ['🧱', 'تأسيس اللفظي · عبدالله', grp(/^af:/)], ['🏋️', 'تدريب اللفظي · عبدالله', grp(/^at:/)], ['👨‍🏫', 'مقاطع طلال العنزي', grp(/^t[sfbqm]:/)]];
+    const G = [['📐📖', 'شرح سلمان (الأقسام والنماذج)', grp(/^[qv]:/)], ['🧱', 'تأسيس الكمي · سلمان', grp(/^s[fs]:/)], ['🧱', 'تأسيس اللفظي · عبدالله', grp(/^af:/)], ['🏋️', 'تدريب اللفظي · عبدالله', grp(/^at:/)], ['👨‍🏫', 'مقاطع طلال وايل', grp(/^t[sfbqm]:/)]];
     const views = V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0, miss = keys.filter(k => /^[qv]:/.test(k) && !have.has(k));
     VUP.open = 1;
     W.innerHTML = `<div class="stf subs vidpg">
@@ -5276,7 +5276,7 @@ ${tgBox()}
   const VUP = { busy: 0, st: {}, miss: [], open: 0 };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها · open = صندوق المالك مفتوح
   // المجموعات بالترتيب: سلمان الفرج — تأسيس الكمي (مهارات الوحدة 0 ss + الدروس sf) · تدريب الكمي q · تدريب اللفظي v | عبدالله الشمراني — تأسيس اللفظي af · التدريب على النماذج at
   const VUP_G = { ss: '🧱 سلمان الفرج · التأسيس: الوحدة 0 (مهارات قبل التأسيس)', sf: '🧱 سلمان الفرج · التأسيس (قواعد الكمي)', q: '📐 سلمان الفرج · تدريب الكمي', v: '📖 سلمان الفرج · تدريب اللفظي', af: '🧱 عبدالله الشمراني · التأسيس', at: '🏋️ عبدالله الشمراني · التدريب (النماذج)',
-    ts: '🧱 طلال العنزي · تأسيس الكمي: الوحدة 0 (مهارات قبل التأسيس)', tf: '🧱 طلال العنزي · تأسيس الكمي (قواعد الكمي)', tb: '🧱 طلال العنزي · تأسيس اللفظي', tq: '📐 طلال العنزي · تدريب الكمي', tm: '📖 طلال العنزي · تدريب اللفظي' };
+    ts: '🧱 طلال وايل · تأسيس الكمي: الوحدة 0 (مهارات قبل التأسيس)', tf: '🧱 طلال وايل · تأسيس الكمي (قواعد الكمي)', tb: '🧱 طلال وايل · تأسيس اللفظي', tq: '📐 طلال وايل · تدريب الكمي', tm: '📖 طلال وايل · تدريب اللفظي' };
   const VUP_GT = { ss: '🧱 التأسيس · مهارات قبل التأسيس', sf: '🧱 التأسيس · دروس قواعد الكمي', q: '📐 التدريب · أقسام الكمي', v: '📖 التدريب · نماذج اللفظي', af: '🧱 التأسيس · دروس اللفظي', at: '🏋️ التدريب · النماذج',
     ts: '🧱 التأسيس · مهارات قبل التأسيس', tf: '🧱 التأسيس · دروس قواعد الكمي', tb: '🧱 التأسيس · دروس اللفظي', tq: '📐 التدريب · أقسام الكمي', tm: '📖 التدريب · نماذج اللفظي' };   // «🎬 مقاطعي» (بدون اسم المدرس)
   const VUP_O = { ss: 0, sf: 10, q: 100, v: 200, af: 300, at: 400, ts: 500, tf: 510, tb: 600, tq: 700, tm: 800 };
@@ -5313,7 +5313,7 @@ ${tgBox()}
   function vupTeachSet(V) {
     const L = V.staff || [], sel = t => `<select data-teach="${t}" aria-label="حساب ${TEACHERS.find(x => x.id === t).name}"><option value="">— محد</option>${L.map(x => `<option value="${esc(x.email)}"${x.teach === t ? ' selected' : ''}>${esc(x.name || x.email.split('@')[0])} · ${esc(x.email)}</option>`).join('')}</select>`;
     return `<div class="vteach"><div><b>👨‍🏫 المدرسين يرفعون مقاطعهم بأنفسهم</b><span class="mut">اختر حساب كل مدرس من المشرفين: يطلع له «🎬 مقاطعي» ويرفع مقاطعه هو بس (التأسيس والتدريب).</span></div>
-      <label><span>سلمان الفرج</span>${sel('salman')}</label><label><span>عبدالله الشمراني</span>${sel('abdullah')}</label><label><span>طلال العنزي</span>${sel('talal')}</label></div>`;
+      <label><span>سلمان الفرج</span>${sel('salman')}</label><label><span>عبدالله الشمراني</span>${sel('abdullah')}</label><label><span>طلال وايل</span>${sel('talal')}</label></div>`;
   }
   function vupHtml(V, mine) {
     if (!V || !V.map) return '';
