@@ -45,7 +45,7 @@
   // 🏷 وقت العرض الكتابة «عرض لفترة محدودة» (طلب المالك 14 نوفمبر: بدون تاريخ، والعرض فعلاً ينتهي لحاله في until — صندوق المالك يعرض التاريخ)   // «30 نوفمبر»
   const pkTwo = () => pkList().length > 1;
   const noFound = () => !!(auth && auth.role !== 'free' && auth.role !== 'admin' && auth.plan === 'train');   // 🔒 مشترك باقته «التدريب»: التأسيس مقفل عنه
-  const foundRoute = h => /^watch-(af|sf)\d{1,2}$/.test(h) || /^fq-[1-4]$/.test(h) || /^wb-t[qv](@\d{1,3})?$/.test(h);
+  const foundRoute = h => /^watch-(af|sf|ss)\d{1,2}$/.test(h) || /^fq-[1-4]$/.test(h) || /^wb-t[qv](@\d{1,3})?$/.test(h);
   const PK_SS = 'qg_pkg';   // الباقة اللي اختارها في نافذة الاشتراك (لو رجع من صفحة الدفع نكمل عليها)
   const pkSel = () => { try { return sessionStorage.getItem(PK_SS) === 'full' ? 'full' : 'train'; } catch (e) { return 'train'; } };
   const pkSet = k => { try { sessionStorage.setItem(PK_SS, k === 'full' ? 'full' : 'train'); } catch (e) {} };
@@ -64,20 +64,24 @@
   //    بنفس ترتيب «قواعد القسم اللفظي» (مذكرة التأسيس): 1 التناظر · 2 إكمال الجمل · 3 الخطأ السياقي · 4 استيعاب المقروء (أسماؤها من PART_AR)
   const ABD = { found: [1, 2, 3, 4], models: 14, en: { 1: 'Analogy', 2: 'Sentence Completion', 3: 'Contextual Error', 4: 'Reading Comprehension' } };
   //    تدريبه على النماذج = at:1–14 (داخل الموقع لكل المشتركين، يرفعها من «🎬 مقاطعي»)
-  // 👨‍🏫 سلمان الفرج: «التأسيس» = دروس «قواعد الكمي» الـ24 (sf:1–24، بنفس ترتيب مذكرة تأسيس الكمي) · «التدريب» = شرح الأقسام والنماذج (q/v)
-  //    كل درس: [عربي، إنجليزي، صفحته في مذكرة التأسيس #wb-tq، الوحدة] — بالإنجليزي يطلع الاسم الإنجليزي
+  // 👨‍🏫 سلمان الفرج: «التأسيس» = الوحدة 0 «مهارات قبل التأسيس» (ss:1–5) + دروس «قواعد الكمي» الـ24 (sf:1–24) — بنفس ترتيب مذكرة تأسيس الكمي وعرض الشرح
+  //    «التدريب» = شرح الأقسام والنماذج (q/v)
+  //    كل درس: [عربي، إنجليزي، صفحته في مذكرة التأسيس #wb-tq، الوحدة] — بالإنجليزي يطلع الاسم الإنجليزي (المذكرة v2 = 271 صفحة، 15 نوفمبر 2026)
   // i18n:off
+  const QR_S_U = ['مهارات قبل التأسيس', 'Pre-Foundation Skills'];   // 🧱 الوحدة 0 (رقم المهارة 1–5، والدروس تبدأ من 1 في الوحدة 1 مثل المذكرة)
+  const QR_S = [['الأعداد والرموز والإشارات', 'Numbers, Symbols & Signs', 4], ['الجمع السريع', 'Fast Addition', 9], ['الطرح السريع', 'Fast Subtraction', 13],
+    ['الضرب السريع', 'Fast Multiplication', 18], ['القسمة السريعة', 'Fast Division', 24]];
   const QR_U = [['أساسيات الحساب', 'Arithmetic Foundations'], ['الأعداد والأنماط والجبر', 'Numbers, Patterns & Algebra'], ['النسب والنسبة المئوية وتطبيقاتها', 'Ratios, Percentages & Applications'], ['الهندسة', 'Geometry']];
-  const QR_L = [['الجمع والطرح', 'Addition & Subtraction', 4, 1], ['الضرب والقسمة', 'Multiplication & Division', 11, 1], ['الأعداد العشرية والتقريب', 'Decimals & Approximation', 21, 1],
-    ['الكسور', 'Fractions', 28, 1], ['الأسس', 'Exponents', 36, 1], ['الجذور', 'Roots', 44, 1],
-    ['المضاعفات والقواسم والأعداد الأولية', 'Multiples, Divisors & Primes', 60, 2], ['الأعداد المتتالية والأرقام والعد', 'Consecutive Numbers, Digits & Counting', 68, 2], ['الأنماط والدوريات', 'Patterns & Cycles', 77, 2],
-    ['المعادلات والمسائل اللفظية', 'Equations & Word Problems', 87, 2], ['المقادير الجبرية والمتطابقات', 'Algebraic Expressions & Identities', 94, 2], ['المتباينات والمقارنات بمتغيرات', 'Inequalities & Comparisons with Variables', 100, 2],
-    ['النسبة والتناسب', 'Ratio & Proportion', 116, 3], ['النسبة المئوية', 'Percentages', 127, 3], ['الربح والخسارة والخصم', 'Profit, Loss & Discount', 136, 3],
-    ['السرعة والمسافة والزمن', 'Speed, Distance & Time', 143, 3], ['الأعمار والمتوسط الحسابي', 'Ages & Averages', 149, 3], ['الإحصاء وقراءة الرسوم البيانية', 'Statistics & Reading Charts', 155, 3],
-    ['الزوايا والمستقيمات المتوازية', 'Angles & Parallel Lines', 174, 4], ['المثلث', 'Triangles', 186, 4], ['الأشكال الرباعية والمضلعات', 'Quadrilaterals & Polygons', 200, 4],
-    ['الدائرة والساعة', 'Circles & Clocks', 210, 4], ['المساحات المظللة والأشكال المركّبة', 'Shaded Areas & Composite Shapes', 225, 4], ['المجسمات والإحداثيات والاتجاهات', '3D Shapes, Coordinates & Directions', 240, 4]];
+  const QR_L = [['الجمع والطرح', 'Addition & Subtraction', 30, 1], ['الضرب والقسمة', 'Multiplication & Division', 37, 1], ['الأعداد العشرية والتقريب', 'Decimals & Approximation', 46, 1],
+    ['الكسور', 'Fractions', 54, 1], ['الأسس', 'Exponents', 62, 1], ['الجذور', 'Roots', 70, 1],
+    ['المضاعفات والقواسم والأعداد الأولية', 'Multiples, Divisors & Primes', 83, 2], ['الأعداد المتتالية والأرقام والعد', 'Consecutive Numbers, Digits & Counting', 91, 2], ['الأنماط والدوريات', 'Patterns & Cycles', 99, 2],
+    ['المعادلات والمسائل اللفظية', 'Equations & Word Problems', 109, 2], ['المقادير الجبرية والمتطابقات', 'Algebraic Expressions & Identities', 116, 2], ['المتباينات والمقارنات بمتغيرات', 'Inequalities & Comparisons with Variables', 122, 2],
+    ['النسبة والتناسب', 'Ratio & Proportion', 135, 3], ['النسبة المئوية', 'Percentages', 144, 3], ['الربح والخسارة والخصم', 'Profit, Loss & Discount', 152, 3],
+    ['السرعة والمسافة والزمن', 'Speed, Distance & Time', 158, 3], ['الأعمار والمتوسط الحسابي', 'Ages & Averages', 164, 3], ['الإحصاء وقراءة الرسوم البيانية', 'Statistics & Reading Charts', 171, 3],
+    ['الزوايا والمستقيمات المتوازية', 'Angles & Parallel Lines', 190, 4], ['المثلث', 'Triangles', 202, 4], ['الأشكال الرباعية والمضلعات', 'Quadrilaterals & Polygons', 214, 4],
+    ['الدائرة والساعة', 'Circles & Clocks', 224, 4], ['المساحات المظللة والأشكال المركّبة', 'Shaded Areas & Composite Shapes', 239, 4], ['المجسمات والإحداثيات والاتجاهات', '3D Shapes, Coordinates & Directions', 254, 4]];
   // i18n:on
-  const qrName = n => QR_L[n - 1][EN ? 1 : 0];
+  const qrName = n => QR_L[n - 1][EN ? 1 : 0], qsName = n => QR_S[n - 1][EN ? 1 : 0];
   const ytUrl = id => 'https://youtu.be/' + id;
   // 🎬 كل المشتركين يشوفون المقاطع هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميلهم
   // auth.vids = المقاطع المرفوعة للموقع · لو مقطع ما انرفع للحين: عضو القناة القديم يفتح مقطع الأعضاء، والمجاني/التحويل نسخته الخاصة (auth.yt)، ومشترك الدفع من الموقع يطلع له «قريباً»
@@ -405,7 +409,7 @@
         auth.sub = r.sub; auth.yt = r.yt || null; lsSet(LS.auth, auth); if (!location.hash || location.hash === '#') renderHome(); }
       if (r && r.ok && auth && isSub() && r.plan && (r.plan !== auth.plan || (r.pkg || '') !== (auth.pkg || '') || (r.fu || 0) !== (auth.fu || 0))) {   // 📦 باقته تغيّرت (اشترى، أو المالك غيّرها، أو خلصت مدة التأسيس)
         const was = auth.plan || 'full'; auth.plan = r.plan; auth.pkg = r.pkg || ''; auth.fu = r.fu || 0; lsSet(LS.auth, auth);
-        if (was !== r.plan && (!location.hash || /^#($|sharh|advisor|me$|watch-(af|sf)|fq-|wb-t)/.test(location.hash))) route(); }   // الأقفال تتحدّث في الصفحة المفتوحة
+        if (was !== r.plan && (!location.hash || /^#($|sharh|advisor|me$|watch-(af|sf|ss)|fq-|wb-t)/.test(location.hash))) route(); }   // الأقفال تتحدّث في الصفحة المفتوحة
       if (r && r.ok && isSub()) setTimeout(resRecover, 1500);   // 📨 نتائج اكتملت وما وصلت للخادم (مرة كل 10 دقائق)
     } catch (e) {} finally { hbBusy = false; }
   }
@@ -416,7 +420,7 @@
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
-    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-sf/.test(h)) return _T('تأسيس الكمي'); if (/^fq-/.test(h)) return _T('اختبارات التأسيس'); if (h === 'advisor') return _T('مرشدك الأكاديمي'); if (/^watch-at/.test(h)) return _T('تدريب اللفظي');
+    if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-af/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-s[fs]/.test(h)) return _T('تأسيس الكمي'); if (/^fq-/.test(h)) return _T('اختبارات التأسيس'); if (h === 'advisor') return _T('مرشدك الأكاديمي'); if (/^watch-at/.test(h)) return _T('تدريب اللفظي');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
     return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
@@ -962,7 +966,7 @@
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
     if (/^wb-t[qv](@\d{1,3})?$/.test(h)) return renderWorkbook(h.slice(3, 5), false, +(h.split('@')[1] || 0));   // 🧱 مذكرات التأسيس (قواعد الكمي/اللفظي)
-    if (/^watch-([qv]|af|at|sf)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af/at = تأسيس وتدريب عبدالله الشمراني · sf = تأسيس سلمان الفرج
+    if (/^watch-([qv]|af|at|sf|ss)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af/at = تأسيس وتدريب عبدالله الشمراني · ss/sf = تأسيس سلمان الفرج (مهارات الوحدة 0 + الدروس)
     if (/^fq-[1-4]$/.test(h)) return renderFq(+h.slice(3));   // 📝 اختبار درس التأسيس
     if (h === 'advisor') return renderAdvisor();   // 🎓 مرشدك الأكاديمي
     if (h === 'me') return renderProfile();   // 👤 ملفي
@@ -1311,7 +1315,7 @@
         <div class="ac"><button type="button" class="btn sm ghost" data-up="${WB_T[k][0]}">⬆️ رقّ باقتك</button></div></div>`
       : _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]}</b><span class="mut">${desc}</span></div>
         <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة (مع القلم)</a>${more || ''}</div></div>`;
-    el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 257 صفحة · 24 درس، كل قانون مع أمثلة محلولة وترجمة عربية')) +
+    el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 271 صفحة · 5 مهارات و24 درس، كل قانون مع أمثلة محلولة وترجمة عربية')) +
       fcard('tv', '📖', _T('قواعد اللفظي · طريقة حل كل نوع من أسئلة اللفظي')) +
       _T('<h3 class="wbg">🏋️ التدريب</h3>') +
       card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
@@ -1325,7 +1329,7 @@
   // solved = 📗 النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته (meta.sp = الصفحات اللي فيها أسئلة، والباقي نفس الأصلية)
   // 🧱 مذكرات التأسيس: نفس العارض (القلم، بدون تحميل) لكل المشتركين — tq = قواعد الكمي · tv = قواعد اللفظي (صفحة كل درس من دروس عبدالله الشمراني: TV_PAGE)
   const WB_T = { tq: [_T('تأسيس الكمي'), '📐'], tv: [_T('تأسيس اللفظي'), '📖'] }, TV_PAGE = { 1: 2, 2: 3, 3: 3, 4: 4 };
-  const WB_V = 3;   // ⬆️ ارفعه لو تغيّرت meta.json لأي مذكرة (3 = قواعد الكمي الجديدة: 257 صفحة)
+  const WB_V = 4;   // ⬆️ ارفعه لو تغيّرت meta.json لأي مذكرة (4 = قواعد الكمي v2: 271 صفحة، فيها الوحدة 0 «مهارات قبل التأسيس»)
   async function renderWorkbook(kind, solved, startPage) {
     const found = !!WB_T[kind];
     const title = found ? WB_T[kind][0] : EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
@@ -1390,11 +1394,13 @@
   // 👨‍🏫 مقاطع المدرسين اللي ما لها يوتيوب (داخل الموقع لكل المشتركين): مين المدرس، وصفحته وقسمها، ورابط قواعد الدرس في مذكرة التأسيس
   const TK = { af: { t: 1, page: 'abdullah', tab: 'f', head: _T('🧱 تأسيس اللفظي'), wb: n => '#wb-tv@' + TV_PAGE[n] },
     at: { t: 1, page: 'abdullah', tab: 't', head: _T('🏋️ تدريب اللفظي') },
-    sf: { t: 0, page: 'salman', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_L[n - 1][2] } };
+    sf: { t: 0, page: 'salman', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_L[n - 1][2] },
+    ss: { t: 0, page: 'salman', tab: 'f', head: _T('🧱 تأسيس الكمي'), wb: n => '#wb-tq@' + QR_S[n - 1][2] } };   // 🧱 الوحدة 0: مهارات قبل التأسيس
   function vidList(k) {
     if (k === 'af') return ABD.found.map(n => ({ key: 'af:' + n, h: 'af' + n, n, label: PART_AR[n], dur: '' }));   // 🧱 تأسيس عبدالله الشمراني
     if (k === 'at') return Array.from({ length: ABD.models }, (_, i) => ({ key: 'at:' + (i + 1), h: 'at' + (i + 1), n: i + 1, label: vLabel('v', i + 1), dur: '' }));   // 🏋️ تدريبه على النماذج
     if (k === 'sf') return QR_L.map((x, i) => ({ key: 'sf:' + (i + 1), h: 'sf' + (i + 1), n: i + 1, label: qrName(i + 1), dur: '' }));   // 🧱 تأسيس سلمان الفرج (قواعد الكمي)
+    if (k === 'ss') return QR_S.map((x, i) => ({ key: 'ss:' + (i + 1), h: 'ss' + (i + 1), n: i + 1, label: qsName(i + 1), dur: '' }));   // 🧱 الوحدة 0: مهارات قبل التأسيس
     const L = [];
     YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: vLabel(k, i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
@@ -1402,18 +1408,20 @@
   function vidStop() { if (!VID) return; clearInterval(VID.wm); clearInterval(VID.sv); document.removeEventListener('fullscreenchange', VID.fs); try { VID.v.pause(); VID.v.removeAttribute('src'); VID.v.load(); } catch (e) {} VID = null; }
   async function renderWatch(h) {
     vidStop();
-    const hm = /^(af|at|sf|q|v)(\d{1,2})$/.exec(h) || [], k = hm[1], n = +hm[2], X = TK[k], fd = !!(X && X.tab === 'f'), L = k ? vidList(k) : [], cur = L.find(x => x.n === n);
+    const hm = /^(af|at|sf|ss|q|v)(\d{1,2})$/.exec(h) || [], k = hm[1], n = +hm[2], X = TK[k], fd = !!(X && X.tab === 'f'), L = k ? vidList(k) : [], cur = L.find(x => x.n === n);
     if (!cur) { location.replace('#sharh'); return; }
     // اسم المقطع: التأسيس = اسم الدرس · تدريب عبدالله = «تدريب النموذج 3» · سلمان = «شرح القسم 3»
     const what = fd ? esc(cur.label) : X ? _T`تدريب ${esc(cur.label)}` : _T`شرح ${esc(cur.label)}`;
     document.title = (fd ? _T('التأسيس: ') + cur.label : X ? _T('تدريب ') + cur.label : _T('شرح ') + cur.label) + ' | Q-Guide';
-    const i = L.indexOf(cur), prev = L[i - 1], next = L[i + 1], W = lsGet(VW_LS, {});
+    const i = L.indexOf(cur), W = lsGet(VW_LS, {}); let prev = L[i - 1], next = L[i + 1];
+    if (k === 'ss' && !next) next = vidList('sf')[0];   // 🧱 بعد آخر مهارة في الوحدة 0 → الدرس 1، وقبل الدرس 1 → آخر مهارة
+    if (k === 'sf' && !prev) prev = vidList('ss')[QR_S.length - 1];
     // 🧱 التأسيس: «📘 قواعد الدرس» في مذكرة التأسيس + رجعة لدروسه · التدريب والشرح: «حل النموذج/القسم»
     const tpH = X ? '#sharh-' + X.page + '/' + X.tab : '';
     const hasQ = k === 'af' && !isFree();   // 📝 الدرس له اختبار
     const solve = fd ? (hasQ ? _T`<a class="btn sm gold" href="#fq-${n}">📝 اختبر فهمك</a>` : '') + _T`<a class="btn sm${hasQ ? ' ghost' : ''}" href="${X.wb(n)}">📘 قواعد الدرس</a><a class="btn sm ghost" href="${tpH}">🧱 دروس التأسيس</a>`
       : X ? _T`<a class="btn sm" href="#v${n}">✍️ حل ${vLabel('v', n)}</a><a class="btn sm ghost" href="${tpH}">🏋️ التدريب</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
-    const teach = TEACHERS[X ? X.t : 0].name, sub = fd ? _T`الدرس ${n} من ${L.length}` : X ? _T`${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
+    const teach = TEACHERS[X ? X.t : 0].name, sub = fd ? (k === 'ss' ? _T`المهارة ${n} من ${L.length}` : _T`الدرس ${n} من ${L.length}`) : X ? _T`${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
     const head = X ? _T`<h2 class="h2">${X.head}</h2><span class="wvhl"><a class="lnk2" href="${tpH}">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
       : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh-salman/t">👨‍🏫 صفحة المدرس</a></span>`;
     app.innerHTML = topbar(_T`<span class="ttl">🎬 ${what}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
@@ -1495,32 +1503,33 @@
   //    سلمان: التأسيس = دروس «قواعد الكمي» الـ24 (sf) · التدريب = شرح الأقسام والنماذج (يوتيوب أو داخل الموقع مثل قبل)
   //    عبدالله: التأسيس = 4 دروس اللفظي (af) · التدريب = النماذج الـ14 (at)
   const TP = {
-    salman: { t: 0, ls: 'qg_tp_sal', fk: 'sf', fn: QR_L.length, wb: 'tq', ft: _T('تأسيس الكمي'), desc: _T('مدرس الكمي واللفظي. يأسّسك في قواعد الكمي درس درس، ويشرح لك أقسام الكمي ونماذج اللفظي.') },
+    salman: { t: 0, ls: 'qg_tp_sal', fk: 'sf', fn: QR_S.length + QR_L.length, pre: QR_S.length, wb: 'tq', ft: _T('تأسيس الكمي'), desc: _T('مدرس الكمي واللفظي. يأسّسك في قواعد الكمي درس درس، ويشرح لك أقسام الكمي ونماذج اللفظي.') },
     abdullah: { t: 1, ls: 'qg_tp_abd', fk: 'af', fn: ABD.found.length, wb: 'tv', quiz: 1, ft: _T('تأسيس اللفظي'), desc: _T('مدرس اللفظي. يبدأ معك من الأساس بطريقة حل كل نوع من أسئلة اللفظي الأربعة، وبعدها يدرّبك على النماذج.') },
   };
   function renderTeach(id, tabHint) {
     const C = TP[id], t = TEACHERS[C.t]; document.title = t.name + ' | Q-Guide';
     const W = lsGet(VW_LS, {}), free = isFree(), adm = auth.role === 'admin', seen = k => W[k] && W[k].w, pkl = noFound();   // 📦 pkl = باقته «التدريب»: التأسيس مقفل (يفتح نافذة الترقية)
-    const fkeys = Array.from({ length: C.fn }, (_, i) => C.fk + ':' + (i + 1)), fUp = fkeys.filter(vidHas).length, fSeen = fkeys.filter(seen).length;
+    const fkeys = Array.from({ length: C.fn }, (_, i) => C.pre ? (i < C.pre ? 'ss:' + (i + 1) : C.fk + ':' + (i - C.pre + 1)) : C.fk + ':' + (i + 1)), fUp = fkeys.filter(vidHas).length, fSeen = fkeys.filter(seen).length;
     // حالة كل درس: الزائر 🔒 (يفتح نافذة الاشتراك) · شاهده ✓ · انرفع ▶ · ما انرفع ⏳
     // 📝 اختبار الدرس (دروس عبدالله): زر جنب كل درس فيه أفضل نتيجة للطالب
     const quiz = n => { if (!C.quiz) return ''; const B = fqBest(n);
       if (free) return _T`<button type="button" class="tlq lock" data-lock="اختبارات التأسيس" data-pk="full"><span class="tlqi" aria-hidden="true">📝</span><span class="tlqx"><b>اختبار الدرس</b><small>🔒 للمشتركين</small></span></button>`;
       if (pkl) return _T`<button type="button" class="tlq lock" data-up="اختبارات التأسيس"><span class="tlqi" aria-hidden="true">📝</span><span class="tlqx"><b>اختبار الدرس</b><small>🔒 باقة التأسيس</small></span></button>`;
       return _T`<a class="tlq${B ? (B.best >= FQ_PASS ? ' ok' : ' mid') : ''}" href="#fq-${n}"><span class="tlqi" aria-hidden="true">${B && B.best >= FQ_PASS ? '✓' : '📝'}</span><span class="tlqx"><b>اختبار الدرس</b><small>${B ? _T`أفضل نتيجة لك <bdi dir="ltr">${B.best}/${B.n}</bdi>` : _T('12 سؤال تتأكد فيها من فهمك')}</small></span></a>`; };
-    const lesson0 = n => { const key = C.fk + ':' + n, w = seen(key), has = vidHas(key) || adm;
-      const ar = id === 'salman' ? QR_L[n - 1][0] : PART_AR[n], en = id === 'salman' ? QR_L[n - 1][1] : ABD.en[n];
+    const lesson0 = (n, fk = C.fk) => { const key = fk + ':' + n, w = seen(key), has = vidHas(key) || adm, R = fk === 'ss' ? QR_S[n - 1] : QR_L[n - 1];   // fk = ss: مهارات الوحدة 0
+      const ar = id === 'salman' ? R[0] : PART_AR[n], en = id === 'salman' ? R[1] : ABD.en[n];
       const body = `<span class="tln" aria-hidden="true">${n}</span><span class="tlx"><b>${EN ? en : ar}</b>${EN ? '' : `<small dir="ltr">${en}</small>`}</span>`;
       if (free) return _T`<button type="button" class="tle lock" data-lock="${C.ft}" data-pk="full">${body}<span class="tls">🔒 للمشتركين</span></button>`;
       if (pkl) return _T`<button type="button" class="tle lock" data-up="${C.ft}">${body}<span class="tls">🔒 باقة التأسيس</span></button>`;
       if (!has) return _T`<div class="tle soon" aria-disabled="true">${body}<span class="tls">⏳ قريباً</span></div>`;
-      return _T`<a class="tle${w ? ' ok' : ''}" href="#watch-${C.fk}${n}">${body}<span class="tls">${w ? _T('✓ شاهدته') : _T('▶ شاهد الدرس')}</span></a>`; };
-    const lesson = n => C.quiz ? `<div class="tlw">${lesson0(n)}${quiz(n)}</div>` : lesson0(n);
+      return _T`<a class="tle${w ? ' ok' : ''}" href="#watch-${fk}${n}">${body}<span class="tls">${w ? _T('✓ شاهدته') : _T('▶ شاهد الدرس')}</span></a>`; };
+    const lesson = (n, fk) => C.quiz ? `<div class="tlw">${lesson0(n)}${quiz(n)}</div>` : lesson0(n, fk);
+    const unitH = (no, u) => `<h3 class="tpu"><span class="tpun" aria-hidden="true">${no}</span>${EN ? u[1] : u[0]}<small>${EN ? 'Unit ' + no : _T`الوحدة ${no}`}</small></h3>`;
     const lessons = id === 'salman'
-      ? QR_U.map((u, ui) => `<h3 class="tpu"><span class="tpun" aria-hidden="true">${ui + 1}</span>${EN ? u[1] : u[0]}<small>${EN ? 'Unit ' + (ui + 1) : _T`الوحدة ${ui + 1}`}</small></h3>
+      ? unitH(0, QR_S_U) + `<div class="tles">${QR_S.map((x, i) => lesson(i + 1, 'ss')).join('')}</div>` + QR_U.map((u, ui) => unitH(ui + 1, u) + `
           <div class="tles">${QR_L.map((x, i) => x[3] === ui + 1 ? lesson(i + 1) : '').join('')}</div>`).join('')
-      : `<div class="tles${C.quiz ? ' wq' : ''}">${ABD.found.map(lesson).join('')}</div>`;
-    const pct = Math.round(fSeen * 100 / C.fn), fN = EN ? enN(C.fn, 'lesson', 'lessons') : C.fn + (C.fn <= 10 ? ' دروس' : ' درس');   // i18n:skip
+      : `<div class="tles${C.quiz ? ' wq' : ''}">${ABD.found.map(n => lesson(n)).join('')}</div>`;
+    const pct = Math.round(fSeen * 100 / C.fn), fN = C.pre ? (EN ? C.pre + ' skills + ' + (C.fn - C.pre) + ' lessons' : C.pre + ' مهارات و' + (C.fn - C.pre) + ' درس') : EN ? enN(C.fn, 'lesson', 'lessons') : C.fn + (C.fn <= 10 ? ' دروس' : ' درس');   // i18n:skip
     const fUpg = pkl ? _T`<div class="tpup"><span class="tpup-i" aria-hidden="true">🔒</span><div class="tpup-t"><b>التأسيس ضمن باقة «التأسيس والتدريب»</b><span>باقتك الحين «التدريب». رقّها وتنفتح لك دروس التأسيس واختباراتها ومذكرتا التأسيس.</span></div><button type="button" class="btn gold sm" data-up="${C.ft}">⬆️ رقّ باقتك</button></div>` : '';
     const fSoon = pkl ? '' : !fUp && !adm ? _T`<div class="tpsoon"><b>⏳ التأسيس ينزل قريباً</b><span>${t.name} يشرح ${C.ft} درس درس (${fN}). لين ينزل، ابدأ من <a href="#wb-${C.wb}">مذكرة التأسيس</a>.</span></div>` : '';
     const fBar = _T`<div class="tpbar"><div class="tpbt"><b>${C.ft}</b><span>${free || pkl ? (id === 'salman' ? _T`${fN}: كل قواعد الكمي من الأساس` : _T('4 دروس: طريقة حل كل نوع من أسئلة اللفظي')) : fSeen ? _T`شاهدت ${fSeen} من ${C.fn}` : fUp ? _T('ابدأ بالدرس الأول، وكل درس يجهّزك لنوع من الأسئلة') : _T`${fN} بنفس ترتيب مذكرة التأسيس`}</span></div>
@@ -1820,7 +1829,7 @@
     // 🧱 التأسيس
     const VW = lsGet(VW_LS, {}), fl = n => { const B = fqBest(n), seen = VW['af:' + n] && VW['af:' + n].w, ok = B && B.best >= FQ_PASS;
       return `<div class="advl${ok ? ' ok' : ''}"><span class="advln" aria-hidden="true">${ok ? '✓' : n}</span><span class="advlx"><b>${esc(fqName(n))}</b><small>${seen ? _T('✓ شاهدت الدرس') : _T('ما شاهدت الدرس')} · ${B ? _T`الاختبار <bdi dir="ltr">${B.best}/${B.n}</bdi>` : _T('ما حليت الاختبار')}</small></span><a class="btn sm ghost" href="${seen || !vidHas('af:' + n) ? '#fq-' + n : '#watch-af' + n}">${seen || !vidHas('af:' + n) ? (B ? _T('أعد الاختبار') : _T('📝 الاختبار')) : _T('▶ الدرس')}</a></div>`; };
-    const sfSeen = QR_L.filter((_, i) => VW['sf:' + (i + 1)] && VW['sf:' + (i + 1)].w).length;
+    const sfKeys = QR_S.map((_, i) => 'ss:' + (i + 1)).concat(QR_L.map((_, i) => 'sf:' + (i + 1))), sfSeen = sfKeys.filter(k => VW[k] && VW[k].w).length;   // 🧱 مهارات الوحدة 0 + الدروس
     const asks = [_T('وش أذاكر اليوم؟'), _T('رتّب لي جدول مذاكرة لين اختباري'), _T('كيف أرفع درجتي في اللفظي؟'), _T('كيف أرفع درجتي في الكمي؟'), _T('وش أسوي آخر أسبوع قبل الاختبار؟'), _T('أتوتر في الاختبار، وش الحل؟')];
     W.innerHTML = _T`<section class="advh"><span class="advav" aria-hidden="true">✦</span>
         <div class="advhx"><h1>مرشدك الأكاديمي</h1><p>يرتب لك مذاكرتك، يتابع تقدّمك، ويجاوبك على أي سؤال في القدرات.</p></div>
@@ -1842,7 +1851,7 @@
         <div class="tpup"><span class="tpup-i" aria-hidden="true">🔒</span><div class="tpup-t"><b>التأسيس ضمن باقة «التأسيس والتدريب»</b><span>باقتك الحين «التدريب». رقّها وتنفتح لك دروس التأسيس واختباراتها ومذكرتا التأسيس.</span></div><button type="button" class="btn gold sm" data-up="التأسيس">⬆️ رقّ باقتك</button></div></section>`
       : `<section class="advf" aria-labelledby="advfh"><div class="advwt"><h2 id="advfh">${_T('🧱 تأسيسك')}</h2><a class="lnk2" href="#sharh">${_T('كل الدروس')}</a></div>
         <h3 class="advfh3">${_T('اللفظي · عبدالله الشمراني')}</h3><div class="advls">${[1, 2, 3, 4].map(fl).join('')}</div>
-        <a class="advsf" href="#sharh-salman/f"><span aria-hidden="true">📐</span><span class="advlx"><b>${_T('الكمي · سلمان الفرج')}</b><small>${_T`شاهدت ${sfSeen} من ${QR_L.length} درس`}</small></span><i class="pg" aria-hidden="true"><span style="width:${Math.round(sfSeen * 100 / QR_L.length)}%"></span></i></a></section>`}
+        <a class="advsf" href="#sharh-salman/f"><span aria-hidden="true">📐</span><span class="advlx"><b>${_T('الكمي · سلمان الفرج')}</b><small>${_T`شاهدت ${sfSeen} من ${sfKeys.length} درس`}</small></span><i class="pg" aria-hidden="true"><span style="width:${Math.round(sfSeen * 100 / sfKeys.length)}%"></span></i></a></section>`}
       <section class="advqs" aria-labelledby="advqh"><h2 id="advqh">💬 اسأل مرشدك</h2><div class="advqc">${asks.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div></section>`;
     $('#advask').onclick = () => { if (window.QGAI) QGAI.help(); };
     W.querySelectorAll('.advqc [data-q]').forEach(b => b.onclick = () => { if (window.QGAI) QGAI.ask(b.dataset.q); });
@@ -4089,7 +4098,7 @@
   // ---------- 📊 التقرير الشامل للطالب (المالك): كل اللي يبين هل ذاكر فعلاً ----------
   const RP_TYPE = { yt: '▶️ مشترك يوتيوب', free: '🎁 اشتراك مجاني', bank: '🏦 تحويل بنكي', pay: '💳 دفع من الموقع' };
   const rpSet = id => id === 'qall' ? 'الشامل كمي' : id === 'vall' ? 'الشامل لفظي' : id === 'v15' ? 'الأسئلة الجديدة' : /^q\d+$/.test(id) ? 'القسم ' + id.slice(1) : /^v\d+$/.test(id) ? 'النموذج ' + id.slice(1) : id;
-  const rpVid = k => { const m = /^([a-z]+):(.+)$/.exec(k || ''); if (!m) return k; if (m[1] === 'sf') return 'تأسيس الكمي: ' + (QR_L[+m[2] - 1] || [k])[0]; if (m[1] === 'af') return 'تأسيس اللفظي: ' + (PART_AR[+m[2]] || k); if (m[1] === 'at') return 'تدريب عبدالله: النموذج ' + m[2];
+  const rpVid = k => { const m = /^([a-z]+):(.+)$/.exec(k || ''); if (!m) return k; if (m[1] === 'sf') return 'تأسيس الكمي: ' + (QR_L[+m[2] - 1] || [k])[0]; if (m[1] === 'ss') return 'تأسيس الكمي: ' + (QR_S[+m[2] - 1] || [k])[0]; if (m[1] === 'af') return 'تأسيس اللفظي: ' + (PART_AR[+m[2]] || k); if (m[1] === 'at') return 'تدريب عبدالله: النموذج ' + m[2];
     return m[2] === 'rules' ? (m[1] === 'q' ? 'قواعد الكمي' : 'قواعد اللفظي') : k === 'v:15' ? 'الأسئلة الجديدة' : (m[1] === 'q' ? 'القسم ' : 'النموذج ') + m[2]; };
   const rpDur = x => { x = Math.max(0, Math.round(x || 0)); const h = Math.floor(x / 3600), m = Math.round(x % 3600 / 60); return h ? h + ' س' + (m ? ' ' + m + ' د' : '') : m ? m + ' د' : x ? 'أقل من دقيقة' : '—'; };
   const rpN = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? n + ' ' + few : n + ' ' + many;
@@ -5057,7 +5066,7 @@
     const W = $('#adm'), V = ADM.vids; if (!W) return;
     if (!V || !V.map) { W.innerHTML = '<div class="rgsync warn">⚠️ تعذّر قراءة حالة المقاطع. حدّث الصفحة.</div>'; return; }
     const keys = Object.keys(V.map), have = new Set(V.files || []), grp = (re) => { const k = keys.filter(x => re.test(x)); return [k.filter(x => have.has(x)).length, k.length]; };
-    const G = [['📐📖', 'شرح سلمان (الأقسام والنماذج)', grp(/^[qv]:/)], ['🧱', 'تأسيس الكمي · سلمان', grp(/^sf:/)], ['🧱', 'تأسيس اللفظي · عبدالله', grp(/^af:/)], ['🏋️', 'تدريب اللفظي · عبدالله', grp(/^at:/)]];
+    const G = [['📐📖', 'شرح سلمان (الأقسام والنماذج)', grp(/^[qv]:/)], ['🧱', 'تأسيس الكمي · سلمان', grp(/^s[fs]:/)], ['🧱', 'تأسيس اللفظي · عبدالله', grp(/^af:/)], ['🏋️', 'تدريب اللفظي · عبدالله', grp(/^at:/)]];
     const views = V.views ? V.views.reduce((a, r) => a + r.n, 0) : 0, miss = keys.filter(k => /^[qv]:/.test(k) && !have.has(k));
     VUP.open = 1;
     W.innerHTML = `<div class="stf subs vidpg">
@@ -5215,11 +5224,11 @@ ${tgBox()}
 
   // ---------- ⬆️ رفع المقاطع للموقع: المالك (كل المقاطع، في «💳 الاشتراكات») والمدرس (مقاطعه هو، «🎬 مقاطعي») — ملف MP4 لكل مقطع، بالأجزاء مع نسبة التقدّم ----------
   const VUP = { busy: 0, st: {}, miss: [], open: 0 };   // st[ملف] = {p: 0..1, err} · miss = ملفات ما عرفنا مقطعها من اسمها · open = صندوق المالك مفتوح
-  // المجموعات بالترتيب: سلمان الفرج — تأسيس الكمي sf · تدريب الكمي q · تدريب اللفظي v | عبدالله الشمراني — تأسيس اللفظي af · التدريب على النماذج at
-  const VUP_G = { sf: '🧱 سلمان الفرج · التأسيس (قواعد الكمي)', q: '📐 سلمان الفرج · تدريب الكمي', v: '📖 سلمان الفرج · تدريب اللفظي', af: '🧱 عبدالله الشمراني · التأسيس', at: '🏋️ عبدالله الشمراني · التدريب (النماذج)' };
-  const VUP_GT = { sf: '🧱 التأسيس · دروس قواعد الكمي', q: '📐 التدريب · أقسام الكمي', v: '📖 التدريب · نماذج اللفظي', af: '🧱 التأسيس · دروس اللفظي', at: '🏋️ التدريب · النماذج' };   // «🎬 مقاطعي» (بدون اسم المدرس)
-  const VUP_O = { sf: 0, q: 100, v: 200, af: 300, at: 400 };
-  const vupLabel = (g, n) => g === 'sf' ? n + '. ' + QR_L[n - 1][0] : g === 'af' ? n + '. ' + PART_AR[n] : g === 'v' && n === 15 ? 'الأسئلة الجديدة' : (g === 'q' ? 'القسم ' : 'النموذج ') + n;
+  // المجموعات بالترتيب: سلمان الفرج — تأسيس الكمي (مهارات الوحدة 0 ss + الدروس sf) · تدريب الكمي q · تدريب اللفظي v | عبدالله الشمراني — تأسيس اللفظي af · التدريب على النماذج at
+  const VUP_G = { ss: '🧱 سلمان الفرج · التأسيس: الوحدة 0 (مهارات قبل التأسيس)', sf: '🧱 سلمان الفرج · التأسيس (قواعد الكمي)', q: '📐 سلمان الفرج · تدريب الكمي', v: '📖 سلمان الفرج · تدريب اللفظي', af: '🧱 عبدالله الشمراني · التأسيس', at: '🏋️ عبدالله الشمراني · التدريب (النماذج)' };
+  const VUP_GT = { ss: '🧱 التأسيس · مهارات قبل التأسيس', sf: '🧱 التأسيس · دروس قواعد الكمي', q: '📐 التدريب · أقسام الكمي', v: '📖 التدريب · نماذج اللفظي', af: '🧱 التأسيس · دروس اللفظي', at: '🏋️ التدريب · النماذج' };   // «🎬 مقاطعي» (بدون اسم المدرس)
+  const VUP_O = { ss: 0, sf: 10, q: 100, v: 200, af: 300, at: 400 };
+  const vupLabel = (g, n) => g === 'ss' ? 'المهارة ' + n + '. ' + QR_S[n - 1][0] : g === 'sf' ? n + '. ' + QR_L[n - 1][0] : g === 'af' ? n + '. ' + PART_AR[n] : g === 'v' && n === 15 ? 'الأسئلة الجديدة' : (g === 'q' ? 'القسم ' : 'النموذج ') + n;
   function vupSlots(V) { const M = (V && V.map) || {}, objs = (V && V.objects) || [];
     return Object.keys(M).map(k => { const f = M[k], o = objs.find(x => x.key === f), m = /^([a-z]+):(\d+)$/.exec(k);
       if (!m || VUP_O[m[1]] == null) return null;
@@ -5233,6 +5242,7 @@ ${tgBox()}
       for (const [re, i] of VUP_AF) if (re.test(n)) return 'shamrani/f' + i + '.mp4';
       return ''; }
     if (/(extra|new)\s*(questions?|15)\b|الأسئلة الجديدة|الاسئلة الجديدة|أسئلة جديدة|اسئلة جديدة|(?:model|نموذج)\s*15\b/.test(n)) return 'v/m15.mp4';
+    m = /(?:skill|مهارة|المهارة)\s*0?(\d)\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= QR_S.length) return 'salman/s' + m[1].padStart(2, '0') + '.mp4';   // 🧱 الوحدة 0: Skill 3
     m = /(?:lesson|درس)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= QR_L.length) return 'salman/f' + m[1].padStart(2, '0') + '.mp4';   // 🧱 تأسيس الكمي: Lesson 7
     m = /(?:section|sec|قسم)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'q/s' + m[1].padStart(2, '0') + '.mp4';
     m = /(?:model|نموذج)\s*0?(\d{1,2})\b/.exec(n); if (m && +m[1] >= 1 && +m[1] <= 14) return 'v/m' + m[1].padStart(2, '0') + '.mp4';
