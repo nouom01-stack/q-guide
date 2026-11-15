@@ -3793,8 +3793,7 @@
   const CH_TRICK = 'فيه خيار يخدعك', CH_FIG = 'ركّز في الرسمة وجاوب', CH_TRAP = 'أغلب الناس يغلطون فيه', CH_TRAP_C = 'فيها سؤال أغلب الناس يغلطون فيه';
   const CH_ASK = 'اكتب حرف إجابتك في التعليقات';
   const CH_IC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.6a8.3 8.3 0 0 1-8.4 8.2 8.8 8.8 0 0 1-3.8-.85L3.5 20.5l1.6-4.4a7.9 7.9 0 0 1-1-3.9 8.3 8.3 0 0 1 8.4-8.3 8.3 8.3 0 0 1 8 7.7z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
-  const CH_COURSE = 'دورة كيو قايد للقدرات الإنجليزي: تدريب على أسئلة الاختبار مع الشرح';
-  const CH_TAGS = '#قدرات #القدرات_الانجليزي #قياس #اختبار_القدرات';
+  const CH_TAGS = '#قياس #قدرات #GAT';   // هاشتاقات المالك (16 نوفمبر 2026)
   const CH_TIPS = ['مقطع واحد كل يوم في وقت ثابت', 'ارفع المقطع بالطول وبجودة 1080', 'رد على التعليقات في أول ساعة، وقول للي جاوب صح إنه صح', 'لا تكتب الجواب في الوصف، ولا تثبّت تعليق فيه الجواب قبل يوم',
     'إذا أكثر الناس اختاروا خيار غلط، سوّ مقطع رد يشرح الفخ', 'بعد 24 ساعة قارن المقاطع في متوسط المشاهدة ونسبة اللي كمّلوا للنهاية', 'جملة التحدي اللي تجيب أعلى متوسط مشاهدة، كرّرها', 'قيس كل مقطع بعدد رسايل الواتساب اللي جابها، مو بالمشاهدات بس'];
   const CH_GIFT = 'https://q-guide.online/f/';   // صفحة الملف (محتواه من الـ API الخاص)
@@ -3811,8 +3810,23 @@
   };
   const chLine = (kind, it, n) => { const L = chLines(kind, it); if (!L.length) return [0, '']; const m = lsGet('qg_stline', null) || {}, i = m[kind + n] != null ? m[kind + n] : it.ch ? it.ch.l : it.l || 0; return L.find(x => x[0] === i) || L[0]; };
   const chHook = (kind, it, n) => kind === 'r' ? `${it.fem ? 'طالبتنا جابت' : 'طالبنا جاب'} ${it.sc} في القدرات الإنجليزي` : kind === 'f' ? `اكتب «${chKw()}» في التعليقات وأرسل لك الملف` : chLine(kind, it, n)[1];
-  // 📋 الوصف: الجملة الأولى (جملة التحدي أو العنوان) · سطر عن الدورة · الهاشتاقات · رقم التواصل آخر شي — وما فيه الجواب أبداً
-  const chDesc = (kind, it, n) => [chHook(kind, it, n), CH_COURSE, CH_TAGS, 'للاشتراك تواصل واتساب: ' + ST_WA.replace(/\s/g, '')].join('\n');
+  // 📋 الوصف الكامل (طلب المالك 16 نوفمبر 2026: «وصف كامل متكامل فيه كل مميزات الدورة … والهاشتاغات»): جملة المقطع أول · الدورة عن وش · مميزاتها · الضمان · النتائج
+  //   · التجربة المجانية · الموقع · الواتساب · الهاشتاقات آخر شي — من نصوص الموقع المعتمدة (الصفحة الرئيسية)، بدون أسعار (العرض ينتهي) وبدون الجواب أبداً
+  const CH_ABOUT = ['📚 دورة كيو قايد للقدرات الإنجليزي', 'تجهيز كامل لاختبار القدرات العامة باللغة الإنجليزية: الأسئلة بالإنجليزي، والشرح بالعربي، وكل شي في موقع واحد.', '',
+    '✨ وش تاخذ لما تشترك؟',
+    '▫️ 14 قسم كمي و14 نموذج لفظي، فيها أكثر من 1500 سؤال ومع كل سؤال شرحه',
+    '▫️ شرح كل قسم ونموذج بالفيديو داخل الموقع',
+    '▫️ 50 سؤال لفظي من الأسئلة الجديدة',
+    '▫️ 17 اختبار محاكي بنفس شكل اختبار قياس المحوسب، بالوقت، وتراجع إجاباتك مع الشرح',
+    '▫️ مرشد أكاديمي ذكي يجاوب أسئلتك ويرتّب خطة مذاكرتك على موعد اختبارك',
+    '▫️ تدريب مركّز على نقاط ضعفك، ومذكرات باسمك تكتب عليها بالقلم',
+    '▫️ باقة التأسيس والتدريب: تأسيس اللفظي بالفيديو من الصفر مع اختبار بعد كل درس، ومذكرة تأسيس للكمي وللفظي',
+    '▫️ الساحة: تتحدّى طلاب ثانيين مباشرة، وتصوّر أي سؤال ونقولك إذا هو في الدورة ووين',
+    '▫️ تقدّمك يتبعك على كل أجهزتك', '',
+    '🛡 ضمان الدرجة: حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك (الشروط في الموقع)', '',
+    '🏆 نتائج طلابنا في نوفمبر: 97 و94 و92', '',
+    '🎁 جرّب مجاناً قبل ما تشترك: القسم 1 كمي، والنموذج 1 لفظي، والاختبار المحاكي 1، وتحديد المستوى'];
+  const chDesc = (kind, it, n) => [chHook(kind, it, n), '', ...CH_ABOUT, '🌐 q-guide.online', '📲 للاشتراك تواصل واتساب: ' + ST_WA.replace(/\s/g, ''), '', CH_TAGS].join('\n');
   const chDm = () => 'هلا، هذا ملف أسئلة التناظر اللي تتكرر في الاختبار مع معنى كل كلمة:\n' + CH_GIFT;
   // القائمة لكل نوع · مقطع التحدي: الكمي اللي فيه رسمة أول (والفخ الحقيقي قبل) · اللفظي الكلمات السهلة أول · التجميعات: اللي تكرر فعلاً أول (ترتيب البيانات)
   function stList(kind, data, chm) {
@@ -3988,6 +4002,110 @@
     STV.cur = api; stvListen(); mark(); cast(true);
     return api;
   }
+  // 🖼 الثمنيل = غلاف المقطع (طلب المالك 16 نوفمبر 2026: «ابغا كل مقطع يكون معه الثمنيل حقه»)
+  //   صورة 1080×1920 ترسمها الصفحة (canvas) من بيانات المقطع نفسه وتنزل PNG — يرفعها غلاف في تيك توك من الجوال قبل النشر
+  //   العنوان والصورة في المربع اللي بالنص (420 → 1500): هو اللي يبان في شبكة الحساب (مربع أو 3:4) · نفس قواعد الصدق في جمل المقطع
+  const TH = { W: 1080, H: 1920, F: '"Baloo Bhaijaan 2", Tajawal, sans-serif', NAVY: '#0E2458', GOLD: '#F5B83D', SOFT: '#DCE4F7' };
+  const thLoad = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+  const thFont = (g, w, px) => { g.font = `${w} ${px}px ${TH.F}`; };
+  const thRound = (g, x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else { g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); } };
+  function thWrap(g, s, max) { const L = []; let cur = ''; for (const x of String(s).split(/\s+/)) { const t = cur ? cur + ' ' + x : x; if (cur && g.measureText(t).width > max) { L.push(cur); cur = x; } else cur = t; } if (cur) L.push(cur); return L; }
+  // يقيس النص بدون رسم: سطر واحد لو دخل بمقاس قريب من الكبير، وإلا سطرين متوازنين (ما ينتهي السطر الأول بـ «في / من / على…»)
+  const TH_SOFT = new Set(['في', 'من', 'على', 'عن', 'مع', 'لك', 'و', 'بس', 'كل']);
+  function thLay(g, s, o) {
+    const max = o.max || 960, w = o.w || 800, lh = o.lh || 1.2, words = String(s).split(/\s+/), one = Math.round(o.px * (o.one || .84));
+    for (let px = o.px; px >= one; px -= 4) { thFont(g, w, px); if (g.measureText(s).width <= max) return { px, L: [s], w, lh: px * lh, h: px * lh }; }
+    for (let px = o.px; px >= (o.min || 40); px -= 4) {
+      thFont(g, w, px); let best = null;
+      for (let k = 1; k < words.length; k++) {
+        const a = words.slice(0, k).join(' '), b = words.slice(k).join(' '), m = Math.max(g.measureText(a).width, g.measureText(b).width);
+        const sc = m * (TH_SOFT.has(words[k - 1]) ? 1.3 : 1); if (m <= max && (!best || sc < best.sc)) best = { sc, L: [a, b] };
+      }
+      if (best) return { px, L: best.L, w, lh: px * lh, h: 2 * px * lh };
+    }
+    const px = o.min || 40; thFont(g, w, px); const L = thWrap(g, s, max); return { px, L, w, lh: px * lh, h: L.length * px * lh };
+  }
+  function thDraw(g, T, y, c) { thFont(g, T.w, T.px); g.fillStyle = c; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'rtl'; T.L.forEach((l, i) => g.fillText(l, TH.W / 2, y + i * T.lh + T.lh / 2)); return y + T.L.length * T.lh; }
+  function thText(g, s, y, o) { return thDraw(g, thLay(g, s, o), y, o.c || '#fff'); }
+  function thPill(g, s, cy, o) {
+    thFont(g, o.w || 800, o.px || 44); const w = g.measureText(s).width + 2 * (o.pad || 42), h = o.h || 90, x = (TH.W - w) / 2;
+    thRound(g, x, cy - h / 2, w, h, h / 2); g.fillStyle = o.bg; g.fill(); if (o.bd) { g.lineWidth = 3; g.strokeStyle = o.bd; g.stroke(); }
+    g.fillStyle = o.c; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'rtl'; g.fillText(s, TH.W / 2, cy + 3);
+  }
+  function thCard(g, x, y, w, h, r) { g.save(); g.shadowColor = 'rgba(3,10,30,.38)'; g.shadowBlur = 50; g.shadowOffsetY = 18; thRound(g, x, y, w, h, r || 44); g.fillStyle = '#fff'; g.fill(); g.restore(); }
+  function thPair(g, en, m, cy, px, maxW) {   // الكلمتين بالإنجليزي ومعنى كل وحدة تحتها بالضبط (مثل إطار المقطع) · يرجّع المقاس اللي دخل
+    const a = String(en).split(':').map(x => x.trim()); m = m || []; let s = px, wl, wr, wc;
+    const mw = () => { thFont(g, 800, s); wl = g.measureText(a[0]).width; wr = a[1] ? g.measureText(a[1]).width : 0; wc = a[1] ? g.measureText(' : ').width : 0; };
+    mw(); while (wl + wc + wr > maxW && s > 34) { s -= 2; mw(); }
+    const x0 = (TH.W - (wl + wc + wr)) / 2; g.textBaseline = 'middle'; g.textAlign = 'center';
+    thFont(g, 800, s); g.direction = 'ltr'; g.fillStyle = TH.NAVY; g.fillText(a[0], x0 + wl / 2, cy);
+    if (a[1]) { g.fillText(a[1], x0 + wl + wc + wr / 2, cy); g.fillStyle = '#8592B8'; g.fillText(':', x0 + wl + wc / 2, cy); }
+    thFont(g, 700, Math.round(s * .46)); g.direction = 'rtl'; g.fillStyle = '#44558A';
+    if (m[0]) g.fillText(m[0], x0 + wl / 2, cy + s * .8); if (a[1] && m[1]) g.fillText(m[1], x0 + wl + wc + wr / 2, cy + s * .8);
+    return s;
+  }
+  async function thBrand(g, cy) {   // شعارنا + Q-Guide.online (فوق، برا المربع)
+    let logo = null; try { logo = await thLoad('/assets/logo.png'); } catch (e) {}
+    thFont(g, 800, 40); const t1 = 'Q-Guide', t2 = '.online', w1 = g.measureText(t1).width, w2 = g.measureText(t2).width, h = 84, w = 10 + 64 + 14 + w1 + w2 + 34, x = (TH.W - w) / 2;
+    thRound(g, x, cy - h / 2, w, h, h / 2); g.fillStyle = '#fff'; g.fill();
+    if (logo) { g.save(); g.beginPath(); g.arc(x + 10 + 32, cy, 32, 0, Math.PI * 2); g.clip(); g.drawImage(logo, x + 10, cy - 32, 64, 64); g.restore(); }
+    g.direction = 'ltr'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = TH.NAVY; g.fillText(t1, x + 88, cy + 2); g.fillStyle = '#D58E0B'; g.fillText(t2, x + 88 + w1, cy + 2);
+  }
+  // العنوان والسطر اللي تحته — صادقة: «أغلب الناس يغلطون فيه» بس للفخ الحقيقي · «تتكرر في الاختبار» بس للي تكررت فعلاً · «ركّز في الرسمة» بس لما فيه رسمة
+  function thTitle(kind, it, ex) {
+    const c = it.ch || {};
+    if (kind === 'c') return it.rp ? ['3 أسئلة تتكرر في الاختبار', 'تناظر لفظي، كم تجيب منها؟'] : ['3 أسئلة تناظر', 'كم تجيب منها صح؟'];
+    if (kind === 'r') return [`${it.fem ? 'طالبتنا جابت' : 'طالبنا جاب'} ${it.sc}`, 'في القدرات الإنجليزي'];
+    if (kind === 'f') return ['ملف مجاني', 'أسئلة تناظر تتكرر في الاختبار، مع معنى كل كلمة'];
+    if (c.tr) return ['أغلب الناس يغلطون فيه', ex ? 'الطريقة كاملة في المقطع' : 'تقدر تحله في 5 ثواني؟'];
+    if (ex) return [kind === 'q' ? 'شرح سؤال كمي' : 'شرح سؤال تناظر', 'الطريقة كاملة في المقطع'];
+    return kind === 'q' ? [c.f ? 'ركّز في الرسمة' : 'سؤال كمي', 'تقدر تحله في 5 ثواني؟'] : ['سؤال تناظر', 'تقدر تحله في 5 ثواني؟'];
+  }
+  const thName = (kind, it, n) => 'cover-' + (kind === 'r' ? 'r' + it.sc : kind === 'f' ? 'f' : kind + n) + '.png';
+  async function stThumb(kind, it, n, ex) {
+    try { await Promise.all(['800 100px "Baloo Bhaijaan 2"', '700 100px "Baloo Bhaijaan 2"'].map(f => document.fonts.load(f, 'أبجد هوز ABC 123'))); } catch (e) {}
+    const cv = document.createElement('canvas'); cv.width = TH.W; cv.height = TH.H; const g = cv.getContext('2d');
+    const bg = g.createRadialGradient(540, 700, 40, 540, 700, 1450); bg.addColorStop(0, '#1D3F8F'); bg.addColorStop(.58, '#0E2458'); bg.addColorStop(1, '#091A44'); g.fillStyle = bg; g.fillRect(0, 0, TH.W, TH.H);
+    const [title, sub] = thTitle(kind, it, ex); cv.dataset.t = title; cv.dataset.s = sub;
+    // فوق: الشعار + اسم السلسلة (نفسها في كل الأغلفة عشان الحساب يطلع مرتّب)
+    await thBrand(g, 310);
+    const pill = kind === 'r' ? 'نتائج طلابنا' : kind === 'f' ? 'نرسله لك في الخاص' : ex ? 'شرح بالقلم خطوة خطوة' : `تحدي القدرات اليومي ${chDay()}`;
+    thPill(g, pill, 418, { bg: 'rgba(255,255,255,.1)', bd: 'rgba(245,184,61,.75)', c: '#fff', px: 40, h: 80 });
+    // تحت: سطر ثابت لكل نوع
+    const foot = kind === 'r' ? '' : kind === 'f' ? `اكتب «${chKw()}» في التعليقات` : ex ? '' : 'اكتب جوابك في التعليقات';
+    if (foot) thPill(g, foot, 1590, kind === 'f' ? { bg: '#fff', c: TH.NAVY, px: 54, h: 108, pad: 50 } : { bg: 'rgba(255,255,255,.1)', bd: 'rgba(255,255,255,.28)', c: '#fff', px: 44, h: 92 });
+    if (kind === 'r') {   // 🏆 الرقم كبير + الدرجتين + مين (بدون اسم) + إن النتائج تختلف
+      thText(g, it.fem ? 'طالبتنا جابت' : 'طالبنا جاب', 480, { px: 100, lines: 1, c: '#fff' });
+      thFont(g, 800, 380); g.fillStyle = TH.GOLD; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'ltr'; g.fillText(String(it.sc), 540, 800);
+      thText(g, sub, 1000, { px: 84, lines: 1, c: '#fff' });
+      const box = (x, lb, v) => { thCard(g, x, 1150, 420, 230, 40); thFont(g, 700, 46); g.direction = 'rtl'; g.textAlign = 'center'; g.fillStyle = '#44558A'; g.fillText(lb, x + 210, 1210); thFont(g, 800, 112); g.direction = 'ltr'; g.fillStyle = TH.NAVY; g.fillText(String(v), x + 210, 1305); };
+      box(570, 'الكمي', it.q); box(90, 'اللفظي', it.v);
+      thText(g, it.by, 1430, { px: 42, w: 700, lines: 1, c: TH.SOFT });
+      thText(g, 'النتائج تختلف من طالب لطالب حسب مستواه ومذاكرته', 1560, { px: 38, w: 700, lines: 1, c: 'rgba(220,228,247,.75)' });
+      return cv;
+    }
+    const T = thLay(g, title, { px: kind === 'f' ? 170 : 150, min: 90 }), S = thLay(g, sub, { px: kind === 'f' ? 58 : 64, w: 700, min: 40 });
+    const y0 = 490, top = thDraw(g, S, thDraw(g, T, y0, TH.GOLD) + 6, TH.SOFT) + 40, bot = foot ? 1500 : 1600;
+    if (kind === 'q') {   // 📐 صورة السؤال (والرسمة فيها) أكبر شي، بالنص
+      let im = null; try { im = await thLoad(it.img); } catch (e) {}
+      if (im) { const sc = Math.min(910 / im.width, (bot - top - 70) / im.height, 2.2), w = im.width * sc, h = im.height * sc, cw = w + 70, ch = h + 70, cx = (TH.W - cw) / 2, cy = top + Math.max(0, (bot - top - ch) / 2);
+        thCard(g, cx, cy, cw, ch, 40); g.imageSmoothingQuality = 'high'; g.drawImage(im, cx + 35, cy + 35, w, h); }
+      return cv;
+    }
+    const items = kind === 'v' ? [it] : it.items;
+    const k0 = Math.min(1, (bot - top) / ((kind === 'f' ? 100 : 0) + items.length * (kind === 'c' ? 175 : kind === 'f' ? 165 : 230) + 50));   // ما دخلت: البطاقة كلها تصغر شوي
+    const per = (kind === 'c' ? 175 : kind === 'f' ? 165 : 230) * k0, px = Math.round((kind === 'c' ? 92 : kind === 'f' ? 76 : 124) * k0), hd = (kind === 'f' ? 100 : 0) * k0;
+    const ch = hd + items.length * per + 50, cy = top + Math.max(0, (bot - top - ch) / 2);
+    if (kind === 'f') { g.save(); g.translate(540, cy + ch / 2); g.rotate(-0.035); g.translate(-540, -(cy + ch / 2)); }
+    thCard(g, 70, cy, 940, ch, 44);
+    if (hd) { thFont(g, 800, 46); g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = TH.NAVY; g.fillText('أسئلة تناظر تتكرر في الاختبار', 540, cy + 64); g.save(); g.fillStyle = '#EEF1F8'; g.fillRect(130, cy + hd + 6, 820, 3); g.restore(); }
+    items.forEach((x, k) => {
+      const yy = cy + hd + 25 + k * per + per * .36; thPair(g, x.q, (x.ch && x.ch.m || [])[0], yy, px, 860);
+      if (k < items.length - 1) { g.save(); g.setLineDash([10, 10]); g.strokeStyle = '#DDE3EF'; g.lineWidth = 3; const ly = cy + hd + 25 + (k + 1) * per - 6; g.beginPath(); g.moveTo(130, ly); g.lineTo(950, ly); g.stroke(); g.restore(); }
+    });
+    if (kind === 'f') g.restore();
+    return cv;
+  }
   async function renderRec(kind, n) {
     stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
     let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {}), stFontReady()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
@@ -4047,9 +4165,15 @@
           <div class="rp-chb"><button type="button" class="btn" id="chdm">📋 انسخ الرد</button><button type="button" class="btn ghost" id="chlink">🔗 انسخ الرابط بس</button></div>
           <a class="rp-open" href="${CH_GIFT}" target="_blank" rel="noopener">افتح صفحة الملف وشوفها ‹</a>
           <div class="rp-src">${it.count} سؤال تناظر جت في أكثر من نموذج من نماذج الدورة أو في «الأسئلة الجديدة»، مع معنى كل كلمة والجواب.</div></div>` : '';
+    // 🖼 الثمنيل (غلاف المقطع): صورة لهذا المقطع بالذات، تتجهّز لحالها، والزر ينزّلها PNG
+    const thSec = `<div class="rp-sec rp-thumb"><div class="rp-lbl">🖼 الثمنيل (غلاف المقطع)</div>
+          <div class="rp-thw"><img id="chthi" alt="ثمنيل المقطع" hidden><span class="rp-thl" id="chthl">نجهّز الثمنيل…</span></div>
+          <button type="button" class="btn" id="chthd" disabled>⬇️ نزّل الثمنيل</button>
+          <div class="rp-hint">صورة 1080×1920 لهذا المقطع. في تيك توك من الجوال قبل ما تنشر: افتح تعديل الغلاف واختر الصورة من الاستوديو (بعد النشر ما يتغيّر الغلاف). وتقدر تفتح نفس الصفحة من جوالك وتنزّلها عليه مباشرة.</div></div>`;
     const TIPS = CH_TIPS.map((t, i) => [i, t]).filter(([i]) => !NOANS || (i !== 3 && i !== 4));   // النتيجة و«اكتب كلمة» ما فيها جواب
     const pubSec = CHM ? `<details class="rp-sec rp-pub"><summary>📋 قبل النشر</summary>
           <button type="button" class="btn ghost" id="chdesc">📋 انسخ وصف المقطع</button>
+          <pre class="rp-dm rp-desc" id="chdesct">${esc(chDesc(kind, it, n))}</pre>
           <ul class="rp-chk">${TIPS.map(([i, t]) => `<li><label><input type="checkbox" data-tip="${i}" ${chk & (1 << i) ? 'checked' : ''}><span>${t}</span></label></li>`).join('')}</ul></details>` : '';
     const tplSec = NEW ? '' : `<div class="rp-sec"><div class="rp-lbl">🎞 نوع المقطع</div>
           <div class="seg rp-tpl" role="group" aria-label="نوع المقطع"><button type="button" data-tpl="ch" class="${CHM ? 'on' : ''}" aria-pressed="${CHM}">🎯 تحدي</button><button type="button" data-tpl="ex" class="${CHM ? '' : 'on'}" aria-pressed="${!CHM}">✍️ شرح</button></div></div>`;
@@ -4064,6 +4188,7 @@
         <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>${TT}</b><span class="sp"></span>${kind === 'f' ? '' : `<a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a>`}${NOANS ? '' : '<button class="ib2" id="rrnd" title="عشوائي ما تصوّر">🎲</button>'}</div>
         ${chSec}
         ${fileSec}
+        ${CHM ? thSec : ''}
         <div class="rp-sec"><div class="rp-lbl">✍️ القلم والنص</div>
           <div class="rp-tools">${ST_TOOLS.map(([t, ic, lb], i) => `<button type="button" data-tool="${t}" class="${i ? '' : 'on'}${t === 'text' ? ' tt' : ''}" title="${t === 'text' ? 'نص: اضغط على البطاقة واكتب' : lb}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span>${ST_COLS.map((c, i) => `<button type="button" data-col="${c}" class="sw ${i ? '' : 'on'}" style="--c:${c}" title="لون" aria-pressed="${!i}"></button>`).join('')}<span class="sep"></span>${ST_W.map(([w, ic, lb, tt], i) => `<button type="button" data-w="${w}" title="${tt}" class="${i ? '' : 'on'}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span><button type="button" id="rundo" title="تراجع">↶</button><button type="button" id="rclr" title="مسح الكتابة">🗑</button></div>
           <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label>
@@ -4076,6 +4201,7 @@
         <div class="rp-sec rp-stt"><div class="rp-lbl">🎬 حالة السؤال</div>
           <div class="stst" id="rstt" role="group" aria-label="حالة السؤال">${ST_ST.map(([s, ic, t]) => `<button type="button" data-st="${s}" aria-pressed="false"><i aria-hidden="true">${ic}</i>${t}</button>`).join('')}</div>
           <div class="rp-hint" id="rsth"></div></div>
+        ${CHM ? '' : thSec}
         ${pubSec}
         ${ansSec}
         <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة${CHM ? '' : ' · L بالعرض أو بالطول'} · H وضع التصوير · Esc رجوع للوحة${CHM ? '<br>🎯 مسافة ابدأ المقطع · Backspace أول لقطة · V شاشة التسجيل' : QH ? '<br>🎙️ مسافة السطر الجاي · Backspace اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل' : ''}</div>
@@ -4147,11 +4273,11 @@
       if ($('#chdayi')) {
         $('#chdayi').oninput = e => { const v = Math.max(1, Math.min(9999, parseInt(e.target.value, 10) || 1)); lsSet('qg_stday', v); const d = $('#chday'); if (d) d.textContent = v; cast(); };
         $('#chdayi').onchange = e => e.target.blur();   // Enter يثبّت الرقم ويرجّع المسافة لتشغيل المقطع
-        $('#chlinei').onchange = e => { const m = lsGet('qg_stline', null) || {}; m[key] = +e.target.value; lsSet('qg_stline', m); const l = $('#chline'); if (l) { l.textContent = chLine(kind, it, n)[1]; chFit(tk); } cast(); e.target.blur(); };
+        $('#chlinei').onchange = e => { const m = lsGet('qg_stline', null) || {}; m[key] = +e.target.value; lsSet('qg_stline', m); const l = $('#chline'); if (l) { l.textContent = chLine(kind, it, n)[1]; chFit(tk); } const d = $('#chdesct'); if (d) d.textContent = chDesc(kind, it, n); cast(); e.target.blur(); };
       }
       const copy = async (t, ok) => { try { await navigator.clipboard.writeText(t); toast(ok); } catch (e) { prompt('انسخ:', t); } };
       if (kind === 'f') {   // الكلمة: تتغيّر بالإطار والرد والوصف مع بعض
-        $('#chkwi').oninput = e => { lsSet('qg_stkw', String(e.target.value || '').trim().slice(0, 20)); const w = chKw(); const v = $('#chkwv'); if (v) { v.textContent = w; chFit(tk); } rec.querySelectorAll('.kwv').forEach(x => x.textContent = w); cast(); };
+        $('#chkwi').oninput = e => { lsSet('qg_stkw', String(e.target.value || '').trim().slice(0, 20)); const w = chKw(); const v = $('#chkwv'); if (v) { v.textContent = w; chFit(tk); } rec.querySelectorAll('.kwv').forEach(x => x.textContent = w); const d = $('#chdesct'); if (d) d.textContent = chDesc(kind, it, n); cast(); };
         $('#chkwi').onchange = e => e.target.blur();
         $('#chdm').onclick = () => copy(chDm(), 'انتسخ الرد ✓ الصقه في رسائل تيك توك');
         $('#chlink').onclick = () => copy(CH_GIFT, 'انتسخ الرابط ✓');
@@ -4172,6 +4298,21 @@
     rec.querySelectorAll('#rstt [data-st]').forEach(b => b.onclick = () => { const i = stIx(stOf(key)), j = stIx(b.dataset.st); setSt(j === i ? (i ? ST_ST[i - 1][0] : '') : b.dataset.st); });
     $('#lpost').onclick = () => { const i = stIx(stOf(key)); if (i >= ST_ST.length - 1) { toast('📢 منشور ✓ · غيّر الحالة من اللوحة'); return; } setSt(ST_ST[i + 1][0]); };
     paintSt();
+    // 🖼 الثمنيل: يتجهّز بعد ما تفتح الصفحة، ويتجدد لما يتغيّر رقم السلسلة أو الكلمة
+    let thURL = '', thT = 0, thN = 0;
+    const thPaint = () => { clearTimeout(thT); thT = setTimeout(async () => {
+      const my = ++thN;
+      try {
+        const cv = await stThumb(kind, it, n, !CHM), b = await new Promise(r => cv.toBlob(r, 'image/png'));
+        if (my !== thN || !b || !rec.isConnected) return;
+        if (thURL) URL.revokeObjectURL(thURL); thURL = URL.createObjectURL(b);
+        const im = $('#chthi'); im.src = thURL; im.dataset.t = cv.dataset.t; im.dataset.s = cv.dataset.s; im.hidden = false; $('#chthl').hidden = true; $('#chthd').disabled = false;
+      } catch (e) { const l = $('#chthl'); if (l) { l.hidden = false; l.textContent = 'ما قدرنا نجهّز الثمنيل، حدّث الصفحة'; } CERR('thumb: ' + (e && e.message)); }
+    }, 250); };
+    $('#chthd').onclick = () => { if (!thURL) return; const a = document.createElement('a'); a.href = thURL; a.download = thName(kind, it, n); document.body.appendChild(a); a.click(); a.remove(); toast('نزل الثمنيل ✓'); };
+    thPaint();
+    if ($('#chdayi')) $('#chdayi').addEventListener('input', thPaint);
+    if ($('#chkwi')) $('#chkwi').addEventListener('input', thPaint);
     // 🎯 مقطع التحدي: ابدأ / أول لقطة / شاشة التسجيل
     if (CHM) {
       try { SAYC = window.__stSay = stCh({ tk, kind, n, it, setRev, pen: () => ST.pen }); } catch (e) { SAYC = null; CERR('stCh: ' + (e && e.message)); }
