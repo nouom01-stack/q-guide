@@ -163,7 +163,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
-  const SET_V = { studio: 5 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
+  const SET_V = { studio: 6 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
@@ -3410,33 +3410,38 @@
 
   // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 🎬 استوديو تيك توك (للمشرفين) ----------
-  const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', posted: null, pen: null, reveal: false, panel: true, ui: true, land: false };
+  const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', sts: null, pen: null, reveal: false, panel: true, ui: true, land: false };
   const STL = ['a', 'b', 'c', 'd'];
   function stFont() { if (document.getElementById('stfont')) return; const l = document.createElement('link'); l.id = 'stfont'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap'; document.head.appendChild(l); }
   async function stData() { return loadSet('studio'); }
-  async function stPosted(force) { if (ST.posted && !force) return ST.posted; try { const r = await admCall({ op: 'adm_studio_list' }); ST.posted = {}; (r.posted || []).forEach(x => ST.posted[x.k] = x); } catch (e) { ST.posted = ST.posted || {}; } return ST.posted; }
-  async function stMark(k, on) { try { await admCall({ op: 'adm_studio_mark', k, on: on ? 1 : 0 }); if (on) ST.posted[k] = { k, by_email: auth.email, at: Date.now() }; else delete ST.posted[k]; return true; } catch (e) { toast(e.message); return false; } }
-  function stRandom(kind, data, except) { const list = data[kind === 'v' ? 'verbal' : 'quant'].filter(x => !ST.posted[kind + x.n] && x.n !== except); const pool = list.length ? list : data[kind === 'v' ? 'verbal' : 'quant']; return pool[Math.floor(Math.random() * pool.length)].n; }
+  // 🎬 حالة كل سؤال (طلب المالك 15 نوفمبر 2026): تم التصوير ← جاهز للنشر ← تم النشر — في قاعدة البيانات (جدول studio في الـ API، مع وقت كل مرحلة) ومشتركة بين المشرفين
+  const ST_ST = [['film', '🎬', 'تم التصوير', 'تصوّر'], ['ready', '📦', 'جاهز للنشر', 'جاهز'], ['post', '📢', 'تم النشر', 'نُشر']];
+  const stOf = k => (ST.sts && ST.sts[k] && ST.sts[k].st) || '', stIx = s => ST_ST.findIndex(x => x[0] === s);
+  async function stPosted(force) { if (ST.sts && !force) return ST.sts; try { const r = await admCall({ op: 'adm_studio_list' }); ST.sts = {}; (r.st || (r.posted || []).map(x => Object.assign({ st: 'post' }, x))).forEach(x => ST.sts[x.k] = x); } catch (e) { ST.sts = ST.sts || {}; } return ST.sts; }
+  async function stSet(k, st) { try { const r = await admCall({ op: 'adm_studio_set', k, st }); if (st) ST.sts[k] = r.row || { k, st, by_email: auth.email, at: Date.now() }; else delete ST.sts[k]; return true; } catch (e) { toast(e.message); return false; } }
+  function stRandom(kind, data, except) { const list = data[kind === 'v' ? 'verbal' : 'quant'].filter(x => !stOf(kind + x.n) && x.n !== except); const pool = list.length ? list : data[kind === 'v' ? 'verbal' : 'quant']; return pool[Math.floor(Math.random() * pool.length)].n; }
   async function renderStudio() {
     document.title = 'استوديو تيك توك | Q-Guide'; stFont();
-    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.posted = null; renderStudio(); };
+    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; renderStudio(); };
     let data; try { [data] = await Promise.all([stData(), stPosted(), ADM.role ? null : admLoadStaff().catch(() => null)]); } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#studio') return;
-    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.posted = null; renderStudio(); };
+    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; renderStudio(); };
     paintStudio(data);
   }
   function paintStudio(data) {
-    const W = $('#adm'); if (!W) return; const k = ST.tab, list = data[k === 'v' ? 'verbal' : 'quant'];
-    const done = list.filter(x => ST.posted[k + x.n]).length, pct = Math.round(done * 100 / list.length);
-    const items = list.filter(x => ST.f === 'all' || (ST.f === 'done') === !!ST.posted[k + x.n]);
+    const W = $('#adm'); if (!W) return; const k = ST.tab, list = data[k === 'v' ? 'verbal' : 'quant'], N = list.length;
+    const cnt = { film: 0, ready: 0, post: 0 }; list.forEach(x => { const s = stOf(k + x.n); if (s) cnt[s]++; });
+    const left = N - cnt.film - cnt.ready - cnt.post, pc = c => (c * 100 / N).toFixed(2);
+    const F = [['all', 'الكل'], ['none', 'ما تصوّر'], ...ST_ST.map(([s, ic, t]) => [s, ic + ' ' + t])]; if (!F.some(f => f[0] === ST.f)) ST.f = 'all';
+    const items = list.filter(x => ST.f === 'all' || (ST.f === 'none' ? !stOf(k + x.n) : stOf(k + x.n) === ST.f));
     const nm = e => esc(String(e || '').split('@')[0]);
     W.innerHTML = `<div class="sth">
         <div class="seg"><button data-k="v" class="${k === 'v' ? 'on' : ''}">🔗 التناظر اللفظي <small>${data.verbal.length}</small></button><button data-k="q" class="${k === 'q' ? 'on' : ''}">📐 الكمي <small>${data.quant.length}</small></button></div>
-        <div class="stp"><div class="stp-t"><b>نُشر ${done}</b> من ${list.length} · باقي ${list.length - done}</div><div class="stp-b"><i style="width:${pct}%"></i></div></div>
-        <button class="btn gold" id="strnd">🎲 سؤال عشوائي لم يُنشر</button>
+        <div class="stp"><div class="stp-t"><b>نُشر ${cnt.post}</b> من ${N} · 📦 جاهز ${cnt.ready} · 🎬 تصوّر ${cnt.film} · باقي ${left}</div><div class="stp-b"><i class="sp" style="width:${pc(cnt.post)}%"></i><i class="sr" style="width:${pc(cnt.ready)}%"></i><i class="sf" style="width:${pc(cnt.film)}%"></i></div></div>
+        <button class="btn gold" id="strnd">🎲 سؤال عشوائي ما تصوّر</button>
       </div>
-      <div class="stf2"><div class="chips">${[['all', 'الكل'], ['todo', 'لم يُنشر'], ['done', 'منشور']].map(([f, t]) => `<button data-f="${f}" class="${ST.f === f ? 'on' : ''}">${t}</button>`).join('')}</div><span class="mut">اضغط أي سؤال لفتحه بوضع التصوير · علامة «تم النشر» مشتركة بين كل المشرفين عشان ما يتكرر السؤال.</span></div>
-      <div class="stg">${items.map(x => { const P = ST.posted[k + x.n]; return `<a class="stc ${P ? 'done' : ''}" href="#studio-${k}-${x.n}"><span class="qn">Q ${x.n}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}<span class="ft">${P ? `<span class="ok">✓ نُشر</span><small>${nm(P.by_email)} · ${fmtD(P.at)}</small>` : '<span class="rd">جاهز للتصوير</span>'}</span></a>`; }).join('') || '<div class="sempty" style="grid-column:1/-1">لا توجد أسئلة هنا</div>'}</div>`;
+      <div class="stf2"><div class="chips">${F.map(([f, t]) => `<button data-f="${f}" class="${ST.f === f ? 'on' : ''}">${t}</button>`).join('')}</div><span class="mut">اضغط أي سؤال لفتحه بوضع التصوير · حالة السؤال (تم التصوير ← جاهز للنشر ← تم النشر) مشتركة بين كل المشرفين عشان ما يتكرر السؤال.</span></div>
+      <div class="stg">${items.map(x => { const P = ST.sts[k + x.n], s = P ? P.st : '', d = ST_ST[stIx(s)]; return `<a class="stc${d ? ' s-' + s : ''}" href="#studio-${k}-${x.n}"><span class="qn">Q ${x.n}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}<span class="ft">${d ? `<span class="ok">${d[1]} ${d[2]}</span><small>${nm(P.by_email)} · ${fmtD(P.at)}</small>` : '<span class="rd">جاهز للتصوير</span>'}</span></a>`; }).join('') || '<div class="sempty" style="grid-column:1/-1">لا توجد أسئلة هنا</div>'}</div>`;
     W.querySelectorAll('.seg button').forEach(b => b.onclick = () => { ST.tab = b.dataset.k; lsSet('qg_stab', ST.tab); paintStudio(data); });
     W.querySelectorAll('.chips button').forEach(b => b.onclick = () => { ST.f = b.dataset.f; paintStudio(data); });
     $('#strnd').onclick = () => { location.hash = `studio-${k}-${stRandom(k, data)}`; };
@@ -3459,6 +3464,7 @@
     ans: SI('<circle cx="12" cy="12" r="10"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
     prev: SI('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'), next: SI('<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>'),   // الاتجاه عربي: السابق ← يمين · التالي ← يسار (مثل أسهم الكيبورد)
     rnd: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M12 12h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/>'),
+    film: SI('<rect x="2.5" y="6" width="13.5" height="12" rx="2.5"/><path d="m16 10.5 5.5-3.2v9.4L16 13.5"/>'), ready: SI('<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 14.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4.5"/>'),
     post: SI('<rect x="3" y="3" width="18" height="18" rx="3"/>'), posted: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
     hide: SI('<path d="M10.73 5.08A10.74 10.74 0 0 1 21.94 11.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>'),
     panel: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>'),
@@ -3554,7 +3560,7 @@
   // 🎙️ «الشرح التلقائي» — نفس «عرض شرح قواعد الكمي»: سكربت تقرأه سطر سطر، الكلمة اللي تقولها الحين تنوّر، والقلم يكتب ويرسم على البطاقة بنفس توقيت كلامك.
   // مسافة / Enter / PageDown = السطر الجاي · Backspace / PageUp = اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل (البطاقة لحالها في نافذة ثانية)
   // السكربت: it.say (سكربت مكتوب للسؤال، يجي مع ملف الأسئلة المشفّر) وإلا يتولّد من الترجمة والشرح (QGHand.gen) · المحرّك في /p/sthand.js (يتحمّل وقت الحاجة بس)
-  const STH_V = 3;
+  const STH_V = 4;
   let stHandP = null;
   const stHandLoad = () => stHandP || (stHandP = new Promise((res, rej) => {
     if (window.QGHand) return res(window.QGHand);
@@ -3757,13 +3763,13 @@
     if (location.hash !== `#studio-${kind}-${n}`) return;   // راح لصفحة ثانية وهو ينتظر التحميل
     const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
     ST.reveal = false; ST.land = lsGet('qg_stland', 0) === 1; document.body.classList.add('rec-on');
-    const key = kind + n, P = ST.posted[key], card = stCard(kind, it, n, ST.land), hasTw = card.hasTw;
+    const key = kind + n, card = stCard(kind, it, n, ST.land), hasTw = card.hasTw;
     let SAYC = null;
     const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
     const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
     const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
     const rlink = (h, ic, lb, tt) => `<a class="rb" href="${h}" title="${tt}" aria-label="${tt}"><i aria-hidden="true">${ic}</i><small>${lb}</small></a>`;
-    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', P ? ST_IC.posted : ST_IC.post, 'نُشر', P ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»', P ? 'ok' : '')}<span class="rsep"></span>${rb(`id="lland" aria-pressed="${ST.land}"`, ST_IC.land, 'بالعرض', 'البطاقة بالعرض بدل الطول · L', ST.land ? 'on' : '')}${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
+    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', ST_IC.post, 'الحالة', 'حالة السؤال')}<span class="rsep"></span>${rb(`id="lland" aria-pressed="${ST.land}"`, ST_IC.land, 'بالعرض', 'البطاقة بالعرض بدل الطول · L', ST.land ? 'on' : '')}${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
     const railDraw = `<nav class="rail rdraw" aria-label="أدوات الكتابة">${ST_TOOLS.map(([t, , lb], i) => rb(`data-tool="${t}" aria-pressed="${!i}"`, ST_IC[t], lb, lb + ({ pen: ' · P', text: ' (اضغط على البطاقة واكتب) · T', eraser: ' · E' }[t] || ''), i ? '' : 'on')).join('')}<span class="rsep"></span>${ST_W.map(([w, , lb, tt], i) => rb(`data-w="${w}" aria-pressed="${!i}"`, ST_IC[w], lb, tt, i ? '' : 'on')).join('')}<span class="rsep"></span><div class="rcols">${ST_COLS.map((c, i) => `<button type="button" class="rsw${i ? '' : ' on'}" data-col="${c}" style="--c:${c}" title="لون" aria-label="لون" aria-pressed="${!i}"></button>`).join('')}</div></nav>`;
     const sayP = lsGet('qg_stsay', null) || {};
     const saySec = QH ? `<div class="rp-sec rp-say"><div class="rp-lbl">🎙️ الشرح التلقائي</div>
@@ -3782,7 +3788,10 @@
         ${saySec}
         <div class="rp-sec"><div class="rp-lbl">🖼 شكل البطاقة</div>
           <div class="seg rp-or" role="group" aria-label="شكل البطاقة"><button type="button" data-or="0" class="${ST.land ? '' : 'on'}" aria-pressed="${!ST.land}">▯ بالطول</button><button type="button" data-or="1" class="${ST.land ? 'on' : ''}" aria-pressed="${ST.land}">▭ بالعرض</button></div></div>
-        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
+        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
+        <div class="rp-sec rp-stt"><div class="rp-lbl">🎬 حالة السؤال</div>
+          <div class="stst" id="rstt" role="group" aria-label="حالة السؤال">${ST_ST.map(([s, ic, t]) => `<button type="button" data-st="${s}" aria-pressed="false"><i aria-hidden="true">${ic}</i>${t}</button>`).join('')}</div>
+          <div class="rp-hint" id="rsth"></div></div>
         ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
         <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
           <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
@@ -3844,9 +3853,18 @@
     $('#rshow').onclick = () => setBare(false);
     $('#mmore').onclick = () => rec.classList.toggle('sheet');
     $('#rrnd').onclick = $('#lrnd').onclick = () => { location.hash = `studio-${kind}-${stRandom(kind, data, n)}`; };
-    const paintPost = on => { const b = $('#rpost'), l = $('#lpost'); b.className = 'btn ' + (on ? 'okb' : 'ghost'); b.textContent = on ? '✓ تم النشر' : '☐ علّمه «تم النشر»';
-      l.classList.toggle('ok', on); l.querySelector('i').innerHTML = on ? ST_IC.posted : ST_IC.post; l.title = on ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»'; l.setAttribute('aria-label', l.title); };
-    $('#rpost').onclick = $('#lpost').onclick = async () => { const on = !ST.posted[key], bs = [$('#rpost'), $('#lpost')]; bs.forEach(b => b.disabled = true); if (await stMark(key, on)) { paintPost(on); toast(on ? 'تم التعليم كمنشور ✓' : 'أُلغي التعليم'); } bs.forEach(b => b.disabled = false); };
+    // 🎬 حالة السؤال: اللوحة = ثلاث خطوات (اضغط الخطوة · ضغطة ثانية على الحالية ترجّعها خطوة) · زر العمود = الخطوة الجاية (بعد «تم النشر» يوقف: تغييرها من اللوحة)
+    const paintSt = () => {
+      const i = stIx(stOf(key)), P = ST.sts[key], d = ST_ST[i], nx = ST_ST[i + 1];
+      rec.querySelectorAll('#rstt [data-st]').forEach((b, j) => { b.classList.toggle('on', j === i); b.classList.toggle('past', j < i); b.setAttribute('aria-pressed', j === i); });
+      $('#rsth').innerHTML = d ? `${d[1]} ${d[2]} · ${fmtD(P.at)}${nx ? `<br>الخطوة الجاية: «${nx[2]}»` : ''}` : 'لسا ما تصوّر · بعد ما تخلّص التصوير اضغط «تم التصوير».';
+      const l = $('#lpost'); l.className = 'rb' + (d ? ' st-' + d[0] : ''); l.querySelector('i').innerHTML = ST_IC[d ? (d[0] === 'post' ? 'posted' : d[0]) : 'post']; l.querySelector('small').textContent = d ? d[3] : 'ما تصوّر';
+      l.title = (d ? 'الحالة: ' + d[2] : 'لسا ما تصوّر') + (nx ? ` · اضغط: «${nx[2]}»` : ' · تغييرها من اللوحة'); l.setAttribute('aria-label', l.title);
+    };
+    const setSt = async st => { const bs = [...rec.querySelectorAll('#rstt [data-st]'), $('#lpost')]; bs.forEach(b => b.disabled = true); if (await stSet(key, st)) { paintSt(); const d = ST_ST[stIx(st)]; toast(d ? `${d[1]} ${d[2]} ✓` : 'رجع «لسا ما تصوّر»'); } bs.forEach(b => b.disabled = false); };
+    rec.querySelectorAll('#rstt [data-st]').forEach(b => b.onclick = () => { const i = stIx(stOf(key)), j = stIx(b.dataset.st); setSt(j === i ? (i ? ST_ST[i - 1][0] : '') : b.dataset.st); });
+    $('#lpost').onclick = () => { const i = stIx(stOf(key)); if (i >= ST_ST.length - 1) { toast('📢 منشور ✓ · غيّر الحالة من اللوحة'); return; } setSt(ST_ST[i + 1][0]); };
+    paintSt();
     // 🎙️ الشرح التلقائي (لو انحمّل محرّكه)
     if (QH) {
       try { SAYC = window.__stSay = stSay({ rec, stage: rec.querySelector('.stage'), tk, kind, n, it, B, setRev, pen: () => ST.pen }); }
