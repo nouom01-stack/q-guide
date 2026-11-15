@@ -60,7 +60,7 @@
   const API = (window.QG && QG.API && QG.API.indexOf('__') !== 0 && QG.API) || (/(^|\.)q-guide\.online$/.test(location.hostname) ? 'https://q-guide-api.nouom01.workers.dev/' : '');
   function hit(p, k) {
     try {
-      if (!API || auth()) return; const day = new Date().toISOString().slice(0, 10), key = 'qg_hit_' + p + (p === 'cta' ? '_' + k : '');
+      if (!API || auth()) return; const day = new Date().toISOString().slice(0, 10), key = 'qg_hit_' + p + (p === 'cta' || p === 'gcta' ? '_' + k : '');
       if (localStorage.getItem(key) === day) return; localStorage.setItem(key, day);
       const txt = JSON.stringify({ op: 'hit', p, k: String(k || '').slice(0, 30) });
       if (navigator.sendBeacon && navigator.sendBeacon(API, new Blob([txt], { type: 'text/plain' }))) return;

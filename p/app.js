@@ -163,7 +163,7 @@
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
-  const SET_V = { studio: 6 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
+  const SET_V = { studio: 7 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
@@ -776,7 +776,7 @@
   const RES = () => [
     { n: 97, q: '98.5', v: '95', t: _T('«تخيل مجهود ٤ ايام بس جبت 97، يخي مدري كيف اشكركم. والله اني شفت دورتكم بالصدفة على اليوتيوب، سبحان من ساقني لكم.»'), by: _T('من طلاب الدورة · نوفمبر 2026') },
     { n: 94, q: '92.7', v: '96.3', t: _T('«والله ما ارضى إلى بال100، وإن شاء الله الدرجه الجايه 100. الله يسعدك انت و استاذ سلمان ما قصرتو.»'), by: _T('من طلاب الدورة · اختبار 2 نوفمبر 2026') },
-    { n: 92, q: '89.8', v: '95', t: _T('«الحمدلله جبت ٩٢ وارتفعت درجتي ١٢ درجة عن اختباري الاول بمذاكرة ثلاث اسابيع بس، والله ابدا ما كنت متوقعة اجيب هالدرجة.»'), by: _T('من طالبات الدورة · اختبار 2 نوفمبر 2026') }];
+    { n: 92, f: 1, q: '89.8', v: '95', t: _T('«الحمدلله جبت ٩٢ وارتفعت درجتي ١٢ درجة عن اختباري الاول بمذاكرة ثلاث اسابيع بس، والله ابدا ما كنت متوقعة اجيب هالدرجة.»'), by: _T('من طالبات الدورة · اختبار 2 نوفمبر 2026') }];
   const resStrip = () => _T`<a class="rstrip" href="#results"><span class="rs-n" aria-hidden="true"><b>97</b><b>94</b><b>92</b></span><span class="rs-t"><b>نتائج طلابنا في اختبار القدرات</b><small>درجات حقيقية أرسلها لنا طلاب الدورة في نوفمبر</small></span><span class="rs-go">شوف النتائج ‹</span></a>`;
   function renderResults() {
     document.title = _T('نتائج طلابنا | Q-Guide');
@@ -981,7 +981,7 @@
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
     if (h === 'studio-view') { if (auth.role === 'admin') return renderStView(); location.hash = ''; return; }
-    if (h === 'studio' || /^studio-[qv]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
+    if (h === 'studio' || /^studio-[qvcrf]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
     if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
@@ -3410,7 +3410,7 @@
 
   // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 🎬 استوديو تيك توك (للمشرفين) ----------
-  const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', sts: null, pen: null, reveal: false, panel: true, ui: true, land: false };
+  const ST = { tab: lsGet('qg_stab', 'q'), f: 'all', sts: null, pen: null, reveal: false, panel: true, ui: true, land: false };
   const STL = ['a', 'b', 'c', 'd'];
   function stFont() { if (document.getElementById('stfont')) return; const l = document.createElement('link'); l.id = 'stfont'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap'; document.head.appendChild(l); }
   async function stData() { return loadSet('studio'); }
@@ -3419,7 +3419,10 @@
   const stOf = k => (ST.sts && ST.sts[k] && ST.sts[k].st) || '', stIx = s => ST_ST.findIndex(x => x[0] === s);
   async function stPosted(force) { if (ST.sts && !force) return ST.sts; try { const r = await admCall({ op: 'adm_studio_list' }); ST.sts = {}; (r.st || (r.posted || []).map(x => Object.assign({ st: 'post' }, x))).forEach(x => ST.sts[x.k] = x); } catch (e) { ST.sts = ST.sts || {}; } return ST.sts; }
   async function stSet(k, st) { try { const r = await admCall({ op: 'adm_studio_set', k, st }); if (st) ST.sts[k] = r.row || { k, st, by_email: auth.email, at: Date.now() }; else delete ST.sts[k]; return true; } catch (e) { toast(e.message); return false; } }
-  function stRandom(kind, data, except) { const list = data[kind === 'v' ? 'verbal' : 'quant'].filter(x => !stOf(kind + x.n) && x.n !== except); const pool = list.length ? list : data[kind === 'v' ? 'verbal' : 'quant']; return pool[Math.floor(Math.random() * pool.length)].n; }
+  function stRandom(kind, data, except) {   // 🎲 ما تصوّر — ومقطع التحدي بالكمي: من اللي فيه رسمة أول
+    const all = stList(kind, data, stTpl() === 'ch'), left = all.filter(x => !stOf(kind + x.n) && x.n !== except), fig = kind === 'q' && stTpl() === 'ch' ? left.filter(x => x.ch && x.ch.f) : [];
+    const pool = fig.length ? fig : left.length ? left : all; return pool[Math.floor(Math.random() * pool.length)].n;
+  }
   async function renderStudio() {
     document.title = 'استوديو تيك توك | Q-Guide'; stFont();
     app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; renderStudio(); };
@@ -3429,22 +3432,35 @@
     paintStudio(data);
   }
   function paintStudio(data) {
-    const W = $('#adm'); if (!W) return; const k = ST.tab, list = data[k === 'v' ? 'verbal' : 'quant'], N = list.length;
+    // 🎯 مقطع التحدي: 📐 الكمي (اللي فيه رسمة أول = الأساس) · 🔗 تجميعات التناظر · 🏆 نتائج طلابنا · 📁 اكتب كلمة — ✍️ شرح: التناظر والكمي مثل قبل
+    const W = $('#adm'); if (!W) return; const ez = stTpl() === 'ch', tabs = ez ? ['q', 'c', 'r', 'f'] : ['v', 'q'];
+    const k = tabs.includes(ST.tab) ? ST.tab : ez ? (ST.tab === 'v' ? 'c' : 'q') : 'q', list = stList(k, data, ez), N = list.length;
     const cnt = { film: 0, ready: 0, post: 0 }; list.forEach(x => { const s = stOf(k + x.n); if (s) cnt[s]++; });
     const left = N - cnt.film - cnt.ready - cnt.post, pc = c => (c * 100 / N).toFixed(2);
     const F = [['all', 'الكل'], ['none', 'ما تصوّر'], ...ST_ST.map(([s, ic, t]) => [s, ic + ' ' + t])]; if (!F.some(f => f[0] === ST.f)) ST.f = 'all';
     const items = list.filter(x => ST.f === 'all' || (ST.f === 'none' ? !stOf(k + x.n) : stOf(k + x.n) === ST.f));
     const nm = e => esc(String(e || '').split('@')[0]);
+    const TABN = { v: '🔗 التناظر اللفظي', q: '📐 الكمي', c: '🔗 تجميعات التناظر', r: '🏆 نتائج طلابنا', f: '📁 اكتب كلمة' };
+    const HINT = { q: ez ? ' · مرتبة: اللي فيه رسمة أول (🖼)، وقبلها اللي أغلب الطلاب غلطوا فيه فعلاً (⚠️)' : '', v: '',
+      c: ' · كل تجميعة 3 أسئلة تناظر · اللي تكررت فعلاً في أكثر من نموذج (🔁) أول', r: ' · نتائج حقيقية، أصحابها موافقين تنعرض، بدون اسم ولا رقم', f: ' · المقطع يقول «اكتب كلمة»، وأنت ترسل رابط الملف في رسائل تيك توك لكل اللي كتبها' };
+    const RND = { q: '🎲 سؤال عشوائي ما تصوّر', v: '🎲 سؤال عشوائي ما تصوّر', c: '🎲 تجميعة ما تصوّرت' };
+    const tile = x => {
+      if (k === 'c') return `<span class="qn ar">تجميعة ${x.n}${x.rp ? ' · 🔁 تتكرر' : ''}</span><span class="pv pv3 ltr">${x.items.map(y => `<b>${esc(y.q)}</b>`).join('')}</span>`;
+      if (k === 'r') return `<span class="qn ar">${x.fem ? 'طالبة' : 'طالب'} · ${x.sc}</span><span class="pi pr"><img src="/assets/results/r${x.sc}.jpg" alt="" loading="lazy"></span>`;
+      if (k === 'f') return `<span class="qn ar">اكتب «${esc(chKw())}»</span><span class="pv pf">📁 ملف ${x.count} سؤال تناظر تتكرر في الاختبار، مع معنى كل كلمة</span>`;
+      const c = x.ch || {}, mk = ez && k === 'q' ? (c.tr ? ' · ⚠️' : '') + (c.f ? ' · 🖼' : '') : '';
+      return `<span class="qn">Q ${x.n}${mk}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}`;
+    };
     W.innerHTML = `<div class="sth">
-        <div class="seg"><button data-k="v" class="${k === 'v' ? 'on' : ''}">🔗 التناظر اللفظي <small>${data.verbal.length}</small></button><button data-k="q" class="${k === 'q' ? 'on' : ''}">📐 الكمي <small>${data.quant.length}</small></button></div>
+        <div class="seg">${tabs.map(t => `<button data-k="${t}" class="${k === t ? 'on' : ''}">${TABN[t]} <small>${t === k ? N : stList(t, data, ez).length}</small></button>`).join('')}</div>
         <div class="stp"><div class="stp-t"><b>نُشر ${cnt.post}</b> من ${N} · 📦 جاهز ${cnt.ready} · 🎬 تصوّر ${cnt.film} · باقي ${left}</div><div class="stp-b"><i class="sp" style="width:${pc(cnt.post)}%"></i><i class="sr" style="width:${pc(cnt.ready)}%"></i><i class="sf" style="width:${pc(cnt.film)}%"></i></div></div>
-        <button class="btn gold" id="strnd">🎲 سؤال عشوائي ما تصوّر</button>
+        ${RND[k] ? `<button class="btn gold" id="strnd">${RND[k]}</button>` : ''}
       </div>
-      <div class="stf2"><div class="chips">${F.map(([f, t]) => `<button data-f="${f}" class="${ST.f === f ? 'on' : ''}">${t}</button>`).join('')}</div><span class="mut">اضغط أي سؤال لفتحه بوضع التصوير · حالة السؤال (تم التصوير ← جاهز للنشر ← تم النشر) مشتركة بين كل المشرفين عشان ما يتكرر السؤال.</span></div>
-      <div class="stg">${items.map(x => { const P = ST.sts[k + x.n], s = P ? P.st : '', d = ST_ST[stIx(s)]; return `<a class="stc${d ? ' s-' + s : ''}" href="#studio-${k}-${x.n}"><span class="qn">Q ${x.n}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}<span class="ft">${d ? `<span class="ok">${d[1]} ${d[2]}</span><small>${nm(P.by_email)} · ${fmtD(P.at)}</small>` : '<span class="rd">جاهز للتصوير</span>'}</span></a>`; }).join('') || '<div class="sempty" style="grid-column:1/-1">لا توجد أسئلة هنا</div>'}</div>`;
+      <div class="stf2"><div class="chips">${F.map(([f, t]) => `<button data-f="${f}" class="${ST.f === f ? 'on' : ''}">${t}</button>`).join('')}</div><span class="mut">اضغط ${k === 'c' ? 'أي تجميعة' : k === 'r' ? 'أي نتيجة' : k === 'f' ? 'المقطع' : 'أي سؤال'} لفتحه بوضع التصوير${HINT[k]} · الحالة (تم التصوير ← جاهز للنشر ← تم النشر) مشتركة بين كل المشرفين عشان ما يتكرر المقطع.</span></div>
+      <div class="stg${k === 'c' || k === 'f' ? ' stg-t' : ''}">${items.map(x => { const P = ST.sts[k + x.n], s = P ? P.st : '', d = ST_ST[stIx(s)]; return `<a class="stc${d ? ' s-' + s : ''}" href="#studio-${k}-${x.n}">${tile(x)}<span class="ft">${d ? `<span class="ok">${d[1]} ${d[2]}</span><small>${nm(P.by_email)} · ${fmtD(P.at)}</small>` : '<span class="rd">جاهز للتصوير</span>'}</span></a>`; }).join('') || '<div class="sempty" style="grid-column:1/-1">لا توجد مقاطع هنا</div>'}</div>`;
     W.querySelectorAll('.seg button').forEach(b => b.onclick = () => { ST.tab = b.dataset.k; lsSet('qg_stab', ST.tab); paintStudio(data); });
     W.querySelectorAll('.chips button').forEach(b => b.onclick = () => { ST.f = b.dataset.f; paintStudio(data); });
-    $('#strnd').onclick = () => { location.hash = `studio-${k}-${stRandom(k, data)}`; };
+    if ($('#strnd')) $('#strnd').onclick = () => { location.hash = `studio-${k}-${stRandom(k, data)}`; };
   }
   // 🎬 بطاقة التصوير: اللوحة جنبها، أو «🎥 وضع التصوير» = البطاقة بالنص والأدوات عمودين حولها:
   // يمين = الكتابة (قلم · تظليل · نص · ممحاة · السماكة · الألوان) · يسار = الأوامر (تراجع · مسح · الإجابة · التنقل · النشر · إخفاء · اللوحة)
@@ -3464,6 +3480,7 @@
     ans: SI('<circle cx="12" cy="12" r="10"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
     prev: SI('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'), next: SI('<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>'),   // الاتجاه عربي: السابق ← يمين · التالي ← يسار (مثل أسهم الكيبورد)
     rnd: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M12 12h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/>'),
+    play: SI('<path d="M7 4.5v15l12.5-7.5z"/>'), reset: SI('<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.6h4.6"/>'),
     film: SI('<rect x="2.5" y="6" width="13.5" height="12" rx="2.5"/><path d="m16 10.5 5.5-3.2v9.4L16 13.5"/>'), ready: SI('<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 14.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4.5"/>'),
     post: SI('<rect x="3" y="3" width="18" height="18" rx="3"/>'), posted: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
     hide: SI('<path d="M10.73 5.08A10.74 10.74 0 0 1 21.94 11.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>'),
@@ -3757,22 +3774,286 @@
     place(); render(); mark(); cast(true);
     return api;
   }
+  // 🎯 قالب «مقطع التحدي» (طلب المالك 15 نوفمبر 2026، عشان المقاطع تنتشر): إطار 9:16 — جملة تحدي، السؤال كبير ومعنى كل كلمة تحتها،
+  //   عدّ → الجواب بالأخضر وجملة الربط → يرجع لأول لقطة (المقطع يعيد نفسه طبيعي) · مسافة = ابدأ · Backspace = أول لقطة
+  //   المقاسات بالبكسل على عرض 1080 (--u) والمحتوى داخل المساحة الآمنة لتيك توك (فوق 160 · تحت 420 · يمين 140 · يسار 60)
+  //   الأنواع (طلب المالك 15 نوفمبر، 23:18): q الكمي (اللي فيه رسمة أول = الأساس) · c تجميعة تناظر (3 أسئلة تتكرر) · r نتائج طلابنا · f «اكتب كلمة وأرسل لك الملف»
+  //   (v سؤال تناظر لحاله يبقى يفتح، بس ما يطلع بالقائمة) · البيانات it.ch و data.comp من studio_ch.py الخاص · data.mok = 0 لين يوافق المالك على المعاني
+  //   قالب «✍️ شرح» = البطاقة القديمة مع السكربت والقلم التلقائي والعرض (q و v بس، مثل ما كانت)
+  const CH_COUNT = 5000, CH_HOLD = 11000;
+  const CH_LINES = { v: ['عندك 5 ثواني بس', 'سؤال من القدرات، تقدر تحله؟', 'ركّز… وش العلاقة؟', 'جاوب قبل لا يخلص الوقت', 'جرّبها قبل ما يطلع الجواب', 'تحدّى نفسك وجاوب', 'فكّر بالعلاقة مو بالكلمات', 'خلّك سريع… أي خيار؟'],
+    q: ['عندك 5 ثواني بس', 'سؤال كمي من القدرات، تقدر تحله؟', 'احسبها بسرعة', 'جاوب قبل لا يخلص الوقت', 'جرّبها قبل ما يطلع الجواب', 'تحدّى نفسك وجاوب', 'خلّك سريع… كم الجواب؟', 'سؤال واحد بس… تقدر عليه؟'],
+    c: ['3 أسئلة تناظر تتكرر في الاختبار', 'أسئلة تناظر تتكرر في الاختبار، كم تجيب؟', 'تتكرر في الاختبار… جاوب الثلاثة قبل الوقت',
+      'كم سؤال تجيب صح من الثلاثة؟', '3 أسئلة تناظر من القدرات، كم تجيب؟', 'جاوب الثلاثة قبل لا يخلص الوقت', 'تحدّى نفسك في 3 أسئلة تناظر'] };
+  // ✅ «تتكرر في الاختبار» (أول 3 جمل التجميعات) بس للتجميعة اللي أسئلتها جت في أكثر من نموذج أو في «الأسئلة الجديدة» (it.rp) — و«تسريبات» ما تنكتب أبداً
+  //   الكمي: ولا سؤال منه في أكثر من قسم، فما فيه جملة «يتكرر» للكمي
+  const CH_REP = 3;
+  // جمل بشرط (رقمها بعد آخر جملة): «فيه خيار يخدعك» لما فيه خيار ترتيبه مقلوب · «ركّز في الرسمة» للكمي اللي فيه رسمة
+  //   «أغلب الناس يغلطون فيه» بس لما الفخ حقيقي: أغلب طلاب الموقع غلطوا فيه فعلاً (it.ch.tr = [غلطوا، حلّوه] من سجلهم) — و«تسريبات» ما تنكتب أبداً
+  const CH_TRICK = 'فيه خيار يخدعك', CH_FIG = 'ركّز في الرسمة وجاوب', CH_TRAP = 'أغلب الناس يغلطون فيه', CH_TRAP_C = 'فيها سؤال أغلب الناس يغلطون فيه';
+  const CH_ASK = 'اكتب حرف إجابتك في التعليقات';
+  const CH_IC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.6a8.3 8.3 0 0 1-8.4 8.2 8.8 8.8 0 0 1-3.8-.85L3.5 20.5l1.6-4.4a7.9 7.9 0 0 1-1-3.9 8.3 8.3 0 0 1 8.4-8.3 8.3 8.3 0 0 1 8 7.7z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+  const CH_COURSE = 'دورة كيو قايد للقدرات الإنجليزي: تدريب على أسئلة الاختبار مع الشرح';
+  const CH_TAGS = '#قدرات #القدرات_الانجليزي #قياس #اختبار_القدرات';
+  const CH_TIPS = ['مقطع واحد كل يوم في وقت ثابت', 'ارفع المقطع بالطول وبجودة 1080', 'رد على التعليقات في أول ساعة، وقول للي جاوب صح إنه صح', 'لا تكتب الجواب في الوصف، ولا تثبّت تعليق فيه الجواب قبل يوم',
+    'إذا أكثر الناس اختاروا خيار غلط، سوّ مقطع رد يشرح الفخ', 'بعد 24 ساعة قارن المقاطع في متوسط المشاهدة ونسبة اللي كمّلوا للنهاية', 'جملة التحدي اللي تجيب أعلى متوسط مشاهدة، كرّرها', 'قيس كل مقطع بعدد رسايل الواتساب اللي جابها، مو بالمشاهدات بس'];
+  const CH_GIFT = 'https://q-guide.online/f/';   // صفحة الملف (محتواه من الـ API الخاص)
+  const CH_KINDS = { q: '📐 الكمي', c: '🔗 تجميعات التناظر', r: '🏆 نتائج طلابنا', f: '📁 اكتب كلمة' };
+  const stTpl = () => lsGet('qg_sttpl', 'ch') === 'ex' ? 'ex' : 'ch';
+  const chDay = () => Math.max(1, Math.min(9999, parseInt(lsGet('qg_stday', 1), 10) || 1));
+  const chKw = () => String(lsGet('qg_stkw', '') || '').trim().slice(0, 20) || 'تناظر';
+  const chLines = (kind, it) => {
+    const B = CH_LINES[kind] || [], N = B.length, c = it.ch || {}, L = B.map((t, i) => [i, t]).filter(([i]) => kind !== 'c' || it.rp || i >= CH_REP);
+    if (kind === 'v') { if ((c.r || []).length) L.push([N, CH_TRICK]); if (c.tr) L.push([N + 1, CH_TRAP]); }
+    else if (kind === 'q') { if (c.f) L.push([N, CH_FIG]); if (c.tr) L.push([N + 1, CH_TRAP]); }
+    else if (kind === 'c' && (it.items || []).some(x => x.ch && x.ch.tr)) L.push([N, CH_TRAP_C]);
+    return L;
+  };
+  const chLine = (kind, it, n) => { const L = chLines(kind, it); if (!L.length) return [0, '']; const m = lsGet('qg_stline', null) || {}, i = m[kind + n] != null ? m[kind + n] : it.ch ? it.ch.l : it.l || 0; return L.find(x => x[0] === i) || L[0]; };
+  const chHook = (kind, it, n) => kind === 'r' ? `${it.fem ? 'طالبتنا جابت' : 'طالبنا جاب'} ${it.sc} في القدرات الإنجليزي` : kind === 'f' ? `اكتب «${chKw()}» في التعليقات وأرسل لك الملف` : chLine(kind, it, n)[1];
+  // 📋 الوصف: الجملة الأولى (جملة التحدي أو العنوان) · سطر عن الدورة · الهاشتاقات · رقم التواصل آخر شي — وما فيه الجواب أبداً
+  const chDesc = (kind, it, n) => [chHook(kind, it, n), CH_COURSE, CH_TAGS, 'للاشتراك تواصل واتساب: ' + ST_WA.replace(/\s/g, '')].join('\n');
+  const chDm = () => 'هلا، هذا ملف أسئلة التناظر اللي تتكرر في الاختبار مع معنى كل كلمة:\n' + CH_GIFT;
+  // القائمة لكل نوع · مقطع التحدي: الكمي اللي فيه رسمة أول (والفخ الحقيقي قبل) · اللفظي الكلمات السهلة أول · التجميعات: اللي تكرر فعلاً أول (ترتيب البيانات)
+  function stList(kind, data, chm) {
+    if (kind === 'c') { const vm = new Map(data.verbal.map(x => [x.n, x])); return (data.comp || []).map(c => Object.assign({}, c, { items: c.v.map(v => vm.get(v)).filter(Boolean) })).filter(c => c.items.length === 3); }
+    if (kind === 'r') return RES().map((r, i) => ({ n: i + 1, sc: r.n, q: r.q, v: r.v, t: r.t, by: r.by, fem: !!r.f }));
+    if (kind === 'f') { const C = stList('c', data); return [{ n: 1, items: C.length ? C[0].items.slice(0, 2) : [], count: C.filter(c => c.rp).length * 3 }]; }
+    const L = data[kind === 'v' ? 'verbal' : 'quant'].slice(); if (!chm) return L;
+    const rk = kind === 'v' ? x => (x.ch && x.ch.e) || 2 : x => { const c = x.ch || {}; return c.f && c.tr ? 0 : c.f ? 1 : c.tr ? 2 : 3; };
+    return L.sort((a, b) => rk(a) - rk(b) || a.n - b.n);
+  }
+  const stOrder = (kind, data) => stList(kind, data, true);
+  // wrapMath يرمّز النص قبل ما يدوّر الرياضيات فيكسر < و> («x < 0» تطلع «&lt;») — هنا نبدّلهم مؤقتاً بـ ≤ ≥ (ما تجي بنصوص البطاقات) ونرجّعهم بعد اللف
+  const chMath = raw => { const s = String(raw || ''); return /[≤≥]/.test(s) ? wrapMath(s) : wrapMath(s.replace(/</g, '≤').replace(/>/g, '≥')).replace(/≤/g, '&lt;').replace(/≥/g, '&gt;'); };
+  const CH_CMP = /^(A is greater|B is greater|Equal|Not enough information)$/i;   // خيارات «قارن» الأربعة
+  const chWd = (en, ar) => `<span class="ch-w"><b>${esc(en)}</b>${ar ? `<small>${esc(ar)}</small>` : ''}</span>`;   // الكلمة ومعناها تحتها بالضبط
+  const chPair = (en, m) => { const a = String(en).split(':').map(s => s.trim()); return a.length === 2 ? chWd(a[0], (m || [])[0]) + '<span class="ch-c">:</span>' + chWd(a[1], (m || [])[1]) : chWd(en, ''); };
+  // بطاقة سؤال (data-q = ترتيبه في التجميعة · data-ans = جوابه) + جملة الربط حقته تحت
+  function chQCard(kind, it, q, label) {
+    const c = it.ch || {}, on = q ? '' : ' on';
+    if (kind === 'v') {
+      const m = c.m || [], rv = new Set(c.r || []);
+      return `<div class="ch-card${on}" data-q="${q}" data-ans="${it.ans}"><div class="ch-kind">${label}</div><div class="ch-q">${chPair(it.q, m[0])}</div>
+        <div class="ch-opts">${it.opts.map((op, i) => `<div class="tk-o ch-o${rv.has(i) ? ' trap' : ''}" data-i="${i}"><span class="ch-l">${STL[i]}</span><span class="ch-p">${chPair(op, m[i + 1])}</span>${rv.has(i) ? '<span class="ch-rv">الترتيب مقلوب</span>' : ''}</div>`).join('')}</div></div>`;
+    }
+    // الخيارات: عمودين لما تكون قصيرة، أو خيارات «قارن» الأربعة، أو خيارات سؤال فيه رسمة (3 كلمات بالأكثر: تنزل لسطرين داخل خانتها) — عشان الرسمة تاخذ المكان
+    const om = c.om || [], wr = it.opts.every(x => CH_CMP.test(x.trim())) || (!!c.f && it.opts.every(x => x.length <= 24 && x.trim().split(/\s+/).length <= 3)), g2 = wr || it.opts.every(x => x.length <= 12);
+    return `<div class="ch-card${on}" data-q="${q}" data-ans="${it.ans}"${c.f ? ' data-fig="1"' : ''}><div class="ch-kind">${label}</div><div class="ch-img"><img src="${it.img}" alt="" style="--iw:${it.w || 600};aspect-ratio:${it.w || 600}/${it.h || 400}"></div>${c.a ? `<div class="ch-ar">${chMath(c.a)}</div>` : ''}
+      <div class="ch-opts${g2 ? ' g2' : ''}${wr ? ' wr' : ''}">${it.opts.map((op, i) => `<div class="tk-o ch-o" data-i="${i}"><span class="ch-l">${STL[i]}</span><span class="ch-p">${chWd(op, om[i])}</span></div>`).join('')}</div></div>`;
+  }
+  function chLinkHtml(kind, it, q) {   // ما له شرح في الموقع → بدون جملة (.none): يطلع الجواب بالأخضر بس
+    const c = it.ch || {}, ARx = /[؀-ۿ]/;
+    const inner = kind === 'v' ? (c.k ? `<span>${esc(c.k)}</span>` : '') : (c.k || []).map(l => ARx.test(l) ? `<span>${chMath(l)}</span>` : `<span dir="ltr">${esc(l)}</span>`).join('');
+    return `<span class="ch-link${q ? '' : ' on'}${inner ? '' : ' none'}" data-q="${q}">${inner}</span>`;
+  }
+  function stChCard(kind, it, n, o) {   // o = { line, day }
+    const top = (lbl, num) => `<div class="ch-top"><span class="ch-series">${lbl}</span>${num ? `<span class="ch-num" id="chnum">${num}</span>` : '<span></span>'}<span class="ch-brand"><img src="/assets/logo.png" alt=""><b>${ST_SITE}</b></span></div>${num ? '<div class="ch-bar"><i id="chbar"></i></div>' : ''}`;
+    const series = `تحدي القدرات اليومي <b id="chday">${o.day}</b>`, ask = t => `<span class="ch-ask">${CH_IC}<span>${t}</span></span>`;
+    const wrap = (cls, head, mid, foot) => ({ hasTw: false, html: `<div class="tk ch${cls}" id="tk" data-kind="${kind}"><div class="ch-safe">${head}<div class="ch-mid">${mid}</div><div class="ch-foot">${foot}</div></div></div>` });
+    const line = `<div class="ch-line" id="chline">${esc(o.line)}</div>`, sub = '<div class="ch-sub">اختر الزوج اللي فيه نفس العلاقة</div>';
+    if (kind === 'c') return wrap(' cc', top(series, 4), line + sub + `<div class="ch-stack">${it.items.map((x, q) => chQCard('v', x, q, `التناظر اللفظي · السؤال ${q + 1} من 3`)).join('')}</div>`,
+      ask('اكتب حروف إجاباتك في التعليقات') + it.items.map((x, q) => chLinkHtml('v', x, q)).join(''));
+    if (kind === 'r') {   // 🏆 نتيجة حقيقية (موافقين ينعرضون): الدائرة والدرجات وكلامه · بعدها صفحة النتيجة من قياس (إثبات) · بدون اسم ولا رقم
+      const a = `<div class="ch-card chr-a on" data-q="0"><div class="chr-row"><img class="chr-ring" src="/assets/results/r${it.sc}.jpg" alt=""><dl class="chr-sc"><div><dt>الكمي</dt><dd>${esc(it.q)}</dd></div><div><dt>اللفظي</dt><dd>${esc(it.v)}</dd></div></dl></div><blockquote class="chr-qt">${esc(it.t)}</blockquote><div class="chr-by">${esc(it.by)}</div></div>`;
+      const b = `<div class="ch-card chr-b" data-q="1"><img class="chr-full" src="/assets/results/r${it.sc}-full.jpg" alt=""><div class="chr-cap">صفحة النتيجة من موقع قياس</div></div>`;
+      return wrap(' chr', top('نتائج طلابنا', 0), `<div class="ch-line" id="chline">${esc(chHook(kind, it, n))}</div><div class="ch-stack">${a}${b}</div>`, '<span class="chr-note">النتائج تختلف من طالب لطالب حسب مستواه ومذاكرته</span>');
+    }
+    if (kind === 'f') {   // 📁 «اكتب كلمة وأرسل لك الملف»: معاينة أول سؤالين من الملف (بدون الجواب) — والملف يوصله فعلاً برابط في الخاص
+      const mini = (x, i) => { const m = (x.ch && x.ch.m) || []; return `<div class="chf-q${i ? ' fade' : ''}"><span class="chf-n">${i + 1}</span><div class="chf-st">${chPair(x.q, m[0])}</div><div class="chf-o">${x.opts.map((op, j) => `<div class="chf-oi"><span class="ch-l">${STL[j]}</span><span class="ch-p">${chPair(op, m[j + 1])}</span></div>`).join('')}</div></div>`; };
+      return wrap(' chf', top('ملف مجاني', 0), `<div class="ch-line" id="chline">اكتب «<b id="chkwv">${esc(chKw())}</b>» في التعليقات</div><div class="ch-sub">وأرسل لك ملف أسئلة التناظر اللي تتكرر في الاختبار، مع معنى كل كلمة</div>
+        <div class="ch-stack"><div class="ch-card chf-doc on" data-q="0"><div class="chf-h"><b>أسئلة تناظر تتكرر في الاختبار</b><span>${it.count} سؤال · معنى كل كلمة · الجواب</span></div>${it.items.map(mini).join('')}</div></div>`, ask('الملف يوصلك في الخاص'));
+    }
+    return wrap('', top(series, 5), line + (kind === 'v' ? sub : '') + `<div class="ch-stack">${chQCard(kind, it, 0, kind === 'v' ? 'التناظر اللفظي' : 'القسم الكمي')}</div>`, ask(CH_ASK) + chLinkHtml(kind, it, 0));
+  }
+  // البطاقة الظاهرة (التجميعة: السؤال 1 ثم 2 ثم 3 · النتيجة: الدرجات ثم صفحة قياس) وجملة الربط حقتها · الجواب الأخضر لكل بطاقة من data-ans
+  const chShow = (tk, q) => tk.querySelectorAll('[data-q]').forEach(e => e.classList.toggle('on', +e.dataset.q === q));
+  const chOk = (tk, on) => tk.querySelectorAll('[data-ans]').forEach(cd => cd.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', !!on && +o.dataset.i === +cd.dataset.ans)));
+  // 📏 المقاسات تدخل: جملة التحدي سطر (68 → 52، وإلا سطرين) · السؤال سطر (100 → 70) · الخيارات (52 / 34 → 40) · جملة الربط سطرين (42 → 32) · ترجمة الكمي 3 أسطر (34 → 28)
+  //   والرسمة أكبر شي: تكبر لين 2.2 من حجمها (أقصى عرض الإطار) وتصغر لين كل شي يدخل المساحة الآمنة · التجميعة: كل بطاقة لحالها، وأطولها تصغر أول
+  //   بوحدة --u (بكسل على عرض 1080) فتطلع نفسها بأي حجم وبالشاشتين · تحتاج الخط محمّل (stFontReady)
+  function chFit(tk) {
+    if (!tk || !tk.classList.contains('ch')) return;
+    const u = Math.min(tk.clientWidth / 1080, tk.clientHeight / 1920); if (!u) return;
+    const S = (el, v, x) => el && el.style.setProperty(v, x), wide = el => !!el && el.scrollWidth > el.clientWidth + 1;
+    const L = tk.querySelector('.ch-line'), safe = tk.querySelector('.ch-safe'), foot = tk.querySelector('.ch-foot');
+    const over = () => foot.getBoundingClientRect().bottom > safe.getBoundingClientRect().bottom + .5;
+    if (L) { L.classList.add('one'); let f = 68; S(L, '--fl', f); while (wide(L) && f > 52) S(L, '--fl', f -= 2); if (wide(L)) { L.classList.remove('one'); S(L, '--fl', 60); } }
+    const K = [...tk.querySelectorAll('.ch-link:not(.none)')]; let fk = 42;
+    const setK = () => K.forEach(k => S(k, '--fk', fk)), kTall = () => K.some(k => k.offsetHeight > (fk * 1.32 * 2 + 44) * u);
+    if (K.length) { setK(); while (kTall() && fk > 32) { fk -= 2; setK(); } }   // جملة الربط سطرين بالأكثر (مكانها محجوز تحت حتى وهي مخفية)
+    const setO = c => { S(c.O, '--fo', c.fo); S(c.O, '--fa', Math.round(c.fo * 34 / 52)); };
+    const cards = [...tk.querySelectorAll('.ch-card')].map(C => {
+      const c = { C, Q: C.querySelector('.ch-q'), O: C.querySelector('.ch-opts'), R: C.querySelector('.ch-ar'), I: C.querySelector('.ch-img img'), fq: 100, fo: 52, fr: 34, is: 0 };
+      if (c.I) { c.is = Math.min(2.2, c.I.parentElement.clientWidth / u / (parseFloat(c.I.style.getPropertyValue('--iw')) || 600)); S(C, '--is', c.is.toFixed(2)); }
+      if (c.Q) { c.Q.classList.remove('two'); S(c.Q, '--fq', c.fq); while (wide(c.Q) && c.fq > 70) S(c.Q, '--fq', c.fq -= 2); if (wide(c.Q)) { c.Q.classList.add('two'); S(c.Q, '--fq', c.fq = 84); } }   // ما دخل بـ 70: الكلمة الثانية تنزل سطر
+      if (c.O) { setO(c); const ps = [...c.O.querySelectorAll('.ch-p')]; while (ps.some(wide) && c.fo > 40) { c.fo -= 2; setO(c); } }
+      if (c.R) { S(c.R, '--fr', c.fr); while (c.R.offsetHeight > c.fr * 1.45 * 3.2 * u && c.fr > 28) S(c.R, '--fr', c.fr -= 2); }
+      return c;
+    });
+    // كل شي داخل المساحة الآمنة — بالترتيب: الرسمة لين حجمها الأصلي، الخيارات لين 48، السؤال اللي نزل سطرين لين 70، الرسمة لين 75 %، السؤال لين 84،
+    //   الترجمة لين 30، جملة الربط لين 34، بعدها أقل الحدود (الخيارات 40 · السؤال 70 · الترجمة 28 · الربط 32 · الرسمة 40 %) — فالرسمة تبقى أكبر شي والخيارات كبيرة قدر ما يمكن
+    const stepsOf = c => {
+      const img = (min, d) => [() => c.I && c.is > min + .001, () => S(c.C, '--is', (c.is -= d).toFixed(2))];
+      const fO = min => [() => c.O && c.fo > min, () => { c.fo -= 2; setO(c); }], fQ = (min, two) => [() => c.Q && (!two || c.Q.classList.contains('two')) && c.fq > min, () => S(c.Q, '--fq', c.fq -= 2)];
+      const fR = min => [() => c.R && c.fr > min, () => S(c.R, '--fr', c.fr -= 2)], fK = min => [() => K.length && fk > min, () => { fk -= 2; setK(); }];
+      if (c.C.dataset.fig === '1') return [fO(48), fR(30), fK(34), fO(44), fR(28), fK(32), fO(40), img(1.05, .05), img(.75, .05), img(.55, .05), img(.4, .05)];   // 🖼 فيها رسمة: النصوص تصغر لين حدها أول، والرسمة آخر شي
+      return [img(1.05, .05), fO(48), fQ(70, 1), img(.75, .05), fQ(84), fR(30), fK(34), fO(44), img(.55, .05), fO(40), fQ(70), fR(28), fK(32), img(.4, .05)];
+    };
+    const steps = new Map(cards.map(c => [c, stepsOf(c)]));
+    for (let g = 400; g-- && over() && cards.length;) {
+      const c = cards.reduce((a, b) => b.C.offsetHeight > a.C.offsetHeight ? b : a), s = steps.get(c).find(x => x[0]());
+      if (!s) break; s[1]();
+    }
+    // 🏆 النتيجة و📁 «اكتب كلمة»: كل شي يصغر مع بعض (--rz) لين يدخل المساحة الآمنة
+    const st = tk.querySelector('.ch-stack');
+    if (st && (tk.classList.contains('chr') || tk.classList.contains('chf'))) { let z = 1; S(st, '--rz', z); while (over() && z > .6) S(st, '--rz', (z -= .04).toFixed(2)); }
+  }
+  // ⏱ التسلسل على ساعة وحدة (Date.now) — نفس الشي بالصفحة وشاشة التسجيل:
+  //   سؤال لحاله: 0–5 ث عدّ (الرقم والشريط) · 5–16 ث الجواب وجملة الربط · تجميعة: لكل سؤال 4 ث عدّ + 2.5 ث جواب (19.5 ث) · نتيجة: 7 ث الدرجات + 9 ث صفحة قياس
+  //   وبعدها أول لقطة (المقطع يعيد نفسه طبيعي) · «اكتب كلمة» = لقطة وحدة ثابتة
+  const chPlan = kind => kind === 'c' ? [0, 1, 2].reduce((a, q) => a.concat([{ p: 'count', d: 4000, q }, { p: 'rev', d: 2500, q }]), [])
+    : kind === 'r' ? [{ p: 'show', d: 7000, q: 0 }, { p: 'proof', d: 9000, q: 1 }] : kind === 'f' ? [] : [{ p: 'count', d: CH_COUNT, q: 0 }, { p: 'rev', d: CH_HOLD, q: 0 }];
+  function chSeq(tk, plan, onPhase) {
+    const num = tk.querySelector('#chnum'), bar = tk.querySelector('#chbar'), END = plan.reduce((a, s) => a + s.d, 0), cnt = plan.find(x => x.p === 'count');
+    let t0 = 0, raf = 0, cur = 'idle:0';
+    const at = el => { let a = 0; if (el >= 0 && el < END) for (const s of plan) { if (el < a + s.d) return { p: s.p, q: s.q, e: el - a, d: s.d }; a += s.d; } return { p: 'idle', q: 0, e: 0, d: 1 }; };
+    const paint = () => {
+      raf = 0; const s = at(t0 ? Date.now() - t0 : -1);
+      if (num) num.textContent = s.p === 'rev' ? '✓' : String(s.p === 'count' ? Math.max(1, Math.ceil((s.d - s.e) / 1000)) : cnt ? Math.round(cnt.d / 1000) : '');
+      if (bar) bar.style.transform = `scaleX(${s.p === 'count' ? Math.max(0, 1 - s.e / s.d).toFixed(4) : s.p === 'rev' ? 0 : 1})`;
+      const k = s.p + ':' + s.q;
+      if (k !== cur) { cur = k; tk.classList.toggle('run', s.p !== 'idle'); tk.classList.toggle('done', s.p === 'rev'); if (s.p === 'idle') t0 = 0; if (onPhase) onPhase(s.p, s.q); }
+      if (s.p !== 'idle') raf = requestAnimationFrame(paint);
+    };
+    return { start(a) { if (!END) return; cancelAnimationFrame(raf); t0 = a || Date.now(); cur = ''; paint(); }, stop() { cancelAnimationFrame(raf); t0 = 0; cur = ''; paint(); },
+      t0: () => t0, phase: () => cur.split(':')[0] || 'idle', end: END, destroy() { cancelAnimationFrame(raf); raf = 0; t0 = 0; } };
+  }
+  // 🔊 تكة لكل رقم وصوت لكل جواب (WebAudio: ينجدول من أول ما تضغط، فيطلع بوقته حتى لو الصفحة ورا شاشة التسجيل) · يطلع من صفحة التصوير بس
+  const CHA = { ctx: null, nodes: [] };
+  const chHush = () => { CHA.nodes.forEach(x => { try { x.stop(); } catch (e) {} }); CHA.nodes = []; };
+  function chSounds(plan) {
+    chHush(); let ctx = CHA.ctx;
+    try { if (!ctx) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return; ctx = CHA.ctx = new A(); } if (ctx.state === 'suspended') ctx.resume(); } catch (e) { return; }
+    const tone = (at, f, d, v, type) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, at); g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(v, at + .006); g.gain.exponentialRampToValueAtTime(.0001, at + d); o.connect(g); g.connect(ctx.destination); o.start(at); o.stop(at + d + .05); CHA.nodes.push(o); };
+    let t = ctx.currentTime + .03;
+    for (const s of plan) {
+      if (s.p === 'count') for (let i = 0; i < Math.round(s.d / 1000); i++) tone(t + i, 1180, .07, .3, 'triangle');
+      if (s.p === 'rev') { tone(t, 784, .25, .28, 'sine'); tone(t + .12, 1175, .5, .28, 'sine'); }
+      t += s.d / 1000;
+    }
+  }
+  // 🎯 تحكّم مقطع التحدي في صفحة التصوير: ابدأ / أول لقطة + شاشة التسجيل (نفس قناة الشرح التلقائي: STV)
+  function stCh(o) {   // o = { tk, kind, n, it, setRev(on), pen(), onPhase(p, q) }
+    const S = { ct: 0, ink: '', cur: null, gone: false, snd: lsGet('qg_stsnd', 1) !== 0 }, plan = chPlan(o.kind);
+    let api = null;
+    const seq = chSeq(o.tk, plan, (p, q) => { chShow(o.tk, q); o.setRev(p === 'rev'); if (o.onPhase) o.onPhase(p, q); cast(); });
+    const inkSig = s => s.length + '|' + s.map(x => x.t === 'txt' ? [x.s, (+x.x).toFixed(3), (+x.y).toFixed(3), x.c, x.z].join('~') : (x.p ? x.p.length : 0) + (x.c || '')).join(',');
+    const cast = force => {
+      if (S.gone || STV.cur !== api || !STV.win || STV.win.closed) return; if (force) S.ink = '';
+      if (S.ct) return;
+      S.ct = setTimeout(() => {
+        S.ct = 0; if (S.gone || STV.cur !== api || !STV.win || STV.win.closed) return;
+        const pen = o.pen(), strokes = pen ? pen.getStrokes() : [], sig = inkSig(strokes);
+        const m = { qg: 'stv', tpl: 'ch', kind: o.kind, n: o.n, t0: seq.t0(), line: chLine(o.kind, o.it, o.n)[1], day: chDay(), kw: chKw(), rev: !!ST.reveal, land: false, cur: S.cur };
+        if (sig !== S.ink) { m.ink = strokes; S.ink = sig; }
+        try { STV.win.postMessage(m, location.origin); } catch (e) {}
+      }, 15);
+    };
+    const mark = () => { const on = stvOn(), hid = on && STV.vis === 'hidden', b = $('#chview'); if (b) { b.classList.toggle('on', on && !hid); b.classList.toggle('warn', hid); } const w = $('#chvw'); if (w) w.hidden = !hid; };
+    const openView = () => {
+      stvListen();
+      if (STV.win && !STV.win.closed) { try { STV.win.focus(); } catch (e) {} cast(true); return; }
+      let w = null; try { w = window.open('/p/#studio-view', 'qg-stview', 'popup=yes,width=540,height=960'); } catch (e) {}
+      if (!w) return toast('المتصفح منع فتح شاشة التسجيل. اسمح بالنوافذ المنبثقة لهذا الموقع وجرّب مرة ثانية.');
+      STV.win = w; STV.seen = 0; STV.vis = 'visible'; mark();
+    };
+    const start = () => { if (seq.t0() || !plan.length) return; if (S.snd) chSounds(plan); seq.start(); cast(); };
+    const reset = () => { chHush(); seq.stop(); o.setRev(false); cast(); };
+    const key1 = e => {
+      if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) start(); return true; }
+      if (e.key === 'Backspace') { e.preventDefault(); if (!e.repeat) reset(); return true; }
+      if (e.code === 'KeyV') { openView(); return true; }
+      return false;
+    };
+    api = {
+      key: key1, cast, mark, openView, start, reset, running: () => !!seq.t0(), plan,
+      setSnd(on) { S.snd = !!on; lsSet('qg_stsnd', on ? 1 : 0); if (!on) chHush(); },
+      snd: () => S.snd,
+      draw(c) { S.cur = c ? { t: c.t, c: c.c, w: c.w, p: c.p } : null; cast(); },
+      fromView(k) { if (k === 'next') start(); else if (k === 'prev') reset(); },
+      state: () => ({ t0: seq.t0(), ph: seq.phase(), snd: S.snd }),
+      destroy() { S.gone = true; chHush(); seq.destroy(); clearTimeout(S.ct); if (STV.cur === api) { STV.cur = null; setTimeout(() => { if (!STV.cur) stvIdle(); }, 600); } }
+    };
+    STV.cur = api; stvListen(); mark(); cast(true);
+    return api;
+  }
   async function renderRec(kind, n) {
     stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
     let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {}), stFontReady()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
     if (location.hash !== `#studio-${kind}-${n}`) return;   // راح لصفحة ثانية وهو ينتظر التحميل
-    const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
+    // 🎯 مقطع التحدي (الافتراضي) أو ✍️ شرح (البطاقة القديمة) · c تجميعة تناظر · r نتيجة طالب · f «اكتب كلمة» = قالب التحدي بس
+    const NEW = kind === 'c' || kind === 'r' || kind === 'f', TPL = NEW ? 'ch' : stTpl(), CHM = TPL === 'ch', NOANS = kind === 'r' || kind === 'f';
+    const list = stList(kind, data, CHM); const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }   // التحدي: الرسمة أول (الكمي) · السهل أول (اللفظي)
+    const TT = { q: `Q ${n} · الكمي`, v: `Q ${n} · التناظر اللفظي`, c: `تجميعة ${n} · 3 أسئلة تناظر`, r: `نتيجة ${it.sc} · ${it.fem ? 'طالبة' : 'طالب'}`, f: 'اكتب كلمة وأرسل لك الملف' }[kind];
+    if (NEW) document.title = 'تصوير ' + TT + ' | Q-Guide';
     ST.reveal = false; ST.land = lsGet('qg_stland', 0) === 1; document.body.classList.add('rec-on');
-    const key = kind + n, card = stCard(kind, it, n, ST.land), hasTw = card.hasTw;
+    const key = kind + n, card = CHM ? stChCard(kind, it, n, { line: chLine(kind, it, n)[1], day: chDay() }) : stCard(kind, it, n, ST.land), hasTw = card.hasTw;
     let SAYC = null;
-    const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
+    const ar = kind === 'v' && it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
     const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
     const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
     const rlink = (h, ic, lb, tt) => `<a class="rb" href="${h}" title="${tt}" aria-label="${tt}"><i aria-hidden="true">${ic}</i><small>${lb}</small></a>`;
-    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', ST_IC.post, 'الحالة', 'حالة السؤال')}<span class="rsep"></span>${rb(`id="lland" aria-pressed="${ST.land}"`, ST_IC.land, 'بالعرض', 'البطاقة بالعرض بدل الطول · L', ST.land ? 'on' : '')}${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
+    const SKIP = { q: ['سؤال ثاني', 'سؤال ثاني: اللي بعده وما تصوّر (اللي فيه رسمة أول)'], v: ['سؤال ثاني', 'سؤال ثاني: الأسهل اللي ما تصوّر'], c: ['ثانية', 'تجميعة ثانية ما تصوّرت'], r: ['ثانية', 'نتيجة ثانية ما تصوّرت'] }[kind];
+    const PLAYT = { c: 'ابدأ المقطع: 3 أسئلة · مسافة', r: 'ابدأ المقطع: الدرجات ثم صفحة قياس · مسافة' }[kind] || 'ابدأ المقطع: عدّ ثم الجواب · مسافة', RS = '<span class="rsep"></span>';
+    const railActs = CHM
+      ? `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}${kind === 'f' ? '' : RS + rb('id="lplay"', ST_IC.play, 'ابدأ', PLAYT) + rb('id="lreset"', ST_IC.reset, 'أول لقطة', 'رجّع لأول لقطة · Backspace') + (NOANS ? '' : rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R'))}${kind === 'f' ? '' : RS + rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السابق · →') + rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'التالي · ←') + rb('id="lskip"', ST_IC.rnd, SKIP[0], SKIP[1])}${RS}${rb('id="lpost"', ST_IC.post, 'الحالة', 'حالة المقطع')}${RS}${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة · Esc')}</nav>`
+      : `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', ST_IC.post, 'الحالة', 'حالة السؤال')}<span class="rsep"></span>${rb(`id="lland" aria-pressed="${ST.land}"`, ST_IC.land, 'بالعرض', 'البطاقة بالعرض بدل الطول · L', ST.land ? 'on' : '')}${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
     const railDraw = `<nav class="rail rdraw" aria-label="أدوات الكتابة">${ST_TOOLS.map(([t, , lb], i) => rb(`data-tool="${t}" aria-pressed="${!i}"`, ST_IC[t], lb, lb + ({ pen: ' · P', text: ' (اضغط على البطاقة واكتب) · T', eraser: ' · E' }[t] || ''), i ? '' : 'on')).join('')}<span class="rsep"></span>${ST_W.map(([w, , lb, tt], i) => rb(`data-w="${w}" aria-pressed="${!i}"`, ST_IC[w], lb, tt, i ? '' : 'on')).join('')}<span class="rsep"></span><div class="rcols">${ST_COLS.map((c, i) => `<button type="button" class="rsw${i ? '' : ' on'}" data-col="${c}" style="--c:${c}" title="لون" aria-label="لون" aria-pressed="${!i}"></button>`).join('')}</div></nav>`;
     const sayP = lsGet('qg_stsay', null) || {};
-    const saySec = QH ? `<div class="rp-sec rp-say"><div class="rp-lbl">🎙️ الشرح التلقائي</div>
+    // 👁 الإجابة (لك فقط): سؤال · التجميعة = جواب كل سؤال · النتيجة = بياناتها · «اكتب كلمة» ما فيها جواب
+    const srcOf = (k, x) => `من ${k === 'v' ? 'النموذج ' + x.src.slice(1) : 'القسم ' + x.src.slice(1)} · سؤال ${x.qn}`;
+    const ansSec = kind === 'c' ? `<details class="rp-sec rp-ans" open><summary>👁 الإجابات (لك فقط — تطلع في المقطع بعد العد)</summary>
+          <ol class="rp-cl">${it.items.map(x => `<li><b class="ltr">${esc(x.q)}</b><div class="rp-key">الإجابة: <b class="ltr">${STL[x.ans]}) ${esc(x.opts[x.ans])}</b></div>${x.ch && x.ch.k ? `<div class="rp-k">${esc(x.ch.k)}</div>` : ''}<div class="rp-src">${srcOf('v', x)}${x.ch && x.ch.rp > 1 ? ` · 🔁 جا في ${x.ch.rp} ${x.ch.rp > 2 ? 'نماذج' : 'نموذجين'}` : ''}</div></li>`).join('')}</ol></details>`
+      : kind === 'r' ? `<details class="rp-sec rp-ans" open><summary>🏆 النتيجة (حقيقية، وصاحبها موافق تنعرض)</summary>
+          <div class="rp-key">الدرجة: <b>${it.sc}</b> · الكمي ${esc(it.q)} · اللفظي ${esc(it.v)}</div><div class="rp-exp">${esc(it.t)}</div><div class="rp-src">${esc(it.by)} · الصور مقصوصة: بدون اسم ولا رقم ولا صورة شخصية.</div></details>`
+      : kind === 'f' ? ''
+      : `<details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
+          <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
+          ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">${srcOf(kind, it)}</div></details>`;
+    // 🎯 لوحة مقطع التحدي: التشغيل · رقم السلسلة · جملة التحدي · الصوت · سؤال ثاني · شاشة التسجيل — و«📋 قبل النشر»: الوصف الجاهز + قائمة التذكير
+    const chk = (lsGet('qg_stchk', null) || {})[key] || 0, lineNow = CHM ? chLine(kind, it, n) : null;
+    const CHL = { q: '🎯 مقطع التحدي', v: '🎯 مقطع التحدي', c: '🔗 تجميعة تناظر', r: '🏆 نتيجة طالب', f: '📁 اكتب كلمة وأرسل لك الملف' }[kind];
+    const CHH = { c: 'مسافة = ابدأ · Backspace = أول لقطة. 3 أسئلة: لكل سؤال 4 ثواني عدّ وبعدها جوابه، وبعد 19.5 ثانية يرجع لأول لقطة عشان يعيد نفسه طبيعي.',
+      r: 'مسافة = ابدأ · Backspace = أول لقطة. 7 ثواني الدرجات وكلام الطالب، بعدها 9 ثواني صفحة النتيجة من قياس، وبعدها يرجع لأول لقطة.',
+      f: 'لقطة وحدة ثابتة (ما فيها عدّ). قل الكلمة بصوتك، وكل اللي يكتبها في التعليقات أرسل له الرد اللي تحت في رسائل تيك توك.' }[kind] || 'مسافة = ابدأ · Backspace = أول لقطة. عدّ من 5، بعده الجواب وجملة الربط، وبعد 16 ثانية يرجع لأول لقطة عشان يعيد نفسه طبيعي.';
+    const notes = (kind === 'c' ? it.items : [it]).filter(x => x.ch && x.ch.x).map(x => `<div class="rp-warn">⚠️ ${kind === 'c' ? esc(x.q) + ': ' : ''}${esc(x.ch.x)}</div>`).join('');
+    const chSec = CHM ? `<div class="rp-sec rp-ch"><div class="rp-lbl">${CHL}</div>
+          ${kind === 'f' ? '' : '<div class="rp-chb"><button type="button" class="btn" id="chgo">▶ ابدأ المقطع</button><button type="button" class="btn ghost" id="chre">↺ أول لقطة</button></div>'}
+          <div class="rp-hint">${CHH}</div>
+          ${NOANS ? '' : `<label class="rp-f"><span>تحدي القدرات اليومي</span><input type="number" id="chdayi" min="1" max="9999" inputmode="numeric" value="${chDay()}"></label>
+          <label class="rp-f"><span>جملة التحدي</span><select id="chlinei">${chLines(kind, it).map(([i, t]) => `<option value="${i}"${i === lineNow[0] ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+          <label class="rp-sw"><input type="checkbox" id="chsnd" ${lsGet('qg_stsnd', 1) !== 0 ? 'checked' : ''}><span>صوت العد والجواب</span></label>`}
+          ${kind === 'f' ? `<label class="rp-f"><span>الكلمة اللي يكتبونها</span><input type="text" id="chkwi" maxlength="20" value="${esc(chKw())}"></label>` : ''}
+          <div class="rp-chb${kind === 'f' ? ' one' : ''}">${kind === 'f' ? '' : `<button type="button" class="btn ghost" id="chskip" title="${SKIP[1]}">⏭ ${kind === 'c' ? 'تجميعة ثانية' : kind === 'r' ? 'نتيجة ثانية' : 'سؤال ثاني'}</button>`}<button type="button" class="btn ghost" id="chview" title="الإطار لحاله في نافذة ثانية: سجّلها هي">🖥 شاشة التسجيل</button></div>
+          <div class="rp-warn" id="chvw" hidden>⚠️ شاشة التسجيل مخفية: خلّها ظاهرة عشان يتسجّل المقطع</div>
+          ${(kind === 'v' || kind === 'c') && data.mok !== 1 ? '<div class="rp-warn">⚠️ معاني الكلمات تنتظر مراجعتك قبل ما نعتمدها</div>' : ''}
+          ${kind === 'r' && EN ? '<div class="rp-warn">⚠️ واجهتك بالإنجليزي، فكلام الطالب يطلع مترجم: رجّع الواجهة للعربي (زر ع) قبل التصوير.</div>' : ''}
+          ${notes}</div>` : '';
+    // 📁 «اكتب كلمة»: الملف يوصل فعلاً — رابط صفحته (q-guide.online/f/) في رد جاهز تلصقه في رسائل تيك توك
+    const fileSec = kind === 'f' ? `<div class="rp-sec rp-file"><div class="rp-lbl">📁 الملف اللي ترسله</div>
+          <div class="rp-hint">كل اللي يكتب «<b class="kwv">${esc(chKw())}</b>» في التعليقات: افتح رسائله في تيك توك والصق هذا الرد (فيه رابط الملف). لو ما قدرت ترسل له (بعض الحسابات قافلة الرسائل)، رد على تعليقه وقل له يرسل لك رسالة، أو حط الرابط في البايو لو حسابك يسمح.</div>
+          <pre class="rp-dm" id="chdmt">${esc(chDm())}</pre>
+          <div class="rp-chb"><button type="button" class="btn" id="chdm">📋 انسخ الرد</button><button type="button" class="btn ghost" id="chlink">🔗 انسخ الرابط بس</button></div>
+          <a class="rp-open" href="${CH_GIFT}" target="_blank" rel="noopener">افتح صفحة الملف وشوفها ‹</a>
+          <div class="rp-src">${it.count} سؤال تناظر جت في أكثر من نموذج من نماذج الدورة أو في «الأسئلة الجديدة»، مع معنى كل كلمة والجواب.</div></div>` : '';
+    const TIPS = CH_TIPS.map((t, i) => [i, t]).filter(([i]) => !NOANS || (i !== 3 && i !== 4));   // النتيجة و«اكتب كلمة» ما فيها جواب
+    const pubSec = CHM ? `<details class="rp-sec rp-pub"><summary>📋 قبل النشر</summary>
+          <button type="button" class="btn ghost" id="chdesc">📋 انسخ وصف المقطع</button>
+          <ul class="rp-chk">${TIPS.map(([i, t]) => `<li><label><input type="checkbox" data-tip="${i}" ${chk & (1 << i) ? 'checked' : ''}><span>${t}</span></label></li>`).join('')}</ul></details>` : '';
+    const tplSec = NEW ? '' : `<div class="rp-sec"><div class="rp-lbl">🎞 نوع المقطع</div>
+          <div class="seg rp-tpl" role="group" aria-label="نوع المقطع"><button type="button" data-tpl="ch" class="${CHM ? 'on' : ''}" aria-pressed="${CHM}">🎯 تحدي</button><button type="button" data-tpl="ex" class="${CHM ? '' : 'on'}" aria-pressed="${!CHM}">✍️ شرح</button></div></div>`;
+    const saySec = QH && !CHM ? `<div class="rp-sec rp-say"><div class="rp-lbl">🎙️ الشرح التلقائي</div>
           <div class="rp-hint">اقرأ السكربت من الشريط: كل ما تضغط <b>مسافة</b> يطلع السطر الجاي، والكلمة اللي تقولها الحين تنوّر، والقلم يكتب ويرسم على البطاقة مع كلامك.</div>
           <div class="rp-sayb"><button type="button" class="btn ghost" id="rsay">📜 شريط السكربت</button><button type="button" class="btn ghost" id="rview" title="البطاقة لحالها في نافذة ثانية: سجّلها هي">🖥 شاشة التسجيل</button></div>
           <label class="rp-sw"><input type="checkbox" id="rhand" ${sayP.hand === 0 ? '' : 'checked'}><span>القلم يكتب ويرسم لحاله</span></label>
@@ -3780,28 +4061,30 @@
     app.innerHTML = `<div class="rec ${ST.ui ? '' : 'noui'} ${ST.bare ? 'bare' : ''}">
       <div class="stage">${railActs}${card.html}${railDraw}</div>
       <aside class="rp">
-        <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>Q ${n} · ${kind === 'v' ? 'التناظر اللفظي' : 'الكمي'}</b><span class="sp"></span><a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a><button class="ib2" id="rrnd" title="سؤال عشوائي لم يُنشر">🎲</button></div>
+        <div class="rp-h"><a class="ib2" href="#studio" title="رجوع للقائمة">→</a><b>${TT}</b><span class="sp"></span>${kind === 'f' ? '' : `<a class="ib2" href="#studio-${kind}-${prev}" title="السابق">‹</a><a class="ib2" href="#studio-${kind}-${next}" title="التالي">›</a>`}${NOANS ? '' : '<button class="ib2" id="rrnd" title="عشوائي ما تصوّر">🎲</button>'}</div>
+        ${chSec}
+        ${fileSec}
         <div class="rp-sec"><div class="rp-lbl">✍️ القلم والنص</div>
           <div class="rp-tools">${ST_TOOLS.map(([t, ic, lb], i) => `<button type="button" data-tool="${t}" class="${i ? '' : 'on'}${t === 'text' ? ' tt' : ''}" title="${t === 'text' ? 'نص: اضغط على البطاقة واكتب' : lb}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span>${ST_COLS.map((c, i) => `<button type="button" data-col="${c}" class="sw ${i ? '' : 'on'}" style="--c:${c}" title="لون" aria-pressed="${!i}"></button>`).join('')}<span class="sep"></span>${ST_W.map(([w, ic, lb, tt], i) => `<button type="button" data-w="${w}" title="${tt}" class="${i ? '' : 'on'}" aria-pressed="${!i}">${ic}</button>`).join('')}<span class="sep"></span><button type="button" id="rundo" title="تراجع">↶</button><button type="button" id="rclr" title="مسح الكتابة">🗑</button></div>
           <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label>
           ${hasTw ? '<div class="rp-hint">🔤 اضغط على أي كلمة في البطاقة تطلع ترجمتها تحتها، واضغطها مرة ثانية تختفي.</div>' : ''}</div>
+        ${tplSec}
         ${saySec}
-        <div class="rp-sec"><div class="rp-lbl">🖼 شكل البطاقة</div>
-          <div class="seg rp-or" role="group" aria-label="شكل البطاقة"><button type="button" data-or="0" class="${ST.land ? '' : 'on'}" aria-pressed="${!ST.land}">▯ بالطول</button><button type="button" data-or="1" class="${ST.land ? 'on' : ''}" aria-pressed="${ST.land}">▭ بالعرض</button></div></div>
-        <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
+        ${CHM ? '' : `<div class="rp-sec"><div class="rp-lbl">🖼 شكل البطاقة</div>
+          <div class="seg rp-or" role="group" aria-label="شكل البطاقة"><button type="button" data-or="0" class="${ST.land ? '' : 'on'}" aria-pressed="${!ST.land}">▯ بالطول</button><button type="button" data-or="1" class="${ST.land ? 'on' : ''}" aria-pressed="${ST.land}">▭ بالعرض</button></div></div>`}
+        <div class="rp-sec rp-acts${NOANS ? ' one' : ''}">${NOANS ? '' : '<button class="btn" id="rrev">✅ كشف الإجابة</button>'}<button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
         <div class="rp-sec rp-stt"><div class="rp-lbl">🎬 حالة السؤال</div>
           <div class="stst" id="rstt" role="group" aria-label="حالة السؤال">${ST_ST.map(([s, ic, t]) => `<button type="button" data-st="${s}" aria-pressed="false"><i aria-hidden="true">${ic}</i>${t}</button>`).join('')}</div>
           <div class="rp-hint" id="rsth"></div></div>
-        ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
-        <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
-          <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
-          ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
-        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة · L بالعرض أو بالطول · H وضع التصوير · Esc رجوع للوحة${QH ? '<br>🎙️ مسافة السطر الجاي · Backspace اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل' : ''}</div>
+        ${pubSec}
+        ${ansSec}
+        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة${CHM ? '' : ' · L بالعرض أو بالطول'} · H وضع التصوير · Esc رجوع للوحة${CHM ? '<br>🎯 مسافة ابدأ المقطع · Backspace أول لقطة · V شاشة التسجيل' : QH ? '<br>🎙️ مسافة السطر الجاي · Backspace اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل' : ''}</div>
       </aside>
       <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
       <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
     </div>`;
-    const tk = $('#tk'), B = stBubbles(tk), cast = () => { if (SAYC) SAYC.cast(); }; stFitQ(tk);
+    const tk = $('#tk'), B = stBubbles(tk), cast = () => { if (SAYC) SAYC.cast(); };
+    if (CHM) { chFit(tk); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (tk.isConnected) chFit(tk); }); } else stFitQ(tk);
     tk.addEventListener('click', e => { if (ST.pen.isOn()) return; const w = B.at(e.clientX, e.clientY); if (w) { B.toggle(w); cast(); } });   // الكتابة مقفلة: الضغط يوصل للكلمة مباشرة
     ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, zMin: true, onTap: (x, y) => { const w = B.at(x, y); if (!w) return false; B.toggle(w); cast(); return true; }, onDraw: c => { if (SAYC) SAYC.draw(c); } });
     ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
@@ -3818,14 +4101,16 @@
     const recMode = () => { setUI(false); setBare(false); };
     const setRev = on => {   // يرجّع: تغيّرت؟ (القلم التلقائي يكشفها بنفسه ويرجّعها)
       on = !!on; if (ST.reveal === on) return false; ST.reveal = on;
-      tk.classList.toggle('rev', on); tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === it.ans)); $('#rrev').textContent = on ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة';
-      const l = $('#lrev'); l.classList.toggle('on', on); l.title = on ? 'إخفاء الإجابة · R' : 'كشف الإجابة · R'; l.setAttribute('aria-label', l.title);
+      tk.classList.toggle('rev', on); if (CHM) chOk(tk, on); else tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === it.ans));
+      const rr = $('#rrev'); if (rr) rr.textContent = on ? '↺ إخفاء الإجابة' : '✅ كشف الإجابة';
+      const l = $('#lrev'); if (l) { l.classList.toggle('on', on); l.title = on ? 'إخفاء الإجابة · R' : 'كشف الإجابة · R'; l.setAttribute('aria-label', l.title); }
       B.place(); cast(); return true;
     };
-    const reveal = () => setRev(!ST.reveal);
+    const reveal = () => { if (!NOANS) setRev(!ST.reveal); };
     const clear = () => { ST.pen.clear(); B.clear(); cast(); }, undo = () => { ST.pen.undo(); cast(); };
     // 🖼 بالطول (9:16) أو بالعرض (16:9): نفس البطاقة، السؤال يسار و«الحل» يمين · الكتابة اليدوية تنمسح (أماكن كل شي تغيّرت) والقلم التلقائي يعيد رسمه لحاله
     const setLand = on => {
+      if (CHM) return;   // مقطع التحدي دايم بالطول (9:16)
       on = !!on; if (ST.land === on) return; ST.land = on; lsSet('qg_stland', on ? 1 : 0);
       const had = ST.pen.getStrokes().length; ST.pen.setKey(null, []);
       tk.classList.toggle('land', on); stFitQ(tk);
@@ -3844,15 +4129,37 @@
     $('#rpen').onchange = e => penOn(e.target.checked);
     $('#mpen').classList.add('on'); $('#mpen').onclick = () => penOn(!ST.pen.isOn());
     $('#mtxt').onclick = () => setTool(ST.pen.tool() === 'text' ? 'pen' : 'text');
-    $('#rrev').onclick = $('#mrev').onclick = $('#lrev').onclick = reveal;
+    ['#rrev', '#mrev', '#lrev'].forEach(x => { const b = $(x); if (b) b.onclick = reveal; }); if (NOANS) $('#mrev').hidden = true;
     $('#rhide').onclick = $('#mhide').onclick = recMode;
     $('#lbare').onclick = () => setBare(true);
     rec.querySelectorAll('[data-or]').forEach(b => b.onclick = () => setLand(b.dataset.or === '1'));
-    $('#lland').onclick = () => setLand(!ST.land);
+    if ($('#lland')) $('#lland').onclick = () => setLand(!ST.land);
+    rec.querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => { if (b.dataset.tpl === TPL) return; lsSet('qg_sttpl', b.dataset.tpl); route(); });
     $('#lpanel').onclick = () => setUI(true);
     $('#rshow').onclick = () => setBare(false);
     $('#mmore').onclick = () => rec.classList.toggle('sheet');
-    $('#rrnd').onclick = $('#lrnd').onclick = () => { location.hash = `studio-${kind}-${stRandom(kind, data, n)}`; };
+    const rnd = () => { location.hash = `studio-${kind}-${stRandom(kind, data, n)}`; };
+    if ($('#rrnd')) $('#rrnd').onclick = rnd; if ($('#lrnd')) $('#lrnd').onclick = rnd;
+    // ⏭ سؤال ثاني: اللي بعده بترتيب «الأسهل أول» وما تصوّر
+    const skip = () => { const i = list.indexOf(it); for (let j = 1; j < list.length; j++) { const x = list[(i + j) % list.length]; if (!stOf(kind + x.n)) { location.hash = `studio-${kind}-${x.n}`; return; } } location.hash = `studio-${kind}-${next}`; };
+    if (CHM) {
+      ['#chskip', '#lskip'].forEach(x => { const b = $(x); if (b) b.onclick = skip; });
+      if ($('#chdayi')) {
+        $('#chdayi').oninput = e => { const v = Math.max(1, Math.min(9999, parseInt(e.target.value, 10) || 1)); lsSet('qg_stday', v); const d = $('#chday'); if (d) d.textContent = v; cast(); };
+        $('#chdayi').onchange = e => e.target.blur();   // Enter يثبّت الرقم ويرجّع المسافة لتشغيل المقطع
+        $('#chlinei').onchange = e => { const m = lsGet('qg_stline', null) || {}; m[key] = +e.target.value; lsSet('qg_stline', m); const l = $('#chline'); if (l) { l.textContent = chLine(kind, it, n)[1]; chFit(tk); } cast(); e.target.blur(); };
+      }
+      const copy = async (t, ok) => { try { await navigator.clipboard.writeText(t); toast(ok); } catch (e) { prompt('انسخ:', t); } };
+      if (kind === 'f') {   // الكلمة: تتغيّر بالإطار والرد والوصف مع بعض
+        $('#chkwi').oninput = e => { lsSet('qg_stkw', String(e.target.value || '').trim().slice(0, 20)); const w = chKw(); const v = $('#chkwv'); if (v) { v.textContent = w; chFit(tk); } rec.querySelectorAll('.kwv').forEach(x => x.textContent = w); cast(); };
+        $('#chkwi').onchange = e => e.target.blur();
+        $('#chdm').onclick = () => copy(chDm(), 'انتسخ الرد ✓ الصقه في رسائل تيك توك');
+        $('#chlink').onclick = () => copy(CH_GIFT, 'انتسخ الرابط ✓');
+      }
+      rec.querySelectorAll('[data-tip]').forEach(c => c.onchange = () => { const m = lsGet('qg_stchk', null) || {}; let v = m[key] || 0; v = c.checked ? v | (1 << +c.dataset.tip) : v & ~(1 << +c.dataset.tip); if (v) m[key] = v; else delete m[key]; lsSet('qg_stchk', m); });
+      // 📋 الوصف: جملة التحدي أول سطر · سطر عن الدورة · الهاشتاقات · رقم التواصل آخر شي
+      $('#chdesc').onclick = () => copy(chDesc(kind, it, n), 'انتسخ وصف المقطع ✓');
+    }
     // 🎬 حالة السؤال: اللوحة = ثلاث خطوات (اضغط الخطوة · ضغطة ثانية على الحالية ترجّعها خطوة) · زر العمود = الخطوة الجاية (بعد «تم النشر» يوقف: تغييرها من اللوحة)
     const paintSt = () => {
       const i = stIx(stOf(key)), P = ST.sts[key], d = ST_ST[i], nx = ST_ST[i + 1];
@@ -3865,8 +4172,19 @@
     rec.querySelectorAll('#rstt [data-st]').forEach(b => b.onclick = () => { const i = stIx(stOf(key)), j = stIx(b.dataset.st); setSt(j === i ? (i ? ST_ST[i - 1][0] : '') : b.dataset.st); });
     $('#lpost').onclick = () => { const i = stIx(stOf(key)); if (i >= ST_ST.length - 1) { toast('📢 منشور ✓ · غيّر الحالة من اللوحة'); return; } setSt(ST_ST[i + 1][0]); };
     paintSt();
+    // 🎯 مقطع التحدي: ابدأ / أول لقطة / شاشة التسجيل
+    if (CHM) {
+      try { SAYC = window.__stSay = stCh({ tk, kind, n, it, setRev, pen: () => ST.pen }); } catch (e) { SAYC = null; CERR('stCh: ' + (e && e.message)); }
+      if (SAYC) {
+        ['#chgo', '#lplay'].forEach(x => { const b = $(x); if (b) b.onclick = () => SAYC.start(); });
+        ['#chre', '#lreset'].forEach(x => { const b = $(x); if (b) b.onclick = () => SAYC.reset(); });
+        $('#chview').onclick = () => SAYC.openView();
+        if ($('#chsnd')) $('#chsnd').onchange = e => { SAYC.setSnd(e.target.checked); e.target.blur(); };
+        ['#chgo', '#chre', '#lplay', '#lreset'].forEach(x => { const b = $(x); if (b) b.addEventListener('pointerdown', e => e.preventDefault()); });
+      }
+    }
     // 🎙️ الشرح التلقائي (لو انحمّل محرّكه)
-    if (QH) {
+    else if (QH) {
       try { SAYC = window.__stSay = stSay({ rec, stage: rec.querySelector('.stage'), tk, kind, n, it, B, setRev, pen: () => ST.pen }); }
       catch (e) { SAYC = null; CERR('stSay: ' + (e && e.message)); }
       if (SAYC) {
@@ -3877,7 +4195,7 @@
       } else { const s = $('.rp-say'); if (s) s.remove(); const l = $('#lsay'); if (l) l.remove(); }
     }
     // اختصارات الكيبورد بمكان الزر (تشتغل حتى لو الكيبورد عربي)
-    const KEYS = { KeyR: reveal, KeyZ: undo, KeyC: clear, KeyP: () => setTool('pen'), KeyT: () => setTool('text'), KeyE: () => setTool('eraser'), KeyL: () => setLand(!ST.land), KeyH: () => ST.ui ? recMode() : setBare(!ST.bare) };
+    const KEYS = { KeyR: reveal, KeyZ: undo, KeyC: clear, KeyP: () => setTool('pen'), KeyT: () => setTool('text'), KeyE: () => setTool('eraser'), KeyL: () => { if (!CHM) setLand(!ST.land); }, KeyH: () => ST.ui ? recMode() : setBare(!ST.bare) };
     window.__stKey = e => { if (e.target.closest && e.target.closest('input:not([type=checkbox]),textarea,[contenteditable]')) return; if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (SAYC && SAYC.key(e)) return;
       if (e.key === 'ArrowLeft') location.hash = `studio-${kind}-${next}`; else if (e.key === 'ArrowRight') location.hash = `studio-${kind}-${prev}`;
@@ -3892,21 +4210,42 @@
     app.innerHTML = `<div class="stv" id="stv">${wait}</div>`;
     let data; try { [data] = await Promise.all([stData(), stHandLoad(), loadVocab(), stFontReady()]); } catch (e) { const w = $('#stv'); if (w) w.innerHTML = '<div class="stv-w"><b>تعذّر التحميل</b><span>حدّث الصفحة.</span></div>'; return; }
     if (location.hash !== '#studio-view') return;
-    const W = $('#stv'), V = { k: '', tk: null, B: null, pen: null, hand: null, lines: null, it: null, seen: '', land: false };
-    const kill = () => { if (V.hand) V.hand.destroy(); if (V.pen) V.pen.destroy(); V.hand = V.pen = V.B = V.tk = V.it = null; V.k = V.seen = ''; };
-    const build = (kind, n) => {
-      kill(); const it = (data[kind === 'v' ? 'verbal' : 'quant'] || []).find(x => x.n === n); if (!it) { W.innerHTML = wait; return; }
-      W.innerHTML = stCard(kind, it, n, V.land).html; V.tk = W.querySelector('#tk'); stFitQ(V.tk); V.B = stBubbles(V.tk); V.k = kind + n; V.it = it;
+    const W = $('#stv'), V = { k: '', tk: null, B: null, pen: null, hand: null, lines: null, it: null, seen: '', land: false, ch: false, seq: null, t0: 0, line: '', day: 0, kw: '' };
+    const kill = () => { if (V.hand) V.hand.destroy(); if (V.pen) V.pen.destroy(); if (V.seq) V.seq.destroy(); V.hand = V.pen = V.B = V.tk = V.it = V.seq = null; V.k = V.seen = V.line = V.kw = ''; V.ch = false; V.t0 = V.day = 0; };
+    const build = (kind, n, m) => {
+      kill(); const it = (/^[qv]$/.test(kind) ? data[kind === 'v' ? 'verbal' : 'quant'] || [] : stList(kind, data)).find(x => x.n === n); if (!it) { W.innerHTML = wait; return; }
+      V.k = kind + n; V.it = it;
+      if (m && m.tpl === 'ch') {   // 🎯 مقطع التحدي: نفس الإطار، والعدّ يمشي على نفس الساعة (t0) — بدون القلم التلقائي ولا الفقاعات
+        V.ch = true; V.line = m.line || chLine(kind, it, n)[1]; V.day = m.day || chDay(); V.kw = m.kw || '';
+        if (V.kw) lsSet('qg_stkw', V.kw);   // نفس الكلمة اللي بصفحة التصوير
+        W.innerHTML = stChCard(kind, it, n, { line: V.line, day: V.day }).html; V.tk = W.querySelector('#tk'); chFit(V.tk);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (V.tk && V.tk.isConnected && V.ch) chFit(V.tk); });
+        V.pen = QGPen.attach(V.tk, { bar: false, storageKey: null, text: true, zMin: true }); V.pen.toggle(false);
+        V.seq = chSeq(V.tk, chPlan(kind), (p, q) => { chShow(V.tk, q); setRev(p === 'rev'); });
+        return;
+      }
+      W.innerHTML = stCard(kind, it, n, V.land).html; V.tk = W.querySelector('#tk'); stFitQ(V.tk); V.B = stBubbles(V.tk);
       V.pen = QGPen.attach(V.tk, { bar: false, storageKey: null, text: true, zMin: true }); V.pen.toggle(false);
       V.hand = QGHand.hand(V.tk, stHandApi(V.tk, kind, it, null, null)); V.lines = stLines(kind, it);
     };
-    const setRev = on => { V.tk.classList.toggle('rev', on); V.tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === V.it.ans)); V.B.place(); };
+    const setRev = on => { V.tk.classList.toggle('rev', on); if (V.ch) chOk(V.tk, on); else V.tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === V.it.ans)); if (V.B) V.B.place(); };
+    const showCh = m => {   // 🎯 مقطع التحدي
+      const k = m.kind + m.n; if (k !== V.k || !V.ch) build(m.kind, m.n, m); if (!V.tk) return;
+      if (m.line && m.line !== V.line) { V.line = m.line; const l = V.tk.querySelector('#chline'); if (l) { l.textContent = m.line; chFit(V.tk); } }
+      if (m.day && m.day !== V.day) { V.day = m.day; const d = V.tk.querySelector('#chday'); if (d) d.textContent = m.day; }
+      if (m.kw && m.kw !== V.kw) { V.kw = m.kw; lsSet('qg_stkw', m.kw); const w = V.tk.querySelector('#chkwv'); if (w) { w.textContent = m.kw; chFit(V.tk); } }
+      if (m.ink) V.pen.setKey(null, m.ink);
+      V.pen.setCur(m.cur || null);
+      const t0 = +m.t0 || 0; if (t0 !== V.t0) { V.t0 = t0; if (t0) V.seq.start(t0); else { V.seq.stop(); setRev(false); } }
+      if (!V.seq.t0() && V.tk.classList.contains('rev') !== !!m.rev) setRev(!!m.rev);
+    };
     // 🖼 البطاقة بالعرض: النافذة تقلب طولها وعرضها (لو كانت بالشكل الثاني) عشان البطاقة تعبّيها
     const fitWin = land => { if (document.fullscreenElement || !window.opener) return; const iw = innerWidth, ih = innerHeight; if ((iw > ih) === land) return; try { resizeTo(ih + outerWidth - iw, iw + outerHeight - ih); } catch (e) {} };
     const show = m => {
       if (!m.kind) { if (V.k) { kill(); W.innerHTML = wait; } return; }
-      if (!!m.land !== V.land) { V.land = !!m.land; if (V.tk) { V.tk.classList.toggle('land', V.land); stFitQ(V.tk); } fitWin(V.land); }
-      const k = m.kind + m.n; if (k !== V.k) build(m.kind, m.n); if (!V.tk) return;
+      if (m.tpl === 'ch') { if (V.land) { V.land = false; fitWin(false); } return showCh(m); }
+      if (!!m.land !== V.land) { V.land = !!m.land; if (V.tk && !V.ch) { V.tk.classList.toggle('land', V.land); stFitQ(V.tk); } fitWin(V.land); }
+      const k = m.kind + m.n; if (k !== V.k || V.ch) build(m.kind, m.n); if (!V.tk) return;
       if (m.ink) V.pen.setKey(null, m.ink);
       V.pen.setCur(m.cur || null);
       if (V.tk.classList.contains('rev') !== !!m.rev) setRev(!!m.rev);
@@ -4485,7 +4824,7 @@
     non.forEach(r => { const w = (A[r.email] || {}).why || [], seen = new Set(); if (w.length) nSaid++;
       w.forEach(y => { if (!seen.has(y.c)) { seen.add(y.c); said[y.c] = (said[y.c] || 0) + 1; } if (y.t) notes.push({ n: r.name || r.email.split('@')[0], t: y.t, ts: y.ts }); }); });
     const SL = Object.entries(said).sort((a, b) => b[1] - a[1]), smx = Math.max(1, ...SL.map(x => x[1]));
-    const d7 = Date.now() - 7 * 864e5, H = { land: 0, login: 0 }; let h0 = 0;
+    const d7 = Date.now() - 7 * 864e5, H = { land: 0, login: 0, gift: 0, gcta: 0 }; let h0 = 0;
     (F.hits || []).forEach(h => { if (!h0 || h.day < h0) h0 = h.day; if (h.day >= d7 - 864e5 && H[h.p] != null) H[h.p] += h.n; });
     const c7 = F.rows.filter(r => r.conv && r.conv >= d7).length, step = (v, t, cls) => `<div class="vps${cls ? ' ' + cls : ''}"><b>${v}</b><span>${t}</span></div>`;
     return `<div class="vhd"><h3 class="sh">ليه ما اشتركوا؟ <small>${n}</small></h3><span class="mut">وين وقف كل زائر ما اشترك، ووش قال لما سأله الموقع «وش وقّفك؟»</span></div>
@@ -4497,6 +4836,7 @@
       </div>
       <div class="vpre"><h4>👣 قبل تسجيل الدخول <small>آخر 7 أيام${h0 ? ' · العدّاد بدأ ' + esc(fmtDay(h0)) : ''}</small></h4>
         <div class="vpsr">${step(H.land, 'فتحوا الصفحة الرئيسية')}<i aria-hidden="true">←</i>${step(H.login, 'وصلوا صفحة الدخول')}<i aria-hidden="true">←</i>${step(F.week, 'سجّلوا دخول (زوار جدد)')}<i aria-hidden="true">←</i>${step(c7, 'اشتركوا', 'ok')}</div>
+        ${H.gift || H.gcta ? `<p class="vgift">📁 صفحة ملف التناظر (الرابط اللي ترسله في رسائل تيك توك): فتحوها <b>${H.gift}</b> · ضغطوا «جرّب مجاناً» أو واتساب منها <b>${H.gcta}</b></p>` : ''}
         ${h0 ? '' : '<p class="mut">العدّاد بدأ الحين: أرقام الصفحة الرئيسية وصفحة الدخول تتعبّى مع أول الزيارات (بدون أي بيانات شخصية).</p>'}</div>`;
   }
   function paintFree() {
