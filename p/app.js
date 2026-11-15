@@ -3492,6 +3492,27 @@
         <div class="tk-cta" aria-hidden="true"><div class="tk-cta-c"><img src="/assets/logo.png" alt=""><div class="tk-cta-b">${ST_SITE}</div><div class="tk-cta-t">للاشتراك في الدورة<b>تواصل واتساب</b></div><div class="tk-cta-n"><i>${ST_PH}</i><b>${ST_WA}</b></div></div></div>
       </div>` };
   }
+  // 📏 سؤال التناظر على سطر واحد (طلب المالك 15 نوفمبر: «ليه الكلمات تحت بعض؟»): لو ما دخل يصغر خطه بوحدة cqmin
+  // (فيبقى نفس الشكل بكل الأحجام وبالشاشتين) لين يدخل، وأقل شي 55 % من حجمه — بعدها بس ينكسر السطر
+  function stFitQ(tk) {
+    const q = tk && tk.querySelector('.tk-qv'); if (!q) return;
+    q.style.fontSize = ''; q.classList.add('one');
+    const u = Math.min(tk.clientWidth, tk.clientHeight) / 100, need = q.scrollWidth, have = q.clientWidth;
+    if (!u || !have || need <= have) return;
+    const base = parseFloat(getComputedStyle(q).fontSize) / u, f = base * have / need * .97, min = base * .55;
+    if (f < min) q.classList.remove('one');
+    q.style.fontSize = Math.max(f, min).toFixed(2) + 'cqmin';
+  }
+  // خط البطاقة لازم يكون محمّل قبل القياس (ينحمّل من Google Fonts أول ما ينفتح الاستوديو) · أقصى انتظار 2.5 ثانية
+  let stFontP = null;
+  function stFontReady() {
+    stFont(); const l = document.getElementById('stfont');
+    stFontP = stFontP || new Promise(res => {
+      const go = () => (document.fonts && document.fonts.load ? document.fonts.load('800 40px "Baloo Bhaijaan 2"', 'AZ') : Promise.resolve()).then(res, res);
+      if (l.sheet) go(); else { l.addEventListener('load', go, { once: true }); l.addEventListener('error', () => res(), { once: true }); }
+    });
+    return Promise.race([stFontP, new Promise(r => setTimeout(r, 2500))]);
+  }
   // 🔤 اضغط على كلمة → ترجمتها تحتها (فوقها لو تحتها سطر ثاني من نفس النص) · ضغطة ثانية عليها أو على الترجمة تخفيها · «مسح» يخفي الكل
   function stBubbles(tk) {
     const trl = document.createElement('div'); trl.className = 'tk-trl'; tk.appendChild(trl);
@@ -3732,7 +3753,7 @@
   }
   async function renderRec(kind, n) {
     stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
-    let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {})]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
+    let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {}), stFontReady()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
     if (location.hash !== `#studio-${kind}-${n}`) return;   // راح لصفحة ثانية وهو ينتظر التحميل
     const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
     ST.reveal = false; ST.land = lsGet('qg_stland', 0) === 1; document.body.classList.add('rec-on');
@@ -3771,7 +3792,7 @@
       <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
       <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
     </div>`;
-    const tk = $('#tk'), B = stBubbles(tk), cast = () => { if (SAYC) SAYC.cast(); };
+    const tk = $('#tk'), B = stBubbles(tk), cast = () => { if (SAYC) SAYC.cast(); }; stFitQ(tk);
     tk.addEventListener('click', e => { if (ST.pen.isOn()) return; const w = B.at(e.clientX, e.clientY); if (w) { B.toggle(w); cast(); } });   // الكتابة مقفلة: الضغط يوصل للكلمة مباشرة
     ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, zMin: true, onTap: (x, y) => { const w = B.at(x, y); if (!w) return false; B.toggle(w); cast(); return true; }, onDraw: c => { if (SAYC) SAYC.draw(c); } });
     ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
@@ -3798,7 +3819,7 @@
     const setLand = on => {
       on = !!on; if (ST.land === on) return; ST.land = on; lsSet('qg_stland', on ? 1 : 0);
       const had = ST.pen.getStrokes().length; ST.pen.setKey(null, []);
-      tk.classList.toggle('land', on);
+      tk.classList.toggle('land', on); stFitQ(tk);
       rec.querySelectorAll('[data-or]').forEach(b => { const v = b.dataset.or === '1' ? on : !on; b.classList.toggle('on', v); b.setAttribute('aria-pressed', v); });
       const l = $('#lland'); l.classList.toggle('on', on); l.setAttribute('aria-pressed', on);
       cast(); toast((on ? 'البطاقة صارت بالعرض' : 'البطاقة رجعت بالطول') + (had ? ' · انمسحت كتابتك لأن أماكن الأسئلة تغيّرت' : ''));
@@ -3851,13 +3872,13 @@
     stFont(); document.title = 'شاشة التسجيل | Q-Guide'; document.body.classList.add('rec-on');
     const wait = `<div class="stv-w"><b>🖥 شاشة التسجيل</b><span>${window.opener ? 'افتح سؤال في استوديو تيك توك بالنافذة الثانية، والبطاقة تطلع هنا لحالها. سجّل هذي النافذة.' : 'افتح هذي الشاشة من زر 🖥 في صفحة التصوير، عشان تمشي معها.'}</span><small>نقرتين أو F = ملء الشاشة</small></div>`;
     app.innerHTML = `<div class="stv" id="stv">${wait}</div>`;
-    let data; try { [data] = await Promise.all([stData(), stHandLoad(), loadVocab()]); } catch (e) { const w = $('#stv'); if (w) w.innerHTML = '<div class="stv-w"><b>تعذّر التحميل</b><span>حدّث الصفحة.</span></div>'; return; }
+    let data; try { [data] = await Promise.all([stData(), stHandLoad(), loadVocab(), stFontReady()]); } catch (e) { const w = $('#stv'); if (w) w.innerHTML = '<div class="stv-w"><b>تعذّر التحميل</b><span>حدّث الصفحة.</span></div>'; return; }
     if (location.hash !== '#studio-view') return;
     const W = $('#stv'), V = { k: '', tk: null, B: null, pen: null, hand: null, lines: null, it: null, seen: '', land: false };
     const kill = () => { if (V.hand) V.hand.destroy(); if (V.pen) V.pen.destroy(); V.hand = V.pen = V.B = V.tk = V.it = null; V.k = V.seen = ''; };
     const build = (kind, n) => {
       kill(); const it = (data[kind === 'v' ? 'verbal' : 'quant'] || []).find(x => x.n === n); if (!it) { W.innerHTML = wait; return; }
-      W.innerHTML = stCard(kind, it, n, V.land).html; V.tk = W.querySelector('#tk'); V.B = stBubbles(V.tk); V.k = kind + n; V.it = it;
+      W.innerHTML = stCard(kind, it, n, V.land).html; V.tk = W.querySelector('#tk'); stFitQ(V.tk); V.B = stBubbles(V.tk); V.k = kind + n; V.it = it;
       V.pen = QGPen.attach(V.tk, { bar: false, storageKey: null, text: true, zMin: true }); V.pen.toggle(false);
       V.hand = QGHand.hand(V.tk, stHandApi(V.tk, kind, it, null, null)); V.lines = stLines(kind, it);
     };
@@ -3866,7 +3887,7 @@
     const fitWin = land => { if (document.fullscreenElement || !window.opener) return; const iw = innerWidth, ih = innerHeight; if ((iw > ih) === land) return; try { resizeTo(ih + outerWidth - iw, iw + outerHeight - ih); } catch (e) {} };
     const show = m => {
       if (!m.kind) { if (V.k) { kill(); W.innerHTML = wait; } return; }
-      if (!!m.land !== V.land) { V.land = !!m.land; if (V.tk) V.tk.classList.toggle('land', V.land); fitWin(V.land); }
+      if (!!m.land !== V.land) { V.land = !!m.land; if (V.tk) { V.tk.classList.toggle('land', V.land); stFitQ(V.tk); } fitWin(V.land); }
       const k = m.kind + m.n; if (k !== V.k) build(m.kind, m.n); if (!V.tk) return;
       if (m.ink) V.pen.setKey(null, m.ink);
       V.pen.setCur(m.cur || null);
