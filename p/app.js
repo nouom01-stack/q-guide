@@ -3434,7 +3434,7 @@
   function paintStudio(data) {
     // 🎯 مقطع التحدي: 📐 الكمي (اللي فيه رسمة أول = الأساس) · 🔗 تجميعات التناظر · 🏆 نتائج طلابنا · 📁 اكتب كلمة — ✍️ شرح: التناظر والكمي مثل قبل
     const W = $('#adm'); if (!W) return; const ez = stTpl() === 'ch', tabs = ez ? ['q', 'c', 'r', 'f'] : ['v', 'q'];
-    const k = tabs.includes(ST.tab) ? ST.tab : ez ? (ST.tab === 'v' ? 'c' : 'q') : 'q', list = stList(k, data, ez), N = list.length;
+    const k = tabs.includes(ST.tab) ? ST.tab : 'q', list = stList(k, data, ez), N = list.length;   // تبويب قديم (التناظر) → الكمي: هو الأساس
     const cnt = { film: 0, ready: 0, post: 0 }; list.forEach(x => { const s = stOf(k + x.n); if (s) cnt[s]++; });
     const left = N - cnt.film - cnt.ready - cnt.post, pc = c => (c * 100 / N).toFixed(2);
     const F = [['all', 'الكل'], ['none', 'ما تصوّر'], ...ST_ST.map(([s, ic, t]) => [s, ic + ' ' + t])]; if (!F.some(f => f[0] === ST.f)) ST.f = 'all';
