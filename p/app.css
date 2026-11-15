@@ -3345,3 +3345,8 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .rfs{color:var(--mut)}.rfs.ok{color:var(--okt);font-weight:700}
 @media (max-width:640px){.ivh{padding:20px 16px;border-radius:20px}.ivh h1{font-size:calc(24px * var(--fs))}.ivl .btn,.ivb .btn{flex:1 1 100%}.ivc{padding:16px}.rfk{grid-template-columns:repeat(3,1fr)}.rfl li{grid-template-columns:1fr}.meinv-go,.ist-go{flex:1 1 100%}}
 .setl small.tgerr{color:var(--badt)}
+/* 👨‍🏫 صفحة طلال العنزي: التأسيس فيه الكمي واللفظي (عنوان لكل مادة) + زرّين للمذكرتين */
+.tpwbs{display:flex;gap:8px;flex-wrap:wrap}
+#tp-f .tsub{font-size:calc(18px * var(--fs));padding-bottom:8px;border-bottom:2px solid var(--line);margin-top:28px}
+#tp-f .tsub + .tpu{margin-top:14px}
+#tp-f .tsub + .tles{margin-top:14px}
