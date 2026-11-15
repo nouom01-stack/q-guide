@@ -3410,7 +3410,7 @@
 
   // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 🎬 استوديو تيك توك (للمشرفين) ----------
-  const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', posted: null, pen: null, reveal: false, panel: true, ui: true };
+  const ST = { tab: lsGet('qg_stab', 'v'), f: 'all', posted: null, pen: null, reveal: false, panel: true, ui: true, land: false };
   const STL = ['a', 'b', 'c', 'd'];
   function stFont() { if (document.getElementById('stfont')) return; const l = document.createElement('link'); l.id = 'stfont'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap'; document.head.appendChild(l); }
   async function stData() { return loadSet('studio'); }
@@ -3462,6 +3462,7 @@
     post: SI('<rect x="3" y="3" width="18" height="18" rx="3"/>'), posted: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>'),
     hide: SI('<path d="M10.73 5.08A10.74 10.74 0 0 1 21.94 11.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49"/><path d="M14.08 14.16a3 3 0 0 1-4.24-4.24"/><path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14"/><path d="m2 2 20 20"/>'),
     panel: SI('<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>'),
+    land: SI('<rect x="2" y="6" width="20" height="12" rx="2.5"/>'),
     say: SI('<path d="M5 5h14v10h-8l-4 4v-4H5z"/><path d="M8.5 8.8h7M8.5 11.6h4.5"/>')
   };
   // 🔤 ترجمة الكلمة بالضغط: كل طرف من التناظر وحدة، ترجمته من ترجمة السؤال نفسه (ar) · غيره من القاموس · وخيارات المقارنة في الكمي
@@ -3476,16 +3477,19 @@
       return m[1] + w.split(/([A-Za-z][A-Za-z'’]*)/).map((x, j) => { if (!(j % 2)) return esc(x); const t = STOP.has(x.toLowerCase()) ? '' : vocLook(x); return t ? stTw(x, t) : esc(x); }).join('') + m[3];
     }).join(':');
   }
-  // 🃏 البطاقة نفسها (صفحة التصوير + شاشة التسجيل)
-  function stCard(kind, it, n) {
+  // 🃏 البطاقة نفسها (صفحة التصوير + شاشة التسجيل) · land = بالعرض (16:9) · .tk-cta = بطاقة رقم الواتساب، تطلع على آخر سطر في السكربت (.tk.cta)
+  const ST_WA = '050 800 3683';   // رقم الاشتراك بالواتساب (طلب المالك، 15 نوفمبر 2026)
+  const ST_PH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ST_SITE = 'Q-Guide<i>.online</i>';
+  function stCard(kind, it, n, land) {
     const itAr = it.ar || {};
     const opts = it.opts.map((o, i) => `<div class="tk-o" data-i="${i}"><span class="tk-l">${STL[i]}</span><span class="tk-t">${stTr(o, (itAr.o || [])[i])}</span></div>`).join('');
     const q = kind === 'v' ? `<div class="tk-kind">Analogy · التناظر اللفظي</div><div class="tk-qv">${stTr(it.q, itAr.q)}</div>` : `<div class="tk-kind">Quant · القسم الكمي</div><div class="tk-qi"><img src="${it.img}" alt=""></div>`;
-    return { hasTw: /class="tw"/.test(q + opts), html: `<div class="tk" id="tk">
-        <div class="tk-top"><span class="tk-brand"><img src="/assets/logo.png" alt=""><b>Q-Guide1</b>${YTSVG}</span></div>
+    return { hasTw: /class="tw"/.test(q + opts), html: `<div class="tk${land ? ' land' : ''}" id="tk">
+        <div class="tk-top"><span class="tk-brand"><img src="/assets/logo.png" alt=""><b>${ST_SITE}</b></span></div>
         <div class="tk-panel"><span class="tk-badge">Q ${n}</span>${q}<div class="tk-opts ${it.opts.some(o => o.length > 13) ? 'one' : ''}">${opts}</div>
           <div class="tk-sol"><span>الحل</span></div></div>
-        <div class="tk-foot">اكتب إجابتك في التعليقات 👇</div>
+        <div class="tk-cta" aria-hidden="true"><div class="tk-cta-c"><img src="/assets/logo.png" alt=""><div class="tk-cta-b">${ST_SITE}</div><div class="tk-cta-t">للاشتراك في الدورة<b>تواصل واتساب</b></div><div class="tk-cta-n"><i>${ST_PH}</i><b>${ST_WA}</b></div></div></div>
       </div>` };
   }
   // 🔤 اضغط على كلمة → ترجمتها تحتها (فوقها لو تحتها سطر ثاني من نفس النص) · ضغطة ثانية عليها أو على الترجمة تخفيها · «مسح» يخفي الكل
@@ -3529,7 +3533,7 @@
   // 🎙️ «الشرح التلقائي» — نفس «عرض شرح قواعد الكمي»: سكربت تقرأه سطر سطر، الكلمة اللي تقولها الحين تنوّر، والقلم يكتب ويرسم على البطاقة بنفس توقيت كلامك.
   // مسافة / Enter / PageDown = السطر الجاي · Backspace / PageUp = اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل (البطاقة لحالها في نافذة ثانية)
   // السكربت: it.say (سكربت مكتوب للسؤال، يجي مع ملف الأسئلة المشفّر) وإلا يتولّد من الترجمة والشرح (QGHand.gen) · المحرّك في /p/sthand.js (يتحمّل وقت الحاجة بس)
-  const STH_V = 2;
+  const STH_V = 3;
   let stHandP = null;
   const stHandLoad = () => stHandP || (stHandP = new Promise((res, rej) => {
     if (window.QGHand) return res(window.QGHand);
@@ -3539,7 +3543,7 @@
     document.head.appendChild(s);
   }));
   const stSayOf = it => { const s = it && it.say, L = Array.isArray(s) ? s : s && s.lines; return L && L.length ? L : null; };
-  const stLines = (kind, it) => stSayOf(it) || QGHand.gen(kind, it);
+  const stLines = (kind, it) => { const L = stSayOf(it) || QGHand.gen(kind, it); return L.some(l => l && l.cta) ? L : L.concat({ t: QGHand.CTA, cta: 1 }); };   // 📞 آخر سطر دايماً: «تواصل مع الرقم هذا» + بطاقة الرقم
   // أهداف القلم على البطاقة · B = الفقاعات (null = شاشة التسجيل: الفقاعات والإجابة تجيها من الصفحة نفسها) · after = بعد كل تغيير (يوصل لشاشة التسجيل)
   function stHandApi(tk, kind, it, B, rev, after) {
     const nth = (s, i) => tk.querySelectorAll(s)[i] || null, done = r => { if (r && after) after(); return r; };
@@ -3605,7 +3609,7 @@
       S.ct = setTimeout(() => {
         S.ct = 0; if (S.gone || STV.cur !== api || !STV.win || STV.win.closed) return;
         const pen = o.pen(), strokes = pen ? pen.getStrokes() : [], sig = inkSig(strokes), all = tws();
-        const m = { qg: 'stv', kind: o.kind, n: o.n, i: S.i, seq: S.seq, el: hand.live() ? performance.now() - hand.t0() : -1, sp: S.sp, hand: !!P.hand, rev: !!ST.reveal, trs: [...o.B.TR.keys()].map(w => all.indexOf(w)).filter(i => i >= 0), cur: S.cur };
+        const m = { qg: 'stv', kind: o.kind, n: o.n, i: S.i, seq: S.seq, el: hand.live() ? performance.now() - hand.t0() : -1, sp: S.sp, hand: !!P.hand, rev: !!ST.reveal, land: !!ST.land, trs: [...o.B.TR.keys()].map(w => all.indexOf(w)).filter(i => i >= 0), cur: S.cur };
         if (sig !== S.ink) { m.ink = strokes; S.ink = sig; }
         try { STV.win.postMessage(m, location.origin); } catch (e) {}
       }, 15);
@@ -3618,7 +3622,7 @@
     const openView = () => {
       stvListen();
       if (STV.win && !STV.win.closed) { try { STV.win.focus(); } catch (e) {} cast(true); return; }
-      let w = null; try { w = window.open('/p/#studio-view', 'qg-stview', 'popup=yes,width=540,height=960'); } catch (e) {}
+      let w = null; try { w = window.open('/p/#studio-view', 'qg-stview', ST.land ? 'popup=yes,width=960,height=540' : 'popup=yes,width=540,height=960'); } catch (e) {}
       if (!w) return toast('المتصفح منع فتح شاشة التسجيل. اسمح بالنوافذ المنبثقة لهذا الموقع وجرّب مرة ثانية.');
       STV.win = w; STV.seen = 0; STV.vis = 'visible'; mark();   // أول «هلا» منها تجيب لها البطاقة
     };
@@ -3679,6 +3683,7 @@
     const go = (i, mode) => {
       S.i = Math.max(-1, Math.min(N - 1, i)); S.seq++;
       hand.enter(lines, key, S.i, mode === 'step' ? 'step' : 'jump', 0, S.sp);
+      o.tk.classList.toggle('cta', !!(lines[S.i] && lines[S.i].cta));   // آخر سطر: بطاقة الرقم فوق البطاقة
       render(); schedule(); cast();
     };
     const next = () => { if (S.i >= N - 1) { if (S.auto) setAuto(false); else toast('خلص السكربت · ↺ يرجّعك لأول سطر'); return; } go(S.i + 1, 'step'); };
@@ -3717,7 +3722,7 @@
       state: () => { kPaint(); return { key, i: S.i, n: N, auto: S.auto, sp: S.sp, seq: S.seq, lit: S.lit, mine, free: !!P.free, on: !!P.on, hand: !!P.hand }; },
       destroy() {
         S.gone = true; clearTimeout(S.tm); clearTimeout(S.ct); cancelAnimationFrame(S.raf); bro.disconnect(); removeEventListener('resize', place);
-        hand.destroy(); bar.remove(); R.classList.remove('sayd'); R.style.removeProperty('--sayh');
+        hand.destroy(); bar.remove(); o.tk.classList.remove('cta'); R.classList.remove('sayd'); R.style.removeProperty('--sayh');
         if (STV.cur === api) { STV.cur = null; setTimeout(() => { if (!STV.cur) stvIdle(); }, 600); }
       }
     };
@@ -3730,14 +3735,14 @@
     let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {})]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
     if (location.hash !== `#studio-${kind}-${n}`) return;   // راح لصفحة ثانية وهو ينتظر التحميل
     const list = data[kind === 'v' ? 'verbal' : 'quant']; const it = list.find(x => x.n === n); if (!it) { location.hash = 'studio'; return; }
-    ST.reveal = false; document.body.classList.add('rec-on');
-    const key = kind + n, P = ST.posted[key], card = stCard(kind, it, n), hasTw = card.hasTw;
+    ST.reveal = false; ST.land = lsGet('qg_stland', 0) === 1; document.body.classList.add('rec-on');
+    const key = kind + n, P = ST.posted[key], card = stCard(kind, it, n, ST.land), hasTw = card.hasTw;
     let SAYC = null;
     const ar = it.ar && it.ar.q ? `<div class="rp-ar"><b>🇸🇦 الترجمة:</b> ${esc(it.ar.q)}<ol>${(it.ar.o || []).map((o, i) => `<li class="${i === it.ans ? 'k' : ''}">${STL[i]}) ${esc(o)}</li>`).join('')}</ol></div>` : '';
     const prev = list[(list.indexOf(it) - 1 + list.length) % list.length].n, next = list[(list.indexOf(it) + 1) % list.length].n;
     const rb = (attr, ic, lb, tt, cls) => `<button type="button" class="rb${cls ? ' ' + cls : ''}" ${attr} title="${tt || lb}" aria-label="${tt || lb}"><i aria-hidden="true">${ic}</i><small>${lb}</small></button>`;
     const rlink = (h, ic, lb, tt) => `<a class="rb" href="${h}" title="${tt}" aria-label="${tt}"><i aria-hidden="true">${ic}</i><small>${lb}</small></a>`;
-    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', P ? ST_IC.posted : ST_IC.post, 'نُشر', P ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»', P ? 'ok' : '')}<span class="rsep"></span>${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
+    const railActs = `<nav class="rail racts" aria-label="أوامر التصوير">${rb('id="lundo"', ST_IC.undo, 'تراجع', 'تراجع · Z')}${rb('id="lclr"', ST_IC.clear, 'مسح', 'مسح الكتابة · C')}<span class="rsep"></span>${rb('id="lrev"', ST_IC.ans, 'الإجابة', 'كشف الإجابة · R')}${QH ? rb('id="lsay" aria-pressed="false"', ST_IC.say, 'سكربت', 'شريط السكربت · S') : ''}<span class="rsep"></span>${rlink(`#studio-${kind}-${prev}`, ST_IC.prev, 'السابق', 'السؤال السابق · →')}${rlink(`#studio-${kind}-${next}`, ST_IC.next, 'التالي', 'السؤال التالي · ←')}${rb('id="lrnd"', ST_IC.rnd, 'عشوائي', 'سؤال عشوائي لم يُنشر')}<span class="rsep"></span>${rb('id="lpost"', P ? ST_IC.posted : ST_IC.post, 'نُشر', P ? 'تم النشر ✓ (اضغط للإلغاء)' : 'علّمه «تم النشر»', P ? 'ok' : '')}<span class="rsep"></span>${rb(`id="lland" aria-pressed="${ST.land}"`, ST_IC.land, 'بالعرض', 'البطاقة بالعرض بدل الطول · L', ST.land ? 'on' : '')}${rb('id="lbare"', ST_IC.hide, 'إخفاء', 'إخفاء الأدوات للتصوير النظيف · H')}${rb('id="lpanel"', ST_IC.panel, 'اللوحة', 'رجوع للوحة والإجابة · Esc')}</nav>`;
     const railDraw = `<nav class="rail rdraw" aria-label="أدوات الكتابة">${ST_TOOLS.map(([t, , lb], i) => rb(`data-tool="${t}" aria-pressed="${!i}"`, ST_IC[t], lb, lb + ({ pen: ' · P', text: ' (اضغط على البطاقة واكتب) · T', eraser: ' · E' }[t] || ''), i ? '' : 'on')).join('')}<span class="rsep"></span>${ST_W.map(([w, , lb, tt], i) => rb(`data-w="${w}" aria-pressed="${!i}"`, ST_IC[w], lb, tt, i ? '' : 'on')).join('')}<span class="rsep"></span><div class="rcols">${ST_COLS.map((c, i) => `<button type="button" class="rsw${i ? '' : ' on'}" data-col="${c}" style="--c:${c}" title="لون" aria-label="لون" aria-pressed="${!i}"></button>`).join('')}</div></nav>`;
     const sayP = lsGet('qg_stsay', null) || {};
     const saySec = QH ? `<div class="rp-sec rp-say"><div class="rp-lbl">🎙️ الشرح التلقائي</div>
@@ -3754,19 +3759,21 @@
           <label class="rp-sw"><input type="checkbox" id="rpen" checked><span>الكتابة على البطاقة مفعّلة</span></label>
           ${hasTw ? '<div class="rp-hint">🔤 اضغط على أي كلمة في البطاقة تطلع ترجمتها تحتها، واضغطها مرة ثانية تختفي.</div>' : ''}</div>
         ${saySec}
+        <div class="rp-sec"><div class="rp-lbl">🖼 شكل البطاقة</div>
+          <div class="seg rp-or" role="group" aria-label="شكل البطاقة"><button type="button" data-or="0" class="${ST.land ? '' : 'on'}" aria-pressed="${!ST.land}">▯ بالطول</button><button type="button" data-or="1" class="${ST.land ? 'on' : ''}" aria-pressed="${ST.land}">▭ بالعرض</button></div></div>
         <div class="rp-sec rp-acts"><button class="btn" id="rrev">✅ كشف الإجابة</button><button class="btn ${P ? 'okb' : 'ghost'}" id="rpost">${P ? '✓ تم النشر' : '☐ علّمه «تم النشر»'}</button><button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
         ${P ? `<div class="rp-note">نشره ${esc(String(P.by_email || '').split('@')[0])} · ${fmtD(P.at)}</div>` : ''}
         <details class="rp-sec rp-ans" open><summary>👁 الإجابة والشرح (لك فقط — ما تظهر في البطاقة)</summary>
           <div class="rp-key">الإجابة: <b class="ltr">${STL[it.ans]}) ${esc(it.opts[it.ans])}</b></div>${ar}
           ${it.exp ? `<div class="rp-exp">${fmtExp(it.exp)}</div>` : ''}<div class="rp-src">من ${kind === 'v' ? 'النموذج ' + it.src.slice(1) : 'القسم ' + it.src.slice(1)} · سؤال ${it.qn}</div></details>
-        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة · H وضع التصوير · Esc رجوع للوحة${QH ? '<br>🎙️ مسافة السطر الجاي · Backspace اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل' : ''}</div>
+        <div class="rp-tip">⌨️ اختصارات: ← → للتنقل · R كشف الإجابة · Z تراجع · C مسح (الكتابة والترجمات) · P قلم · T نص · E ممحاة · L بالعرض أو بالطول · H وضع التصوير · Esc رجوع للوحة${QH ? '<br>🎙️ مسافة السطر الجاي · Backspace اللي قبله · A تلقائي · + − السرعة · S الشريط · W القلم التلقائي · V شاشة التسجيل' : ''}</div>
       </aside>
       <button class="rec-fab" id="rshow" title="إظهار الأدوات" aria-label="إظهار الأدوات">⋯</button>
       <div class="rec-mini"><button id="mpen" title="القلم">✎</button><button id="mtxt" class="tt" title="نص: اضغط على البطاقة واكتب">T</button><button id="mundo" title="تراجع">↶</button><button id="mclr" title="مسح">🗑</button><button id="mrev" title="كشف الإجابة">✅</button><button id="mhide" title="وضع التصوير">🎥</button><button id="mmore" title="الأدوات والإجابة">☰</button></div>
     </div>`;
     const tk = $('#tk'), B = stBubbles(tk), cast = () => { if (SAYC) SAYC.cast(); };
     tk.addEventListener('click', e => { if (ST.pen.isOn()) return; const w = B.at(e.clientX, e.clientY); if (w) { B.toggle(w); cast(); } });   // الكتابة مقفلة: الضغط يوصل للكلمة مباشرة
-    ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, onTap: (x, y) => { const w = B.at(x, y); if (!w) return false; B.toggle(w); cast(); return true; }, onDraw: c => { if (SAYC) SAYC.draw(c); } });
+    ST.pen = window.__stPen = QGPen.attach(tk, { bar: false, storageKey: null, text: true, zMin: true, onTap: (x, y) => { const w = B.at(x, y); if (!w) return false; B.toggle(w); cast(); return true; }, onDraw: c => { if (SAYC) SAYC.draw(c); } });
     ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
     ['pointerup', 'keyup', 'focusout'].forEach(t => tk.addEventListener(t, () => setTimeout(cast, 0)));   // كتابتك توصل لشاشة التسجيل
     const rec = $('.rec');
@@ -3787,8 +3794,17 @@
     };
     const reveal = () => setRev(!ST.reveal);
     const clear = () => { ST.pen.clear(); B.clear(); cast(); }, undo = () => { ST.pen.undo(); cast(); };
+    // 🖼 بالطول (9:16) أو بالعرض (16:9): نفس البطاقة، السؤال يسار و«الحل» يمين · الكتابة اليدوية تنمسح (أماكن كل شي تغيّرت) والقلم التلقائي يعيد رسمه لحاله
+    const setLand = on => {
+      on = !!on; if (ST.land === on) return; ST.land = on; lsSet('qg_stland', on ? 1 : 0);
+      const had = ST.pen.getStrokes().length; ST.pen.setKey(null, []);
+      tk.classList.toggle('land', on);
+      rec.querySelectorAll('[data-or]').forEach(b => { const v = b.dataset.or === '1' ? on : !on; b.classList.toggle('on', v); b.setAttribute('aria-pressed', v); });
+      const l = $('#lland'); l.classList.toggle('on', on); l.setAttribute('aria-pressed', on);
+      cast(); toast((on ? 'البطاقة صارت بالعرض' : 'البطاقة رجعت بالطول') + (had ? ' · انمسحت كتابتك لأن أماكن الأسئلة تغيّرت' : ''));
+    };
     // الضغط على الأدوات ما ياخذ التركيز من النص اللي ينكتب (عشان اللون والحجم يتغيّرون عليه)
-    rec.querySelectorAll('[data-tool],[data-col],[data-w],#rundo,#rclr,#lundo,#lclr,#mtxt,#mundo,#mclr').forEach(b => b.addEventListener('pointerdown', e => e.preventDefault()));
+    rec.querySelectorAll('[data-tool],[data-col],[data-w],#rundo,#rclr,#lundo,#lclr,#mtxt,#mundo,#mclr,[data-or],#lland').forEach(b => b.addEventListener('pointerdown', e => e.preventDefault()));
     rec.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
     rec.querySelectorAll('[data-col]').forEach(b => b.onclick = () => setCol(b.dataset.col));
     rec.querySelectorAll('[data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
@@ -3801,6 +3817,8 @@
     $('#rrev').onclick = $('#mrev').onclick = $('#lrev').onclick = reveal;
     $('#rhide').onclick = $('#mhide').onclick = recMode;
     $('#lbare').onclick = () => setBare(true);
+    rec.querySelectorAll('[data-or]').forEach(b => b.onclick = () => setLand(b.dataset.or === '1'));
+    $('#lland').onclick = () => setLand(!ST.land);
     $('#lpanel').onclick = () => setUI(true);
     $('#rshow').onclick = () => setBare(false);
     $('#mmore').onclick = () => rec.classList.toggle('sheet');
@@ -3820,7 +3838,7 @@
       } else { const s = $('.rp-say'); if (s) s.remove(); const l = $('#lsay'); if (l) l.remove(); }
     }
     // اختصارات الكيبورد بمكان الزر (تشتغل حتى لو الكيبورد عربي)
-    const KEYS = { KeyR: reveal, KeyZ: undo, KeyC: clear, KeyP: () => setTool('pen'), KeyT: () => setTool('text'), KeyE: () => setTool('eraser'), KeyH: () => ST.ui ? recMode() : setBare(!ST.bare) };
+    const KEYS = { KeyR: reveal, KeyZ: undo, KeyC: clear, KeyP: () => setTool('pen'), KeyT: () => setTool('text'), KeyE: () => setTool('eraser'), KeyL: () => setLand(!ST.land), KeyH: () => ST.ui ? recMode() : setBare(!ST.bare) };
     window.__stKey = e => { if (e.target.closest && e.target.closest('input:not([type=checkbox]),textarea,[contenteditable]')) return; if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (SAYC && SAYC.key(e)) return;
       if (e.key === 'ArrowLeft') location.hash = `studio-${kind}-${next}`; else if (e.key === 'ArrowRight') location.hash = `studio-${kind}-${prev}`;
@@ -3835,17 +3853,20 @@
     app.innerHTML = `<div class="stv" id="stv">${wait}</div>`;
     let data; try { [data] = await Promise.all([stData(), stHandLoad(), loadVocab()]); } catch (e) { const w = $('#stv'); if (w) w.innerHTML = '<div class="stv-w"><b>تعذّر التحميل</b><span>حدّث الصفحة.</span></div>'; return; }
     if (location.hash !== '#studio-view') return;
-    const W = $('#stv'), V = { k: '', tk: null, B: null, pen: null, hand: null, lines: null, it: null, seen: '' };
+    const W = $('#stv'), V = { k: '', tk: null, B: null, pen: null, hand: null, lines: null, it: null, seen: '', land: false };
     const kill = () => { if (V.hand) V.hand.destroy(); if (V.pen) V.pen.destroy(); V.hand = V.pen = V.B = V.tk = V.it = null; V.k = V.seen = ''; };
     const build = (kind, n) => {
       kill(); const it = (data[kind === 'v' ? 'verbal' : 'quant'] || []).find(x => x.n === n); if (!it) { W.innerHTML = wait; return; }
-      W.innerHTML = stCard(kind, it, n).html; V.tk = W.querySelector('#tk'); V.B = stBubbles(V.tk); V.k = kind + n; V.it = it;
-      V.pen = QGPen.attach(V.tk, { bar: false, storageKey: null, text: true }); V.pen.toggle(false);
+      W.innerHTML = stCard(kind, it, n, V.land).html; V.tk = W.querySelector('#tk'); V.B = stBubbles(V.tk); V.k = kind + n; V.it = it;
+      V.pen = QGPen.attach(V.tk, { bar: false, storageKey: null, text: true, zMin: true }); V.pen.toggle(false);
       V.hand = QGHand.hand(V.tk, stHandApi(V.tk, kind, it, null, null)); V.lines = stLines(kind, it);
     };
     const setRev = on => { V.tk.classList.toggle('rev', on); V.tk.querySelectorAll('.tk-o').forEach(o => o.classList.toggle('ok', on && +o.dataset.i === V.it.ans)); V.B.place(); };
+    // 🖼 البطاقة بالعرض: النافذة تقلب طولها وعرضها (لو كانت بالشكل الثاني) عشان البطاقة تعبّيها
+    const fitWin = land => { if (document.fullscreenElement || !window.opener) return; const iw = innerWidth, ih = innerHeight; if ((iw > ih) === land) return; try { resizeTo(ih + outerWidth - iw, iw + outerHeight - ih); } catch (e) {} };
     const show = m => {
       if (!m.kind) { if (V.k) { kill(); W.innerHTML = wait; } return; }
+      if (!!m.land !== V.land) { V.land = !!m.land; if (V.tk) V.tk.classList.toggle('land', V.land); fitWin(V.land); }
       const k = m.kind + m.n; if (k !== V.k) build(m.kind, m.n); if (!V.tk) return;
       if (m.ink) V.pen.setKey(null, m.ink);
       V.pen.setCur(m.cur || null);
@@ -3855,6 +3876,7 @@
       V.hand.setOn(!!m.hand);
       const hk = [k, m.i, m.seq, m.hand ? 1 : 0].join(':');
       if (hk !== V.seen) { V.seen = hk; V.hand.enter(V.lines, k, m.i, m.el >= 0 ? 'step' : 'jump', Math.max(0, m.el || 0), m.sp); }
+      V.tk.classList.toggle('cta', !!(V.lines[m.i] && V.lines[m.i].cta));
     };
     const onMsg = e => { if (e.source !== window.opener || e.origin !== location.origin) return; const m = e.data; if (!m || m.qg !== 'stv') return; try { show(m); } catch (err) { CERR('stview: ' + (err && err.message)); } };
     addEventListener('message', onMsg);

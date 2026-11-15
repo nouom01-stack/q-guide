@@ -4,7 +4,8 @@
    Text (opts.text): press anywhere to type · drag a text to move it · press it to edit · empty it or rub it with the eraser to delete it.
    opts.onTap(x, y): a press without moving (pen / highlighter / text) is offered to the page first (e.g. tap a word → its translation); return true to keep it from drawing a dot or opening a text box.
    opts.onDraw(cur): the stroke being drawn, on every move (null when it ends) · api.setCur(cur) draws one sent from another window.
-   Texts live in the same list as the strokes ({t:'txt', x, y, s, c, z, d}), so undo / clear / save cover both. */
+   Texts live in the same list as the strokes ({t:'txt', x, y, s, c, z, d}), so undo / clear / save cover both.
+   Text size z = a share of the host width, or of its shorter side with opts.zMin (a card that can be portrait or landscape). */
 (function () {
   'use strict';
   const COLORS = { pen: ['#D62828', '#1F5FBF', '#111111', '#1B9E63'], hl: ['rgba(255,235,59,.45)', 'rgba(76,175,80,.35)', 'rgba(255,152,0,.4)'] };
@@ -57,7 +58,7 @@
     const txtColor = () => /rgba/.test(st.color) ? st.solid : st.color;
     const txtSize = () => st.width >= 4 ? 0.085 : 0.06;   // رفيع = نص عادي · عريض = نص كبير (نسبة من عرض البطاقة)
     function place(it, el) {
-      const W = cv.clientWidth || host.clientWidth, H = cv.clientHeight || host.clientHeight, fs = Math.max(11, it.z * W), rtl = it.d === 'rtl';
+      const W = cv.clientWidth || host.clientWidth, H = cv.clientHeight || host.clientHeight, fs = Math.max(11, it.z * (opts.zMin ? Math.min(W, H) : W)), rtl = it.d === 'rtl';
       el.dir = it.d; el.style.fontSize = fs + 'px'; el.style.color = it.c; el.style.caretColor = it.c;
       el.style.left = it.x * W + 'px'; el.style.top = (it.y * H - fs * 0.7) + 'px';
       el.style.transform = rtl ? 'translateX(-100%)' : '';   // النقطة اللي ضغطها = بداية النص (يمين للعربي، يسار للإنجليزي)
