@@ -391,6 +391,10 @@
     try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {}
     if (msg) { location.hash = ''; renderLogin(msg, good); } else route();
   }
+  // 💬 رقم التعليقات اللي تنتظر رد المدرس على رابط «🎬 مقاطعي» (من me، ومن قائمته)
+  function cmwBadge() { const a = document.querySelector('a.tn[href="#my-vids"]'); if (!a) return; let b = a.querySelector('.tnb');
+    if (!auth || !auth.cmw) { if (b) b.remove(); return; }
+    if (!b) { b = document.createElement('small'); b.className = 'tnb'; b.title = _T('تعليقات طلاب تنتظر ردّك'); a.appendChild(b); } b.textContent = auth.cmw; }
   // 🔒 جلسة واحدة لكل طالب: نتأكد من الخادم عند الفتح وكل 3 دقائق
   let hbBusy = false;
   async function heartbeat() {
@@ -400,6 +404,7 @@
       if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 👨‍🏫 صار يرفع مقاطعه؟
+      if (r && r.ok && auth && auth.role === 'admin' && (r.cmw || 0) !== (auth.cmw || 0)) { auth.cmw = r.cmw || 0; lsSet(LS.auth, auth); cmwBadge(); }   // 💬 تعليقات تنتظر ردّه
       if (r && r.ok && auth && auth.role !== 'admin' && ['pay', 'salla', 'renew', 'inv', 'ref'].some(k => JSON.stringify(r[k] || null) !== JSON.stringify(auth[k] || null))) {   // 💳🛍 الدفع انفتح/انقفل · ⏰ موعد اشتراكه تغيّر · 🎁 الدعوة
         const rn = JSON.stringify(r.renew || null) !== JSON.stringify(auth.renew || null); auth.pay = r.pay || null; auth.salla = r.salla || null; auth.renew = r.renew || null; auth.inv = r.inv || null; auth.ref = r.ref || 0; lsSet(LS.auth, auth);
         if (rn && (!location.hash || location.hash === '#')) { const b = $('#rnw'); if (b) { b.innerHTML = renewBar(); bindSub(b); } } }
@@ -931,7 +936,7 @@
     document.body.classList.remove('rec-on'); document.querySelectorAll('.confetti').forEach(c => c.remove()); if (window.__stKey) { document.removeEventListener('keydown', window.__stKey); window.__stKey = null; }
     if (window.__stPen) { try { window.__stPen.destroy(); } catch (e) {} window.__stPen = null; }
     ['__stSay', '__stView'].forEach(k => { if (window[k]) { try { window[k].destroy(); } catch (e) {} window[k] = null; } });   // 🎙️ شريط السكربت / شاشة التسجيل
-    heartbeat(); refSend(); vidStop(); document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
+    heartbeat(); refSend(); vidStop(); CM = null; document.onkeydown = null; if (LV && LV.tm) { clearInterval(LV.tm); LV.tm = 0; }
     document.querySelectorAll('body > .modal').forEach(m => m.remove());   // النوافذ (بطاقة الطالب…) تتسكّر مع الانتقال لصفحة ثانية
     if (skillsT) { clearTimeout(skillsT); skillsT = 0; skillsPush(); }   // ادفع سجل المهارات قبل الانتقال
     let h = location.hash.replace('#', ''), joinDlg = false, joinPk = '', upNm = null;
@@ -1230,7 +1235,7 @@
     document.title = _T('منصة التدريب | Q-Guide');
     if (!manifest) { try { manifest = await (await fetch('/p/data/manifest.json')).json(); } catch (e) { app.innerHTML = _T('<div class="center">تعذّر تحميل البيانات. حدّث الصفحة.</div>'); return; } }
     const tab = lsGet(LS.tab, 'quant') === 'verbal' ? 'verbal' : 'quant';
-    const adminLinks = auth.role === 'admin' ? (auth.teach ? _T`<a class="tn" href="#my-vids" title="مقاطعي: ارفعها للموقع"><span class="i">🎬</span><span class="l">مقاطعي</span></a>` : '') + _T`<a class="tn gold" href="${auth.staff === 'owner' ? '#admin-home' : '#admin'}" title="لوحة الإدارة"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
+    const adminLinks = auth.role === 'admin' ? (auth.teach ? _T`<a class="tn" href="#my-vids" title="مقاطعي: ارفعها للموقع ورد على تعليقات الطلاب"><span class="i">🎬</span><span class="l">مقاطعي</span>${auth.cmw ? `<small class="tnb" title="${_T('تعليقات طلاب تنتظر ردّك')}">${auth.cmw}</small>` : ''}</a>` : '') + _T`<a class="tn gold" href="${auth.staff === 'owner' ? '#admin-home' : '#admin'}" title="لوحة الإدارة"><span class="i">👑</span><span class="l">الإدارة</span></a>` : '';
     if (!isFree()) badgeCheck();
     const pst = planState(), pl = PLANS.find(p => p.id === pst.id), lv = lsGet(LVL_LS, null), nMarks = marksList().length, isStaff = auth.role === 'admin';
     const FR = isFree();   // 🆓 الزائر يشوف كل الأدوات، والمقفل عليه قفل ويفتح نافذة الاشتراك
@@ -1433,6 +1438,7 @@
     const solve = fd ? (hasQ ? _T`<a class="btn sm gold" href="#fq-${n}">📝 اختبر فهمك</a>` : '') + _T`<a class="btn sm${hasQ ? ' ghost' : ''}" href="${X.wb(n)}">📘 قواعد الدرس</a><a class="btn sm ghost" href="${tpH}">🧱 دروس التأسيس</a>`
       : X ? _T`<a class="btn sm" href="#${X.sv}${n}">✍️ حل ${vLabel(X.sv, n)}</a><a class="btn sm ghost" href="${tpH}">🏋️ التدريب</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
     const teach = TEACHERS[X ? X.t : 0].name, sub = fd ? (k === 'ss' || k === 'ts' ? _T`المهارة ${n} من ${L.length}` : _T`الدرس ${n} من ${L.length}`) : X ? _T`${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
+    const cmOk = !isFree() && !(fd && noFound());   // 💬 التعليقات: لكل مشترك يقدر يفتح المقطع (والفريق)
     const head = X ? _T`<h2 class="h2">${X.head}</h2><span class="wvhl"><a class="lnk2" href="${tpH}">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
       : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh-salman/t">👨‍🏫 صفحة المدرس</a></span>`;
     app.innerHTML = topbar(_T`<span class="ttl">🎬 ${what}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
@@ -1444,10 +1450,11 @@
           <div class="wvact">${solve}${prev ? _T`<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? _T`<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
         ${hasQ ? _T`<a class="wvq" id="wvq" href="#fq-${n}"${W[cur.key] && W[cur.key].w ? '' : ' hidden'}><span class="wvqi" aria-hidden="true">📝</span><span class="wvqx"><b>خلّصت الدرس؟ اختبر فهمك</b><small>12 سؤال قصير، وبعد كل سؤال شرحه والقاعدة اللي تخصه</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>` : ''}
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
+        ${cmOk ? cmBox() : ''}
         <div class="wvhead">${head}</div>
         <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : X ? (vidHas(x.key) ? _T('لم تشاهده') : _T('⏳ قريباً')) : esc(x.dur || '')}</small></a>`; }).join('')}</div>
       </main>`;
-    bindCtl(); window.scrollTo({ top: 0 });
+    bindCtl(); window.scrollTo({ top: 0 }); if (cmOk) cmInit(cur.key);
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب · التأسيس ما له يوتيوب
@@ -1489,6 +1496,128 @@
       v.src = r.url; v.load();
     };
     load();
+  }
+
+  // ---------- 💬 تعليقات مقاطع المدرسين — v113، طلب المالك 16 نوفمبر 2026: «خانة تعليقات بالموقع في مقاطع التأسيس والتدريب عند كل معلم» ----------
+  // تحت كل مقطع (#watch-…): المشترك يكتب سؤاله أو تعليقه، مدرس المقطع يرد (شارة «المدرس»)، والفريق يرد باسم «فريق Q-Guide».
+  // يحذف: صاحب التعليق، ومدرس المقطع، والمالك (في كل المقاطع). الخادم: cm_list {v, before?} · cm_add {v, x, p?} · cm_del {id} (q-guide-api/src/comments.js)
+  // الزائر ما يشوفها (المقاطع مقفلة عليه)، وصاحب باقة «التدريب» ما يشوف تعليقات دروس التأسيس.
+  const CM_MAX = 1000, CM_TOP = 3, CM_GO = 'qg_cm_go';   // CM_TOP = كم تعليق يطلع قبل «عرض كل التعليقات» · CM_GO = تعليق نفتح عليه (من قائمة المدرس)
+  let CM = null;   // {v, items, more, n, can: {post, mod}, me: {n, a, r, t}, all, rp = الرد مفتوح تحت هالتعليق, rpx = نص الرد}
+  const cmLen = s => [...String(s || '').trim()].length;
+  const cmAr = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n <= 10 ? n + ' ' + few : n + ' ' + many;   // i18n:skip
+  const cmAgo = t => { const s = Math.max(0, (Date.now() - t) / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);   // i18n:skip
+    const old = () => new Date(t).toLocaleDateString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', Object.assign({ day: 'numeric', month: EN ? 'short' : 'long', timeZone: 'Asia/Riyadh' }, new Date(t).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}));
+    if (EN) return s < 60 ? 'just now' : m < 60 ? enN(m, 'minute', 'minutes') + ' ago' : h < 24 ? enN(h, 'hour', 'hours') + ' ago' : d === 1 ? 'yesterday' : d < 7 ? d + ' days ago' : old();   // i18n:skip
+    return s < 60 ? 'الحين' : m < 60 ? 'قبل ' + cmAr(m, 'دقيقة', 'دقيقتين', 'دقايق', 'دقيقة') : h < 24 ? 'قبل ' + cmAr(h, 'ساعة', 'ساعتين', 'ساعات', 'ساعة') : d === 1 ? 'أمس' : d < 7 ? 'قبل ' + cmAr(d, 'يوم', 'يومين', 'أيام', 'يوم') : old(); };   // i18n:skip
+  const cmFull = t => new Date(t).toLocaleString(EN ? 'en-GB' : 'ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
+  // اسم الكاتب: المدرس = اسمه في صفحة المدرسين · الفريق (المالك أو مشرف) = «فريق Q-Guide» · الطالب = اسمه في ملفه
+  const cmWho = c => c.r === 't' ? ((TEACHERS.find(x => x.id === c.t) || {}).name || c.n || '') : c.r === 'o' ? _T('فريق Q-Guide') : (c.n || _T('طالب'));
+  const cmAv = (c, sz) => c.r === 't' ? `<span class="cmav tav" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .44)}px" aria-hidden="true">${esc(cmWho(c).charAt(0))}</span>`
+    : c.r === 'o' ? `<img class="cmav av cmlogo" src="/assets/logo.png" width="${sz}" height="${sz}" alt="">` : avatarHtml(c.a, c.n, sz);
+  const cmBox = () => _T`<section class="cmw" id="cmw" aria-labelledby="cmh"><h3 class="cmh" id="cmh">💬 التعليقات <small class="cmn" id="cmn" hidden></small></h3>
+      <div id="cmf0"></div><div class="cml" id="cml"><div class="cmld" role="status" aria-label="نحمّل التعليقات"><div class="spin"></div></div></div></section>`;
+  function cmFormHtml(id, p) {   // p = رد على تعليق (0 = تعليق جديد)
+    const me = CM.me || {}, ph = p ? _T('اكتب ردك…') : me.r === 's' ? _T('اكتب سؤالك أو تعليقك عن المقطع…') : _T('اكتب تعليقك للطلاب…');
+    const hint = me.r === 's' ? _T('يظهر لكل المشتركين باسمك وصورتك.') : me.r === 't' ? _T('يظهر للطلاب باسمك وشارة «المدرس».') : _T('يظهر للطلاب باسم «فريق Q-Guide».');
+    return `<form class="cmf${p ? ' cmrp on' : ''}" id="${id}" data-p="${p || 0}" novalidate>${p ? '' : cmAv(me, 38)}<div class="cmfb">
+        <textarea rows="${p ? 2 : 1}" dir="auto" placeholder="${ph}" aria-label="${p ? _T('ردك') : _T('تعليقك')}"></textarea>
+        <div class="cmfa"><small class="cmhint">${hint}</small><span class="cmc" aria-live="polite"></span><span class="cmbt"><button type="button" class="btn sm ghost cmno">${_T('إلغاء')}</button><button type="submit" class="btn sm cmgo" disabled>${p ? _T('رد') : _T('انشر')}</button></span></div>
+        <p class="cmst" role="alert" hidden></p></div></form>`;
+  }
+  const cmSt = (f, t) => { const s = f && f.querySelector('.cmst'); if (s) { s.hidden = !t; s.textContent = t || ''; } };
+  function cmBindForm(f) {
+    const ta = f.querySelector('textarea'), go = f.querySelector('.cmgo'), cc = f.querySelector('.cmc'), p = +f.dataset.p || 0;
+    const upd = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, 260) + 'px';
+      const n = cmLen(ta.value); go.disabled = !n || n > CM_MAX || !!(CM && CM.busy);
+      cc.textContent = n > CM_MAX - 150 ? `${n} / ${CM_MAX}` : ''; cc.classList.toggle('over', n > CM_MAX);
+      if (p && CM) CM.rpx = ta.value; else if (ta.value) f.classList.add('on'); };
+    ta.oninput = upd; ta.onfocus = () => f.classList.add('on');
+    ta.onblur = () => setTimeout(() => { if (!p && !ta.value.trim() && document.activeElement !== ta && !f.contains(document.activeElement)) f.classList.remove('on'); }, 160);
+    ta.onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (!go.disabled) cmPost(f); } else if (e.key === 'Escape' && p) { e.preventDefault(); cmReply(0); } };
+    f.querySelector('.cmno').onclick = () => { cmSt(f, ''); if (p) return cmReply(0); ta.value = ''; upd(); f.classList.remove('on'); ta.blur(); };
+    f.onsubmit = e => { e.preventDefault(); cmPost(f); };
+    upd();
+  }
+  async function cmInit(v) {
+    const S = CM = { v, items: [], more: false, n: 0, can: {}, me: {}, all: 0, rp: 0, rpx: '', busy: 0, ld: 0 };
+    let r = null; try { r = await api({ op: 'cm_list', session: auth.session, v }); } catch (e) {}
+    if (CM !== S) return; const W = $('#cmw'), L = $('#cml'); if (!W || !L) return;
+    if (!r || !r.ok) {
+      if (r && /^(locked|pkg|video|session|kicked)$/.test(r.error || '')) { W.remove(); CM = null; return; }   // مقفل عليه (أو الجلسة انتهت: النبضة تتكفّل)
+      L.innerHTML = _T`<p class="cmempty">ما قدرت أحمّل التعليقات. <button type="button" class="lnk2" id="cmre">جرّب مرة ثانية</button></p>`; $('#cmre').onclick = () => { L.innerHTML = '<div class="cmld"><div class="spin"></div></div>'; cmInit(v); }; return; }
+    Object.assign(S, { items: r.items || [], more: !!r.more, n: r.n || 0, can: r.can || {}, me: r.me || {} });
+    const f0 = $('#cmf0'); if (f0) { f0.innerHTML = S.can.post ? cmFormHtml('cmf', 0) : _T('<p class="cmnote">حسابك للمتابعة فقط، فما تقدر تكتب تعليقات.</p>'); const f = $('#cmf'); if (f) cmBindForm(f); }
+    let go = 0; try { go = +sessionStorage.getItem(CM_GO) || 0; sessionStorage.removeItem(CM_GO); } catch (e) {}
+    if (go && S.items.some(c => c.id === go)) S.all = 1;
+    cmPaint();
+    if (go) setTimeout(() => { if (CM !== S) return; const el = $('#cm-' + go) || W; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); cmFlash(go); }, 250);
+  }
+  function cmItem(c, reps) {
+    const one = (x, rp) => `<article class="cmi r-${x.r}${rp ? ' cmrp' : ''}${x.mine ? ' me' : ''}" id="cm-${x.id}">${cmAv(x, rp ? 30 : 38)}<div class="cmb">
+        <div class="cmm"><b class="cmnm">${esc(cmWho(x))}</b>${x.r === 't' ? `<span class="cmtag t">${_T('المدرس')}</span>` : ''}${x.mine && x.r === 's' ? `<span class="cmtag me">${_T('أنت')}</span>` : ''}<time datetime="${new Date(x.at).toISOString()}" title="${esc(cmFull(x.at))}">${cmAgo(x.at)}</time></div>
+        <p class="cmx" dir="auto">${esc(x.x)}</p>
+        <div class="cma">${CM.can.post ? `<button type="button" class="cmab" data-rp="${x.p || x.id}">${_T('رد')}</button>` : ''}${x.cd ? `<button type="button" class="cmab dl" data-del="${x.id}">${_T('حذف')}</button>` : ''}</div></div></article>`;
+    const open = CM.rp === c.id;
+    return `<div class="cmt">${one(c, 0)}${reps.length || open ? `<div class="cmrs">${reps.map(x => one(x, 1)).join('')}${open ? cmFormHtml('cmrf', c.id) : ''}</div>` : ''}</div>`;
+  }
+  function cmPaint() {
+    const L = $('#cml'); if (!L || !CM) return;
+    const tops = CM.items.filter(c => !c.p).sort((a, b) => b.id - a.id), reps = {};
+    CM.items.filter(c => c.p).sort((a, b) => a.id - b.id).forEach(c => { (reps[c.p] = reps[c.p] || []).push(c); });
+    const n = $('#cmn'); if (n) { n.hidden = !CM.n; n.textContent = CM.n; }
+    if (!tops.length) { L.innerHTML = `<p class="cmempty">${CM.me.r === 's' ? _T('ما فيه تعليقات على هذا المقطع للحين. اكتب سؤالك أو تعليقك، ومدرس المقطع يشوفه ويرد عليك هنا.') : _T('ما فيه تعليقات على هذا المقطع للحين.')}</p>`; return; }
+    const show = CM.all ? tops : tops.slice(0, CM_TOP);
+    if (CM.rp && !show.some(c => c.id === CM.rp)) { CM.rp = 0; CM.rpx = ''; }
+    L.innerHTML = show.map(c => cmItem(c, reps[c.id] || [])).join('')
+      + (!CM.all && (tops.length > CM_TOP || CM.more) ? `<button type="button" class="btn sm ghost cmmore" id="cmall">${_T`عرض كل التعليقات (${CM.n})`}</button>` : '')
+      + (CM.all && CM.more ? `<button type="button" class="btn sm ghost cmmore" id="cmold">${_T('عرض تعليقات أقدم')}</button>` : '');
+    L.querySelectorAll('[data-rp]').forEach(b => { b.onclick = () => cmReply(+b.dataset.rp); });
+    L.querySelectorAll('[data-del]').forEach(b => { b.onclick = () => cmDelete(+b.dataset.del); });
+    const all = $('#cmall'); if (all) all.onclick = () => { CM.all = 1; if (tops.length <= CM_TOP && CM.more) cmMore(); else cmPaint(); };
+    const old = $('#cmold'); if (old) old.onclick = cmMore;
+    const rf = $('#cmrf'); if (rf) { const ta = rf.querySelector('textarea'); ta.value = CM.rpx || ''; cmBindForm(rf); if (CM.rpFocus) { CM.rpFocus = 0; ta.focus(); } }
+  }
+  function cmFlash(id) { const el = $('#cm-' + id); if (!el) return; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); setTimeout(() => el.classList.remove('go'), 2600); }
+  function cmReply(id) {
+    if (!CM) return;
+    if (id && CM.rp === id) { const ta = $('#cmrf textarea'); if (ta) ta.focus(); return; }
+    CM.rp = id; CM.rpx = ''; CM.rpFocus = !!id; cmPaint();
+    const f = id && $('#cmrf'); if (f) f.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  async function cmPost(f) {
+    const S = CM, ta = f.querySelector('textarea'), go = f.querySelector('.cmgo'), p = +f.dataset.p || 0, x = ta.value.trim();
+    if (!S || !x || S.busy) return;
+    if (cmLen(x) > CM_MAX) { cmSt(f, _T('التعليق طويل، اختصره لين 1000 حرف.')); return; }
+    S.busy = 1; go.disabled = true; go.textContent = _T('ينشر…'); cmSt(f, '');
+    let r = null; try { r = await api({ op: 'cm_add', session: auth.session, v: S.v, x, p: p || undefined }); } catch (e) {}
+    if (CM !== S) return; S.busy = 0; go.textContent = p ? _T('رد') : _T('انشر');
+    if (!r || !r.ok) { go.disabled = false; cmSt(f, (r && r.msg) || _T('ما انرسل. تأكد من النت وجرّب مرة ثانية.')); return; }
+    if (!S.items.some(c => c.id === r.item.id)) { S.items.push(r.item); S.n = (S.n || 0) + 1; }
+    CMR.at = {};   // قائمة «💬 تعليقات الطلاب» (المدرس والمالك) تتحدّث لما يرجع لها
+    if (p) { S.rp = 0; S.rpx = ''; } else { ta.value = ''; ta.dispatchEvent(new Event('input')); f.classList.remove('on'); ta.blur(); }
+    cmPaint(); cmFlash(r.item.id);
+  }
+  async function cmMore() {
+    const S = CM; if (!S || S.ld) return;
+    const tops = S.items.filter(c => !c.p), before = tops.length ? Math.min.apply(null, tops.map(c => c.id)) : 0;
+    S.ld = 1; const b = $('#cmold') || $('#cmall'); if (b) { b.disabled = true; b.textContent = _T('لحظة…'); }
+    let r = null; try { r = await api({ op: 'cm_list', session: auth.session, v: S.v, before }); } catch (e) {}
+    if (CM !== S) return; S.ld = 0;
+    if (!r || !r.ok) { toast((r && r.msg) || _T('ما قدرت أحمّل التعليقات. جرّب مرة ثانية.')); cmPaint(); return; }
+    const have = new Set(S.items.map(c => c.id)); (r.items || []).forEach(c => { if (!have.has(c.id)) S.items.push(c); });
+    S.more = !!r.more; S.all = 1; cmPaint();
+  }
+  async function cmDelete(id) {
+    const S = CM, c = S && S.items.find(x => x.id === id); if (!c) return;
+    const nr = c.p ? 0 : S.items.filter(x => x.p === id).length, who = cmWho(c);
+    const q = c.mine ? (nr ? _T('تحذف تعليقك؟ والردود اللي عليه تنحذف معه.') : _T('تحذف تعليقك؟')) : nr ? _T`تحذف تعليق ${who}؟ والردود اللي عليه تنحذف معه.` : _T`تحذف تعليق ${who}؟`;
+    if (!await QGDlg.confirm(q, { ok: _T('حذف'), danger: true })) return;
+    let r = null; try { r = await api({ op: 'cm_del', session: auth.session, id }); } catch (e) {}
+    if (CM !== S) return;
+    if (!r || (!r.ok && r.error !== 'gone')) { toast((r && r.msg) || _T('ما انحذف. تأكد من النت وجرّب مرة ثانية.')); return; }
+    S.items = S.items.filter(x => x.id !== id && x.p !== id); S.n = Math.max(0, (S.n || 0) - 1 - nr); if (S.rp === id) { S.rp = 0; S.rpx = ''; } CMR.at = {};
+    cmPaint(); toast(_T('انحذف التعليق ✓'));
   }
 
   // ---------- 👨‍🏫 الشرح والمدرسين: كل مدرس له صفحة بقسمين — 🧱 التأسيس و🏋️ التدريب ----------
@@ -5409,7 +5538,7 @@
     unpaid: ['🛒', 'ما كمّلوا الدفع', 'اللي بدأوا الاشتراك وما دفعوا: رقمهم ووين وقفوا، وتكلّمهم على واتساب بضغطة.'],
     members: ['➕', 'إضافة يدوية', 'أضف طالب بإيميله مباشرة (مجاني أو تحويل) بدون ما يدفع من الموقع.'],
     regs: ['📝', 'التسجيلات', 'طلبات فورم التسجيل القديم (الشيت): أكّد أو ارفض.'],
-    vids: ['🎬', 'المقاطع', 'ارفع مقاطع الشرح والتأسيس للموقع، واربط حسابات المدرسين عشان يرفعون مقاطعهم.'],
+    vids: ['🎬', 'المقاطع', 'تعليقات الطلاب تحت المقاطع، ورفع مقاطع الشرح والتأسيس للموقع، وربط حسابات المدرسين عشان يرفعون مقاطعهم ويردون.'],
     studio: ['📱', 'استوديو تيك توك', 'بطاقات الأسئلة جاهزة للتصوير، مع القلم والترجمة.'],
     staff: ['🛡', 'الفريق', 'المشرفين وصلاحياتهم.'],
     settings: ['⚙️', 'الإعدادات والسجل', 'انتهاء الاشتراكات، تنبيهاتك، النسخ الاحتياطي، وسجل كل اللي صار في اللوحة.'],
@@ -5420,8 +5549,9 @@
   function admTop(tab) {
     const OW = isOwner(), pg = ADM_PG[tab] || ADM_PG.students, H = ADM.home;
     const wait = H ? H.need.filter(x => x.k === 'salla_wait' || x.k === 'bank').reduce((a, x) => a + x.n, 0) : 0, unp = H ? H.need.filter(x => x.k === 'unpaid').reduce((a, x) => a + x.n, 0) : 0;
+    const cmn = CMR.o === 1 && CMR.d[1] ? CMR.d[1].wait : H ? H.need.filter(x => x.k === 'cm').reduce((a, x) => a + x.n, 0) : 0;   // 💬 تعليقات تنتظر رد
     const badge = k => k === 'students' && ADM.list ? `<small>${ADM.list.length}</small>` : k === 'members' && ADM.members ? `<small>${ADM.members.length}</small>` : k === 'free' && ADM.free ? `<small>${ADM.free.total}</small>`
-      : k === 'ai' && ADM.ai && ADM.ai.flagged ? `<small class="red">${ADM.ai.flagged}</small>` : k === 'staff' && ADM.staff ? `<small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : k === 'pay' && wait ? `<small class="red" title="طلبات تنتظرك">${wait}</small>` : k === 'unpaid' && unp ? `<small class="red" title="ما تواصلت معهم">${unp}</small>` : '';
+      : k === 'ai' && ADM.ai && ADM.ai.flagged ? `<small class="red">${ADM.ai.flagged}</small>` : k === 'staff' && ADM.staff ? `<small>${ADM.staff.owners.length + ADM.staff.staff.length}</small>` : k === 'pay' && wait ? `<small class="red" title="طلبات تنتظرك">${wait}</small>` : k === 'unpaid' && unp ? `<small class="red" title="ما تواصلت معهم">${unp}</small>` : k === 'vids' && cmn ? `<small class="red" title="تعليقات طلاب تنتظر رد">${cmn}</small>` : '';
     const item = k => k === 'regs' ? `<a href="#admin-regs" class="${tab === 'regs' ? 'on' : ''}"${tab === 'regs' ? ' aria-current="page"' : ''}>${regTabLabel()}</a>`
       : `<a href="${ADM_HREF[k]}" class="${tab === k ? 'on' : ''}"${tab === k ? ' aria-current="page"' : ''}><span class="i" aria-hidden="true">${ADM_PG[k][0]}</span> <span class="l">${ADM_PG[k][1]}</span>${badge(k) ? ' ' + badge(k) : ''}</a>`;
     const nav = ADM_NAV.map(([g, ks]) => { const L = ks.filter(k => OW || ADM_ALL[k]); return L.length ? `<div class="an-g"><span class="an-h">${g}</span>${L.map(item).join('')}</div>` : ''; }).join('');
@@ -5450,6 +5580,7 @@
     flag: x => ['🤖', `${x.n === 1 ? 'شرح واحد' : x.n === 2 ? 'شرحين' : x.n + ' شروحات'} من المرشد بلّغ عنها الطلاب`, 'راجع الشرح وشوف وين الغلط.', '#admin-ai', 'راجعها', 'mid'],
     regs: x => ['📝', `${x.n === 1 ? 'طلب تسجيل ينتظر' : x.n === 2 ? 'طلبين تسجيل ينتظرون' : x.n + ' طلبات تسجيل تنتظر'} قرارك`, 'من فورم التسجيل القديم (الشيت).', '#admin-regs', 'افتح التسجيلات', 'mid'],
     err: x => ['🐞', `${x.n === 1 ? 'خطأ واحد' : x.n === 2 ? 'خطأين' : x.n + ' أخطاء'} في الموقع آخر 24 ساعة`, 'أخطاء صارت عند الطلاب وانسجلت لحالها.', '#admin-settings', 'شوف السجل', 'low'],
+    cm: x => ['💬', x.n === 1 ? 'تعليق واحد من طالب ينتظر رد' : x.n === 2 ? 'تعليقين من الطلاب ينتظرون رد' : x.n <= 10 ? x.n + ' تعليقات من الطلاب تنتظر رد' : x.n + ' تعليق من الطلاب ينتظر رد', 'أسئلة كتبها الطلاب تحت المقاطع وما رد عليها المدرس ولا الفريق للحين' + (x.old ? ` (أقدمها ${fmtD(x.old)})` : '') + '.', '#admin-vids', 'شوفها', 'mid'],
     follow: x => ['👋', `${nStu(x.n)} ما ذاكروا من 4 أيام وأكثر`, 'القائمة تحت: كلّمهم على واتساب، أو افتح تقرير الطالب.', '#oh-follow', 'شوفهم', 'low'],
     vids: x => ['🎬', x.qv ? `${x.qv === 1 ? 'مقطع واحد' : x.qv === 2 ? 'مقطعين' : x.qv + ' مقاطع'} من شرح الأقسام والنماذج ما انرفعت` : `${x.n === 1 ? 'مقطع واحد' : x.n === 2 ? 'مقطعين' : x.n + ' مقطع'} من التأسيس والتدريب ما انرفع`, x.qv ? 'اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع: ' + (x.list || []).map(vidKeyName).join('، ') + '.' : 'تطلع للطلاب «⏳ قريباً» لين يرفعها المدرس.', '#admin-vids', x.qv ? 'ارفعها' : 'افتح المقاطع', x.qv ? 'mid' : 'low'],
     backup: x => ['💾', x.at ? 'آخر نسخة احتياطية قديمة' : 'ما فيه نسخة احتياطية للحين', 'النسخ يتم لحاله كل يوم، وتقدر تبدأه الحين من الإعدادات.', '#admin-settings', 'افتح الإعدادات', 'low'],
@@ -5459,7 +5590,7 @@
   const EV_T = { paid: ['💰', 'اشتراك جديد'], renew: ['🔁', 'تجديد اشتراك'], auto_end: ['⛔', 'انتهى تلقائياً'], bank_wait: ['🏦', 'تحويل بنكي ينتظر'], stuck: ['⚠️', 'طلب مدفوع ما تفعّل'], gs_down: ['📧', 'سكربت إيميلات سلة واقف'], digest: ['🌙', 'ملخص اليوم'], backup: ['💾', 'نسخة احتياطية'], ai_warn: ['🧮', 'المرشد قرّب يوصل حدّه'], ai_stop: ['⛔', 'المرشد توقّف لليوم'], aband: ['🛒', 'ترك الدفع في سلة'], pf_phone: ['📱', 'زائر يبينا نكلّمه واتساب'], pf_mail: ['📧', 'وصله إيميل «وش وقّفك؟»'], ref: ['🎁', 'اشتراك بدعوة صديق'],
     adm_ban: ['⛔', 'حظر طالب'], adm_unban: ['✅', 'فك الحظر'], adm_kick: ['🚪', 'طرد من الجلسة'], adm_sub_end: ['⛔', 'إنهاء اشتراك'], adm_sub_restore: ['↩️', 'إرجاع اشتراك'], adm_sub_gone: ['🗑', 'حذف من القائمة'], adm_sub_end_all: ['⛔', 'إنهاء كل الاشتراكات'], adm_sub_restore_all: ['↩️', 'تراجع عن إنهاء الكل'],
     adm_sub_set: ['💳', 'تغيير نوع الاشتراك'], adm_sub_pkg: ['📦', 'تغيير باقة طالب'], adm_sub_dates: ['📅', 'تعديل موعد الاشتراك'], adm_members_add: ['➕', 'إضافة مشتركين'], adm_members_remove: ['➖', 'حذف مشترك'], adm_staff_add: ['🛡', 'إضافة مشرف'], adm_staff_remove: ['🛡', 'حذف مشرف'], adm_staff_teach: ['👨‍🏫', 'ربط حساب مدرس'],
-    adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
+    adm_cm_del: ['🗑', 'حذف تعليق تحت مقطع'], adm_reg_act: ['📝', 'قرار على تسجيل'], adm_salla_set: ['🛍', 'إعدادات سلة'], adm_salla_link: ['🔗', 'ربط طلب سلة'], adm_salla_hide: ['🙈', 'إخفاء طلب'], adm_pay_open: ['💳', 'الدفع للزوار'], adm_ai_set: ['🤖', 'إعدادات المرشد'], adm_reset_exam: ['🧪', 'تصفير اختبار محاكي'], adm_reset_results: ['🧹', 'تصفير نتائج'],
     adm_profile: ['👤', 'تعديل ملف طالب'], adm_cfg_set: ['⚙️', 'تغيير الإعدادات'], adm_backup_now: ['💾', 'نسخ احتياطي يدوي'], adm_err_clear: ['🧹', 'مسح سجل الأخطاء'], adm_pf_set: ['📧', 'إيميل «وش وقّفك؟» التلقائي'], adm_pf_wa: ['💬', 'تواصل على واتساب'], adm_pf_hide: ['🙈', 'إخفاء من «ما كمّلوا الدفع»'], adm_ref_set: ['🎁', 'إعدادات «ادعُ صديقك»'], adm_tg_setup: ['🤖', 'ربط بوت تيليقرام'] };
   const evRow = e => { const T = EV_T[e.kind] || ['•', e.kind], sys = !/^adm_/.test(e.kind), who = String(e.who || '');
     const sub = [sys ? '' : who && who.indexOf('@') > 0 ? 'بواسطة ' + who.split('@')[0] : '', e.target, e.note].filter(Boolean).map(esc).join(' · ');
@@ -5624,7 +5755,7 @@
   // ---------- 🎬 المقاطع: الرفع للموقع + حسابات المدرسين ----------
   async function renderVids() {
     document.title = 'المقاطع | Q-Guide';
-    const top = () => { app.innerHTML = admTop('vids'); bindCtl(); $('#admref').onclick = () => { if (VUP.busy) return toast('خلّ الرفع يخلص أول'); ADM.vids = null; renderVids(); }; };
+    const top = () => { app.innerHTML = admTop('vids'); bindCtl(); $('#admref').onclick = () => { if (VUP.busy) return toast('خلّ الرفع يخلص أول'); ADM.vids = null; CMR.at = {}; renderVids(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
       if (!ADM.vids || !VUP.busy) ADM.vids = await admCall({ op: 'adm_vids' }); }
@@ -5642,8 +5773,8 @@
     W.innerHTML = `<div class="stf subs vidpg">
       <div class="sbtiles n${G.length + 1}">${G.map(g => `<div class="sbt vid${g[2][0] >= g[2][1] ? ' full' : ''}"><span class="i" aria-hidden="true">${g[0]}</span><b><bdi>${g[2][0]}/${g[2][1]}</bdi></b><span>${g[1]}</span></div>`).join('')}<div class="sbt vid"><span class="i" aria-hidden="true">👁</span><b>${views}</b><span>مشاهدة آخر 30 يوم</span></div></div>
       ${miss.length ? `<div class="rgsync warn">⚠️ <span>ناقص من شرح الأقسام والنماذج: <b>${miss.map(vidKeyName).join('، ')}</b>. اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع (عضو القناة القديم يفتح له مقطع يوتيوب).</span></div>` : '<div class="rgsync">🎬 <span>شرح الأقسام والنماذج كله مرفوع. كل المشتركين يشوفون المقاطع هنا داخل الموقع، وإيميل الطالب ظاهر على المقطع.</span></div>'}
-      ${vupHtml(V)}</div>`;
-    vupBind(W, '');
+      ${cmrHtml(1)}${vupHtml(V)}</div>`;
+    vupBind(W, ''); cmrBind(1); cmrLoad(1);
   }
 
   // ---------- ⚙️ الإعدادات والسجل ----------
@@ -5878,6 +6009,43 @@ ${tgBox()}
     }
     VUP.busy = 0; vupRepaint(); toast((ok === plan.length ? `✓ انرفع ${ok === 1 ? 'مقطع واحد' : ok === 2 ? 'مقطعين' : ok + ' مقاطع'}` : `انرفع ${ok} من ${plan.length}. اللي ما انرفع جرّبه مرة ثانية.`) + (VUP.miss.length ? ` · وفيه ${VUP.miss.length === 1 ? 'ملف' : VUP.miss.length + ' ملفات'} ما عرفت مقطعه` : ''));
   }
+  // ---------- 💬 تعليقات الطلاب تحت المقاطع: المدرس في «🎬 مقاطعي» (مقاطعه بس) · المالك في «🎬 المقاطع» (كل المقاطع) — op cm_recent ----------
+  // كل تعليق يفتح المقطع عنده (#watch-… + CM_GO) والرد يصير هناك. «ينتظر رد» = تعليق طالب ما رد عليه المدرس ولا الفريق (آخر 90 يوم).
+  const CMR = { d: {}, at: {}, w: 1, ld: 0, full: 0 };   // d[w] = آخر رد من الخادم لكل تبويب (1 = ينتظر رد · 0 = الكل) · full = عرض كل الصفوف (أول 12 بس قبله)
+  const cmVidName = v => { const m = /^([a-z]+):(\d+)$/.exec(v || '') || [], k = m[1], n = +m[2], X = TK[k]; if (!k || (!X && !YT[k])) return v || '';
+    const it = vidList(k).find(x => x.n === n), T = TEACHERS[X ? X.t : 0];
+    return `${T ? T.name : ''} · ${X ? X.head : k === 'q' ? '📐 شرح الكمي' : '📖 شرح اللفظي'} · ${X && X.tab === 'f' ? n + '. ' : ''}${it ? it.label : n}`; };
+  const cmRc = n => n === 1 ? 'رد واحد' : n === 2 ? 'ردين' : n <= 10 ? n + ' ردود' : n + ' رد';
+  function cmrHtml(own) {
+    if (CMR.o !== own) Object.assign(CMR, { o: own, d: {}, at: {}, full: 0 });   // «مقاطعي» (مقاطعه) و«المقاطع» (كلها) ما يتشاركون نفس الحفظ
+    const D = CMR.d[CMR.w], wait = CMR.d[1] ? CMR.d[1].wait : CMR.d[0] ? CMR.d[0].wait : 0;
+    const tab = (w, t) => `<button type="button" role="tab" data-cmw="${w}" class="${CMR.w === w ? 'on' : ''}" aria-selected="${CMR.w === w}">${t}</button>`;
+    const row = c => { const m = /^([a-z]+):(\d+)$/.exec(c.v) || [], wt = c.r === 's' && !c.ans;
+      return `<li><a class="cmri${wt ? ' wait' : ''}" href="#watch-${m[1]}${m[2]}" data-cmgo="${c.id}">${cmAv(c, 36)}<span class="cmrx"><span class="cmrm"><b>${esc(cmWho(c))}</b><small>${esc(cmVidName(c.v))} · ${cmAgo(c.at)}</small></span><span class="cmrq" dir="auto">${esc(c.x)}</span></span>
+        <span class="cmrst">${wt ? '<span class="cmwt">ينتظر رد</span>' : c.ans ? '<span class="cmok">✓ انرد عليه</span>' : ''}${c.rc ? `<small>💬 ${cmRc(c.rc)}</small>` : ''}</span></a></li>`; };
+    const body = !D ? '<div class="cmld"><div class="spin"></div></div>' : D.err ? `<p class="mut cmr0">${esc(D.err)}</p>`
+      : !D.items.length ? `<p class="mut cmr0">${CMR.w ? 'ما فيه تعليقات تنتظر رد 👌' : 'ما فيه تعليقات على المقاطع آخر 90 يوم.'}</p>`
+      : `<ul class="cmrl">${(CMR.full ? D.items : D.items.slice(0, 12)).map(row).join('')}</ul>${!CMR.full && D.items.length > 12 ? `<button type="button" class="btn sm ghost cmmore" id="cmrall">عرض الكل (${D.items.length})</button>` : ''}`;
+    return `<section class="cmr" id="cmr" aria-labelledby="cmrh"><div class="cmrhd"><h2 id="cmrh">💬 تعليقات الطلاب</h2>
+        <div class="cmrt" role="tablist" aria-label="عرض التعليقات">${tab(1, `${own ? 'ينتظر رد' : 'ينتظر ردّك'}${wait ? ` <small>${wait}</small>` : ''}`)}${tab(0, 'الكل')}</div></div>
+      <p class="mut cmrd">${own ? 'أسئلة الطلاب وتعليقاتهم تحت كل المقاطع (آخر 90 يوم). اضغط على التعليق يفتح المقطع عنده، ورد من هناك: ردك يطلع باسم «فريق Q-Guide»، وفي مقاطعك أنت باسمك وشارة «المدرس».' : 'أسئلة الطلاب وتعليقاتهم تحت مقاطعك (آخر 90 يوم). اضغط على التعليق يفتح المقطع عنده، ورد من هناك: ردك يطلع باسمك وشارة «المدرس».'}</p>${body}</section>`;
+  }
+  function cmrBind(own) {
+    const S = $('#cmr'); if (!S) return;
+    S.querySelectorAll('[data-cmw]').forEach(b => { b.onclick = () => { CMR.w = +b.dataset.cmw; CMR.full = 0; cmrPaint(own); cmrLoad(own); }; });
+    const all = S.querySelector('#cmrall'); if (all) all.onclick = () => { CMR.full = 1; cmrPaint(own); };
+    S.querySelectorAll('[data-cmgo]').forEach(a => { a.onclick = () => { try { sessionStorage.setItem(CM_GO, a.dataset.cmgo); } catch (e) {} }; });
+  }
+  function cmrPaint(own) { const S = $('#cmr'); if (!S) return; S.outerHTML = cmrHtml(own); cmrBind(own); }
+  async function cmrLoad(own, force) {
+    const w = CMR.w; if (CMR.ld || (!force && CMR.d[w] && Date.now() - (CMR.at[w] || 0) < 60e3)) return;
+    CMR.ld = 1; let r = null; try { r = await api({ op: 'cm_recent', session: auth.session, wait: w }); } catch (e) {}
+    CMR.ld = 0; CMR.at[w] = Date.now();
+    CMR.d[w] = r && r.ok ? r : { err: (r && r.msg) || 'تعذّر تحميل التعليقات. حدّث الصفحة.', items: [] };
+    if (r && r.ok) { if (CMR.d[1 - w]) CMR.d[1 - w].wait = r.wait; if (!own && auth.cmw !== r.wait) { auth.cmw = r.wait; lsSet(LS.auth, auth); cmwBadge(); } }
+    cmrPaint(own);
+    if (CMR.w !== w) cmrLoad(own);   // غيّر التبويب وهو يحمّل
+  }
   // ---------- 🎬 «مقاطعي»: المدرس (سلمان الفرج · عبدالله الشمراني) يرفع مقاطعه بنفسه — التأسيس والتدريب ----------
   let MYV = null;
   async function renderMyVids() {
@@ -5892,8 +6060,8 @@ ${tgBox()}
     const W = $('#myv'); if (!W || !MYV) return;
     const t = TEACHERS.find(x => x.id === MYV.teach) || { name: '', href: '#sharh' }, S = vupSlots(MYV), up = S.filter(x => x.size).length;
     W.innerHTML = `<div class="tphead"><span class="tav" aria-hidden="true">${esc(t.name[0] || '🎬')}</span><div class="tphx"><h1>مقاطع ${t.name}</h1>
-      <p>ارفع مقطع كل درس أو قسم أو نموذج، ويطلع للطلاب في صفحتك أول ما يخلص رفعه. انرفع <bdi>${up}</bdi> من <bdi>${S.length}</bdi> · <a class="lnk2" href="${t.href}">👨‍🏫 صفحتي عند الطلاب</a></p></div></div>${vupHtml(MYV, MYV.teach)}`;
-    vupBind(W, MYV.teach);
+      <p>ارفع مقطع كل درس أو قسم أو نموذج، ويطلع للطلاب في صفحتك أول ما يخلص رفعه. انرفع <bdi>${up}</bdi> من <bdi>${S.length}</bdi> · <a class="lnk2" href="${t.href}">👨‍🏫 صفحتي عند الطلاب</a></p></div></div>${cmrHtml(0)}${vupHtml(MYV, MYV.teach)}`;
+    vupBind(W, MYV.teach); cmrBind(0); cmrLoad(0);
   }
   async function vupFile(file, key, onp) {
     const base = window.QG.API.replace(/\/$/, '') + '/vup', H = { 'x-qg-ses': auth.session }, J = Object.assign({ 'content-type': 'application/json' }, H);
