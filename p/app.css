@@ -2591,6 +2591,7 @@ a.tle:hover,button.tle:hover{border-color:var(--navy3);box-shadow:var(--sh)}
 button.wvi{font:inherit;text-align:start;cursor:pointer;width:100%}
 .wvi.lock small{direction:rtl}
 .wvi.lock b{color:var(--mut)}
+.wvi .wvfree{color:var(--ok);font-weight:700}
 [data-theme="dark"] .tpun{background:#1B2A52;color:#C9D6FF}
 .vgh{grid-column:1/-1;margin:10px 2px 0;font-size:calc(14px * var(--fs));color:var(--navy2)}
 .vgh small{color:var(--mut);font-weight:600}

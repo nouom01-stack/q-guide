@@ -87,6 +87,10 @@
   // auth.vids = المقاطع المرفوعة للموقع · اللي ما انرفع للحين = «⏳ قريباً» (روابط «شاهد الشرح» تختفي لين يرتفع) · الزائر: الرابط يفتح نافذة الاشتراك
   const vidSub = () => isSub();
   const vidHas = k => !!(auth && Array.isArray(auth.vids) && auth.vids.indexOf(k) >= 0);
+  // 🆓 مقاطع الزائر (v115، المالك 16 نوفمبر 2026: «القسم 1 للمشتركين؟»): شرح القسم 1 مجاني مثل أسئلته (قبل v114 كان يشوفه في يوتيوب) — الخادم يعطيه رابطه (FREE_VIDS في vids.js)
+  //    الزائر ما يجيه auth.vids، فما نقول له «قريباً» من عندنا: لو المقطع ما انرفع، صفحة المشاهدة تقولها من رد الخادم
+  const FREE_VID = ['q:1'], freeVid = k => FREE_VID.indexOf(k) >= 0;
+  const watchKey = h => { const m = /^watch-([a-z]{1,2})(\d{1,2})$/.exec(h || ''); return m ? m[1] + ':' + +m[2] : ''; };
   const TGT = ' target="_blank" rel="noopener"';
   // شرح سلمان الفرج للقسم / النموذج (q / v): الاسم والمدة من YT (المدة نفسها للمقطع داخل الموقع) والرابط صفحة المشاهدة
   function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const n = +m[2], raw = YT[m[1]].v[n - 1]; if (!raw) return null;
@@ -413,7 +417,7 @@
   setInterval(heartbeat, 3 * 60 * 1000);
 
   // ---------- 🆓 الزائر: المسارات المفتوحة + نافذة الاشتراك ----------
-  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || /^sharh-(salman|abdullah|talal)(\/[ft])?$/.test(h) || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || h === 'results' || /^[qv]1(@\d+)?$/.test(h);
+  const freeRoute = h => h === '' || h === 'paid' || h === 'me' || h === 'sharh' || /^sharh-(salman|abdullah|talal)(\/[ft])?$/.test(h) || h === 'arena' || /^duel-[A-Za-z0-9]{6}$/.test(h) || h === 'board-arena' || h === 'level' || h === 'find' || h === 'results' || /^[qv]1(@\d+)?$/.test(h) || freeVid(watchKey(h));
   function lockName(h) {
     const m = /^([qv])(\d+)/.exec(h); if (m) return SET_NAME(m[1] + m[2]);
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
@@ -1431,28 +1435,36 @@
       : X ? _T`<a class="btn sm" href="#${X.sv}${n}">✍️ حل ${vLabel(X.sv, n)}</a><a class="btn sm ghost" href="${tpH}">🏋️ التدريب</a>` : _T`<a class="btn sm" href="#${k}${n}">✍️ حل ${vLabel(k, n)}</a>`;
     const teach = TEACHERS[X ? X.t : 0].name, sub = fd ? (k === 'ss' || k === 'ts' ? _T`المهارة ${n} من ${L.length}` : _T`الدرس ${n} من ${L.length}`) : X ? _T`${n} من ${L.length}` : `<bdi dir="ltr">${esc(cur.dur || '')}</bdi>`;
     const cmOk = !isFree() && !(fd && noFound());   // 💬 التعليقات: لكل مشترك يقدر يفتح المقطع (والفريق)
+    // 🆓 الزائر (يوصل هنا لشرح القسم 1 بس): اللي بعده مقفل = زر يفتح نافذة الاشتراك وهو بمكانه (مو رابط يطلّعه للرئيسية)
+    const fr = isFree(), lockd = key => fr && !freeVid(key), lockW = kk => kk === 'q' ? _T('شرح أقسام الكمي') : _T('شرح نماذج اللفظي');
+    const ok2 = k === 'q' ? 'v' : 'q', o2 = ok2 + ':1', o2t = k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي');
     const head = X ? _T`<h2 class="h2">${X.head}</h2><span class="wvhl"><a class="lnk2" href="${tpH}">👨‍🏫 صفحة المدرس</a><a class="lnk2" href="#sharh">👨‍🏫 المدرسين</a></span>`
-      : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl"><a class="lnk2" href="#watch-${k === 'q' ? 'v' : 'q'}1">${k === 'q' ? _T('📖 مقاطع اللفظي') : _T('📐 مقاطع الكمي')}</a><a class="lnk2" href="#sharh-salman/t">👨‍🏫 صفحة المدرس</a></span>`;
+      : _T`<h2 class="h2">${k === 'q' ? _T('📐 مقاطع الكمي') : _T('📖 مقاطع اللفظي')}</h2><span class="wvhl">${lockd(o2) ? `<button type="button" class="lnk2" data-lock="${lockW(ok2)}">${o2t} 🔒</button>` : `<a class="lnk2" href="#watch-${ok2}1">${o2t}</a>`}<a class="lnk2" href="#sharh-salman/t">👨‍🏫 صفحة المدرس</a></span>`;
+    const nav = (x, t) => lockd(x.key) ? `<button type="button" class="btn sm ghost" data-lock="${lockW(k)}" title="${esc(x.label)}">${t.replace(/\s*[‹›]\s*/g, '')} 🔒</button>` : `<a class="btn sm ghost" href="#watch-${x.h}" title="${esc(x.label)}">${t}</a>`;
+    const li = x => { const w = W[x.key] && W[x.key].w;
+      if (lockd(x.key)) return _T`<button type="button" class="wvi lock" data-lock="${lockW(k)}"><b>${esc(x.label)}</b><small>🔒 للمشتركين</small></button>`;
+      return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : !fr && !vidHas(x.key) ? _T('⏳ قريباً') : X ? _T('لم تشاهده') : esc(x.dur || '')}</small></a>`; };
     app.innerHTML = topbar(_T`<span class="ttl">🎬 ${what}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wrap watch">
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
           <div class="wvwm" id="wvwm" aria-hidden="true"></div><div class="wvmsg" id="wvmsg"><div class="spin"></div></div>
           <button type="button" class="wvfs" id="wvfs" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
         <div class="wvbar"><div class="wvt"><b>${what}</b><span class="mut"><span class="wvteach">👨‍🏫 ${teach}</span> · ${sub}</span></div>
-          <div class="wvact">${solve}${prev ? _T`<a class="btn sm ghost" href="#watch-${prev.h}" title="${esc(prev.label)}">‹ السابق</a>` : ''}${next ? _T`<a class="btn sm ghost" href="#watch-${next.h}" title="${esc(next.label)}">التالي ›</a>` : ''}</div></div>
+          <div class="wvact">${solve}${prev ? nav(prev, _T('‹ السابق')) : ''}${next ? nav(next, _T('التالي ›')) : ''}</div></div>
         ${hasQ ? _T`<a class="wvq" id="wvq" href="#fq-${n}"${W[cur.key] && W[cur.key].w ? '' : ' hidden'}><span class="wvqi" aria-hidden="true">📝</span><span class="wvqx"><b>خلّصت الدرس؟ اختبر فهمك</b><small>12 سؤال قصير، وبعد كل سؤال شرحه والقاعدة اللي تخصه</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>` : ''}
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
         ${cmOk ? cmBox() : ''}
         <div class="wvhead">${head}</div>
-        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : !vidHas(x.key) ? _T('⏳ قريباً') : X ? _T('لم تشاهده') : esc(x.dur || '')}</small></a>`; }).join('')}</div>
+        <div class="wvlist">${L.map(li).join('')}</div>
       </main>`;
     bindCtl(); window.scrollTo({ top: 0 }); if (cmOk) cmInit(cur.key);
+    if (fr) { bindSub(app); app.querySelectorAll('[data-lock]').forEach(b => b.addEventListener('click', () => { try { $('#wvv').pause(); } catch (e) {} })); }   // 🆓 نافذة الاشتراك فوق المقطع: نوقّفه
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع للحين: «قريباً» لكل أحد (المقاطع داخل الموقع بس، ما فيه يوتيوب)
     const soon = t => { say(t); $('#wvfs').hidden = true; };
     if (X && isFree()) { say(fd ? _T('مقاطع التأسيس للمشتركين في الدورة.') : _T('مقاطع التدريب للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
-    if (!X && !(vidSub() || auth.role === 'admin')) { say(_T('مقاطع الشرح للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
+    if (!X && !(vidSub() || auth.role === 'admin' || freeVid(cur.key))) { say(_T('مقاطع الشرح للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
     VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
     box.oncontextmenu = e => { e.preventDefault(); return false; };
     // 💧 العلامة: إيميله ورقمه، تتنقّل كل شوي بين أماكن ما تغطي أزرار المشغّل
@@ -1675,7 +1687,8 @@
     let tN, tPane;
     if (id === 'salman') {
       const item = (k, n) => { const y = ytFor(k + n); if (!y) return ''; const w = seen(k + ':' + n), lab = vLabel(k, n);   // 🎬 داخل الموقع بس (مثل بطاقات عبدالله وطلال)
-        if (free) return _T`<button type="button" class="wvi lock" data-lock="${k === 'q' ? _T('شرح أقسام الكمي') : _T('شرح نماذج اللفظي')}"><b>${lab}</b><small>🔒 للمشتركين</small></button>`;
+        if (free && !freeVid(k + ':' + n)) return _T`<button type="button" class="wvi lock" data-lock="${k === 'q' ? _T('شرح أقسام الكمي') : _T('شرح نماذج اللفظي')}"><b>${lab}</b><small>🔒 للمشتركين</small></button>`;
+        if (free) return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"><b>${lab}</b><small>${w ? _T('✓ شاهدته') : `▶ <bdi dir="ltr">${esc(y.dur || '')}</bdi> · <span class="wvfree">${_T('مجاني')}</span>`}</small></a>`;   // 🆓 شرح القسم 1 للزائر
         if (y.soon && !adm) return _T`<div class="wvi dis" aria-disabled="true"><b>${lab}</b><small>⏳ قريباً</small></div>`;
         return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"><b>${lab}</b><small>${w ? _T('✓ شاهدته') : `▶ <bdi dir="ltr">${esc(y.dur || '')}</bdi>`}</small></a>`; };
       const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
@@ -5027,7 +5040,7 @@
   const vCnt = (n, one, two, few, many) => n === 1 ? one : n === 2 ? two : n <= 10 ? n + ' ' + few : n + ' ' + many;
   const vTest = id => 'الاختبار المحاكي ' + String(id || '').replace(/^t/, '');
   const vPage = k => ({ home: 'الرئيسية', arena: 'الساحة 1v1', duel: 'تحدي 1v1 برابط', 'board-arena': 'صدارة الساحة', level: 'تحديد المستوى', find: 'صفحة «ابحث عن سؤال»', test: 'صفحة الاختبارات المحاكية', results: 'صفحة نتائج الطلاب' }[k]
-    || (/^test:t\d+$/.test(k) ? vTest(k.slice(5)) : /^[qv]\d+$/.test(k) ? SET_NAME(k) : k));
+    || (/^test:t\d+$/.test(k) ? vTest(k.slice(5)) : /^[qv]\d+$/.test(k) ? SET_NAME(k) : /^watch-[qv]\d+$/.test(k) ? 'مقطع شرح ' + SET_NAME(k.slice(6)) : k));   // 🆓 watch-q1 = شرح القسم 1 (مجاني للزائر من v115)
   const vTracked = x => !!(x && x.v !== undefined);
   function visChips(x) {
     if (!x) return '';
