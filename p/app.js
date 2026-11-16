@@ -82,26 +82,18 @@
     ['الدائرة والساعة', 'Circles & Clocks', 224, 4], ['المساحات المظللة والأشكال المركّبة', 'Shaded Areas & Composite Shapes', 239, 4], ['المجسمات والإحداثيات والاتجاهات', '3D Shapes, Coordinates & Directions', 254, 4]];
   // i18n:on
   const qrName = n => QR_L[n - 1][EN ? 1 : 0], qsName = n => QR_S[n - 1][EN ? 1 : 0];
-  const ytUrl = id => 'https://youtu.be/' + id;
-  // 🎬 كل المشتركين يشوفون المقاطع هنا داخل الموقع (#watch-…) برابط مؤقت وعليها إيميلهم
-  // auth.vids = المقاطع المرفوعة للموقع · لو مقطع ما انرفع للحين: عضو القناة القديم يفتح مقطع الأعضاء، والمجاني/التحويل نسخته الخاصة (auth.yt)، ومشترك الدفع من الموقع يطلع له «قريباً»
+  // 🎬 المقاطع داخل الموقع بس (طلب المالك 16 نوفمبر 2026: «ليه يوتيوب؟ قلت لك المقاطع بالموقع بس»): كل رابط مقطع يفتح صفحة المشاهدة هنا (#watch-…)
+  //    برابط مؤقت وعليه إيميل الطالب، وما فيه رابط يوتيوب لأي أحد (لا مشترك ولا عضو قناة قديم ولا الفريق).
+  // auth.vids = المقاطع المرفوعة للموقع · اللي ما انرفع للحين = «⏳ قريباً» (روابط «شاهد الشرح» تختفي لين يرتفع) · الزائر: الرابط يفتح نافذة الاشتراك
   const vidSub = () => isSub();
-  const noYt = () => !!(auth && auth.sub === 'pay');   // مشترك الدفع من الموقع ما له نسخة في يوتيوب
   const vidHas = k => !!(auth && Array.isArray(auth.vids) && auth.vids.indexOf(k) >= 0);
-  const ytAlt = () => auth && auth.yt && vidSub() ? auth.yt : null;
-  const YT_ALT_TIP = _T('مقطع خاص لك: افتحه وأنت داخل يوتيوب بنفس إيميل Google اللي تدخل فيه الموقع');
   const TGT = ' target="_blank" rel="noopener"';
-  const vidHash = (k, n) => '#watch-' + k + n;
-  const inSite = (k, n) => vidSub() && vidHas(k + ':' + n) ? { url: vidHash(k, n), tgt: '', site: true } : null;
-  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const k = YT[m[1]], raw = k.v[+m[2] - 1]; if (!raw) return null; const i = raw.indexOf(':'), lab = vLabel(m[1], m[2]), dur = raw.slice(i + 1);
-    const s = inSite(m[1], +m[2]); if (s) return Object.assign({ id: raw.slice(0, i), dur, label: lab, alt: false }, s);
-    if (noYt()) return { id: '', dur, label: lab, alt: false, url: vidHash(m[1], +m[2]), tgt: '', site: true, soon: true };   // ما انرفع للحين: صفحته تقول «ينزل قريباً»
-    const A = ytAlt(), alt = A && A[m[1]] && A[m[1]].v ? A[m[1]].v[+m[2] - 1] : ''; const id = alt || raw.slice(0, i); return { id, dur, url: ytUrl(id), tgt: TGT, label: lab, alt: !!alt }; }
-  const ytList = k => { const A = ytAlt(); return (A && A[k] && A[k].list) || YT[k].list; };
-  const ytTip = (y, t) => y && y.site ? _T(' title="يشتغل هنا داخل الموقع"') : y && y.alt ? ` title="${YT_ALT_TIP}"` : t ? ` title="${t}"` : '';
-  const YTSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#FF0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
+  // شرح سلمان الفرج للقسم / النموذج (q / v): الاسم والمدة من YT (المدة نفسها للمقطع داخل الموقع) والرابط صفحة المشاهدة
+  function ytFor(setId) { const m = /^([qv])(\d{1,2})$/.exec(setId || ''); if (!m) return null; const n = +m[2], raw = YT[m[1]].v[n - 1]; if (!raw) return null;
+    return { dur: raw.slice(raw.indexOf(':') + 1), label: vLabel(m[1], n), url: '#watch-' + m[1] + n, tgt: '', site: true, soon: !isFree() && !vidHas(m[1] + ':' + n) }; }
+  const ytTip = () => _T(' title="يشتغل هنا داخل الموقع"');
   const PLAYSVG = '<svg class="yti" viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#2350C4"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>';
-  const vIcon = y => y && y.site ? PLAYSVG : YTSVG;
+  const vIcon = () => PLAYSVG;
   const GRIDSVG = '<svg class="gi" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.9"/><circle cx="8" cy="3" r="1.9"/><circle cx="13" cy="3" r="1.9"/><circle cx="3" cy="8" r="1.9"/><circle cx="8" cy="8" r="1.9"/><circle cx="13" cy="8" r="1.9"/><circle cx="3" cy="13" r="1.9"/><circle cx="8" cy="13" r="1.9"/><circle cx="13" cy="13" r="1.9" fill-opacity=".45"/></g></svg>';
   const LOSVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>';
 
@@ -1452,15 +1444,13 @@
         <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
         ${cmOk ? cmBox() : ''}
         <div class="wvhead">${head}</div>
-        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : X ? (vidHas(x.key) ? _T('لم تشاهده') : _T('⏳ قريباً')) : esc(x.dur || '')}</small></a>`; }).join('')}</div>
+        <div class="wvlist">${L.map(x => { const w = W[x.key] && W[x.key].w; return `<a class="wvi${x === cur ? ' on' : ''}${w ? ' ok' : ''}" href="#watch-${x.h}"${x === cur ? ' aria-current="page"' : ''}><b>${fd ? x.n + '. ' : ''}${esc(x.label)}</b><small>${w ? _T('✓ شاهدته') : !vidHas(x.key) ? _T('⏳ قريباً') : X ? _T('لم تشاهده') : esc(x.dur || '')}</small></a>`; }).join('')}</div>
       </main>`;
     bindCtl(); window.scrollTo({ top: 0 }); if (cmOk) cmInit(cur.key);
     const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
-    // ما انرفع للموقع (أو حساب يفتح المقاطع في يوتيوب): نفس الزر القديم على يوتيوب · التأسيس ما له يوتيوب
-    const toYT = t => { if (X || noYt()) { say(noYt() && !X ? _T('المقطع هذا ينزل للموقع قريباً. لين ينزل، حل أسئلته وشرح كل سؤال مع المرشد الذكي.') : t); $('#wvfs').hidden = true; return; } const A = ytAlt(), alt = A && A[k] && A[k].v && A[k].v[n - 1];
-      const raw = YT[k].v[n - 1].split(':')[0];
-      say(t, _T`<a class="btn sm" href="${ytUrl(alt || raw)}"${TGT}>${YTSVG} افتحه في يوتيوب</a>`); $('#wvfs').hidden = true; };
+    // ما انرفع للموقع للحين: «قريباً» لكل أحد (المقاطع داخل الموقع بس، ما فيه يوتيوب)
+    const soon = t => { say(t); $('#wvfs').hidden = true; };
     if (X && isFree()) { say(fd ? _T('مقاطع التأسيس للمشتركين في الدورة.') : _T('مقاطع التدريب للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
     if (!X && !(vidSub() || auth.role === 'admin')) { say(_T('مقاطع الشرح للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
     VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
@@ -1490,7 +1480,7 @@
     const load = async () => {
       let r; try { r = await api({ op: 'vid_url', session: auth.session, v: cur.key }); } catch (e) { r = null; }
       if (!VID || VID.v !== v) return;
-      if (r && r.error === 'missing') { toYT(fd ? _T('الدرس هذا ينزل قريباً.') : X ? _T('التدريب هذا ينزل قريباً.') : _T('المقطع هذا ما انرفع للموقع للحين.')); return; }
+      if (r && r.error === 'missing') { soon(fd ? _T('الدرس هذا ينزل قريباً.') : X ? _T('التدريب هذا ينزل قريباً.') : _T('المقطع هذا ينزل للموقع قريباً. لين ينزل، حل أسئلته وشرح كل سؤال مع المرشد الذكي.')); return; }
       if (r && r.error === 'pkg') { auth.plan = 'train'; lsSet(LS.auth, auth); say(esc(r.msg || '')); upDlg(what); return; }   // 📦 باقته «التدريب»: الدرس من التأسيس
       if (!r || !r.ok) { say(esc((r && r.msg) || _T('تعذّر تشغيل المقطع. تأكد من النت وحدّث الصفحة.'))); return; }
       v.src = r.url; v.load();
@@ -1684,9 +1674,10 @@
     // 🏋️ التدريب — سلمان: الأقسام والنماذج · عبدالله: النماذج الـ14 داخل الموقع (at)
     let tN, tPane;
     if (id === 'salman') {
-      const item = (k, n) => { const y = ytFor(k + n); if (!y) return '';
-        const w = seen(k + ':' + n);
-        return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"${y.tgt}${ytTip(y)}><b>${vIcon(y)}<span>${vLabel(k, n)}</span></b><small>${w ? _T('✓ شاهدته') : y.soon ? _T('⏳ قريباً') : `<bdi dir="ltr">${esc(y.dur || '')}</bdi>`}</small></a>`; };
+      const item = (k, n) => { const y = ytFor(k + n); if (!y) return ''; const w = seen(k + ':' + n), lab = vLabel(k, n);   // 🎬 داخل الموقع بس (مثل بطاقات عبدالله وطلال)
+        if (free) return _T`<button type="button" class="wvi lock" data-lock="${k === 'q' ? _T('شرح أقسام الكمي') : _T('شرح نماذج اللفظي')}"><b>${lab}</b><small>🔒 للمشتركين</small></button>`;
+        if (y.soon && !adm) return _T`<div class="wvi dis" aria-disabled="true"><b>${lab}</b><small>⏳ قريباً</small></div>`;
+        return `<a class="wvi${w ? ' ok' : ''}" href="${y.url}"><b>${lab}</b><small>${w ? _T('✓ شاهدته') : `▶ <bdi dir="ltr">${esc(y.dur || '')}</bdi>`}</small></a>`; };
       const qn = YT.q.v.map((_, i) => i + 1), vn = YT.v.v.map((_, i) => i + 1);
       tN = EN ? enN(qn.length + vn.length, 'video', 'videos') : (qn.length + vn.length) + ' مقطع';   // i18n:skip
       tPane = _T`<h3 class="tsub">📐 الكمي <small>14 قسم</small></h3><div class="wvlist">${qn.map(n => item('q', n)).join('')}</div>
@@ -2097,7 +2088,7 @@
     P.cur = cur;
     document.title = set.title + ' | Q-Guide';
     app.innerHTML = topbar(_T`<span class="ttl">${esc(set.title)} <small style="opacity:.8;font-weight:400">· ${esc(set.sub.split(' · ').pop())}</small></span><span class="sp"></span>
-      ${ytFor(id) ? _T`<a class="ytb" href="${ytFor(id).url}"${ytFor(id).tgt}${ytTip(ytFor(id), _T('شرح ') + ytFor(id).label + _T(' على يوتيوب'))}>${vIcon(ytFor(id))}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span><span class="cnt-shf" id="cshf" title="الأسئلة ملخبطة" ${P.shuf ? '' : 'hidden'}>🔀</span></button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
+      ${ytFor(id) && !ytFor(id).soon ? _T`<a class="ytb" href="${ytFor(id).url}"${ytTip()}>${vIcon()}<span>الشرح</span></a>` : ''}<span class="chip run" id="run" hidden></span><button class="chip cnt" id="navb" title="كل الأسئلة: اضغط وانتقل لأي سؤال" aria-label="كل الأسئلة" aria-haspopup="dialog">${GRIDSVG}<span id="cnt" dir="ltr"></span><span class="cnt-shf" id="cshf" title="الأسئلة ملخبطة" ${P.shuf ? '' : 'hidden'}>🔀</span></button>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<div class="sbar" id="sb" style="--n:${items.length}" aria-hidden="true">${sbHtml()}</div><main class="wrap" id="pm"></main>
       <aside class="sheetp" aria-label="ورقة الإجابة"><div class="sp-h"><b>ورقة الإجابة</b><span id="spn"></span></div><div class="qgrid" id="spg"></div></aside>
       <div class="nav" id="nav" role="dialog" aria-modal="true" aria-label="كل الأسئلة"><div class="bg"></div><div class="sh"><div class="nvh"><b>كل الأسئلة</b><span class="nlg"><span><i class="ok"></i>صحيحة</span><span><i class="bad"></i>خاطئة</span><span><i></i>ما جاوبتها</span></span><span class="sp"></span><button class="btn sm ghost" id="reset">↻ إعادة من البداية</button></div><div class="qgrid big" id="ng"></div></div></div>`;
@@ -2198,8 +2189,8 @@
     return QGAI.slot({ ref: src + ':' + idx, pick: a.s, wrong, label: _T`سؤال ${P.pos[P.cur] + 1} · الإجابة الصحيحة ${LETTERS[it.ans]}${wrong ? _T` · إجابتك ${LETTERS[a.s]} ✗` : ''}` });
   }
   function ytLink(it) {
-    const yt = ytFor(P && P.id === 'v15' ? 'v15' : it.src || (P && P.id)); if (!yt) return '';
-    return _T`<a class="ytx" href="${yt.url}"${yt.tgt}${ytTip(yt)}>${vIcon(yt)}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو${yt.site ? '' : _T(' على يوتيوب')}</span><span class="go">${EN ? '→' : '←'}</span></a>`;
+    const yt = ytFor(P && P.id === 'v15' ? 'v15' : it.src || (P && P.id)); if (!yt || yt.soon) return '';
+    return _T`<a class="ytx" href="${yt.url}"${ytTip()}>${vIcon()}<span>ما وضح لك؟ شاهد شرح ${yt.label} بالفيديو</span><span class="go">${EN ? '→' : '←'}</span></a>`;
   }
   // 🇸🇦 ترجمة أسئلة الكمي: تظهر قبل الإجابة (الترجمة ما تكشف الحل) ونتذكّر إذا الطالب يفضّلها مفتوحة
   const QTR_LS = 'qg_qtr', QNAMES = new Set(['ahmed', 'khalid', 'khaled', 'mohamed', 'mohammed', 'muhammad', 'sara', 'sarah', 'nora', 'ali', 'saad']);   // أسماء الأشخاص ما تحتاج ترجمة
@@ -2363,7 +2354,7 @@
       <div class="stats"><div class="ok"><b>${correct}</b><span>صحيحة</span></div><div class="bad"><b>${answered - correct}</b><span>خاطئة</span></div><div><b>${n - answered}</b><span>بدون إجابة</span></div><div><b class="ltr">${fmtDur(secs)}</b><span>الوقت الفعلي</span></div></div>
       ${paceHtml}${isFree() && nm ? _T`<div class="s-sub"><div class="s-sub-t"><b>${pct >= 70 ? _T('مستواك يبشّر بالخير 👏 كمّل على باقي الدورة') : _T('كل ما تحل أكثر ترتفع درجتك 💪 كمّل على باقي الدورة')}</b><span>باقي في الدورة 13 قسم كمي و13 نموذج لفظي و16 اختبار محاكي، وكلها بشرح الفيديو ومرشدك الذكي.</span></div><button type="button" class="btn gold" data-sub>${auth.ended ? _T('↻ جدّد اشتراكك') : _T('💳 اشترك وكمّل')} <small>${subFrom()}</small></button></div>` : ''}
       <div class="acts sacts">${nx ? (isFree() && FREE_SETS.indexOf(nx) < 0 ? _T`<button class="btn gold" data-lock="${SET_NAME(nx)}">التالي: ${SET_NAME(nx)} 🔒</button>` : _T`<a class="btn gold" href="#${nx}">التالي: ${SET_NAME(nx)}</a>`) : ''}${wrong.length ? _T`<button class="btn" id="rev">مراجعة الأخطاء (${wrong.length})</button>` : ''}${!nx && !wrong.length ? _T`<a class="btn gold" href="#">الرئيسية</a>` : ''}</div>
-      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${shufOk(P.id) ? _T('<button class="lnk2" id="againS">🔀 أعد الحل بترتيب ملخبط</button>') : ''}${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytFor(set.id).tgt}${ytTip(ytFor(set.id))}>${vIcon(ytFor(set.id))} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
+      <div class="slinks"><button class="lnk2" id="again">↻ إعادة ${nm ? (nm[1] === 'q' ? _T('القسم') : _T('النموذج')) : _T('الاختبار')}</button>${shufOk(P.id) ? _T('<button class="lnk2" id="againS">🔀 أعد الحل بترتيب ملخبط</button>') : ''}${nm && !isFree() ? _T`<a class="lnk2" href="#board-set-${set.id}">🏆 ترتيبك في ${SET_NAME(set.id)}</a>` : ''}${ytFor(set.id) && !ytFor(set.id).soon ? _T`<a class="lnk2" href="${ytFor(set.id).url}"${ytTip()}>${vIcon()} شرح ${ytFor(set.id).label} بالفيديو</a>` : ''}<a class="lnk2" href="#skills">🎯 نقاط قوتك وضعفك</a></div>
       ${rulesHtml}
       ${wrong.length ? _T`<div class="wl"><h3>الأسئلة الخاطئة — اضغط على الرقم لمراجعة الشرح:</h3><div class="ng">${wrong.map(i => `<button class="bad" data-i="${i}">${P.pos[i] + 1}</button>`).join('')}</div></div>` : ''}
       <p id="saved" class="kbd" style="margin-top:14px"></p></div>`;
@@ -5582,7 +5573,7 @@
     err: x => ['🐞', `${x.n === 1 ? 'خطأ واحد' : x.n === 2 ? 'خطأين' : x.n + ' أخطاء'} في الموقع آخر 24 ساعة`, 'أخطاء صارت عند الطلاب وانسجلت لحالها.', '#admin-settings', 'شوف السجل', 'low'],
     cm: x => ['💬', x.n === 1 ? 'تعليق واحد من طالب ينتظر رد' : x.n === 2 ? 'تعليقين من الطلاب ينتظرون رد' : x.n <= 10 ? x.n + ' تعليقات من الطلاب تنتظر رد' : x.n + ' تعليق من الطلاب ينتظر رد', 'أسئلة كتبها الطلاب تحت المقاطع وما رد عليها المدرس ولا الفريق للحين' + (x.old ? ` (أقدمها ${fmtD(x.old)})` : '') + '.', '#admin-vids', 'شوفها', 'mid'],
     follow: x => ['👋', `${nStu(x.n)} ما ذاكروا من 4 أيام وأكثر`, 'القائمة تحت: كلّمهم على واتساب، أو افتح تقرير الطالب.', '#oh-follow', 'شوفهم', 'low'],
-    vids: x => ['🎬', x.qv ? `${x.qv === 1 ? 'مقطع واحد' : x.qv === 2 ? 'مقطعين' : x.qv + ' مقاطع'} من شرح الأقسام والنماذج ما انرفعت` : `${x.n === 1 ? 'مقطع واحد' : x.n === 2 ? 'مقطعين' : x.n + ' مقطع'} من التأسيس والتدريب ما انرفع`, x.qv ? 'اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع: ' + (x.list || []).map(vidKeyName).join('، ') + '.' : 'تطلع للطلاب «⏳ قريباً» لين يرفعها المدرس.', '#admin-vids', x.qv ? 'ارفعها' : 'افتح المقاطع', x.qv ? 'mid' : 'low'],
+    vids: x => ['🎬', x.qv ? `${x.qv === 1 ? 'مقطع واحد' : x.qv === 2 ? 'مقطعين' : x.qv + ' مقاطع'} من شرح الأقسام والنماذج ما انرفعت` : `${x.n === 1 ? 'مقطع واحد' : x.n === 2 ? 'مقطعين' : x.n + ' مقطع'} من التأسيس والتدريب ما انرفع`, x.qv ? 'تطلع للطلاب «⏳ قريباً» لين ترتفع: ' + (x.list || []).map(vidKeyName).join('، ') + '.' : 'تطلع للطلاب «⏳ قريباً» لين يرفعها المدرس.', '#admin-vids', x.qv ? 'ارفعها' : 'افتح المقاطع', x.qv ? 'mid' : 'low'],
     backup: x => ['💾', x.at ? 'آخر نسخة احتياطية قديمة' : 'ما فيه نسخة احتياطية للحين', 'النسخ يتم لحاله كل يوم، وتقدر تبدأه الحين من الإعدادات.', '#admin-settings', 'افتح الإعدادات', 'low'],
     gs: x => ['📧', x.err ? 'خطأ في سكربت إيميلات سلة' : 'سكربت إيميلات سلة واقف', (x.err ? x.err + ' — ' : `آخر فحص ${fmtD(x.at)}. `) + 'الدفع من سلة ما يتفعّل لحاله لين يرجع: افتح script.google.com بحساب سلة وشوف «Executions».', '#admin-pay', 'افتح المدفوعات', 'hi'],
     payoff: () => ['💳', 'الدفع من الموقع مقفل على الزوار', 'الزائر ما يشوف زر الدفع ويراسلك على واتساب. افتحه من المدفوعات لما تجهز.', '#admin-pay', 'افتح المدفوعات', 'hi'],
@@ -5772,7 +5763,7 @@
     VUP.open = 1;
     W.innerHTML = `<div class="stf subs vidpg">
       <div class="sbtiles n${G.length + 1}">${G.map(g => `<div class="sbt vid${g[2][0] >= g[2][1] ? ' full' : ''}"><span class="i" aria-hidden="true">${g[0]}</span><b><bdi>${g[2][0]}/${g[2][1]}</bdi></b><span>${g[1]}</span></div>`).join('')}<div class="sbt vid"><span class="i" aria-hidden="true">👁</span><b>${views}</b><span>مشاهدة آخر 30 يوم</span></div></div>
-      ${miss.length ? `<div class="rgsync warn">⚠️ <span>ناقص من شرح الأقسام والنماذج: <b>${miss.map(vidKeyName).join('، ')}</b>. اللي يشترك من الموقع ما يقدر يشوفها لين ترتفع (عضو القناة القديم يفتح له مقطع يوتيوب).</span></div>` : '<div class="rgsync">🎬 <span>شرح الأقسام والنماذج كله مرفوع. كل المشتركين يشوفون المقاطع هنا داخل الموقع، وإيميل الطالب ظاهر على المقطع.</span></div>'}
+      ${miss.length ? `<div class="rgsync warn">⚠️ <span>ناقص من شرح الأقسام والنماذج: <b>${miss.map(vidKeyName).join('، ')}</b>. تطلع للطلاب «⏳ قريباً» لين ترتفع (المقاطع داخل الموقع بس، ما فيه يوتيوب).</span></div>` : '<div class="rgsync">🎬 <span>شرح الأقسام والنماذج كله مرفوع. كل المشتركين يشوفون المقاطع هنا داخل الموقع، وإيميل الطالب ظاهر على المقطع.</span></div>'}
       ${cmrHtml(1)}${vupHtml(V)}</div>`;
     vupBind(W, ''); cmrBind(1); cmrLoad(1);
   }
@@ -6295,7 +6286,7 @@ ${tgBox()}
   }
   function taskLinks(t) {
     const y = t.set ? ytFor(t.set) : null;
-    return (y ? _T`<a class="go yt" href="${y.url}"${y.tgt}${ytTip(y, _T('مقطع شرح ') + y.label + _T(' على يوتيوب'))}>${vIcon(y)}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
+    return (y && !y.soon ? _T`<a class="go yt" href="${y.url}"${ytTip()}>${vIcon()}<span>المقطع</span><small>${y.dur}</small></a>` : '') + taskSolve(t, 'go');
   }
   // بطاقة «رحلتك للاختبار» في الرئيسية: عدّاد الاختبار + مهمة اليوم من الخطة
   function tripHtml() {

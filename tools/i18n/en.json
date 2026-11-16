@@ -1980,5 +1980,8 @@
  "التعليق اللي ترد عليه انحذف.": "The comment you are replying to was deleted.",
  "التعليق انحذف من قبل.": "This comment was already deleted.",
  "ما تقدر تحذف تعليق غيرك.": "You can't delete someone else's comment.",
- "حسابك للمتابعة فقط.": "Your account is view-only."
+ "حسابك للمتابعة فقط.": "Your account is view-only.",
+ "شرح أقسام الكمي": "Quant section explanations",
+ "شرح نماذج اللفظي": "Verbal model explanations",
+ "ما وضح لك؟ شاهد شرح {0} بالفيديو": "Still not clear? Watch the {0} video explanation"
 }
