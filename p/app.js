@@ -530,7 +530,7 @@
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
       ${two && !ref ? `<p class="slp-pk"><span aria-hidden="true">📦</span> <b>${PKN(P.k)}</b> · ${P.price} ${_T('ريال')} · ${pkDur(P.months, P.free)}</p>` : ''}
       <ol class="slp-s">
-        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(purl)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a><button type="button" class="lnk slp-share" id="slshare">👨‍👩‍👦 أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع</button></div></li>
+        <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><small class="slp-tip">📦 الاشتراك رقمي: ما فيه شحن ولا توصيل ولا كتاب. لو طلع لك في سلة «توصيل» أو «شحن» تجاهله، واشتراكك يتفعّل هنا في الموقع بعد الدفع بثواني.</small><a class="btn gold slp-go" id="slopen" href="${esc(purl)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a><button type="button" class="lnk slp-share" id="slshare">👨‍👩‍👦 أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع</button></div></li>
         <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله بعد الدفع بثواني، بدون ما تكتب شي.</small>
           <form class="slp-ref" novalidate><input id="slref" type="text" inputmode="numeric" autocomplete="off" dir="ltr" maxlength="60" placeholder="#218402731" aria-label="رقم الطلب"><button type="submit" class="btn" id="slclaim">✓ فعّل اشتراكي</button></form>
           <div class="slp-st" role="status" aria-live="polite"></div>
@@ -2308,7 +2308,7 @@
       else {
         const open = P.passOpen[gi] != null ? P.passOpen[gi] : true;
         html += _T`<div class="ghd">Passage ${g.num}: ${esc(g.title)} <small>— استيعاب المقروء</small></div>
-        <div class="pass ${open ? '' : 'closed'}" id="pass"><div class="ph" id="ph"><span>📄 القطعة <span class="ar">اضغط للإخفاء/الإظهار</span></span><span id="pch">${open ? '▲' : '▼'}</span></div><div class="pread"><button type="button" class="sayb" data-say-sel="#pass .pb" data-lang="en" aria-label="استمع للقطعة">${SAYSVG}<span>استمع للقطعة</span></button></div><div class="pb">${wordsHtml(g.passage)}</div>${vocabChips(g.passage, 120) ? _T`<details class="tr vocab pw"><summary>📖 كلمات القطعة <small>(اضغط على أي كلمة في القطعة لترجمتها)</small></summary><div class="vcs">${vocabChips(g.passage, 120)}</div></details>` : ''}</div>`;
+        <div class="pass ${open ? '' : 'closed'}" id="pass"><div class="ph" id="ph"><span>📄 القطعة <span class="ar">اضغط للإخفاء/الإظهار</span></span><span id="pch">${open ? '▲' : '▼'}</span></div><div class="pread"><button type="button" class="sayb" data-say-sel="#pass .pb" data-say-t="${esc(g.title || '')}" data-lang="en" aria-label="استمع للقطعة">${SAYSVG}<span>استمع للقطعة</span></button>${auth && auth.wbk && !isFree() ? _T('<button type="button" class="vch" id="vch" aria-haspopup="menu" title="اختر الصوت"></button>') : ''}</div><div class="pb">${wordsHtml(g.passage)}</div>${vocabChips(g.passage, 120) ? _T`<details class="tr vocab pw"><summary>📖 كلمات القطعة <small>(اضغط على أي كلمة في القطعة لترجمتها)</small></summary><div class="vcs">${vocabChips(g.passage, 120)}</div></details>` : ''}</div>`;
       }
     }
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
@@ -2327,6 +2327,7 @@
       ${a ? `<button class="btn" id="next">${p + 1 < items.length ? _T('التالي ←') : nextOpen(i) < 0 ? _T('النتيجة 🏁') : _T('التالي ←')}</button>` : _T`${nextOpen(i) >= 0 ? _T('<button class="btn ghost sm" id="skip" title="انتقل لسؤال ما جاوبته وارجع لهذا بعدين">تخطَّ ←</button>') : ''}<button class="btn gold" id="confirm" disabled>✓ تأكيد الإجابة</button>`}</div>
       <div class="kbd" style="margin-top:8px">${a ? _T('Enter للتالي') : _T('اختر إجابة ثم اضغط تأكيد · A–D أو 1–4 للاختيار و Enter للتأكيد')}</div></div>`;
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' }); if (window.QGAI) QGAI.fill($('#pm'));
+    { const vc = $('#vch'); if (vc) { vc.onclick = () => auPick(vc); auPaint(); } }   // 🗣 v118: اختيار صوت القطعة + تجهيزه
     bindWords();
     const qd = $('#qtr'); if (qd) qd.addEventListener('toggle', () => lsSet(QTR_LS, qd.open ? 1 : 0));
     $('#mkS').onclick = e => { const b = e.currentTarget, c = markOf(mkSrc, mkI), on = !(c && c.s); markSet(mkSrc, mkI, { s: on ? 1 : 0 }); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); toast(on ? _T('⭐ انحفظ السؤال في دفتري') : _T('انشال السؤال من دفتري')); badgeCheckSoon(); };
@@ -2636,7 +2637,7 @@
       .replace(/∠/g, ' angle ').replace(/∥/g, ' is parallel to ').replace(/°/g, ' degrees').replace(/%/g, ' percent').replace(/\^/g, ' to the power ').replace(/\s+/g, ' ').trim();
   }
   function sayChunks(t) { const out = []; let cur = ''; (t.match(/[^.!?؟\n]+[.!?؟]*\s*/g) || [t]).forEach(s => { if ((cur + s).length > 190 && cur) { out.push(cur); cur = ''; } cur += s; }); if (cur.trim()) out.push(cur); return out; }
-  function sayStop() { if (!TTS.ok) return; TTS.q = []; try { speechSynthesis.cancel(); } catch (e) {} if (TTS.btn) TTS.btn.classList.remove('on'); TTS.btn = null; }
+  function sayStop() { auStop(); if (!TTS.ok) return; TTS.q = []; try { speechSynthesis.cancel(); } catch (e) {} if (TTS.btn) TTS.btn.classList.remove('on'); TTS.btn = null; }
   function say(text, lang, btn) {
     if (!TTS.ok) { toast(_T('متصفحك ما يدعم النطق الصوتي')); return; }
     if (btn && TTS.btn === btn) { sayStop(); return; }   // ضغطة ثانية = إيقاف
@@ -2650,11 +2651,68 @@
       u.onend = () => { if (TTS.btn === btn || !btn) next(); }; u.onerror = () => { TTS.q = []; next(); }; speechSynthesis.speak(u); };
     next();
   }
+  // ---------- 🗣 v118: أصوات بشرية للقطع (طلب المالك 19 نوفمبر 2026: «الصوت في ميزة استمع للقطعة مو افضل شي ابي خيارات اكثر لاصوات انسان … نورة محمد عبدالله … والطالب يختارها») ----------
+  //   كل قطعة من قطع النماذج مسجّلة بأربع أصوات (نموذج Kokoro مفتوح المصدر، انسجلت مرة وحدة على جهاز المالك): p/au/<voice>/p<N>.bin
+  //   مشفّرة بمفتاح المذكرات الجديدة (auth.wbk)، و p/au/index.json = {m: {hash: 'pN'}} — hash = FNV-1a لأول 160 حرف/رقم من القطعة (أو عنوانها 't:…')
+  //   الصوت يتجهّز أول ما تنعرض القطعة (auPrep)، فالضغطة تشغّله على طول (آيفون يبي التشغيل داخل الضغطة نفسها). «صوت الجهاز» = النطق القديم
+  const AU_V = 1;
+  const VOICES = [['noura', _T('نورة'), '👩'], ['sara', _T('سارة'), '👩'], ['mohammed', _T('محمد'), '👨'], ['abdullah', _T('عبدالله'), '👨'], ['device', _T('صوت الجهاز'), '📱']];
+  const AU = { idx: null, idxP: null, el: null, btn: null, ready: null, prep: 0 };
+  const auHash = t => { let h = 0x811c9dc5; for (const b of new TextEncoder().encode(t)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+  const auNorm = (t, n) => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, n || 160);
+  const auVoice = () => { const v = lsGet('qg_voice', 'noura'); return VOICES.some(x => x[0] === v) ? v : 'noura'; };
+  const auRate = () => { const r = +lsGet('qg_vrate', 1); return r >= 0.7 && r <= 1.3 ? r : 1; };
+  function auIndex() { if (AU.idx) return Promise.resolve(AU.idx); if (!AU.idxP) AU.idxP = fetch('/p/au/index.json?v=' + AU_V, { cache: 'force-cache' }).then(r => r.json()).catch(() => ({ m: {} })).then(j => (AU.idx = j)); return AU.idxP; }
+  function auStop() { if (AU.el) { try { AU.el.pause(); } catch (e) {} } if (AU.btn) { AU.btn.classList.remove('on'); AU.btn = null; } }
+  // يجهّز صوت القطعة المعروضة (الصوت المختار) — بدون ما يشغّله
+  async function auPrep(btn) {
+    const v = auVoice(), tok = ++AU.prep; if (!btn) return;
+    if (v === 'device' || !auth || !auth.wbk || isFree()) { btn.dataset.au = ''; return; }
+    const I = await auIndex(), id = I.m && (I.m[auHash(auNorm(btn.dataset.saySel ? ($(btn.dataset.saySel) || {}).textContent : ''))] || I.m[auHash('t:' + auNorm(btn.dataset.sayT, 80))]);
+    if (!id || tok !== AU.prep) return;
+    const key = v + ':' + id; if (AU.ready && AU.ready.key === key) { btn.dataset.au = '1'; return; }
+    btn.dataset.au = '';   // لين يجهز الصوت الجديد: الضغطة تقرأ بصوت الجهاز
+    try {
+      const r = await fetch(`/p/au/${v}/${id}.bin?v=${AU_V}`, { cache: 'force-cache' }); if (!r.ok) return;
+      const buf = new Uint8Array(await r.arrayBuffer()), k = await getKey2();
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
+      if (tok !== AU.prep) return;
+      if (AU.ready) URL.revokeObjectURL(AU.ready.url);
+      AU.ready = { key, url: URL.createObjectURL(new Blob([plain], { type: 'audio/mpeg' })) }; btn.dataset.au = '1';
+    } catch (e) {}
+  }
+  // يشغّل الصوت البشري لو جاهز (داخل الضغطة) · false = نرجع لصوت الجهاز
+  function auPlay(btn) {
+    if (!btn || btn.dataset.au !== '1' || !AU.ready || AU.ready.key.split(':')[0] !== auVoice()) return false;
+    sayStop(); auStop();
+    if (!AU.el) { AU.el = new Audio(); AU.el.onended = auStop; }
+    if (AU.el.src !== AU.ready.url) AU.el.src = AU.ready.url;
+    AU.el.playbackRate = auRate(); AU.btn = btn; btn.classList.add('on');
+    const p = AU.el.play(); if (p && p.catch) p.catch(() => { auStop(); }); return true;
+  }
+  // اختيار الصوت والسرعة (قائمة صغيرة جنب «استمع للقطعة»)
+  function auPick(anchor) {
+    document.querySelectorAll('.vpick').forEach(x => x.remove());
+    const m = document.createElement('div'); m.className = 'vpick'; m.setAttribute('role', 'menu');
+    const v = auVoice(), r = auRate();
+    m.innerHTML = `<b>${_T('اختر الصوت')}</b>${VOICES.map(([id, n, ic]) => `<button type="button" role="menuitemradio" aria-checked="${id === v}" class="${id === v ? 'on' : ''}" data-v="${id}"><span aria-hidden="true">${ic}</span>${n}</button>`).join('')}
+      <b>${_T('السرعة')}</b><div class="vrates">${[0.8, 1, 1.2].map(x => `<button type="button" class="${x === r ? 'on' : ''}" data-r="${x}"><bdi dir="ltr">${x}×</bdi></button>`).join('')}</div>`;
+    anchor.parentNode.appendChild(m);
+    const close = () => { m.remove(); document.removeEventListener('click', out, true); }, out = e => { if (!m.contains(e.target) && e.target !== anchor) close(); };
+    setTimeout(() => document.addEventListener('click', out, true), 0);
+    m.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { lsSet('qg_voice', b.dataset.v); auStop(); close(); auPaint(); });
+    m.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { lsSet('qg_vrate', +b.dataset.r); if (AU.el) AU.el.playbackRate = auRate(); close(); auPaint(); });
+  }
+  // يرسم اسم الصوت على زر الاختيار ويجهّز القطعة المعروضة
+  function auPaint() { const c = $('#vch'), b = $('#pass .sayb'); if (c) { const x = VOICES.find(y => y[0] === auVoice()); c.innerHTML = `<span aria-hidden="true">🗣</span> ${x[1]}${auRate() !== 1 ? ` <bdi dir="ltr">${auRate()}×</bdi>` : ''} <span aria-hidden="true">▾</span>`; } if (b) auPrep(b); }
+  window.addEventListener('hashchange', auStop);
   // زر نطق: data-say = النص، data-lang = en/ar، أو data-say-sel = عنصر نقرأ نصه (مثل القطعة)
   const sayBtn = (text, lang, label, cls) => `<button type="button" class="${label ? 'sayb' : 'say'} ${cls || ''}" data-say="${esc(text)}" data-lang="${lang || 'en'}" title="${lang === 'ar' ? _T('استمع للترجمة') : _T('استمع للنطق')}" aria-label="${label || (lang === 'ar' ? _T('استمع للترجمة') : _T('استمع للنطق'))}">${SAYSVG}${label ? `<span>${label}</span>` : ''}</button>`;
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-say],[data-say-sel]'); if (!b) return;
     e.preventDefault(); e.stopPropagation();
+    if (b.dataset.saySel && AU.btn === b) { auStop(); return; }   // 🗣 ضغطة ثانية = إيقاف الصوت البشري
+    if (b.dataset.saySel && auPlay(b)) return;   // 🗣 v118: القطعة بالصوت البشري اللي اختاره (لو جاهز)، وإلا صوت الجهاز
     const el = b.dataset.saySel ? document.querySelector(b.dataset.saySel) : null;
     say(el ? el.textContent : b.dataset.say, b.dataset.lang, b);
   }, true);
@@ -5996,6 +6054,35 @@
         <div class="rfk"><div><b>${K.users || 0}</b><span>دخلوا البوت</span></div><div><b>${K.week || 0}</b><span>نشطين آخر 7 أيام</span></div><div><b>${K.n || 0}</b><span>سؤال انحل</span></div><div><b>${pct}</b><span>إجابات صحيحة</span></div><div><b>${K.site || 0}</b><span>زيارة للموقع من تيليقرام (30 يوم)</span></div></div>
       </section>`;
   }
+  // 💬 دعم واتساب الآلي (v118، API wa.js): الحالة + خطوات الربط + آخر الرسائل + «أنا أرد عليه»
+  const WA_K = { faq: '📋 جواب جاهز', menu: '📋 القائمة', ai: '🤖 المساعد', human: '🙋 تحوّل لك', 'human-wait': '⏸ ينتظرك', media: '📎 صورة/صوت', 'menu-ai-off': '📋 القائمة (المساعد مشغول)', 'menu-max': '📋 القائمة (حدّه اليومي)', in: '…' };
+  function waBox() {
+    const W = SET.wa; if (!W) return '<section class="setc"><h2>💬 دعم واتساب الآلي</h2><p class="mut setd">تعذّر تحميل الحالة. حدّث الصفحة.</p></section>';
+    const hook = 'https://q-guide-api.nouom01.workers.dev/wa/webhook';
+    const st = W.on ? ['✓ شغّال: يرد على الطلاب لحاله', 'الأسئلة المعروفة لها أجوبة جاهزة، والباقي يجاوبه المساعد من الحصة المجانية، و«5» أو «موظف» يحوّل لك.']
+      : ['⚠️ ما انربط للحين', 'ناقص في Cloudflare: ' + (W.missing || []).join('، ')];
+    const now = Date.now(), rows = (W.rows || []).filter(r => r.kind !== 'in').slice(0, 25);
+    return `<section class="setc" aria-labelledby="set8"><h2 id="set8">💬 دعم واتساب الآلي</h2>
+        <p class="mut setd">يرد على أي طالب يراسل رقم الدعم: الأسعار والباقات والاشتراك والدفع والدخول بأجوبة جاهزة (بدون أي تكلفة)، وغيرها يجاوبه المساعد من حصة اليوم المجانية. لو كتب «5» أو طلب موظف: يوقف الرد الآلي لرقمه 12 ساعة ويوصلك تنبيه.</p>
+        <div class="setrow"><div class="setl"><b>${st[0]}</b><small>${esc(st[1])}</small></div></div>
+        ${W.on ? `<div class="rfk"><div><b>${W.users || 0}</b><span>راسلوا البوت</span></div><div><b>${W.d7 || 0}</b><span>آخر 7 أيام</span></div><div><b>${W.human || 0}</b><span>ينتظرون ردّك</span></div></div>` : `<details class="wasetup"><summary>خطوات الربط (مرة وحدة)</summary><ol>
+          <li>من <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">Meta for Developers</a>: أنشئ تطبيق نوعه Business وأضف له WhatsApp.</li>
+          <li>اربط رقم الدعم (أو رقم جديد للبوت) من WhatsApp → API Setup، وانسخ «Phone number ID».</li>
+          <li>من Business Settings → System users: أنشئ مستخدم نظام وأعطه صلاحية whatsapp_business_messaging، وطلّع له توكن دائم.</li>
+          <li>من إعدادات التطبيق انسخ «App secret».</li>
+          <li>في Cloudflare → Workers → q-guide-api → Settings → Variables and Secrets: أضف WA_TOKEN و WA_PHONE_ID و WA_APP_SECRET، و WA_VERIFY (أي كلمة تختارها).</li>
+          <li>في WhatsApp → Configuration → Webhook: الرابط <code dir="ltr">${hook}</code> و Verify token نفس كلمة WA_VERIFY، واشترك في «messages».</li></ol></details>`}
+        ${rows.length ? `<div class="walog">${rows.map(r => `<div class="wal"><div class="wah"><b>${esc(r.name || r.wa)}</b><small dir="ltr">+${esc(r.wa)}</small><span class="wak">${WA_K[r.kind] || esc(r.kind)}</span><small>${new Date(r.at).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' })}</small><span class="wabt">
+          ${r.human_until > now ? `<button type="button" class="btn sm ghost" data-wah="${esc(r.wa)}" data-on="0">🤖 رجّع الرد الآلي</button>` : `<button type="button" class="btn sm ghost" data-wah="${esc(r.wa)}" data-on="1">🙋 أنا أرد عليه</button>`}
+          <a class="btn sm ghost" href="https://wa.me/${esc(r.wa)}" target="_blank" rel="noopener">واتساب</a></span></div>
+          <p dir="auto" class="waq">${esc(r.q || '')}</p>${r.a ? `<p dir="auto" class="waa">${esc(r.a)}</p>` : ''}</div>`).join('')}</div>` : ''}
+      </section>`;
+  }
+  function waBind(repaint) {
+    document.querySelectorAll('[data-wah]').forEach(b => b.onclick = async () => { b.disabled = true;
+      try { await admCall({ op: 'adm_wa_human', wa: b.dataset.wah, on: b.dataset.on === '1' ? 1 : 0 }); SET.wa = await admCall({ op: 'adm_wa' }); toast(b.dataset.on === '1' ? '🙋 الرد الآلي واقف لهالرقم 12 ساعة' : '🤖 رجع الرد الآلي'); repaint(); }
+      catch (e) { toast(e.message); b.disabled = false; } });
+  }
   function tgBind(repaint, auditReload) {
     const b = $('#tg-link'); if (!b) return;
     b.onclick = async () => { b.disabled = true; b.textContent = '⏳ نربطه…';
@@ -6008,8 +6095,8 @@
     const top = () => { app.innerHTML = admTop('settings'); bindCtl(); $('#admref').onclick = () => { SET.cfg = null; renderSettings(); }; };
     top();
     try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
-      const [c, a, e, ep, rf, tg] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp(), admCall({ op: 'adm_ref' }).catch(() => null), admCall({ op: 'adm_tg' }).catch(() => null)]);
-      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); SET.ref = rf; SET.rf = rf ? { on: rf.on, days: rf.days } : null; SET.tg = tg; }
+      const [c, a, e, ep, rf, tg, wa] = await Promise.all([admCall({ op: 'adm_cfg' }), admCall({ op: 'adm_audit', kind: SET.ak }), admCall({ op: 'adm_errs' }), ownPushEp(), admCall({ op: 'adm_ref' }).catch(() => null), admCall({ op: 'adm_tg' }).catch(() => null), admCall({ op: 'adm_wa' }).catch(() => null)]);
+      SET.cfg = c; SET.audit = a.rows || []; SET.errs = e.rows || []; SET.ep = ep; SET.life = Object.assign({}, c.life, { types: (c.life.types || []).slice() }); SET.ref = rf; SET.rf = rf ? { on: rf.on, days: rf.days } : null; SET.tg = tg; SET.wa = wa; }
     catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
     if (location.hash !== '#admin-settings') return;
     top(); paintSettings();
@@ -6039,6 +6126,7 @@
 
 ${refBox()}
 ${tgBox()}
+${waBox()}
       <section class="setc" aria-labelledby="set2"><h2 id="set2">🔔 تنبيهاتك</h2>
         <p class="mut setd">يوصلك تنبيه على هذا الجهاز لما: يشترك طالب أو يجدّد · تحويل بنكي ينتظر تأكيدك · طلب مدفوع ما تفعّل · اشتراكات انتهت تلقائياً · وملخص اليوم الساعة 9 الليل.</p>
         <div class="setrow"><div class="setl"><b>${mine ? '🔔 مفعّلة على هذا الجهاز' : '🔕 مو مفعّلة على هذا الجهاز'}</b><small>${(C.push || []).length ? `مفعّلة على ${(C.push || []).length === 1 ? 'جهاز واحد' : (C.push || []).length + ' أجهزة'} من أجهزتك.` : 'ما فعّلتها على أي جهاز للحين.'}${!sup ? (isIOS() && !isStandalone() ? ' على الآيفون: أضف الموقع للشاشة الرئيسية من Safari أول.' : ' المتصفح هذا ما يدعم التنبيهات.') : ''}</small></div>
@@ -6079,7 +6167,7 @@ ${tgBox()}
       try { for (let i = 0; i < 12; i++) { b.textContent = '⏳ ينسخ…' + (r && r.run && r.run.files ? ' ' + r.run.files + ' ملف' : ''); r = await admCall({ op: 'adm_backup_now' }); if (!r.backup || !r.backup.run) break; }
         SET.cfg = r; ADM.home = null; await auditReload(); toast(r.backup && r.backup.done ? '💾 خلص النسخ الاحتياطي' : 'النسخ بدأ وبيكمل لحاله'); repaint(); }
       catch (e) { toast('تعذّر النسخ: ' + e.message); b.disabled = false; b.textContent = 'انسخ الحين'; } };
-    refBind(repaint, auditReload); tgBind(repaint, auditReload);
+    refBind(repaint, auditReload); tgBind(repaint, auditReload); waBind(repaint);
     W.querySelectorAll('[data-ak]').forEach(b => b.onclick = async () => { SET.ak = b.dataset.ak; try { SET.audit = (await admCall({ op: 'adm_audit', kind: SET.ak })).rows || []; } catch (e) {} repaint(); });
     $('#au-q').oninput = e => { SET.aq = e.target.value; const pos = e.target.selectionStart; repaint(); const i = $('#au-q'); i.focus(); i.setSelectionRange(pos, pos); };
     const ec = $('#er-clear'); if (ec) ec.onclick = async () => { if (!await QGDlg.confirm('تمسح سجل الأخطاء؟', { ok: 'مسح', danger: true })) return; try { await admCall({ op: 'adm_err_clear' }); SET.errs = []; ADM.home = null; await auditReload(); toast('انمسح السجل'); repaint(); } catch (e) { toast(e.message); } };

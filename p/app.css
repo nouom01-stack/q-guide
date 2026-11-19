@@ -3658,3 +3658,21 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .pth-h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}.pth-h b{color:var(--ink2);font-family:var(--disp)}
 .pth-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pth-k{font-weight:700;color:var(--mut);font-size:calc(13px * var(--fs));margin-inline-end:2px}
 #planwrap>.pth{margin:0 0 14px}
+/* 🗣 v118 أصوات بشرية للقطع: اختيار الصوت والسرعة جنب «استمع للقطعة» */
+.pread{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.vch{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:999px;padding:5px 12px;font:inherit;font-weight:700;font-size:calc(13px * var(--fs));cursor:pointer}
+.vch:hover{border-color:var(--royal)}
+.vpick{position:absolute;top:calc(100% - 4px);inset-inline-start:16px;z-index:20;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(14,36,88,.18);padding:10px;display:grid;gap:4px}
+.vpick b{font-size:calc(12px * var(--fs));color:var(--mut);margin:4px 4px 2px}
+.vpick>button{display:flex;align-items:center;gap:8px;text-align:start;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:700;font-size:calc(14px * var(--fs));padding:7px 10px;border-radius:10px;cursor:pointer}
+.vpick>button:hover{background:var(--dotbg)}
+.vpick>button.on{background:color-mix(in srgb,var(--royal) 12%,var(--card));color:var(--royal)}
+.vrates{display:flex;gap:6px;padding:0 4px 2px}.vrates button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:4px 0;font:inherit;font-weight:700;cursor:pointer}
+.vrates button.on{border-color:var(--royal);color:var(--royal);background:color-mix(in srgb,var(--royal) 8%,var(--card))}
+/* 💬 v118 دعم واتساب الآلي (صندوق المالك) */
+.wasetup{margin:8px 0 0;border:1px solid var(--line);border-radius:12px;padding:8px 12px}.wasetup summary{cursor:pointer;font-weight:800;color:var(--navy2)}
+.wasetup ol{margin:8px 0 0;padding-inline-start:20px;display:grid;gap:6px;font-size:calc(13.5px * var(--fs));line-height:1.7}.wasetup code{font-size:12px;word-break:break-all}
+.walog{display:grid;gap:8px;margin-top:10px;max-height:520px;overflow:auto}
+.wal{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:4px}
+.wah{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.wabt{display:flex;gap:6px;margin-inline-start:auto}.wah small{color:var(--mut)}.wak{font-size:calc(12px * var(--fs));font-weight:800;border-radius:999px;padding:1px 9px;background:var(--dotbg);color:var(--royal)}
+.waq,.waa{margin:0;white-space:pre-wrap;font-size:calc(13.5px * var(--fs));line-height:1.6}.waq{font-weight:700}.waa{color:var(--mut);border-inline-start:3px solid var(--line);padding-inline-start:8px}
