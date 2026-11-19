@@ -6320,7 +6320,7 @@
   //     web = {at, st: main · qr · stopped, n = ردوده اليوم, c = أسئلته لكلود اليوم}، و on = آخر نبض قبل أقل من 15 دقيقة وحالته مو qr / stopped
   //   mode 'api' أو فاضي = بوت ميتا (نايم): «ناقص في Cloudflare» + خطوات الربط
   const WA_K = { faq: '📋 جواب جاهز', menu: '📋 القائمة', ai: '🤖 المساعد', human: '🙋 تحوّل لك', 'human-wait': '⏸ ينتظرك', media: '📎 صورة/صوت', 'menu-ai-off': '📋 القائمة (المساعد مشغول)', 'menu-max': '📋 القائمة (حدّه اليومي)', in: '…' };
-  // رقم جوال · غيره «t…» = محادثة باسم جهة اتصال محفوظة في جوال الدعم (البرنامج ما يشوف رقمها): بدون رقم ولا رابط واتساب ولا «أنا أرد عليه» (adm_wa_human ياخذ أرقام بس)
+  // رقم جوال · غيره «t…» = محادثة باسم جهة اتصال محفوظة في جوال الدعم (البرنامج ما يشوف رقمها): بدون رقم ولا رابط واتساب، و«أنا أرد عليه» يشتغل لها من v121 (adm_wa_human ياخذ «t…» من cf-89)
   const waNum = wa => /^\d{6,15}$/.test(wa || '');
   const waT = ms => new Date(ms).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
   function waBox() {
@@ -6361,17 +6361,17 @@
           <li>في Cloudflare → Workers → q-guide-api → Settings → Variables and Secrets: أضف WA_TOKEN و WA_PHONE_ID و WA_APP_SECRET، و WA_VERIFY (أي كلمة تختارها).</li>
           <li>في WhatsApp → Configuration → Webhook: الرابط <code dir="ltr">${hook}</code> و Verify token نفس كلمة WA_VERIFY، واشترك في «messages».</li></ol></details>`}`;
   }
-  // محادثة: الاسم (أو الرقم لو ما له اسم، مرة وحدة) · نوع الرد · الوقت · «أنا أرد عليه» / «رجّع الرد الآلي» + رابط واتساب للأرقام بس
+  // محادثة: الاسم (أو الرقم لو ما له اسم، مرة وحدة) · نوع الرد · الوقت · «أنا أرد عليه» / «رجّع الرد الآلي» لكل محادثة (v121: والمحفوظة بالاسم، API cf-89) + رابط واتساب للأرقام بس
   function waRow(r, now) {
-    const num = waNum(r.wa);
-    return `<div class="wal"><div class="wah"><b${!r.name && num ? ' dir="ltr"' : ''}>${esc(r.name || (num ? '+' + r.wa : 'جهة اتصال'))}</b>${num ? (r.name ? `<small dir="ltr">+${esc(r.wa)}</small>` : '') : '<small>محفوظ في جوالك</small>'}<span class="wak">${WA_K[r.kind] || esc(r.kind)}</span><small>${waT(r.at)}</small>${num ? `<span class="wabt">
+    const num = waNum(r.wa), key = num || /^t[0-9a-z]+$/i.test(r.wa || '');
+    return `<div class="wal"><div class="wah"><b${!r.name && num ? ' dir="ltr"' : ''}>${esc(r.name || (num ? '+' + r.wa : 'جهة اتصال'))}</b>${num ? (r.name ? `<small dir="ltr">+${esc(r.wa)}</small>` : '') : '<small>محفوظ في جوالك</small>'}<span class="wak">${WA_K[r.kind] || esc(r.kind)}</span><small>${waT(r.at)}</small>${key ? `<span class="wabt">
           ${r.human_until > now ? `<button type="button" class="btn sm ghost" data-wah="${esc(r.wa)}" data-on="0">🤖 رجّع الرد الآلي</button>` : `<button type="button" class="btn sm ghost" data-wah="${esc(r.wa)}" data-on="1">🙋 أنا أرد عليه</button>`}
-          <a class="btn sm ghost" href="https://wa.me/${esc(r.wa)}" target="_blank" rel="noopener">واتساب</a></span>` : ''}</div>
+          ${num ? `<a class="btn sm ghost" href="https://wa.me/${esc(r.wa)}" target="_blank" rel="noopener">واتساب</a>` : ''}</span>` : ''}</div>
           <p dir="auto" class="waq">${esc(r.q || '')}</p>${r.a ? `<p dir="auto" class="waa">${esc(r.a)}</p>` : ''}</div>`;
   }
   function waBind(repaint) {
     document.querySelectorAll('[data-wah]').forEach(b => b.onclick = async () => { b.disabled = true;
-      try { await admCall({ op: 'adm_wa_human', wa: b.dataset.wah, on: b.dataset.on === '1' ? 1 : 0 }); SET.wa = await admCall({ op: 'adm_wa' }); toast(b.dataset.on === '1' ? '🙋 الرد الآلي واقف لهالرقم 12 ساعة' : '🤖 رجع الرد الآلي'); repaint(); }
+      try { await admCall({ op: 'adm_wa_human', wa: b.dataset.wah, on: b.dataset.on === '1' ? 1 : 0 }); SET.wa = await admCall({ op: 'adm_wa' }); toast(b.dataset.on === '1' ? '🙋 الرد الآلي واقف في هالمحادثة 12 ساعة' : '🤖 رجع الرد الآلي'); repaint(); }
       catch (e) { toast(e.message); b.disabled = false; } });
   }
   function tgBind(repaint, auditReload) {
