@@ -2298,5 +2298,8 @@
  "نتيجة اختبار الأسبوع": "Weekly test result",
  "📈 تغطيتك صارت {0}% (كانت {1}%)": "📈 Your coverage is now {0}% (it was {1}%)",
  "تغطيتك صارت {0}% (كانت {1}%): الكلمات اللي غلطت فيها ترجع لك في التدريب": "Your coverage is now {0}% (it was {1}%): the words you missed come back in your practice",
- "الكلمات اللي ما عرفتها دخلت تدريب اليوم:": "The words you didn't know went into today's practice:"
+ "الكلمات اللي ما عرفتها دخلت تدريب اليوم:": "The words you didn't know went into today's practice:",
+ "🧭 مسارك: إنجليزي الاختبار": "🧭 Your path: The test's English",
+ "إنجليزي الاختبار · {0}": "The test's English · {0}",
+ "القدرات الإنجليزي تحتاج B1 إلى B2. مسارك يبدأ بأيام «إنجليزي الاختبار»، وبعدها خطة القدرات، ومعها كل يوم جلسة كلماتك.": "The English GAT needs B1 to B2. Your path starts with days of “The test's English”, then the GAT plan, with your words session every day."
 }
