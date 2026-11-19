@@ -200,11 +200,11 @@
   // ---------- 💾 تقدّم الطالب داخل كل قسم/نموذج/تدريب: على جهازه + نسخة في حسابه تتبعه على أي جهاز (PSY) ----------
   // كل قسم صف في الخادم (prog_get / prog_set). نفس المحاولة (started) = الإجابات تندمج · محاولتين مختلفتين = الأحدث تعديلاً (m) تكسب · z = بدأ من جديد بنفسه
   function progGet(id) { return lsGet(LS.prog + id, { a: {}, best: null, started: 0, last: 0, done: 0 }); }
-  const PROG_ID = /^(?:[qv]\d{1,2}|t-(?:arith|alg|geo|stat|cmp|ana|sen|err|read))$/;   // الأخطاء والدفتر قوائمهم تتغيّر: ما تتزامن
+  const PROG_ID = /^(?:[qv]\d{1,2}|t-(?:arith|alg|geo|stat|cmp|ana|sen|err|read)|wd)$/;   // الأخطاء والدفتر قوائمهم تتغيّر: ما تتزامن · wd = «كلماتي» (v119)
   const PSY = { pulled: false, p: null, dirty: {}, sig: {}, srv: {}, t: 0, busy: false };
   const progSyncOn = () => !!(auth && auth.session && auth.role !== 'free');
   const progHas = p => !!(Object.keys(p.a || {}).length || p.done || p.best != null);
-  const progSig = p => [p.started || 0, Object.keys(p.a || {}).length, p.done || 0, p.rs || 0, p.rq || 0, p.o ? 1 : 0, p.best == null ? '' : p.best].join('|');
+  const progSig = p => [p.started || 0, Object.keys(p.a || {}).length, p.done || 0, p.rs || 0, p.rq || 0, p.o ? 1 : 0, p.best == null ? '' : p.best, p.u || 0].join('|');   // u = عدّاد تعديلات «كلماتي»
   const progM = p => p.m || Object.values(p.a || {}).reduce((m, a) => Math.max(m, (a && a.t) || 0), 0) || 0;   // آخر تعديل (المحاولات اللي قبل المزامنة: وقت آخر إجابة)
   const progFresh = best => ({ a: {}, best, started: Date.now(), last: 0, done: 0, z: 1 });   // ↻ محاولة جديدة بطلب الطالب: تمسح القديمة على كل أجهزته
   function progSet(id, p) {
@@ -213,7 +213,7 @@
     lsSet(LS.prog + id, p);
   }
   const progIds = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i) || ''; if (k.indexOf(LS.prog) === 0 && PROG_ID.test(k.slice(LS.prog.length))) out.push(k.slice(LS.prog.length)); } } catch (e) {} return out; };
-  function progPack(ids, max) { const out = []; let len = 0; for (const id of ids) { const p = progGet(id), d = JSON.stringify(p); if (d.length > 60000) { delete PSY.dirty[id]; continue; } if (out.length >= 12 || len + d.length > (max || 400000)) break; len += d.length; out.push({ id, m: progM(p) || Date.now(), d, sg: progSig(p) }); } return out; }
+  function progPack(ids, max) { const out = []; let len = 0; for (const id of ids) { const p = progGet(id), d = JSON.stringify(p); if (d.length > (id === WD_ID ? 150000 : 60000)) { delete PSY.dirty[id]; continue; } if (out.length >= 12 || len + d.length > (max || 400000)) break; len += d.length; out.push({ id, m: progM(p) || Date.now(), d, sg: progSig(p) }); } return out; }
   function progPushSoon(ms) { clearTimeout(PSY.t); PSY.t = setTimeout(progPush, PSY.d0 && Date.now() - PSY.d0 > 30000 ? 300 : ms || 6000); }   // 6 ثواني بعد آخر إجابة، وبحد أقصى 30 ثانية لو يجاوب ورا بعض
   async function progPush() {
     if (!progSyncOn() || PSY.busy || !Object.keys(PSY.dirty).length) return;
@@ -228,6 +228,7 @@
   // دمج نسخة الخادم R مع اللي على الجهاز L (يرجع true لو تغيّر اللي على الجهاز)
   function progMerge(id, R, rm) {
     if (!R || typeof R !== 'object' || !R.a || typeof R.a !== 'object') return false;
+    if (id === WD_ID) return wdMerge(R, rm);   // 📚 «كلماتي»: كل كلمة تاخذ آخر إجابة
     const L = progGet(id), lm = progM(L); rm = rm || progM(R);
     let out;
     if (!progHas(R) && !R.z) out = Object.assign({}, L);                                   // نسخة فاضية بدون قصد: ما تمسح شي
@@ -252,13 +253,13 @@
   // سحب نسخة الخادم مرة لكل دخول (يرجع الأقسام اللي تغيّرت على هذا الجهاز)
   function progPull() {
     if (PSY.p) return PSY.p; if (!progSyncOn()) return Promise.resolve([]);
-    const ses = auth.session;
+    const ses = auth.session, em = auth.email;
     return (PSY.p = (async () => {
       const ch = [];
       try {
         const have = {}; progIds().forEach(id => { have[id] = progM(progGet(id)); });
         const r = await api({ op: 'prog_get', session: ses, have });
-        if (!r || !r.ok || !auth || auth.session !== ses) { PSY.p = null; return ch; }
+        if (!r || !r.ok || !auth || auth.email !== em) { PSY.p = null; return ch; }   // v119: نفس الحساب (الجلسة تتجدد مرة باليوم، وكانت ترمي أول سحب)
         PSY.srv = r.ms || {};
         (r.sets || []).forEach(x => { let R = null; try { R = JSON.parse(x.d); } catch (e) {} if (R && PROG_ID.test(x.id) && progMerge(x.id, R, x.m)) ch.push(x.id); });
         progIds().forEach(id => { if (PSY.dirty[id]) return; const p = progGet(id);   // اللي على هذا الجهاز وما وصل حسابه (أو أحدث منه): يترفع
@@ -436,7 +437,7 @@
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
     if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-(af|tb)/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-(s[fs]|t[sf])/.test(h)) return _T('تأسيس الكمي'); if (/^fq-/.test(h)) return _T('اختبارات التأسيس'); if (h === 'advisor') return _T('مرشدك الأكاديمي'); if (/^watch-(at|tm)/.test(h)) return _T('تدريب اللفظي'); if (/^watch-tq/.test(h)) return _T('تدريب الكمي');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
-    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-va': _T('مذكرة اللفظي المترجمة'), 'wb-vas': _T('مذكرة اللفظي المترجمة'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
+    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), words: _T('كلماتي'), 'words-go': _T('كلماتي'), 'words-more': _T('كلماتي'), 'words-test': _T('كلماتي'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-va': _T('مذكرة اللفظي المترجمة'), 'wb-vas': _T('مذكرة اللفظي المترجمة'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
   // ⏰ كم يوم باقي على نهاية اشتراك الطالب (بتقويم الرياض) — auth.renew = {until, nag: قرب يخلص أو خلص, auto: ينتهي تلقائياً, grace} من الخادم
   const renewLeft = () => { const R = auth && auth.renew; return R && R.until ? rDay(R.until) - rDay(Date.now()) : null; };
@@ -997,6 +998,9 @@
     if (/^t-[a-z-]+$/.test(h)) return renderPlayer(h);
     if (h === 'skills') return renderSkills();
     if (/^vocab(-v\d{1,2})?$/.test(h)) return renderVocab(h.length > 5 ? h.slice(6) : '');
+    if (h === 'words') return renderWords();   // 📚 كلماتي
+    if (h === 'words-go' || h === 'words-more') return renderWordsGo(h === 'words-more');
+    if (h === 'words-test') return renderWordsTest();
     if (h === 'studio-view') { if (auth.role === 'admin') return renderStView(); location.hash = ''; return; }
     if (h === 'studio' || /^studio-[qvcrf]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
@@ -1011,7 +1015,7 @@
 
   // 📱 شريط التنقل تحت في الجوال (الصفحات الرئيسية بس، مو داخل حل الأسئلة ولا الساحة ولا الإدارة): الرئيسية · الشرح · مرشدي · الساحة · ملفي
   //    زر «مرشدي» في النص: المشترك يفتح صفحة مرشده (#advisor)، والزائر يفتح محادثة المرشد. الزر العائم ينخفي في الجوال لما الشريط موجود.
-  const TB_ON = h => h === '' || /^(sharh(-(salman|abdullah|talal)(\/[ft])?)?|advisor|me|invite|skills|plan|notes|badges)$/.test(h) || /^board/.test(h) || /^vocab/.test(h);
+  const TB_ON = h => h === '' || /^(sharh(-(salman|abdullah|talal)(\/[ft])?)?|advisor|me|invite|skills|plan|notes|badges|words)$/.test(h) || /^board/.test(h) || /^vocab/.test(h);
   function tabbar(h) { try { tabbar0(h); } catch (e) { CERR('tabbar: ' + (e && e.message)); } }
   function tabbar0(h) {
     let el = document.querySelector('.tbar'); const on = !!auth && h != null && TB_ON(h);
@@ -1267,6 +1271,7 @@
           ${toolA('#arena', '⚔️', _T('الساحة 1v1'), FR ? _T`تحدَّ طالب مباشرة، ${FREE_GAMES} مباريات مجانية كل يوم` : _T('تحدَّ طالب مباشرة في 20 سؤال كمي ولفظي'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
           ${toolA('/test/', '🧪', _T('الاختبارات المحاكية'), FR ? _T('الاختبار المحاكي 1 مجاني، والـ 16 الباقية للمشتركين') : _T('17 اختبار بنفس شكل قياس المحوسب'), FR ? _T('<span class="frb">1 مجاني</span>') : '', 1)}</div>
         <div class="tg"><h3>تعلّم وراجع</h3>
+          ${toolA('#words', '📚', _T('كلماتي'), wdToolSub(), _T('<span class="beta">جديد</span>'))}
           ${toolA('#find', '🔎', _T('ابحث عن سؤال'), FR ? _T('اكتب السؤال أو صوّره ونقولك إذا هو في الدورة ووين') : _T('اكتب السؤال أو صوّره ونقولك وين تلقاه'), FR ? _T('<span class="frb">مجاني</span>') : _T('<span class="beta">جديد</span>'), 1)}
           ${RULES_ON ? toolA('#rules', '📐', _T('قوانين الكمي'), _T('القوانين اللي تحتاجها أسئلة الدورة، وتنطبع')) + toolA('#rules-v', '📘', _T('قواعد اللفظي'), _T('طرق الحل وأنواع الأسئلة في صفحة وحدة'), FR ? '' : _T('<span class="beta">جديد</span>')) : ''}
           ${toolA('#vocab', '📖', _T('قاموس الكلمات'), _T('ترجمة ونطق كل كلمات اللفظي'))}
@@ -1985,7 +1990,7 @@
   // ---------- 🧭 v116: بداية المشترك ← مساره (طلب المالك 19 نوفمبر 2026) ----------
   // «بعد عملية الدفع والاشتراك لازم الطالب يعبي بيانات مثل مستواه باللغة الإنجليزية واذا مايعرف كم مستواه يختبر اختبار سريع ويحط اسمه …
   //  يصير له مسار دراسي يمشي عليه يطور لغته الإنجليزية اذا كانت جداً ضعيفة ويصير مسار تعليمي واحد يجيب درجة القدرات اللي يبيها … لازم مستواك يكون B1,B2»
-  // obDlg: اسمه ← مستواه (أو اختبار سريع 15 سؤال) ← موعده ووقته وهدفه ← مساره: تقوية الإنجليزي أول (A1 / A2) + خطة القدرات، وكل يوم مهمة إنجليزي
+  // obDlg: اسمه ← مستواه (أو اختبار تحديد المستوى 36 كلمة، v119) ← موعده ووقته وهدفه ← مساره: تقوية الإنجليزي أول (A1 / A2) + خطة القدرات، وكل يوم مهمة إنجليزي
   //   المحفوظ في qg_adv (ينزامن مع حسابه، والمرشد يقراه): elv = مستواه · ed = أيام التقوية قبل الخطة · es = أول يوم في مساره
   const ELV = { A1: { t: _T('مبتدئ'), s: _T('أعرف كلمات بسيطة، وما أفهم جملة كاملة'), d: 14, m: 45 },
     A2: { t: _T('أساسي'), s: _T('أفهم جمل قصيرة وبسيطة'), d: 7, m: 30 },
@@ -1993,16 +1998,6 @@
     B2: { t: _T('فوق المتوسط'), s: _T('أقرأ وأفهم أغلب النصوص'), d: 0, m: 10 },
     C1: { t: _T('متقدم'), s: _T('أقرأ وأفهم بسهولة'), d: 0, m: 0 } };
   const ELV_K = ['A1', 'A2', 'B1', 'B2', 'C1'];
-  // اختبار سريع (أسئلتنا، مو من بنك الدورة): 3 لكل مستوى، من الأسهل للأصعب · الدرجة من 15 ← المستوى
-  const ENG_Q = [
-    ['I ___ a student.', ['am', 'is', 'are', 'be'], 0], ['She has two ___.', ['cat', 'cats', 'a cat', 'cates'], 1], ['The opposite of "big" is:', ['tall', 'small', 'long', 'fast'], 1],
-    ['Yesterday we ___ to the park.', ['go', 'goes', 'went', 'going'], 2], ['This book is ___ than that one.', ['interesting', 'more interesting', 'most interesting', 'interestinger'], 1], ['He can\'t come today because he is ___.', ['busy', 'bus', 'business', 'busily'], 0],
-    ['If it rains tomorrow, we ___ at home.', ['stay', 'will stay', 'stayed', 'would stayed'], 1], ['I have lived in Riyadh ___ 2019.', ['for', 'since', 'from', 'at'], 1],
-    ['"Sara always forgets her keys, so she now keeps a spare set at her neighbor\'s house." Why does Sara keep a spare set?', ['She lost her house', 'She often forgets her keys', 'Her neighbor asked her to', 'She wants to move'], 1],
-    ['The meeting was ___ because the manager was ill.', ['called off', 'called up', 'called on', 'called in'], 0], ['Hardly ___ the station when the train left.', ['I had reached', 'had I reached', 'I reached', 'did I reached'], 1], ['"Reluctant" is closest in meaning to:', ['eager', 'unwilling', 'careful', 'angry'], 1],
-    ['Her argument was so ___ that nobody could disagree.', ['compelling', 'compelled', 'compulsive', 'complacent'], 0], ['Had they left earlier, they ___ the flight.', ['would catch', 'would have caught', 'will catch', 'had caught'], 1],
-    ['"Although the new policy was meant to reduce traffic, critics argue that it merely shifted the congestion to nearby neighborhoods." What do the critics believe?', ['The policy ended traffic', 'The policy moved the problem elsewhere', 'The policy was never applied', 'People asked for the policy'], 1]];
-  const engLvl = sc => (sc <= 3 ? 'A1' : sc <= 6 ? 'A2' : sc <= 9 ? 'B1' : sc <= 12 ? 'B2' : 'C1');
   const elvName = k => (ELV[k] ? `${ELV[k].t} <bdi dir="ltr">(${k})</bdi>` : '');
   const elvLow = k => k === 'A1' || k === 'A2';
   // المسار: أيام تقوية الإنجليزي (لو مستواه A1 / A2 والوقت يكفي: نخلّي 9 أيام على الأقل لخطة القدرات) ← خطة القدرات المناسبة للباقي
@@ -2045,7 +2040,7 @@
     return new Promise(res => {
       document.querySelectorAll('.obm').forEach(x => x.remove());
       const A0 = advGet() || {}, ex0 = examGet(), box = document.createElement('div'); box.className = 'modal obm';
-      const S = { name: (auth && (auth.display || auth.name)) || '', elv: A0.elv || '', mins: A0.mins || 0, goal: A0.goal || 0, d: ex0 ? ex0.d : '', t: ex0 ? ex0.t || '08:00' : '08:00', noex: false, q: 0, a: [] };
+      const S = { name: (auth && (auth.display || auth.name)) || '', elv: A0.elv || '', mins: A0.mins || 0, goal: A0.goal || 0, d: ex0 ? ex0.d : '', t: ex0 ? ex0.t || '08:00' : '08:00', noex: false };
       const W = document.createElement('div'); W.className = 'm advm obw'; W.setAttribute('role', 'dialog'); W.setAttribute('aria-modal', 'true'); W.setAttribute('aria-labelledby', 'obh'); box.appendChild(W); document.body.appendChild(box);
       let done = false; const close = v => { box.remove(); document.removeEventListener('keydown', onK); res(v || done); };
       const onK = e => { if (e.key === 'Escape') close(false); }; document.addEventListener('keydown', onK);
@@ -2062,25 +2057,19 @@
       // ② مستواه في الإنجليزي
       const s2 = () => { W.innerHTML = dots(2) + _T`<h3 id="obh">وش مستواك في الإنجليزي؟</h3><p class="mut">اختبار القدرات الإنجليزي يحتاج مستوى <bdi dir="ltr">B1</bdi> إلى <bdi dir="ltr">B2</bdi> عشان تفهم الأسئلة وتحلها صح. اختر الأقرب لك:</p>
           <div class="obls">${ELV_K.map(k => `<button type="button" class="obo${S.elv === k ? ' on' : ''}" data-l="${k}"><b><bdi dir="ltr">${k}</bdi> · ${ELV[k].t}</b><small>${ELV[k].s}</small></button>`).join('')}</div>
-          <button type="button" class="btn ghost obt" id="obtest">🤔 ما أعرف مستواي: اختبرني (15 سؤال، 5 دقايق)</button>
+          <button type="button" class="btn ghost obt" id="obtest">🤔 ما أعرف مستواي: اختبرني (36 كلمة، 5 دقايق)</button>
           <div class="acts"><button class="btn" id="obgo"${S.elv ? '' : ' disabled'}>التالي</button><button type="button" class="btn ghost" id="obback">رجوع</button></div>`;
         W.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { S.elv = b.dataset.l; W.querySelectorAll('[data-l]').forEach(x => x.classList.toggle('on', x === b)); W.querySelector('#obgo').disabled = false; });
-        W.querySelector('#obtest').onclick = () => { S.q = 0; S.a = []; sq(); };
+        W.querySelector('#obtest').onclick = async () => { W.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; let D = null; try { D = await wdLoad(); } catch (e) {}
+          if (!D) { s2(); toast(_T('تعذّر تحميل الاختبار. اختر مستواك من القائمة.')); return; }
+          wdTestRun(W, D, r => { S.elv = r.elv; sr(r); }, s2); };
         W.querySelector('#obgo').onclick = () => { if (S.elv) s3(); }; W.querySelector('#obback').onclick = s1; };
-      // ②ب الاختبار السريع: سؤال سؤال
-      const sq = () => { const [q, o] = ENG_Q[S.q];
-        W.innerHTML = _T`<div class="obq-h"><b>اختبار مستوى الإنجليزي</b><span class="mut"><bdi dir="ltr">${S.q + 1} / ${ENG_Q.length}</bdi></span></div><div class="obbar"><i style="width:${Math.round(S.q * 100 / ENG_Q.length)}%"></i></div>
-          <p class="obqq" dir="ltr" lang="en">${esc(q)}</p><div class="obqo" dir="ltr">${o.map((x, i) => `<button type="button" class="obo" data-i="${i}" lang="en"><b>${'ABCD'[i]})</b> ${esc(x)}</button>`).join('')}</div>
-          <div class="acts"><button type="button" class="btn ghost" id="obqx">وقّف الاختبار</button></div>`;
-        W.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { S.a[S.q] = +b.dataset.i; S.q++; if (S.q < ENG_Q.length) sq(); else sr(); });
-        W.querySelector('#obqx').onclick = s2; };
-      // ②ج نتيجة الاختبار
-      const sr = () => { const sc = ENG_Q.reduce((n, q, i) => n + (S.a[i] === q[2] ? 1 : 0), 0); S.elv = engLvl(sc);
-        const ok = !elvLow(S.elv);
-        W.innerHTML = _T`<h3 id="obh">مستواك: ${elvName(S.elv)}</h3><p class="obsc">جبت <b>${sc}</b> من ${ENG_Q.length}</p>
+      // ②ب اختبار تحديد المستوى (36 كلمة من كلمات الدورة، نفس اختبار «كلماتي»): نتيجته مستواه في الإنجليزي ومن وين تبدأ كلماته
+      const sr = r => { const ok = !elvLow(S.elv);
+        W.innerHTML = _T`<h3 id="obh">مستواك: ${elvName(S.elv)}</h3>${wdResHtml(r)}
           <p class="mut">${ok ? _T('مستواك يكفي تفهم أسئلة القدرات، ونركّز في مسارك على حل الأسئلة والمراجعة.') : _T('القدرات الإنجليزي تحتاج B1 إلى B2. مسارك يبدأ بتقوية إنجليزيك أيام قليلة، وبعدها خطة القدرات، ومعها كل يوم كلمات النموذج اللي بتحله.')}</p>
-          <div class="acts"><button class="btn" id="obgo">التالي</button><button type="button" class="btn ghost" id="obagain">أعد الاختبار</button></div>`;
-        W.querySelector('#obgo').onclick = s3; W.querySelector('#obagain').onclick = () => { S.q = 0; S.a = []; sq(); }; };
+          <div class="acts"><button class="btn" id="obgo">التالي</button></div>`;
+        W.querySelector('#obgo').onclick = s3; };
       // ③ موعده ووقته وهدفه
       const chips = (arr, cur, key, lab) => arr.map(v => `<button type="button" class="advc${v === cur ? ' on' : ''}" data-${key}="${v}" aria-pressed="${v === cur}">${lab(v)}</button>`).join('');
       const s3 = () => { W.innerHTML = dots(3) + _T`<h3 id="obh">موعد اختبارك ووقتك</h3>
@@ -2118,6 +2107,278 @@
       s1();
     });
   }
+  // ---------- 📚 v119: «كلماتي» — تفهم إنجليزي الاختبار (أمر المالك الأول، المرحلة الثانية، 19 نوفمبر 2026) ----------
+  // كلمات أسئلة الدورة نفسها (نص السؤال والخيارات والقطع في الأقسام والنماذج + مصطلحات «كلمات لازم تعرف معناها» في العرض + كلمات الربط
+  // وصيغ الأسئلة)، مرتّبة بالتكرار في 3 مستويات: ① لغة الكمي والأكثر تكراراً ② كلمات الربط وصيغ الأسئلة ③ كلمات اللفظي.
+  // الملف p/data/words.bin (gzip ثم AES-GCM بالمفتاح الثاني auth.wbk؛ words0.bin بدون ضغط) من المولّد الخاص english_path/tools (مو في هذا المستودع).
+  // عنصر = [id, en, kind (w كلمة · q عبارة كمي · l كلمة ربط · p صيغة سؤال), lv, n, nq, nv, fn, ar, arq, arv, sets, forms, op]
+  // التقدّم: progGet('wd').a = { id: "b.due.last" } (b = الصندوق 0–5 · due / last = أيام من 1 يناير 2026 بالأساس 36) + pt (اختبار المستوى)
+  //   + lv (المستوى اللي يتعلم منه) + dd (عدّادات اليوم) + u (عدّاد التعديلات) — ينزامن مع حسابه مثل الأقسام (prog_set، الصف wd).
+  // التكرار المتباعد: صح ← بعد يوم، ثم 3، ثم 7، ثم 14، ثم 30 · غلط ← بكرة (ونعيدها آخر التدريب) · كلمة جديدة جاوبها صح من أول مرة = يعرفها:
+  //   ترجع بعد أسبوع وما تنحسب من كلمات اليوم الجديدة (12 لوقت نص ساعة، 20 لساعة وأكثر).
+  const WD_V = 1, WD_ID = 'wd', WD_INT = [1, 1, 3, 7, 14, 30], WD_KNOWN = 3, WD_EPOCH = new Date(2026, 0, 1).getTime();
+  const WD_LV = { 1: [_T('المستوى الأول'), _T('لغة الكمي والكلمات الأكثر تكراراً')], 2: [_T('المستوى الثاني'), _T('كلمات الربط وصيغ الأسئلة')], 3: [_T('المستوى الثالث'), _T('كلمات اللفظي حسب التكرار')] };
+  const wdNw = n => EN ? enN(n, 'word', 'words') : n === 1 ? 'كلمة وحدة' : n === 2 ? 'كلمتين' : n <= 10 ? n + ' كلمات' : n + ' كلمة';   // i18n:skip
+  const wdMin = n => EN ? enN(n, 'minute', 'minutes') : n <= 1 ? 'دقيقة' : n === 2 ? 'دقيقتين' : n <= 10 ? n + ' دقايق' : n + ' دقيقة';   // i18n:skip
+  const wdDay = t => dayDiff(WD_EPOCH, t || Date.now());
+  const wdP = () => progGet(WD_ID);
+  const wdSt = (P, id) => { const s = P.a && P.a[id]; if (!s) return null; const x = String(s).split('.'); return { b: +x[0] || 0, d: parseInt(x[1], 36) || 0, l: parseInt(x[2], 36) || 0 }; };
+  const wdPut = (P, id, b, d, l) => { P.a[id] = b + '.' + d.toString(36) + '.' + l.toString(36); };
+  const wdSave = P => { P.u = (P.u || 0) + 1; progSet(WD_ID, P); };
+  const wdQuota = () => { const A = advGet(); return A && A.mins >= 60 ? 20 : 12; };
+  const wdShuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const wdAr = it => (it[9] || it[10]) ? (it[5] >= it[6] ? it[9] || it[10] : it[10] || it[9]) : it[8];   // كلمة لها معنيين: معنى المادة اللي تجي فيها أكثر
+  const wdSeg = s => String(s || '').split(/\s*\/\s*/).map(x => x.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+  const wdKind = it => it[2] === 'q' ? _T('عبارة كمي') : it[2] === 'p' ? _T('صيغة سؤال') : it[2] === 'l' || it[3] === 2 ? _T('كلمة ربط') : '';
+  // عدّادات اليوم (تتصفّر مع يوم جديد): n = كلمات جديدة تعلّمها · k = عرفها من أول مرة · r = راجعها
+  const wdToday = P => { const t = wdDay(); return P.dd && P.dd.d === t ? P.dd : { d: t, n: 0, k: 0, r: 0 }; };
+  // أرقام صفحته من حالته بس (بدون ملف الكلمات): مراجعة اليوم، أتقنها، يتعلمها
+  function wdStats(P) {
+    const t = wdDay(); let due = 0, mast = 0, learn = 0, tom = 0;
+    for (const id in (P.a || {})) { const s = wdSt(P, id); if (!s) continue; if (s.d <= t) due++; else if (s.d === t + 1) tom++; if (s.b >= WD_KNOWN) mast++; else learn++; }
+    return { due, mast, learn, tom, all: mast + learn };
+  }
+  let WD = null, wdLoading = null;
+  async function wdLoad() {
+    if (WD) return WD; if (wdLoading) return wdLoading;
+    return (wdLoading = (async () => {
+      const gz = typeof DecompressionStream === 'function';
+      const r = await fetch('/p/data/' + (gz ? 'words' : 'words0') + '.bin?v=' + WD_V, { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+      const buf = new Uint8Array(await r.arrayBuffer()), key = await getKey2();
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
+      const txt = gz ? await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : new TextDecoder().decode(plain);
+      const J = JSON.parse(txt), by = {}, lv = { 1: [], 2: [], 3: [] };
+      J.items.forEach(it => { by[it[0]] = it; (lv[it[3]] || (lv[it[3]] = [])).push(it); });
+      [1, 2, 3].forEach(k => lv[k].sort((a, b) => b[4] - a[4]));
+      WD = { v: J.v, items: J.items, by, lv, pool: J.pool, target: J.lv, tot: J.tot }; return WD;
+    })().catch(e => { wdLoading = null; throw e; }));
+  }
+  // المستوى اللي يتعلم منه: اللي اختاره · وإلا نتيجة اختبار المستوى · وإلا مستواه في الإنجليزي من بداية مساره · وإلا الأول
+  const wdLv = P => P.lv || (P.pt && P.pt.lv) || (() => { const A = advGet(), e = A && A.elv; return e === 'B2' || e === 'C1' ? 3 : e === 'B1' ? 2 : 1; })();
+  // الكلمات الجديدة بالترتيب: من مستواه ثم اللي بعده، الأكثر تكراراً أول، وبدون اللي سبق تدرّب عليها
+  function wdFresh(D, P, k) {
+    const out = [], L = wdLv(P);
+    for (const lv of [L, L + 1, L + 2, 1, 2].filter((x, i, a) => x >= 1 && x <= 3 && a.indexOf(x) === i)) {
+      for (const it of D.lv[lv]) { if (!P.a[it[0]]) { out.push(it); if (out.length >= k) return out; } }
+    }
+    return out;
+  }
+  // 4 خيارات: الصح + 3 من نفس النوع (كلمة / عبارة / كلمة ربط / صيغة سؤال) ونفس المستوى، بمعنى مختلف (ولا نصف معنى مشترك)
+  function wdOpts(D, it, toEn) {
+    const fam = x => x[2] === 'w' ? (x[3] === 2 ? 'l' : x[7] ? 'f' : 'w') : x[2] === 'q' ? 'w' : x[2];
+    const F = fam(it), seg = new Set(wdSeg(wdAr(it))), right = toEn ? it[1] : wdAr(it), used = new Set([right.toLowerCase()]);
+    const ok = x => { if (x === it || fam(x) !== F) return false; const t = (toEn ? x[1] : wdAr(x)).toLowerCase(); if (!t || used.has(t)) return false;
+      return !wdSeg(wdAr(x)).some(s => seg.has(s)); };
+    const near = D.lv[it[3]] || [], i0 = Math.max(0, near.indexOf(it)), pick = [];
+    const tryList = list => { for (const x of wdShuf(list)) { if (pick.length >= 3) break; if (ok(x)) { pick.push(x); used.add((toEn ? x[1] : wdAr(x)).toLowerCase()); } } };
+    tryList(near.slice(Math.max(0, i0 - 60), i0 + 60)); if (pick.length < 3) tryList(near); if (pick.length < 3) tryList(D.items);
+    return wdShuf([it].concat(pick)).map(x => ({ t: toEn ? x[1] : wdAr(x), ok: x === it }));
+  }
+  // إجابة على كلمة: صح ← الصندوق اللي بعده (أول مرة صح = يعرفها) · غلط أو «ما أعرفها» ← الصندوق 0، ترجع بكرة
+  function wdMark(P, it, ok) {
+    const t = wdDay(), s = wdSt(P, it[0]), b = ok ? (s ? Math.min(5, s.b + 1) : WD_KNOWN) : 0;
+    wdPut(P, it[0], b, t + WD_INT[b], t); return b;
+  }
+  const wdSets = it => { const s = String(it[11] || '').split(' ').filter(Boolean); if (!s.length) return '';
+    return s.slice(0, 4).map(SET_NAME).join(EN ? ', ' : '، ') + (s.length > 4 ? (EN ? ` +${s.length - 4}` : ` وفي ${s.length - 4} غيرها`) : ''); };   // i18n:skip
+  // دمج نسخة الحساب مع الجهاز: كل كلمة تاخذ آخر إجابة (last)، ولو نفس اليوم الصندوق الأعلى · اختبار المستوى الأحدث · عدّادات اليوم الأكبر
+  function wdMerge(R, rm) {
+    const L = wdP(), out = Object.assign({}, L, { a: Object.assign({}, L.a) });
+    for (const id in R.a) { const r = wdSt(R, id), l = wdSt(out, id); if (r && (!l || r.l > l.l || (r.l === l.l && r.b > l.b))) out.a[id] = R.a[id]; }
+    if (R.pt && (!L.pt || (R.pt.at || 0) > (L.pt.at || 0))) out.pt = R.pt;
+    if (R.lv && (rm || 0) > progM(L)) out.lv = R.lv;
+    if (R.dd && (!L.dd || R.dd.d > L.dd.d)) out.dd = R.dd; else if (R.dd && L.dd && R.dd.d === L.dd.d) out.dd = { d: L.dd.d, n: Math.max(L.dd.n || 0, R.dd.n || 0), k: Math.max(L.dd.k || 0, R.dd.k || 0), r: Math.max(L.dd.r || 0, R.dd.r || 0) };
+    out.m = Math.max(progM(L), rm || progM(R)); out.u = Math.max(L.u || 0, R.u || 0);
+    const key = o => JSON.stringify([Object.keys(o.a || {}).sort().map(k => k + o.a[k]), o.pt || null, o.lv || 0]);
+    const changed = key(L) !== key(out);
+    if (changed || (L.m || 0) !== out.m) lsSet(LS.prog + WD_ID, out);
+    if (key(R) === key(out)) { PSY.sig[WD_ID] = progSig(out); delete PSY.dirty[WD_ID]; } else PSY.dirty[WD_ID] = 1;
+    return changed;
+  }
+  const wdTop = (title, right, back) => topbar(`<span class="ttl">${title}</span><span class="sp"></span>${right || ''}`, `<a class="ib" href="${back || '#words'}" title="${_T('كلماتي')}">→</a>`);
+  async function wdReady(W) {   // ملف الكلمات + نسخة حسابه قبل ما نرسم
+    if (progSyncOn() && !PSY.pulled) { const pp = progPull(); await Promise.race([pp, new Promise(r => setTimeout(r, 3000))]);
+      pp.then(ch => { if (ch && ch.indexOf(WD_ID) >= 0 && WD && location.hash === '#words') wdPaint(WD); }).catch(() => {}); }   // نسخة حسابه وصلت بعد ما رسمنا
+    try { return await wdLoad(); } catch (e) { if (W) W.innerHTML = `<div class="sum">${_T('تعذّر تحميل الكلمات. تأكد من النت وحدّث الصفحة.')}</div>`; return null; }
+  }
+
+  // سطر أداة «كلماتي» في الرئيسية (من حالته بس، بدون تحميل ملف الكلمات)
+  function wdToolSub() { if (isFree()) return _T('كلمات أسئلة الدورة، تتدرّب عليها كل يوم وتفهم إنجليزي الاختبار'); const P = wdP(), S = wdStats(P);
+    if (!S.all) return _T('اختبار 5 دقايق يحدّد مستواك، وبعدها كلمات كل يوم من أسئلة الدورة');
+    return S.due ? _T`مراجعة اليوم: ${wdNw(S.due)} · أتقنت ${S.mast}` : _T`أتقنت ${wdNw(S.mast)} من كلمات أسئلة الدورة`; }
+  // 📚 صفحة «كلماتي»
+  let WDL = { tab: 'learn', q: '' };
+  async function renderWords() {
+    document.title = _T('كلماتي | Q-Guide'); document.onkeydown = null;
+    app.innerHTML = wdTop(_T('📚 كلماتي'), '', '#') + '<main class="wrap wdp" id="wdp"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>'; bindCtl();
+    const D = await wdReady($('#wdp')); if (!D || location.hash !== '#words') return;
+    wdPaint(D);
+  }
+  function wdPaint(D) {
+    const W = $('#wdp'); if (!W) return;
+    const P = wdP(), S = wdStats(P), T = wdToday(P), q = wdQuota(), L = wdLv(P), left = Math.max(0, q - T.n), fresh = left ? wdFresh(D, P, left).length : 0;
+    const none = !S.all && !P.pt, doneToday = !S.due && !left;
+    const mins = Math.max(1, Math.round((S.due * 7 + fresh * 25) / 60));
+    const mast = lv => D.lv[lv].filter(it => { const s = wdSt(P, it[0]); return s && s.b >= WD_KNOWN; }).length;
+    const lvRow = lv => { const N = lv === 3 ? D.target['3'] : D.lv[lv].length, m = Math.min(N, mast(lv)), pc = Math.round(m * 100 / Math.max(1, N));
+      return `<div class="wdlr${lv === L ? ' on' : ''}"><div class="wdlx"><b>${WD_LV[lv][0]}${lv === L ? _T('<span class="wdnow">تتعلم منه الحين</span>') : ''}</b><small>${WD_LV[lv][1]}</small></div>
+        <div class="wdlb"><i class="pg" aria-hidden="true"><span style="width:${pc}%"></span></i><span class="wdln">${_T`أتقنت <bdi dir="ltr">${m} / ${N}</bdi>`}</span></div>
+        ${lv === L ? '' : `<button type="button" class="lnk wdpick" data-lv="${lv}">${_T('تعلّم منه')}</button>`}</div>`; };
+    const list = Object.keys(P.a).map(id => [D.by[id], wdSt(P, id)]).filter(x => x[0] && x[1]);
+    const tabL = list.filter(x => WDL.tab === 'learn' ? x[1].b < WD_KNOWN : x[1].b >= WD_KNOWN);
+    const qq = WDL.q.trim().toLowerCase(), shown = (qq ? tabL.filter(x => x[0][1].toLowerCase().indexOf(qq) >= 0 || wdAr(x[0]).indexOf(qq) >= 0) : tabL)
+      .sort((a, b) => a[1].d - b[1].d || b[0][4] - a[0][4]).slice(0, 300);
+    const t0 = wdDay(), when = s => s.d <= t0 ? _T('مراجعتها اليوم') : s.d === t0 + 1 ? _T('مراجعتها بكرة') : _T`مراجعتها بعد ${dLabel(s.d - t0)}`;
+    W.innerHTML = _T`<section class="wdh"><div><h1>كلماتي</h1><p>كلمات أسئلة الدورة نفسها، مرتّبة من الأكثر تكراراً. تدرّب عليها كل يوم وتفهم إنجليزي الاختبار.</p></div></section>
+      ${none ? _T`<section class="wdtest"><span class="wdti" aria-hidden="true">🧭</span><div><h2>حدّد مستواك أول</h2><p>36 كلمة من كلمات الدورة، تقريباً 5 دقايق. اللي تعرفه ما نعيده عليك، واللي ما تعرفه يدخل كلماتك.</p></div>
+        <div class="wdta"><a class="btn gold" href="#words-test">▶ ابدأ الاختبار</a><button type="button" class="btn ghost" id="wdskip">ابدأ من المستوى الأول</button></div></section>` : ''}
+      ${none ? '' : _T`<section class="wdday${doneToday ? ' done' : ''}"><div class="wddh"><h2>${doneToday ? _T('✓ خلّصت تدريب اليوم') : _T('تدريب اليوم')}</h2>
+          <p>${doneToday ? (S.tom ? _T`بكرة تراجع ${wdNw(S.tom)}. تقدر تاخذ كلمات زيادة الحين.` : _T('تقدر تاخذ كلمات زيادة الحين.')) : _T`تقريباً ${wdMin(mins)}`}</p></div>
+        <ul class="wdchips"><li><b>${S.due}</b><span>${_T('مراجعة اليوم')}</span></li><li><b>${doneToday ? T.n : fresh}</b><span>${doneToday ? _T('جديدة تدرّبت عليها اليوم') : _T('جديدة')}</span></li><li><b>${T.k}</b><span>${_T('عرفتها من أول مرة اليوم')}</span></li></ul>
+        <div class="wdta">${doneToday ? _T('<a class="btn" href="#words-more">✨ كلمات زيادة</a>') : _T('<a class="btn gold" href="#words-go">▶ ابدأ تدريب اليوم</a>')}${P.pt ? '' : _T('<a class="btn ghost" href="#words-test">🧭 اختبار المستوى</a>')}</div></section>`}
+      <section class="wdtiles"><div><b>${S.mast}</b><span>${_T('كلمة أتقنتها')}</span></div><div><b>${S.learn}</b><span>${_T('كلمة تتعلمها')}</span></div><div><b>${S.tom}</b><span>${_T('مراجعة بكرة')}</span></div></section>
+      <h2 class="h2">المستويات</h2>
+      <section class="wdlv">${[1, 2, 3].map(lvRow).join('')}</section>
+      <p class="wdlvn mut">${_T`كلماتك الجديدة كل يوم: <b>${wdNw(q)}</b> حسب وقتك في مسارك. المستوى الثالث هدفه الكلمات اللي توصلك لفهم 90٪ من كلام أسئلة الدورة.`}</p>
+      <h2 class="h2">قائمة كلماتي</h2>
+      ${list.length ? _T`<div class="tabs sm wdtabs" role="tablist"><button type="button" role="tab" data-t="learn" class="${WDL.tab === 'learn' ? 'on' : ''}">تتعلمها <small>${S.learn}</small></button><button type="button" role="tab" data-t="mast" class="${WDL.tab === 'mast' ? 'on' : ''}">أتقنتها <small>${S.mast}</small></button></div>
+        <div class="vsearch"><input id="wdq" class="ltr" placeholder="${_T('ابحث عن كلمة… search')}" autocomplete="off" value="${esc(WDL.q)}"></div>
+        <div class="wdlist">${shown.map(([it, s]) => `<div class="vr wdr"><span class="wdre"><b class="ltr" lang="en">${esc(it[1])}</b>${sayBtn(it[1], 'en', '', 'sm')}</span><span class="wdra">${esc(wdAr(it))}${wdKind(it) ? `<small class="wdkt">${wdKind(it)}</small>` : ''}</span><small class="wdwhen">${when(s)}</small></div>`).join('') || _T('<p class="mut">ما فيه كلمات هنا للحين.</p>')}</div>`
+        : _T('<p class="mut">لما تبدأ، تطلع هنا كل كلمة تدرّبت عليها ومتى مراجعتها.</p>')}
+      <p class="wdfoot"><a href="#vocab">📖 قاموس الكلمات</a></p>`;
+    bindCtl();
+    const sk = $('#wdskip'); if (sk) sk.onclick = () => { const P2 = wdP(); P2.lv = 1; wdSave(P2); location.hash = 'words-go'; };
+    document.querySelectorAll('.wdpick').forEach(b => b.onclick = () => { const P2 = wdP(); P2.lv = +b.dataset.lv; wdSave(P2); wdPaint(D); toast(_T('تمام، كلماتك الجديدة تجي من ') + WD_LV[P2.lv][0]); });
+    document.querySelectorAll('.wdtabs button').forEach(b => b.onclick = () => { WDL.tab = b.dataset.t; wdPaint(D); });
+    const qi = $('#wdq'); if (qi) qi.oninput = () => { WDL.q = qi.value; const pos = qi.selectionStart; wdPaint(D); const n = $('#wdq'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } };
+  }
+
+  // ▶ تدريب اليوم (#words-go) أو كلمات زيادة (#words-more)
+  let WS = null;   // {D, P, q: [{it, toEn, kind}], i, a, n, k, r, bad, again}
+  async function renderWordsGo(more) {
+    document.title = _T('تدريب كلماتي | Q-Guide'); document.onkeydown = null;
+    app.innerHTML = wdTop(_T('📚 تدريب كلماتي'), '<span class="chip cnt" id="wdcnt"></span>') + '<div class="pbar"><i id="wdpb"></i></div><main class="wrap wdg" id="wdg"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>'; bindCtl();
+    const D = await wdReady($('#wdg')); if (!D || !/^#words-(go|more)$/.test(location.hash)) return;
+    const P = wdP(), t = wdDay(), T = wdToday(P), due = [];
+    for (const id in P.a) { const s = wdSt(P, id); if (s && s.d <= t && D.by[id]) due.push([s.d, s.b, D.by[id]]); }
+    due.sort((a, b) => a[0] - b[0] || b[2][4] - a[2][4]);
+    const quota = more ? wdQuota() : Math.max(0, wdQuota() - T.n);
+    const rev = (more ? [] : due.slice(0, 80)).map(([d, b, it], k) => ({ it, kind: 'rev', toEn: b >= 2 && k % 2 === 1 }));
+    WS = { D, quota, q: rev, fresh: wdFresh(D, P, Math.max(quota * 3, 12)), fi: 0, i: 0, n: 0, k: 0, r: 0, bad: 0, badw: new Set(), again: [], more };
+    wdNext();
+  }
+  // الكلمة الجاية: المراجعات أول، بعدها كلمات جديدة لين يتعلم حصة اليوم (اللي يعرفها من أول مرة ما تنحسب)، وآخر شي اللي غلط فيها مرة ثانية
+  function wdNext() {
+    const S = WS; if (!S) return;
+    if (S.i >= S.q.length) {
+      if (S.n < S.quota && S.fi < S.fresh.length) S.q.push({ it: S.fresh[S.fi++], kind: 'new', toEn: false });
+      else if (S.again.length) S.q.push(S.again.shift());
+    }
+    if (S.i >= S.q.length) return wdDone();
+    wdShow();
+  }
+  function wdShow() {
+    const S = WS, x = S.q[S.i], it = x.it, opts = wdOpts(S.D, it, x.toEn), total = Math.max(S.q.length, S.i + 1 + (S.quota - S.n > 0 ? S.quota - S.n : 0) + S.again.length);
+    x.opts = opts; x.done = false;
+    $('#wdcnt').innerHTML = `<bdi dir="ltr">${S.i + 1} / ${total}</bdi>`; $('#wdpb').style.width = Math.round(S.i * 100 / Math.max(1, total)) + '%';
+    const tag = x.kind === 'new' ? _T('✨ جديدة') : x.kind === 'again' ? _T('🔁 مرة ثانية') : _T('🔁 مراجعة'), kd = wdKind(it);
+    const stem = x.toEn ? `<p class="wdw wdar">${esc(wdAr(it))}</p><p class="wdask">${_T('وش هي بالإنجليزي؟')}</p>`
+      : `<p class="wdw ltr" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">${_T('وش معناها؟')}</p>`;
+    $('#wdg').innerHTML = `<div class="q wdq"><div class="hd"><span class="n">${tag}</span>${kd ? `<span class="tag">${kd}</span>` : ''}</div>${stem}
+        <div class="opts two wdo${x.toEn ? '' : ' wdaro'}">${opts.map((o, k) => `<button type="button" class="opt" data-k="${k}"${x.toEn ? ' lang="en"' : ''}><span class="L">${k + 1}</span><span>${esc(o.t)}</span></button>`).join('')}</div>
+        <button type="button" class="btn ghost wdk" id="wdk">${_T('🤷 ما أعرفها')}</button>
+        <div id="wdfb"></div>
+        <div class="acts" id="wdact" style="display:none"><span class="sp"></span><button class="btn" id="wdnx">${_T('التالي ←')}</button></div>
+        <div class="kbd" style="margin-top:8px">${_T('<bdi dir="ltr">1–4</bdi> للاختيار · <bdi dir="ltr">0</bdi> ما أعرفها · <bdi dir="ltr">Enter</bdi> التالي')}</div></div>`;
+    document.querySelectorAll('.wdq .opt').forEach(b => b.onclick = () => wdPick(+b.dataset.k));
+    $('#wdk').onclick = () => wdPick(-1); $('#wdnx').onclick = () => { S.i++; wdNext(); };
+    document.onkeydown = e => { if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || '')) return;
+      const m = /^(?:Digit|Numpad)([0-4])$/.exec(e.code || '');
+      if (m && !x.done) { e.preventDefault(); wdPick(+m[1] - 1); }
+      else if ((e.key || '') === 'Enter' && x.done) { e.preventDefault(); S.i++; wdNext(); } };
+  }
+  function wdPick(k) {
+    const S = WS, x = S.q[S.i]; if (!x || x.done) return; x.done = true;
+    const it = x.it, ok = k >= 0 && x.opts[k].ok, P = wdP(), first = !P.a[it[0]], T = wdToday(P);
+    const b = wdMark(P, it, ok);
+    if (x.kind === 'new') { if (ok && first) { S.k++; T.k++; } else if (first) { S.n++; T.n++; } }
+    else if (x.kind === 'rev') { S.r++; T.r++; }
+    if (!ok) { S.bad++; S.badw.add(it[0]); if (x.kind !== 'again') S.again.push({ it, kind: 'again', toEn: false }); }
+    P.dd = T; wdSave(P);
+    document.querySelectorAll('.wdq .opt').forEach((o, j) => { o.disabled = true; if (x.opts[j].ok) o.classList.add('ok'); else if (j === k) o.classList.add('bad'); });
+    $('#wdk').disabled = true;
+    const okB = document.querySelector('.wdq .opt.ok'); if (okB && !RM()) { if (ok) burst(okB); else { const bb = document.querySelector('.wdq .opt.bad'); if (bb) bb.classList.add('shake'); } }
+    const back = b === 0 ? _T('ترجع لك بكرة، ونعيدها لك آخر التدريب.') : WD_INT[b] === 1 ? _T('ترجع لك بكرة.') : _T`ترجع لك بعد ${dLabel(WD_INT[b])}.`;
+    const two = it[9] && it[10] ? _T`<p class="wdtwo">في الكمي: <b>${esc(it[9])}</b> · في اللفظي: <b>${esc(it[10])}</b></p>` : '';
+    const where = wdSets(it);
+    $('#wdfb').innerHTML = _T`<div class="fb ${ok ? 'ok' : 'bad'} wdfb"><div class="h">${ok ? (first && x.kind === 'new' ? _T('✅ تعرفها') : _T('✅ صح')) : k < 0 ? _T('معناها:') : _T('❌ معناها:')}</div>
+      <p class="wdpair"><b class="ltr" lang="en">${esc(it[1])}</b> ${sayBtn(it[1], 'en', '', 'sm')} <span>${esc(wdAr(it))}</span></p>${two}
+      ${it[13] && it[2] === 'w' && it[3] === 1 ? _T`<p class="wdop">في الحساب: <b dir="ltr">${esc(it[13])}</b></p>` : ''}
+      ${where ? _T`<p class="wdwh">تجي في: ${where}</p>` : ''}<p class="wdbk">${back}</p></div>`;
+    $('#wdact').style.display = '';
+    if (ok) setTimeout(() => { if (WS === S && S.q[S.i] === x) { S.i++; wdNext(); } }, 1100); else $('#wdnx').focus();
+  }
+  function wdDone() {
+    const S = WS; WS = null; document.onkeydown = null;
+    const P = wdP(), st = wdStats(P), learned = S.n, known = S.k, rev = S.r;
+    if (!S.q.length) { app.innerHTML = wdTop(_T('📚 تدريب كلماتي')) + _T`<main class="wrap wdg"><section class="sum wdsum"><h2>✓ ما عندك شي اليوم</h2><p>خلّصت مراجعاتك وكلماتك الجديدة. تقدر تاخذ كلمات زيادة.</p><div class="wdta c"><a class="btn" href="#words-more">✨ كلمات زيادة</a><a class="btn ghost" href="#words">📚 كلماتي</a></div></section></main>`; bindCtl(); return; }
+    app.innerHTML = wdTop(_T('📚 تدريب كلماتي')) + _T`<main class="wrap wdg"><section class="sum wdsum">
+        <h2>${S.bad ? _T('خلّصت تدريبك 👏') : _T('ولا غلطة! 🎉')}</h2>
+        <ul class="wdchips c">${rev ? _T`<li><b>${rev}</b><span>راجعتها</span></li>` : ''}<li><b>${learned}</b><span>${_T('جديدة تدرّبت عليها')}</span></li><li><b>${known}</b><span>${_T('عرفتها من أول مرة')}</span></li>${S.badw.size ? _T`<li class="bad"><b>${S.badw.size}</b><span>غلطت فيها، ترجع بكرة</span></li>` : ''}</ul>
+        <p class="wdtot">${_T`صرت متقن <b>${wdNw(st.mast)}</b> من كلمات أسئلة الدورة.`}</p>
+        <div class="wdta c"><a class="btn gold" href="#words">📚 كلماتي</a><a class="btn ghost" href="#words-more">✨ كلمات زيادة</a></div></section></main>`;
+    bindCtl();
+  }
+
+  // 🧭 اختبار تحديد المستوى: 36 كلمة (12 من كل مستوى) · اختر المعنى أو «ما أعرفها» · أقل من 9 من 12 في مستوى = يبدأ منه
+  //   يشتغل في صفحة #words-test وفي خطوات ما بعد الدفع (obDlg) · الصح = يعرفها (ترجع بعد أسبوع) · الغلط = تدخل كلماته اليوم
+  function wdTestItems(D) {
+    const pick = (k, n) => wdShuf((D.pool[k] || []).filter(id => D.by[id])).slice(0, n).map(id => D.by[id]);
+    const g1 = pick('l1t', 6).concat(pick('l1f', 6)), g2 = pick('l2l', 8).concat(pick('l2p', 4)), g3 = pick('l3a', 4).concat(pick('l3b', 4), pick('l3c', 4));
+    return [].concat(wdShuf(g1).map(it => ({ it, g: 1 })), wdShuf(g2).map(it => ({ it, g: 2 })), wdShuf(g3).map(it => ({ it, g: 3 })));
+  }
+  const wdElv = sc => sc[1] <= 5 ? 'A1' : sc[1] <= 8 ? 'A2' : sc[2] <= 8 ? 'B1' : sc[3] <= 8 ? 'B2' : 'C1';
+  // يرسم الاختبار داخل W (صفحة أو نافذة) · done(res) = {lv, sc, ok, n, elv} · quit() = وقّف
+  function wdTestRun(W, D, done, quit) {
+    const Q = wdTestItems(D), A = [];
+    const show = i => {
+      const { it } = Q[i], opts = wdOpts(D, it, false);
+      W.innerHTML = _T`<div class="obq-h"><b>اختبار تحديد المستوى</b><span class="mut"><bdi dir="ltr">${i + 1} / ${Q.length}</bdi></span></div><div class="obbar"><i style="width:${Math.round(i * 100 / Q.length)}%"></i></div>
+        <p class="wdw ltr wdtw" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">وش معناها؟ <small>لو ما تعرفها لا تخمّن، اضغط «ما أعرفها».</small></p>
+        <div class="opts two wdo wdaro">${opts.map((o, k) => `<button type="button" class="opt" data-k="${k}"><span class="L">${k + 1}</span><span>${esc(o.t)}</span></button>`).join('')}</div>
+        <div class="acts"><button type="button" class="btn ghost wdk" id="wdk">🤷 ما أعرفها</button><span class="sp"></span><button type="button" class="btn ghost" id="wdtx">وقّف الاختبار</button></div>`;
+      let gone = false;
+      const go = k => { if (gone) return; gone = true; const ok = k >= 0 && opts[k].ok; A[i] = ok;
+        W.querySelectorAll('.opt').forEach((o, j) => { o.disabled = true; if (opts[j].ok) o.classList.add('ok'); else if (j === k) o.classList.add('bad'); });
+        setTimeout(() => { if (i + 1 < Q.length) show(i + 1); else fin(); }, ok ? 450 : 900); };
+      W.querySelectorAll('.opt').forEach(b => b.onclick = () => go(+b.dataset.k));
+      W.querySelector('#wdk').onclick = () => go(-1); W.querySelector('#wdtx').onclick = () => { document.onkeydown = null; quit(); };
+      document.onkeydown = e => { const m = /^(?:Digit|Numpad)([0-4])$/.exec(e.code || ''); if (m) { e.preventDefault(); go(+m[1] - 1); } };
+    };
+    const fin = () => {
+      document.onkeydown = null;
+      const sc = { 1: 0, 2: 0, 3: 0 }; Q.forEach((x, i) => { if (A[i]) sc[x.g]++; });
+      const lv = sc[1] < 9 ? 1 : sc[2] < 9 ? 2 : 3, P = wdP(), t = wdDay();
+      Q.forEach((x, i) => { const s = wdSt(P, x.it[0]); if (A[i]) { if (!s || s.b < WD_KNOWN) wdPut(P, x.it[0], WD_KNOWN, t + WD_INT[WD_KNOWN], t); } else if (!s || s.b >= 1) wdPut(P, x.it[0], 0, t, t); });
+      P.pt = { at: Date.now(), lv, s: [sc[1], sc[2], sc[3]] }; delete P.lv; wdSave(P);
+      done({ lv, sc, ok: sc[1] + sc[2] + sc[3], n: Q.length, elv: wdElv(sc) });
+    };
+    show(0);
+  }
+  const wdResHtml = r => _T`<div class="wdres"><p class="obsc">عرفت <b>${r.ok}</b> من ${r.n} كلمة</p>
+      <ul class="wdchips">${[1, 2, 3].map(k => `<li class="${r.sc[k] >= 9 ? 'ok' : ''}"><b><bdi dir="ltr">${r.sc[k]}/12</bdi></b><span>${WD_LV[k][0]}</span></li>`).join('')}</ul>
+      <p>تبدأ كلماتك من <b>${WD_LV[r.lv][0]}</b>: ${WD_LV[r.lv][1]}. الكلمات اللي ما عرفتها انضافت لكلماتك، وتطلع لك في تدريب اليوم.</p></div>`;
+  async function renderWordsTest() {
+    document.title = _T('اختبار تحديد المستوى | Q-Guide'); document.onkeydown = null;
+    app.innerHTML = wdTop(_T('🧭 اختبار تحديد المستوى')) + '<main class="wrap wdg"><div class="q wdtst" id="wdt"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>'; bindCtl();
+    const W = $('#wdt'), D = await wdReady(W); if (!D || location.hash !== '#words-test') return;
+    W.innerHTML = _T`<h2 class="wdth">🧭 اختبار تحديد المستوى</h2><p>36 كلمة من كلمات أسئلة الدورة، تقريباً 5 دقايق. اختر معنى كل كلمة، وإذا ما تعرفها اضغط «ما أعرفها» بدل ما تخمّن، عشان نبدأ لك من المكان الصح.</p>
+      <div class="wdta"><button type="button" class="btn gold" id="wdtgo">▶ ابدأ</button><a class="btn ghost" href="#words">رجوع</a></div>`;
+    $('#wdtgo').onclick = () => wdTestRun(W, D, r => {
+      W.innerHTML = _T`<h2 class="wdth">${r.lv === 3 ? _T('مستواك ممتاز 👏') : _T('نتيجة الاختبار')}</h2>${wdResHtml(r)}<div class="wdta"><a class="btn gold" href="#words-go">▶ ابدأ تدريب اليوم</a><a class="btn ghost" href="#words">📚 كلماتي</a></div>`;
+    }, () => { location.hash = 'words'; });
+  }
+
   // 🎓 صفحة المرشد
   let ADVR = null;   // تقرير الأسبوع من الخادم (يتجدد كل 10 دقايق)
   async function renderAdvisor() {
@@ -3130,7 +3391,7 @@
     return { ok: true, text: p.file ? r.text || '' : '', card: helpCard(r) };
   }
   // الزر العائم يطلع في الصفحات العامة بس (مو داخل حل الأسئلة، ولا الساحة، ولا صفحات المشرفين، ولا صفحة البحث نفسها)
-  const helpOn = h => h != null && (h === '' || /^(sharh|sharh-abdullah|sharh-salman|sharh-talal|level|notes|badges|plan|skills|me)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^vocab/.test(h) || (/^board/.test(h) && h !== 'board-arena'));
+  const helpOn = h => h != null && (h === '' || /^(sharh|sharh-abdullah|sharh-salman|sharh-talal|level|notes|badges|plan|skills|me)$/.test(h) || /^rules(-v)?(\/|$)/.test(h) || /^vocab/.test(h) || h === 'words' || (/^board/.test(h) && h !== 'board-arena'));
   // 👤 ملف الطالب للمساعد (من جهازه): اختباره، سلسلته، أضعف مواضيعه، مهمة اليوم من خطته، وأنسب مكان يكمل فيه
   function helpProfile() {
     const P = { name: firstName(auth && (auth.display || auth.name)), free: isFree(), examIn: null, streak: 0, weak: [], task: '', next: '', nextId: '', lag: 0 };

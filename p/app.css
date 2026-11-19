@@ -3676,3 +3676,72 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .wal{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:4px}
 .wah{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.wabt{display:flex;gap:6px;margin-inline-start:auto}.wah small{color:var(--mut)}.wak{font-size:calc(12px * var(--fs));font-weight:800;border-radius:999px;padding:1px 9px;background:var(--dotbg);color:var(--royal)}
 .waq,.waa{margin:0;white-space:pre-wrap;font-size:calc(13.5px * var(--fs));line-height:1.6}.waq{font-weight:700}.waa{color:var(--mut);border-inline-start:3px solid var(--line);padding-inline-start:8px}
+/* 📚 v119 «كلماتي»: صفحة الكلمات + التدريب + اختبار تحديد المستوى */
+.wdp .wdh{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 20px;box-shadow:var(--sh)}
+.wdh h1{margin:0;font-family:var(--disp);font-size:calc(26px * var(--fs));color:var(--ink2)}
+.wdh p{margin:4px 0 0;color:var(--mut)}
+.wdtest,.wdday{margin-top:12px;border-radius:18px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--royal) 28%,var(--line));background:color-mix(in srgb,var(--royal) 6%,var(--card));display:grid;gap:10px}
+.wdtest{grid-template-columns:auto 1fr;align-items:center}.wdtest .wdta{grid-column:1 / -1}
+.wdti{font-size:34px;line-height:1}
+.wdtest h2,.wdday h2{margin:0;font-family:var(--disp);font-size:calc(20px * var(--fs));color:var(--ink2)}
+.wdtest p,.wdday p{margin:2px 0 0;color:var(--mut);font-size:calc(14.5px * var(--fs))}
+.wdday.done{border-color:color-mix(in srgb,var(--ok) 35%,var(--line));background:color-mix(in srgb,var(--ok) 7%,var(--card))}
+.wdday.done h2{color:var(--ok)}
+.wdta{display:flex;gap:8px;flex-wrap:wrap}.wdta.c{justify-content:center;margin-top:14px}
+.wdchips{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.wdchips li{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:0;text-align:center}
+.wdchips b{font-family:var(--disp);font-size:calc(22px * var(--fs));color:var(--royal);line-height:1.2}
+.wdchips span{font-size:calc(12.5px * var(--fs));color:var(--mut)}
+.wdchips li.ok b{color:var(--ok)}.wdchips li.bad b{color:var(--bad)}
+.wdchips.c{max-width:560px;margin:12px auto 0}
+.wdtiles{margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wdtiles div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;display:grid}
+.wdtiles b{font-family:var(--disp);font-size:calc(26px * var(--fs));color:var(--ink2);line-height:1.2}
+.wdtiles span{font-size:calc(13px * var(--fs));color:var(--mut)}
+.wdlv{display:grid;gap:8px}
+.wdlr{display:grid;grid-template-columns:1fr minmax(150px,240px) auto;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.wdlr.on{border-color:var(--royal);box-shadow:0 0 0 2px color-mix(in srgb,var(--royal) 14%,transparent)}
+.wdlx b{display:block;color:var(--ink2)}.wdlx small{color:var(--mut)}
+.wdnow{display:inline-block;margin-inline-start:8px;font-size:calc(11.5px * var(--fs));font-weight:700;color:#fff;background:var(--royal);border-radius:999px;padding:0 8px;vertical-align:middle}
+.wdlb{display:grid;gap:4px}
+.wdlb .pg{display:block;height:8px;border-radius:99px;background:var(--dotbg);overflow:hidden}
+.wdlb .pg span{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .3s}
+.wdln{font-size:calc(12.5px * var(--fs));color:var(--mut)}
+.wdlvn{margin:8px 2px 0;font-size:calc(13.5px * var(--fs))}
+.wdtabs{margin-bottom:10px}
+.wdlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px}
+.wdr{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;align-items:center;gap:10px}.wdre{display:flex;align-items:center;gap:6px;min-width:0}.wdre b{overflow-wrap:anywhere}.wdra{display:grid;min-width:0;text-align:start}
+.wdkt{color:var(--royal);font-size:calc(11.5px * var(--fs))}
+.wdwhen{color:var(--mut);font-size:calc(12px * var(--fs));white-space:nowrap}
+.wdfoot{margin-top:18px;text-align:center}
+.wdg{max-width:760px}
+.wdq .wdw{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:calc(32px * var(--fs));font-weight:800;color:var(--ink2);text-align:center;margin:8px 0 2px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.wdq .wdw.wdar{font-family:inherit;font-size:calc(26px * var(--fs))}
+.wdask{text-align:center;color:var(--mut);margin:0 0 14px}.wdask small{display:block;font-size:calc(12.5px * var(--fs))}
+.opts.wdaro{direction:rtl}.opts.wdaro .opt{direction:rtl;text-align:right}
+.wdo .opt{min-height:54px}
+.wdk{display:block;margin:10px auto 0}
+.wdfb .h{margin-bottom:4px}
+.wdpair{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:calc(16.5px * var(--fs))}
+.wdpair b{font-size:calc(18px * var(--fs))}
+.wdtwo,.wdop,.wdwh,.wdbk{margin:6px 0 0;font-size:calc(14px * var(--fs));color:var(--ink)}
+.wdwh,.wdbk{color:var(--mut)}
+.wdsum h2{margin-bottom:6px}
+.wdtot{margin:14px 0 0;color:var(--ink)}
+.wdtst{max-width:760px;margin:0 auto}
+.wdth{margin:0 0 6px;font-family:var(--disp);color:var(--ink2)}
+.wdtw{margin-top:4px}
+.wdres{display:grid;gap:10px;margin:6px 0}.wdres p{margin:0}
+.obw .wdw{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:calc(28px * var(--fs));font-weight:800;color:var(--ink2);text-align:center;margin:6px 0 2px;display:flex;align-items:center;justify-content:center;gap:10px}
+.obw .wdask{margin-bottom:10px}
+.obw .wdo .opt{min-height:48px}
+@media (max-width:640px){
+  .wdlr{grid-template-columns:1fr;gap:6px}
+  .wdtiles b{font-size:calc(22px * var(--fs))}
+  .wdlist{grid-template-columns:1fr}
+  .wdr{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.wdwhen{grid-column:1 / -1}
+  .wdq .wdw{font-size:calc(28px * var(--fs))}
+  .wdo.two{grid-template-columns:1fr}
+}
+[data-theme="dark"] .wdh h1,[data-theme="dark"] .wdtest h2,[data-theme="dark"] .wdday h2,[data-theme="dark"] .wdtiles b,[data-theme="dark"] .wdlx b,[data-theme="dark"] .wdq .wdw,[data-theme="dark"] .wdth,[data-theme="dark"] .obw .wdw{color:#DCE4FF}
+[data-theme="dark"] .wdday.done h2{color:#5FD39A}
