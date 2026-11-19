@@ -37,7 +37,7 @@ a{color:var(--navy)}
 .top{position:sticky;top:0;z-index:20;background:var(--navy2);color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18)}
 .top .w{max-width:1040px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 16px;min-height:60px}
 .top .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:calc(19px * var(--fs));color:#fff;text-decoration:none}
-.top .brand img{width:38px;height:38px;border-radius:50%;background:#fff}
+.top .brand img{width:38px;height:38px;border-radius:50%}
 .top .sp{flex:1}
 .top .chip.cnt{max-width:none;font-weight:700;flex:none;overflow:visible}
 .top .chip{background:rgba(255,255,255,.12);border-radius:999px;padding:6px 12px;font-size:calc(14px * var(--fs));white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
@@ -3864,3 +3864,67 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
   .cov-g{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 [data-theme="dark"] .cov-x h2,[data-theme="dark"] .cov-h3,[data-theme="dark"] .cov-t .wvqx,[data-theme="dark"] .wkcv{color:#DCE4FF}
+/* 🎓 v126: مستواه في إنجليزي الاختبار يتقدّم (بطاقة «كلماتي» + سطر «مسارك» + نافذة «وصلت مستوى جديد») */
+.lvp{margin-top:12px;border-radius:18px;padding:14px 16px;background:var(--card);border:1px solid color-mix(in srgb,var(--gold) 45%,var(--line));box-shadow:var(--sh);display:grid;gap:8px}
+.lvp-h{display:flex;align-items:center;gap:12px}
+.lvp-h b{display:block;font-family:var(--disp);font-size:calc(17px * var(--fs));color:var(--ink2)}
+.lvp-h small{color:var(--mut);font-size:calc(13px * var(--fs))}
+.lvp-b{flex:none;width:58px;height:58px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:800;font-size:calc(22px * var(--fs));color:#1a1a1a;background:linear-gradient(135deg,var(--gold3),var(--gold));box-shadow:0 4px 12px color-mix(in srgb,var(--gold) 35%,transparent)}
+.lvp-bar{height:12px;border-radius:99px;background:var(--dotbg);overflow:hidden}
+.lvp-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold3));transition:width .5s}
+.lvp-n{margin:0;color:var(--ink);font-size:calc(14.5px * var(--fs))}.lvp-n b{color:var(--gold2);font-family:var(--disp);font-size:1.15em}
+.lvp-r{list-style:none;margin:0;padding:0;display:grid;gap:3px;font-size:calc(13.5px * var(--fs));color:var(--ink)}
+.lvp-r li::before{content:'○';margin-inline-end:6px;color:var(--mut)}.lvp-r li.ok{color:var(--okt)}.lvp-r li.ok::before{content:'●';color:var(--ok)}
+.lvp-r small{color:var(--mut)}
+.pth-lv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-decoration:none;color:var(--ink2);font-weight:700;font-size:calc(13.5px * var(--fs))}
+.pth-lv small{color:var(--mut);font-weight:600}
+.lvmini{flex:1;min-width:90px;max-width:220px;height:8px;border-radius:99px;background:var(--dotbg);overflow:hidden}
+.lvmini i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold3))}
+.lvm{z-index:90}
+.modal .m.lvw{max-width:400px;text-align:center;display:grid;gap:10px;justify-items:center;padding:26px 22px 22px}
+.lvw-e{font-size:52px;line-height:1;animation:lvpop .6s ease-out}
+.lvw h3{margin:0;font-family:var(--disp);font-size:calc(24px * var(--fs));color:var(--ink2)}
+.lvw p{margin:0;color:var(--ink)}
+.lvw-b{position:relative;display:grid;justify-items:center;gap:2px;padding:12px 26px;border-radius:18px;background:linear-gradient(135deg,var(--gold3),var(--gold));color:#1a1a1a}
+.lvw-b b{font-family:var(--disp);font-size:calc(34px * var(--fs));line-height:1.1}.lvw-b span{font-weight:700}
+.lvw .lvp-bar{width:100%}
+.lvw-n{font-size:calc(14px * var(--fs));color:var(--mut)!important}
+.acts.c{justify-content:center}
+@keyframes lvpop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.lvw-e{animation:none}}
+[data-theme="dark"] .lvp-h b,[data-theme="dark"] .lvw h3,[data-theme="dark"] .pth-lv{color:#DCE4FF}
+/* 🔤 v126: صفحة المالك «مستويات الإنجليزي» + قسم الإنجليزي في التقرير */
+.engpg .eng-h{margin:14px 0 6px;font-family:var(--disp);font-size:calc(16px * var(--fs));color:var(--ink2)}.eng-h small{color:var(--mut);font-weight:500;font-size:.8em}
+.eng-dist{display:grid;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.eng-d{display:grid;grid-template-columns:44px 1fr 150px;align-items:center;gap:10px}
+.eng-d small{color:var(--mut);font-size:12.5px}.eng-d small b{color:var(--ink2)}
+.eng-db{position:relative;height:12px;border-radius:99px;background:var(--dotbg);overflow:hidden}
+.eng-db i{position:absolute;inset-block:0;inset-inline-start:0;border-radius:99px;background:var(--royal)}.eng-db i.s{background:color-mix(in srgb,var(--royal) 30%,var(--card))}
+.eng-b{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 6px;border-radius:8px;font-weight:800;font-size:13px;background:var(--dotbg);color:var(--ink2);direction:ltr}
+.eng-b.now{background:linear-gradient(135deg,var(--gold3),var(--gold));color:#1a1a1a}
+.eng-f{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 8px}
+.eng-f .seg{flex-wrap:wrap}
+.eng-q{flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+.eng-s{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+.eng-list{display:grid;gap:6px}
+.eng-r{display:grid;grid-template-columns:minmax(150px,1.4fr) 150px 110px minmax(120px,1fr) 100px 120px minmax(130px,1fr);align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none}
+.eng-r:hover{border-color:var(--royal)}
+.eng-r > span{display:flex;flex-direction:column;min-width:0}
+.eng-r small{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis}.eng-r small.red{color:var(--badt)}
+.eng-r b{color:var(--ink2)}
+.eng-n b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eng-r .eng-lv{flex-direction:row;align-items:center;gap:5px;flex-wrap:wrap}
+.eng-ar{color:var(--mut)}.eng-up{font-size:11.5px;font-weight:700;color:var(--okt)}
+.eng-bar{display:block;height:8px;border-radius:99px;background:var(--dotbg);overflow:hidden;margin-bottom:3px}.eng-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold3))}
+.eng-ft{margin-top:10px;font-size:12.5px}
+.eng-rpt .rpr{grid-template-columns:200px 1fr}
+@media (max-width:900px){
+  .eng-r{grid-template-columns:1fr 1fr;row-gap:8px}
+  .eng-r .eng-n{grid-column:1 / -1}
+  .eng-d{grid-template-columns:40px 1fr;}.eng-d small{grid-column:2}
+}
+[data-theme="dark"] .eng-r b,[data-theme="dark"] .eng-h{color:#DCE4FF}
+/* 🛡 v126: ضمان 95 في نافذة الاشتراك + الضمان في التقرير */
+.qgdlg-box p.sub-grt.g95{margin-top:6px;background:color-mix(in srgb,var(--gold) 10%,var(--card));border-color:color-mix(in srgb,var(--gold) 45%,var(--line))}
+.sub-grt.g95 b{color:var(--warnt)}
+.eng-rpt b.okt{color:var(--okt)}.eng-rpt b.badt{color:var(--badt)}

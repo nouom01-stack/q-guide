@@ -332,7 +332,7 @@
   let skillsPulled = false;
   // كل اللي يتزامن بين أجهزة الطالب في رسالة وحدة
   function syncPayload() {
-    const pl = planState(), o = { v: 1, items: histGet().items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null, marks: marksGet(), badges: lsGet(BADGE_LS, {}), lvl: lsGet(LVL_LS, null), fc: lsGet(FC_LS, null), fq: fqGet(), adv: lsGet(ADV_LS, null), cov: lsGet('qg_wcov', null) };
+    const pl = planState(), o = { v: 1, items: histGet().items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null, marks: marksGet(), badges: lsGet(BADGE_LS, {}), lvl: lsGet(LVL_LS, null), fc: lsGet(FC_LS, null), fq: fqGet(), adv: lsGet(ADV_LS, null), cov: lsGet('qg_wcov', null), vw: vwDone() };
     let s = JSON.stringify(o); if (s.length < 140000) return s;   // حد الخادم 150 ألف حرف: نخفّف الأقل أهمية أول
     o.fc = null; if (o.lvl) o.lvl = Object.assign({}, o.lvl, { a: {} }); s = JSON.stringify(o); if (s.length < 140000) return s;
     const M = JSON.parse(JSON.stringify(o.marks)); for (const k in M.items) for (const i in M.items[k]) if (M.items[k][i].n) M.items[k][i].n = M.items[k][i].n.slice(0, 160); o.marks = M; return JSON.stringify(o);
@@ -347,7 +347,7 @@
         // موعد الاختبار والخطة: الأحدث يكسب (حتى تلحقك على أي جهاز)
         if (rem.exam && (rem.exam.up || 0) > ((lsGet(EXAM_LS, null) || {}).up || 0)) lsSet(EXAM_LS, rem.exam);
         if (rem.plan && planUp(rem.plan) > planUp(planState())) lsSet(PLAN_LS, rem.plan);
-        marksMerge(rem.marks); badgesMerge(rem.badges); if (rem.lvl && (rem.lvl.at || 0) > ((lsGet(LVL_LS, null) || {}).at || 0)) lsSet(LVL_LS, rem.lvl); fcMerge(rem.fc); fqMerge(rem.fq); advMerge(rem.adv);
+        marksMerge(rem.marks); badgesMerge(rem.badges); if (rem.lvl && (rem.lvl.at || 0) > ((lsGet(LVL_LS, null) || {}).at || 0)) lsSet(LVL_LS, rem.lvl); fcMerge(rem.fc); fqMerge(rem.fq); advMerge(rem.adv); vwMerge(rem.vw);
         return h;
       }
     } catch (e) {}
@@ -481,7 +481,7 @@
     // زر الدفع وما تحته: ينرسم من جديد كل ما غيّر الباقة (السعر والمدة يتبعونها)
     const goTxt = () => renew ? (sel.free ? _T`💳 ادفع ${sel.price} ريال وجدّد ${pkDur(sel.months, sel.free)}` : sel.months === 2 ? _T`💳 ادفع ${sel.price} ريال وجدّد شهرين` : _T`💳 ادفع ${sel.price} ريال وجدّد شهر`) : _T`💳 ادفع ${sel.price} ريال واشترك الحين`;
     const keep = () => !(two && renew && auth.plan !== 'train' && sel.k === 'train') ? '' : `<p class="pkg-keep">${left != null && left >= 0 ? _T`التأسيس يبقى مفتوح لك لين ${meDay(auth.pkg === 'train' && auth.fu > Date.now() ? auth.fu : R.until)}، وبعدها تكمّل على «التدريب» بدون التأسيس.` : _T('باقة «التدريب» بدون التأسيس: دروس التأسيس واختباراتها ومذكرتا التأسيس تنقفل عنك.')}</p>`;
-    const grt = _T`<p class="sub-grt"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p>`;   // 🛡 الرسالة الأساسية (طلب المالك 14 نوفمبر): تحت زر الدفع على طول (الزر يبقى أول وقفة بعد الباقات بالكيبورد)
+    const grt = () => _T`<p class="sub-grt"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p>` + (two && sel.k === 'full' ? _T`<p class="sub-grt g95"><b>🛡 ضمان 95:</b> خلّص التأسيس كامل مع التدريب، وإذا جبت أقل من 95 نرجّع لك اشتراكك. <a href="/terms/#g95" target="_blank" rel="noopener">الشروط</a></p>` : '');   // 🛡 v126: ضمان 95 لباقة «التأسيس والتدريب» (المالك 19 نوفمبر 2026)   // 🛡 الرسالة الأساسية (طلب المالك 14 نوفمبر): تحت زر الدفع على طول (الزر يبقى أول وقفة بعد الباقات بالكيبورد)
     const bodyOf = () => { const SL = SL0 && (!two || sel.url) ? SL0 : null;   // 📦 الباقة اللي ما لها رابط منتج في سلة (المالك ما حطه): تنطلب بواتساب
       return keep() + (SL ? _T`<div class="sub-pay"><button type="button" class="btn gold sub-paygo" id="sallago">${goTxt()}</button>
         <p class="sub-payn">${two ? (renew ? (SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا ويتمدد اشتراكك.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، ويتمدد اشتراكك.')) : SL.link ? _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع ترجع هنا وتنفتح لك باقتك على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد، عن طريق متجرنا في سلة. بعد الدفع تلصق رقم الطلب هنا، وتنفتح لك باقتك.'))
@@ -491,7 +491,7 @@
         <p class="sub-payn">${two ? (renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. باقتك تنفتح لك على طول.')) : renew ? _T('مدى · Apple Pay · فيزا وماستركارد. اشتراكك يتمدد شهر على طول.') : _T('مدى · Apple Pay · فيزا وماستركارد. الدورة كاملة تنفتح لك على طول لمدة شهر.')}</p>${PAY.test ? _T('<p class="sub-test">🧪 وضع التجربة: ما ينخصم أي مبلغ حقيقي</p>') : ''}</div>`
       : two ? `<p class="sub-nopay">${renew ? _T('راسلنا على واتساب ونجدّد لك بالباقة اللي اخترتها على نفس حسابك.') : _T('راسلنا على واتساب ونفعّل لك الباقة اللي اخترتها على نفس حسابك.')}</p>`
       : _T`<p class="sub-nopay">${renew ? _T`التجديد <b>${price} ريال</b> للشهر. راسلنا على واتساب ونجدّد لك اشتراكك على نفس حسابك.` : _T`الاشتراك <b>${price} ريال</b> للشهر. راسلنا على واتساب ونفعّل لك الدورة كاملة على نفس حسابك.`}</p>`)
-      + grt + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>`; };
+      + grt() + _T`<div class="sub-a${PAY || SL ? ' alt' : ''}"><a class="btn ${PAY || SL ? 'ghost' : 'gold'} wa" href="${waOf()}" target="_blank" rel="noopener">${PAY || SL ? _T('💬 عندك سؤال؟ راسلنا على واتساب') : _T('💬 راسلنا على واتساب')}</a></div>`; };
     ov.innerHTML = _T`<div class="qgdlg-box sub-box${two ? ' pk2' : ''}" role="dialog" aria-modal="true" aria-labelledby="subh">
       <button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       ${renew ? '' : invLine('sub-inv')}${head}<div class="sub-dyn"></div>
@@ -1010,8 +1010,8 @@
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
     if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
-    if (/^admin(-(home|staff|members|subs|pay|unpaid|vids|settings|regs|free|ai|find))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
-      const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-unpaid': renderUnpaid, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
+    if (/^admin(-(home|staff|members|subs|pay|unpaid|vids|settings|regs|free|ai|find|eng))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
+      const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-eng': renderEngAdmin, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-unpaid': renderUnpaid, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
       return R[h](); }
     renderHome(); if (joinDlg) subDlg('', _T('صفحة الموقع'), 0, joinPk); else if (upNm != null) upDlg(upNm);
   }
@@ -1404,7 +1404,11 @@
 
   // ---------- 🎬 مشغّل المقاطع داخل الموقع (المجاني والتحويل) ----------
   // الرابط مؤقت (4 ساعات) وموقّع، ويشتغل من الموقع بس. (v116: انشالت علامة الإيميل والرقم اللي كانت تتحرك فوق المقطع)
-  const VW_LS = 'qg_vw';   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
+  const VW_LS = 'qg_vw';
+  // 🛡 v126: المقاطع اللي شاهدها كاملة تنزامن مع حسابه (vw = مفاتيحها) — ضمان 95 يحتاج «خلّص التأسيس كامل»، والمالك يشوفها في التقرير
+  function vwDone() { const W = lsGet(VW_LS, {}); return Object.keys(W).filter(k => W[k] && W[k].w); }
+  function vwMerge(list) { if (!Array.isArray(list) || !list.length) return; const W = lsGet(VW_LS, {}); let ch = 0;
+    list.forEach(k => { if (typeof k === 'string' && /^[a-z]{1,2}:\d{1,2}$/.test(k) && !(W[k] && W[k].w)) { W[k] = Object.assign({}, W[k], { w: 1, t: 0 }); ch = 1; } }); if (ch) lsSet(VW_LS, W); }   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
   let VID = null;
   // 👨‍🏫 مقاطع المدرسين اللي ما لها يوتيوب (داخل الموقع لكل المشتركين): مين المدرس، وصفحته وقسمها، ورابط قواعد الدرس في مذكرة التأسيس
   const TK = { af: { t: 1, page: 'abdullah', tab: 'f', head: _T('🧱 تأسيس اللفظي'), wb: n => '#wb-tv@' + TV_PAGE[n] },
@@ -1492,8 +1496,9 @@
     // التقدّم: نكمّل من آخر مكان، و«شاهدته» لما يوصل 90%
     const st = () => { const A = lsGet(VW_LS, {}); return A[cur.key] || {}; };
     const put = o => { const A = lsGet(VW_LS, {}); A[cur.key] = Object.assign(A[cur.key] || {}, o); lsSet(VW_LS, A); };
+    let st0w = st().w ? 1 : 0;   // شافه كامل قبل؟ (أول مرة يكمله: يروح لحسابه)
     const saveT = () => { if (!v.duration || !isFinite(v.duration)) return; const t = v.currentTime, done = t / v.duration > .9; put(Object.assign({ t: done ? 0 : Math.floor(t) }, done ? { w: 1 } : {}));
-      if (done) { const a = document.querySelector('.wvi.on'); if (a && !a.classList.contains('ok')) { a.classList.add('ok'); a.querySelector('small').textContent = _T('✓ شاهدته'); } const q = $('#wvq'); if (q) q.hidden = false; const lq = $('#wvlq'); if (lq) lq.hidden = false; } };
+      if (done) { const a = document.querySelector('.wvi.on'); if (a && !a.classList.contains('ok')) { a.classList.add('ok'); a.querySelector('small').textContent = _T('✓ شاهدته'); } const q = $('#wvq'); if (q) q.hidden = false; const lq = $('#wvlq'); if (lq) lq.hidden = false; if (!st0w) { st0w = 1; skillsPushSoon(3000); } } };
     VID.sv = setInterval(saveT, 5000); v.onpause = saveT; v.onended = saveT;
     let want = st().t || 0;
     v.onloadedmetadata = () => { msg.hidden = true; if (want > 10 && want < v.duration - 5) v.currentTime = want; want = 0; };
@@ -2006,7 +2011,7 @@
     B1: { t: _T('متوسط'), s: _T('أفهم نص سهل وأقدر أكتب جمل'), d: 0, m: 20 },
     B2: { t: _T('فوق المتوسط'), s: _T('أقرأ وأفهم أغلب النصوص'), d: 0, m: 10 },
     C1: { t: _T('متقدم'), s: _T('أقرأ وأفهم بسهولة'), d: 0, m: 0 } };
-  const ELV_K = ['A1', 'A2', 'B1', 'B2', 'C1'];
+  const ELV_K = ['A1', 'A2', 'B1', 'B2', 'C1'], elvI = k => ELV_K.indexOf(k);
   const elvName = k => (ELV[k] ? `${ELV[k].t} <bdi dir="ltr">(${k})</bdi>` : '');
   const elvLow = k => k === 'A1' || k === 'A2';
   // المسار: أيام «إنجليزي الاختبار» (v125، اسمها قبل «تقوية الإنجليزي») (لو مستواه A1 / A2 والوقت يكفي: نخلّي 9 أيام على الأقل لخطة القدرات) ← خطة القدرات المناسبة للباقي
@@ -2067,7 +2072,9 @@
     if (!WD && !PTH_L && auth && auth.wbk && !isFree()) { PTH_L = 1; wdReady(null).then(D => { PTH_L = 0; if (!D) return; try { wdCovNote(D); } catch (e) {} document.querySelectorAll('section.pth').forEach(el => { el.outerHTML = pathStrip(); }); }).catch(() => { PTH_L = 0; }); }
     const head = E.p1 ? _T`<b>🧭 مسارك: إنجليزي الاختبار</b> <span class="mut">اليوم ${E.n} من ${E.ed}${plan ? _T`، وبعدها ${plan.name}` : ''}</span>` : _T`<b>🧭 مسارك</b> <span class="mut">مستواك ${elvName(E.elv)} · القدرات تحتاج <bdi dir="ltr">B1–B2</bdi></span>`;
     const row = (p, i) => `<li class="${p.ok ? 'ok' : ''}${p === X.next ? ' now' : ''}"><a href="${p.h}"><span class="ses-i" aria-hidden="true">${p.ok ? '✓' : i + 1}</span><span class="ses-x"><b><span aria-hidden="true">${p.i}</span> ${p.t}</b><small>${wdMin(p.m)} · ${p.s}</small></span></a></li>`;
-    return `<section class="pth" aria-label="${_T('مسارك')}"><div class="pth-h">${head}</div>
+    const LV = WD ? wdLvl(WD, P) : null;   // 🎓 v126: مستواه وبار المستوى اللي بعده
+    const lvl = LV ? `<a class="pth-lv" href="#words"><span>${E.p1 ? _T`مستواك ${LV.lv}` : _T('تقدّمك')}</span><span class="lvmini" aria-hidden="true"><i style="width:${LV.np}%"></i></span><small>${LV.nx ? _T`${LV.np}% للمستوى ${LV.nx}` : _T('أعلى مستوى 👏')}</small></a>` : '';
+    return `<section class="pth" aria-label="${_T('مسارك')}"><div class="pth-h">${head}</div>${lvl}
       <div class="ses${all ? ' done' : ''}"><div class="ses-h"><b>${all ? _T('✓ خلّصت جلسة اليوم') : _T('جلسة اليوم')}</b><span class="mut">${_T`تقريباً ${wdMin(X.mins)}`}</span>${all ? '' : `<a class="btn sm gold ses-go" href="${X.next.h}">${X.go ? _T('▶ كمّل جلسة اليوم') : _T('▶ ابدأ جلسة اليوم')}</a>`}</div>
         <ol class="ses-l">${X.parts.map(row).join('')}</ol>
         <p class="ses-n mut">${_T('في الحل: اضغط على أي كلمة ما تعرفها، وأضفها لكلماتك.')}</p></div>
@@ -2281,8 +2288,10 @@
     if (R.lq) { out.lq = Object.assign({}, L.lq); for (const k in R.lq) { const r = R.lq[k], l = out.lq[k]; if (r && (!l || r.s > l.s || (r.s === l.s && (r.at || 0) > (l.at || 0)))) out.lq[k] = r; } }   // 📚 اختبارات كلمات الدروس: الأعلى
     if (R.cw) { out.cw = Object.assign({}, L.cw); for (const k in R.cw) out.cw[k] = Math.max(+out.cw[k] || 0, +R.cw[k] || 0); }   // 📖 تغطيته كل أسبوع: الأعلى
     if (R.wt && (!L.wt || (R.wt.at || 0) > (L.wt.at || 0))) out.wt = R.wt;   // 🧪 آخر اختبار أسبوع
+    if (R.lva && elvI(R.lva) > elvI(L.lva)) out.lva = R.lva;   // 🎓 أعلى مستوى وصله
+    if (R.lvh) { const h = {}; (L.lvh || []).concat(R.lvh).forEach(x => { if (x && (!h[x[0]] || x[1] < h[x[0]][1])) h[x[0]] = x; }); out.lvh = Object.values(h).sort((a, b) => a[1] - b[1]).slice(-10); }
     out.m = Math.max(progM(L), rm || progM(R)); out.u = Math.max(L.u || 0, R.u || 0);
-    const key = o => JSON.stringify([Object.keys(o.a || {}).sort().map(k => k + o.a[k]), o.pt || null, o.lv || 0, o.dd ? ['d', 'n', 'k', 'r', 'c', 'cr'].map(f => o.dd[f] || 0) : 0, o.cb || 0, Object.keys(o.lq || {}).sort().map(k => k + ':' + o.lq[k].s + '/' + o.lq[k].n), Object.keys(o.cw || {}).sort().map(k => k + ':' + o.cw[k]), o.wt ? o.wt.at : 0]);
+    const key = o => JSON.stringify([Object.keys(o.a || {}).sort().map(k => k + o.a[k]), o.pt || null, o.lv || 0, o.dd ? ['d', 'n', 'k', 'r', 'c', 'cr'].map(f => o.dd[f] || 0) : 0, o.cb || 0, Object.keys(o.lq || {}).sort().map(k => k + ':' + o.lq[k].s + '/' + o.lq[k].n), Object.keys(o.cw || {}).sort().map(k => k + ':' + o.cw[k]), o.wt ? o.wt.at : 0, o.lva || '', (o.lvh || []).length]);
     const changed = key(L) !== key(out);
     if (changed || (L.m || 0) !== out.m) lsSet(LS.prog + WD_ID, out);
     if (key(R) === key(out)) { PSY.sig[WD_ID] = progSig(out); delete PSY.dirty[WD_ID]; } else PSY.dirty[WD_ID] = 1;
@@ -2323,6 +2332,7 @@
       .sort((a, b) => a[1].d - b[1].d || b[0][4] - a[0][4]).slice(0, 300);
     const t0 = wdDay(), when = s => s.d <= t0 ? _T('مراجعتها اليوم') : s.d === t0 + 1 ? _T('مراجعتها بكرة') : _T`مراجعتها بعد ${dLabel(s.d - t0)}`;
     W.innerHTML = _T`<section class="wdh"><div><h1>كلماتي</h1><p>كلمات أسئلة الدورة نفسها، مرتّبة من الأكثر تكراراً. تدرّب عليها كل يوم وتفهم إنجليزي الاختبار.</p></div></section>
+      ${none ? '' : lvCard(wdLvl(D, P))}
       ${none ? _T`<section class="wdtest"><span class="wdti" aria-hidden="true">🧭</span><div><h2>حدّد مستواك أول</h2><p>36 كلمة من كلمات الدورة، تقريباً 5 دقايق. اللي تعرفه ما نعيده عليك، واللي ما تعرفه يدخل كلماتك.</p></div>
         <div class="wdta"><a class="btn gold" href="#words-test">▶ ابدأ الاختبار</a><button type="button" class="btn ghost" id="wdskip">ابدأ من المستوى الأول</button></div></section>` : ''}
       ${none ? '' : _T`<section class="wdday${doneToday ? ' done' : ''}"><div class="wddh"><h2>${doneToday ? _T('✓ خلّصت تدريب اليوم') : _T('تدريب اليوم')}</h2>
@@ -2486,7 +2496,7 @@
     const W = $('#wdt'), D = await wdReady(W); if (!D || location.hash !== '#words-test') return;
     W.innerHTML = _T`<h2 class="wdth">🧭 اختبار تحديد المستوى</h2><p>36 كلمة من كلمات أسئلة الدورة، تقريباً 5 دقايق. اختر معنى كل كلمة، وإذا ما تعرفها اضغط «ما أعرفها» بدل ما تخمّن، عشان نبدأ لك من المكان الصح.</p>
       <div class="wdta"><button type="button" class="btn gold" id="wdtgo">▶ ابدأ</button><a class="btn ghost" href="#words">رجوع</a></div>`;
-    $('#wdtgo').onclick = () => wdTestRun(W, D, r => {
+    $('#wdtgo').onclick = () => wdTestRun(W, D, r => { try { wdCovNote(D); } catch (e) {}
       W.innerHTML = _T`<h2 class="wdth">${r.lv === 3 ? _T('مستواك ممتاز 👏') : _T('نتيجة الاختبار')}</h2>${wdResHtml(r)}<div class="wdta"><a class="btn gold" href="#words-go">▶ ابدأ تدريب اليوم</a><a class="btn ghost" href="#words">📚 كلماتي</a></div>`;
     }, () => { location.hash = 'words'; });
   }
@@ -2673,10 +2683,69 @@
     const P = wdP(), c = wdCov(D, P), w = wdWeek();
     if (!P.cw || P.cw[w] !== c.all) { P.cw = Object.assign({}, P.cw); P.cw[w] = c.all; const ks = Object.keys(P.cw).map(Number).sort((a, b) => a - b); while (ks.length > 26) delete P.cw[ks.shift()]; wdSave(P); }
     const pk = Object.keys(P.cw).map(Number).filter(x => x < w).sort((a, b) => b - a), E = (() => { try { return engToday(); } catch (e) { return null; } })();
-    const S = { d: dayKey(), a: c.all, p: pk.length ? P.cw[pk[0]] : null, s: c.sets, td: E && !E.p1 ? (E.sets || []).filter(x => c.sets[x] != null).map(x => [x, c.sets[x]]) : [] };
+    const V = wdLvCheck(D), P2 = wdP(), st = wdStats(P2), A = advGet() || {}; let kn = 0, last = 0;   // 🎓 v126: مستواه (وترقيته لو وصل أعلى)
+    for (const id in P2.a) { const x = wdSt(P2, id); if (!x) continue; if (x.b >= 1) kn++; if (x.l > last) last = x.l; }
+    // الملخص (للمرشد وصفحة المالك «🔤 مستويات الإنجليزي»): التغطية + المستوى (بدأ / الحين / اللي بعده وكم قطع له) + كلماته + اختبار الأسبوع + اختبار المستوى + آخر تدريب + ترقياته
+    const S = { d: dayKey(), a: c.all, p: pk.length ? P.cw[pk[0]] : null, s: c.sets, td: E && !E.p1 ? (E.sets || []).filter(x => c.sets[x] != null).map(x => [x, c.sets[x]]) : [],
+      lv: V.lv, lv0: A.elv0 || A.elv || '', m: [V.M[1], V.M[2], V.M[3]], nx: V.nx, np: V.np, k: kn, ms: st.mast, n: st.all,
+      wt: P2.wt ? { s: P2.wt.s, n: P2.wt.n, d: P2.wt.d } : null, pt: P2.pt ? { lv: P2.pt.lv, s: P2.pt.s } : null, last: last ? dayKey(WD_EPOCH + last * DAYMS) : '', lvh: P2.lvh || [] };
     if (JSON.stringify(lsGet(COV_LS, null)) !== JSON.stringify(S)) { lsSet(COV_LS, S); skillsPushSoon(4000); }
     return c;
   }
+  // ---------- 🎓 v126: مستواه في إنجليزي الاختبار يتقدّم (المالك 19 نوفمبر 2026: «لو كان مستواه A2 ووصل مستوى أعلى يحط له بار للتقدم ويقول له أحسنت وصلت إلى مستوى جديد») ----------
+  // نفس مقياس اختبار تحديد المستوى (wdElv: 9 من 12 = 75%): يعرف نص كلمات «المستوى الأول» = A2 · 75% منها = B1 · و75% من «الثاني» = B2 · و75% من «الثالث» (كلمات الـ90%) = C1
+  //   «يعرف» = آخر إجابة له فيها صح (مثل «تغطيتك») بدون الكلمات الصغيرة · مستواه = الأعلى بين مستواه في مساره (qg_adv.elv) واللي وصله الحين (ما ينزل)
+  //   لما توصله كلماته مستوى أعلى من مستواه: qg_adv.elv يصير الجديد (elv0 = اللي بدأ فيه) + نافذة «أحسنت! وصلت إلى مستوى جديد» مرة وحدة
+  //   P.lva = آخر مستوى وصله (ينزامن: الأعلى) · P.lvh = [[مستوى، وقت]] ترقياته
+  const ELV_REQ = { A2: [[1, 50]], B1: [[1, 75]], B2: [[1, 75], [2, 75]], C1: [[1, 75], [2, 75], [3, 75]] };
+  function wdLvM(D, P) {   // كم بالمئة يعرف من كلمات كل مستوى («الثالث» = كلمات الـ90%)
+    const M = {};
+    [1, 2, 3].forEach(k => { const L = (k === 3 ? D.lv[3].slice(0, +(D.target && D.target['3']) || D.lv[3].length) : D.lv[k]).filter(it => !it[7]); let n = 0;
+      L.forEach(it => { const s = wdSt(P, it[0]); if (s && s.b >= 1) n++; }); M[k] = L.length ? Math.floor(n * 100 / L.length) : 0; });
+    return M;
+  }
+  // {lv: مستواه, now: اللي توصله كلماته الحين, M, nx: اللي بعده, np: كم قطع له %, need: [[مستوى الكلمات, المطلوب, الحين]]}
+  function wdLvl(D, P) {
+    const M = wdLvM(D, P); let now = 'A1';
+    for (const L of ['A2', 'B1', 'B2', 'C1']) { if (ELV_REQ[L].every(r => M[r[0]] >= r[1])) now = L; else break; }
+    const A = advGet(), lv = [now, A && A.elv, P.lva].filter(k => elvI(k) >= 0).sort((a, b) => elvI(b) - elvI(a))[0];
+    const nx = ELV_K[elvI(lv) + 1] || '', R = nx ? ELV_REQ[nx] : [];
+    const np = R.length ? Math.floor(R.reduce((s, r) => s + Math.min(M[r[0]], r[1]), 0) * 100 / R.reduce((s, r) => s + r[1], 0)) : 100;
+    return { lv, now, M, nx, np, need: R.map(r => [r[0], r[1], M[r[0]]]) };
+  }
+  // وصل مستوى أعلى؟ (ينادى مع «تغطيتك»: بعد التدريب والاختبارات وفي «مسارك») — يحدّث مستواه ويفرح له مرة وحدة
+  function wdLvCheck(D) {
+    const P = wdP(), V = wdLvl(D, P), A = advGet(), top = [A && A.elv, P.lva].filter(k => elvI(k) >= 0).sort((a, b) => elvI(b) - elvI(a))[0];
+    if (!top) { if (!P.lva) { P.lva = V.now; wdSave(P); } return V; }   // ما نعرف من وين بدأ: نحفظ اللي وصله بدون احتفال
+    if (elvI(V.now) <= elvI(top)) return V;
+    P.lva = V.now; P.lvh = (P.lvh || []).concat([[V.now, Date.now()]]).slice(-10); wdSave(P);
+    if (A) { if (!A.elv0) A.elv0 = A.elv; A.elv = V.now; A.up = Date.now(); lsSet(ADV_LS, A); skillsPushSoon(2500); }
+    const V2 = wdLvl(D, wdP()); setTimeout(() => lvUpDlg(V2), 400); return V2;
+  }
+  // 🎉 «أحسنت! وصلت إلى مستوى جديد»
+  function lvUpDlg(V) {
+    if (!V || document.querySelector('.lvm')) return;
+    if (document.querySelector('.obm, .advm')) { setTimeout(() => lvUpDlg(V), 4000); return; }   // بعد ما يسكّر النافذة اللي قدامه
+    const nm = firstName(auth && (auth.display || auth.name)), box = document.createElement('div'); box.className = 'modal lvm';
+    box.innerHTML = `<div class="m lvw" role="dialog" aria-modal="true" aria-labelledby="lvh"><div class="lvw-e" aria-hidden="true">🎉</div>
+      <h3 id="lvh">${nm ? _T`أحسنت يا ${esc(nm)}!` : _T('أحسنت!')}</h3><p>${_T('وصلت إلى مستوى جديد في إنجليزي الاختبار')}</p>
+      <div class="lvw-b"><b dir="ltr">${V.lv}</b><span>${ELV[V.lv].t}</span></div>
+      ${V.nx ? `<div class="lvp-bar"><i style="width:${V.np}%"></i></div><p class="lvw-n">${_T`للمستوى ${V.nx}: ${V.np}%`}</p>` : `<p class="lvw-n">${_T('هذا أعلى مستوى 👏')}</p>`}
+      <div class="acts c"><button type="button" class="btn gold" id="lvok">${_T('يلا نكمّل ▶')}</button></div></div>`;
+    document.body.appendChild(box);
+    const onK = e => { if (e.key === 'Escape') close(); }, close = () => { box.remove(); document.removeEventListener('keydown', onK); };
+    document.addEventListener('keydown', onK); box.onclick = e => { if (e.target === box) close(); };
+    const ok = box.querySelector('#lvok'); ok.onclick = close; ok.focus();
+    if (!RM()) burst(box.querySelector('.lvw-b'));
+  }
+  // بطاقة المستوى في «كلماتي»: مستواه + بار للي بعده + وش باقي
+  function lvCard(V) {
+    const A = advGet(), s0 = A && A.elv0 && A.elv0 !== V.lv ? A.elv0 : '';
+    const need = V.need.map(r => `<li class="${r[2] >= r[1] ? 'ok' : ''}">${_T`تعرف ${r[1]}% من كلمات «${WD_LV[r[0]][0]}»`}${r[2] >= r[1] ? ' ✓' : ` <small>${_T`(الحين ${r[2]}%)`}</small>`}</li>`).join('');
+    return `<section class="lvp"><div class="lvp-h"><span class="lvp-b" dir="ltr">${V.lv}</span><div><b>${_T`مستواك في إنجليزي الاختبار: ${ELV[V.lv].t}`}</b><small>${s0 ? _T`بدأت ${s0}، ووصلت ${V.lv} 👏` : _T('يكبر لما تعرف كلمات أكثر من كلمات أسئلة الدورة')}</small></div></div>
+      ${V.nx ? `<div class="lvp-bar" role="progressbar" aria-valuenow="${V.np}" aria-valuemin="0" aria-valuemax="100"><i style="width:${V.np}%"></i></div><p class="lvp-n">${_T`للمستوى ${V.nx} (${ELV[V.nx].t}): <b>${V.np}%</b>`}</p><ul class="lvp-r">${need}</ul>` : `<p class="lvp-n">${_T('وصلت أعلى مستوى 👏')}</p>`}</section>`;
+  }
+
   // 🧪 اختبار الأسبوع: مرة كل 7 أيام · يحتاج 10 كلمات في كلماته على الأقل
   function wdWtDue(P) { return !P.wt || wdDay() - (P.wt.d || 0) >= 7; }
   function wdWtCan(P) { return Object.keys(P.a || {}).length >= 10; }
@@ -4803,7 +4872,8 @@
     '▫️ باقة التأسيس والتدريب: تأسيس اللفظي بالفيديو من الصفر مع اختبار بعد كل درس، ومذكرة تأسيس للكمي وللفظي',
     '▫️ الساحة: تتحدّى طلاب ثانيين مباشرة، وتصوّر أي سؤال ونقولك إذا هو في الدورة ووين',
     '▫️ تقدّمك يتبعك على كل أجهزتك', '',
-    '🛡 ضمان الدرجة: حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك (الشروط في الموقع)', '',
+    '🛡 ضمان الدرجة: حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك (الشروط في الموقع)',
+    '🛡 وفي باقة التأسيس والتدريب: خلّص التأسيس كامل مع التدريب، وإذا جبت أقل من 95 نرجّع لك اشتراكك', '',
     '🏆 نتائج طلابنا في نوفمبر: 97 و94 و92', '',
     '🎁 جرّب مجاناً قبل ما تشترك: القسم 1 كمي، والنموذج 1 لفظي، والاختبار المحاكي 1، وتحديد المستوى'];
   const chDesc = (kind, it, n) => [chHook(kind, it, n), '', ...CH_ABOUT, '🌐 q-guide.online', '📲 للاشتراك تواصل واتساب: ' + ST_WA.replace(/\s/g, ''), '', CH_TAGS].join('\n');
@@ -5723,6 +5793,8 @@
       <div class="rpkey"><span><i class="hi"></i>80% فأكثر</span><span><i class="mid"></i>60–79%</span><span><i class="lo"></i>أقل من 60%</span><span><i class="none"></i>ما حلّه</span>${allLine}</div>
       <section class="rpcard"><div class="rph"><h2>🧪 الاختبارات المحاكية</h2><span class="mut">${tDone.length ? `خلّص ${rpN(tDone.length, 'اختبار واحد', 'اختبارين', 'اختبارات', 'اختبار')} من 17` : 'ما خلّص أي اختبار'}</span></div>
         ${tests.length ? `<div class="rptbl"><div class="rpr head"><span>الاختبار</span><span>أول محاولة</span><span>أفضل</span><span>اللفظي</span><span>الكمي</span><span>المحاولات</span><span>آخر مرة</span></div>${tRows}</div>` : '<p class="mut">ما بدأ أي اختبار محاكي.</p>'}</section>
+      ${grtRpt(d)}
+      ${engRpt(d.skills)}
       <section class="rpcard rpsk">${skillsBarsHtml(d.skills && d.skills.data ? histAgg(JSON.parse(d.skills.data)) : null, true)}</section>
       <div class="rpus">${usage}</div>
       <p class="mut rpft">التقرير وقت ${new Date(d.t).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' })} · الأسئلة والوقت من الأقسام والنماذج اللي خلّصها (المحاكي لحاله).</p>`;
@@ -6380,6 +6452,7 @@
   // «الإعدادات والسجل» (#admin-settings): انتهاء الاشتراكات تلقائياً والتذكير · تنبيهات المالك على جهازه · النسخ الاحتياطي · سجل الإدارة · أخطاء الموقع
   const ADM_PG = {
     home: ['🏠', 'الرئيسية', 'وش يحتاج قرارك اليوم، وأرقام الموقع في نظرة وحدة.'],
+    eng: ['🔤', 'مستويات الإنجليزي', 'مستوى كل طالب في إنجليزي الاختبار: بدأ وين ووصل وين، تغطيته لكلام الأسئلة، وكم يتدرّب في «كلماتي».'],
     students: ['👥', 'الطلاب', 'كل المشتركين: دخولهم ونتائجهم وموعد اشتراكهم. اضغط على أي طالب تفتح بطاقته.'],
     ai: ['🎓', 'المرشد الذكي', 'تشغيل المرشد وحدوده اليومية، وآخر شروحاته وبلاغات الطلاب عليها.'],
     find: ['🔎', 'البحث والبلاغات', 'الأسئلة اللي دوّر عنها الطلاب، واللي بلّغوا إنها مو في الدورة.'],
@@ -6394,8 +6467,8 @@
     staff: ['🛡', 'الفريق', 'المشرفين وصلاحياتهم.'],
     settings: ['⚙️', 'الإعدادات والسجل', 'انتهاء الاشتراكات، تنبيهاتك، النسخ الاحتياطي، وسجل كل اللي صار في اللوحة.'],
   };
-  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'unpaid', 'members', 'regs']], ['المحتوى', ['vids', 'studio']], ['النظام', ['staff', 'settings']]];
-  const ADM_HREF = { home: '#admin-home', students: '#admin', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', unpaid: '#admin-unpaid', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', staff: '#admin-staff', settings: '#admin-settings' };
+  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'eng', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'unpaid', 'members', 'regs']], ['المحتوى', ['vids', 'studio']], ['النظام', ['staff', 'settings']]];
+  const ADM_HREF = { home: '#admin-home', students: '#admin', eng: '#admin-eng', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', unpaid: '#admin-unpaid', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', staff: '#admin-staff', settings: '#admin-settings' };
   const ADM_ALL = { students: 1, staff: 1, studio: 1 };   // يشوفها كل مشرف · الباقي للمالك بس
   function admTop(tab) {
     const OW = isOwner(), pg = ADM_PG[tab] || ADM_PG.students, H = ADM.home;
@@ -6550,6 +6623,105 @@
   const PF_HOW = { email: 'إيميله في سلة نفس إيميل حسابه', phone: 'جواله نفس جوال حسابه', link: 'سلّته من رابطه الخاص', time: 'ضغط «ادفع» في الموقع قبلها بدقايق' };
   const pfLocal = p => /^9665\d{8}$/.test(p || '') ? '0' + p.slice(3) : '+' + p;
   const pfMsg = x => `هلا ${firstName(x.name || '') || ''} 👋\nمعك دعم Q-Guide (دورة القدرات).\nشفنا إنك بديت ${x.stage === 'renew' ? 'تجديد اشتراكك' : 'الاشتراك'} وما اكتمل الدفع. وش وقّفك؟\nلو صار معك شي في الدفع أو عندك سؤال، رد علينا هنا ونساعدك على طول.`.replace('هلا  👋', 'هلا 👋');
+  // ---------- 🔤 v126 «مستويات الإنجليزي» (المالك 19 نوفمبر 2026: «ابيك تعطيني صلاحية اشوف مستويات الطلاب في الانجليزي وجميع التفاصيل الادارية اللي احتاج اعرفها») ----------
+  //   op adm_eng (API cf-93) = لكل طالب من بيانات المهارات المتزامنة: adv (مساره: elv الحين، elv0 بدأ فيه، ed أيام «إنجليزي الاختبار»، es بدايته، mins وقته، goal هدفه)
+  //   + cov (ملخص «كلماتي» من الموقع: lv مستواه، a التغطية، p الأسبوع اللي قبله، m [المستويات الثلاث %]، nx/np اللي بعده وكم قطع له، k يعرفها، ms أتقنها، n في قائمته،
+  //   wt اختبار الأسبوع، pt اختبار تحديد المستوى، last آخر تدريب، lvh ترقياته، d آخر حساب) · كل الأرقام من حساب الطالب نفسه (طالب ما فتح «كلماتي» من نسخة 124 ما له ملخص)
+  const ENGF = { f: 'all', q: '', s: 'lv' };
+  const engLv = x => (x.cov && x.cov.lv) || (x.adv && x.adv.elv) || '';
+  const engLv0 = x => (x.adv && x.adv.elv0) || (x.cov && x.cov.lv0) || (x.adv && x.adv.elv) || '';
+  const engLast = x => x.cov && /^\d{4}-\d{2}-\d{2}$/.test(x.cov.last || '') ? new Date(x.cov.last + 'T12:00:00').getTime() : 0;
+  const engWkDay = d => WD_EPOCH + (+d || 0) * DAYMS;   // يوم «كلماتي» (أيام من 1 يناير 2026) ← وقت
+  const engAgo = t => { if (!t) return '—'; const n = dayDiff(t, Date.now()); return n <= 0 ? 'اليوم' : n === 1 ? 'أمس' : 'من ' + dLabel(n); };
+  function engStage(adv) {   // وين هو في مساره
+    if (!adv || !adv.elv) return 'ما جهّز مساره';
+    const n = Math.max(1, dayDiff(adv.es || Date.now(), Date.now()) + 1);
+    return adv.ed > 0 && n <= adv.ed ? `«إنجليزي الاختبار» · اليوم ${n} من ${adv.ed}` : 'خطة القدرات';
+  }
+  async function renderEngAdmin() {
+    document.title = 'مستويات الإنجليزي | Q-Guide';
+    const top = () => { app.innerHTML = admTop('eng'); bindCtl(); $('#admref').onclick = () => { ADM.eng = null; renderEngAdmin(); }; };
+    top();
+    try { await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; } if (!ADM.eng) ADM.eng = await admCall({ op: 'adm_eng' }); }
+    catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    if (location.hash !== '#admin-eng') return;
+    top(); paintEng();
+  }
+  function paintEng() {
+    const W = $('#adm'), E = ADM.eng; if (!W || !E) return;
+    const now = Date.now(), L = (E.list || []).filter(x => !x.staff), act = x => engLast(x) && dayDiff(engLast(x), now) <= 7;
+    const cov = L.filter(x => x.cov && Number.isFinite(+x.cov.a)), avg = cov.length ? Math.round(cov.reduce((s, x) => s + (+x.cov.a), 0) / cov.length) : null;
+    const ups = L.filter(x => x.cov && Array.isArray(x.cov.lvh) && x.cov.lvh.length), wt = L.filter(x => x.cov && x.cov.wt && dayDiff(engWkDay(x.cov.wt.d), now) <= 7);
+    const tile = (ic, b, t1) => `<div class="sbt"><span class="i" aria-hidden="true">${ic}</span><b>${b}</b><span>${t1}</span></div>`;
+    const cnt = (f, k) => L.filter(x => f(x) === k).length, mx = Math.max(1, ...ELV_K.map(k => Math.max(cnt(engLv, k), cnt(engLv0, k))));
+    const dist = ELV_K.map(k => `<div class="eng-d"><span class="eng-b">${k}</span><div class="eng-db"><i class="s" style="width:${cnt(engLv0, k) * 100 / mx}%"></i><i style="width:${cnt(engLv, k) * 100 / mx}%"></i></div><small>الحين <b>${cnt(engLv, k)}</b> · بدأوا ${cnt(engLv0, k)}</small></div>`).join('');
+    const F = ENGF, q = F.q.trim().toLowerCase();
+    let rows = L.filter(x => F.f === 'all' ? true : F.f === 'idle' ? !act(x) : F.f === 'up' ? ups.indexOf(x) >= 0 : F.f === 'nopath' ? !(x.adv && x.adv.elv) : engLv(x) === F.f);
+    if (q) rows = rows.filter(x => (x.n || '').toLowerCase().indexOf(q) >= 0 || x.e.indexOf(q) >= 0);
+    const by = { lv: (a, b) => elvI(engLv(b)) - elvI(engLv(a)) || (+(b.cov || {}).a || 0) - (+(a.cov || {}).a || 0), cov: (a, b) => (+(b.cov || {}).a || 0) - (+(a.cov || {}).a || 0), last: (a, b) => engLast(b) - engLast(a), name: (a, b) => (a.n || '').localeCompare(b.n || '', 'ar') };
+    rows.sort(by[F.s] || by.lv);
+    const row = x => { const c = x.cov || {}, a = x.adv || {}, l0 = engLv0(x), l1 = engLv(x), up = l0 && l1 && elvI(l1) > elvI(l0);
+      return `<a class="eng-r" href="#admin-report/${encodeURIComponent(x.e)}">
+        <span class="eng-n"><b>${esc(x.n)}</b><small dir="ltr">${esc(x.e)}</small>${x.ended ? '<small class="red">اشتراكه منتهي</small>' : x.until ? `<small>اشتراكه لين ${fmtDay(x.until)}</small>` : ''}</span>
+        <span class="eng-lv">${l0 ? `<span class="eng-b">${l0}</span>` : ''}${up ? `<span class="eng-ar" aria-hidden="true">←</span><span class="eng-b now">${l1}</span><span class="eng-up">↑ ترقّى</span>` : ''}${!l0 && l1 ? `<span class="eng-b now">${l1}</span>` : ''}${!l0 && !l1 ? '<small class="mut">—</small>' : ''}</span>
+        <span class="eng-cv"><b>${Number.isFinite(+c.a) ? c.a + '%' : '—'}</b><small>التغطية${Number.isFinite(+c.p) && c.p !== null ? ` · قبل أسبوع ${c.p}%` : ''}</small></span>
+        <span class="eng-np">${c.nx ? `<span class="eng-bar"><i style="width:${+c.np || 0}%"></i></span><small>${+c.np || 0}% للمستوى ${c.nx}</small>` : c.lv === 'C1' ? '<small>أعلى مستوى</small>' : '<small class="mut">—</small>'}</span>
+        <span class="eng-k"><b>${Number.isFinite(+c.k) ? c.k : '—'}</b><small>${Number.isFinite(+c.ms) ? `يعرفها · أتقن ${c.ms}` : 'كلمة'}</small></span>
+        <span class="eng-l"><b>${engAgo(engLast(x))}</b><small>آخر تدريب${c.wt ? ` · اختبار الأسبوع ${c.wt.s}/${c.wt.n}` : ''}</small></span>
+        <span class="eng-p"><b>${engStage(a)}</b><small>${a.mins ? advMinsT(a.mins) + ' باليوم' : ''}${a.goal ? ` · هدفه ${a.goal}+` : ''}</small></span></a>`; };
+    const chip = (k, t, n) => `<button type="button" class="${F.f === k ? 'on' : ''}" data-f="${k}">${t}${n != null ? ` <small>${n}</small>` : ''}</button>`;
+    W.innerHTML = `<div class="stf subs engpg">
+      <div class="sbtiles n5">${tile('🧭', L.filter(x => x.adv && x.adv.elv).length, 'جهّزوا مسارهم')}${tile('📚', L.filter(act).length, 'تدرّبوا في «كلماتي» آخر 7 أيام')}${tile('📖', avg == null ? '—' : avg + '%', 'متوسط التغطية لكلام الأسئلة')}${tile('🎓', ups.length, 'وصلوا مستوى أعلى من بدايتهم')}${tile('🧪', wt.length, 'سوّوا اختبار الأسبوع آخر 7 أيام')}</div>
+      <div class="rgsync">ℹ️ <span>المستوى يكبر لما يعرف 50% من كلمات «المستوى الأول» في «كلماتي» (A2)، و75% منها (B1)، و75% من «الثاني» (B2)، و75% من «الثالث» (C1). «يعرف» = آخر إجابة له فيها صح. الأرقام توصل من جهاز الطالب لما يفتح «كلماتي» أو صفحة المهارات أو الرئيسية.</span></div>
+      <h3 class="eng-h">المستويات <small>(اللون الفاتح = اللي بدأوا فيه)</small></h3><div class="eng-dist">${dist}</div>
+      <div class="eng-f"><div class="seg">${chip('all', 'الكل', L.length)}${ELV_K.map(k => chip(k, k, cnt(engLv, k))).join('')}${chip('up', '🎓 ترقّوا', ups.length)}${chip('idle', '😴 ما تدرّبوا أسبوع', L.filter(x => !act(x)).length)}${chip('nopath', 'ما جهّزوا مسارهم', L.filter(x => !(x.adv && x.adv.elv)).length)}</div>
+        <input id="engq" class="eng-q" placeholder="ابحث بالاسم أو الإيميل" value="${esc(F.q)}" autocomplete="off">
+        <select id="engs" class="eng-s" aria-label="الترتيب"><option value="lv"${F.s === 'lv' ? ' selected' : ''}>حسب المستوى</option><option value="cov"${F.s === 'cov' ? ' selected' : ''}>حسب التغطية</option><option value="last"${F.s === 'last' ? ' selected' : ''}>آخر تدريب</option><option value="name"${F.s === 'name' ? ' selected' : ''}>الاسم</option></select></div>
+      <div class="eng-list">${rows.map(row).join('') || '<p class="mut">ما فيه طلاب هنا.</p>'}</div>
+      <p class="mut eng-ft">${L.length} طالب · آخر تحديث ${fmtD(E.t)}</p></div>`;
+    W.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { ENGF.f = b.dataset.f; paintEng(); });
+    const qi = $('#engq'); qi.oninput = () => { ENGF.q = qi.value; const p = qi.selectionStart; paintEng(); const n = $('#engq'); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} } };
+    $('#engs').onchange = e => { ENGF.s = e.target.value; paintEng(); };
+  }
+  // 🛡 v126: الضمان في التقرير الشامل — 90: حل كل أسئلة الأقسام الـ14 والنماذج الـ14 (عنده نتيجة لكل واحد = خلّص محاولة كاملة)
+  //   · 95 (باقة «التأسيس والتدريب»): ونفسها + شاهد كل دروس التأسيس (كل درس عند أي مدرس: ss/ts المهارات 5، sf/tf الدروس 24، af/tb اللفظي 4) من vw المتزامن
+  function grtRpt(d) {
+    const done = new Set((d.results || []).map(r => r.set_id)), q = [], v = [];
+    for (let i = 1; i <= 14; i++) { if (!done.has('q' + i)) q.push(i); if (!done.has('v' + i)) v.push(i); }
+    let D = null; try { D = d.skills && d.skills.data ? JSON.parse(d.skills.data) : null; } catch (e) {}
+    const W = new Set((D && Array.isArray(D.vw)) ? D.vw : []), miss = [];
+    const has = (a, b, n) => W.has(a + ':' + n) || W.has(b + ':' + n);
+    for (let n = 1; n <= 5; n++) if (!has('ss', 'ts', n)) miss.push('مهارة ' + n);
+    for (let n = 1; n <= 24; n++) if (!has('sf', 'tf', n)) miss.push('درس ' + n);
+    for (let n = 1; n <= 4; n++) if (!has('af', 'tb', n)) miss.push('لفظي ' + n);
+    const pk = d.pk && d.pk.pkg, t90 = !q.length && !v.length, f95 = !miss.length;
+    const st = ok => ok ? '<b class="okt">✓</b>' : '<b class="badt">✗</b>';
+    const li = (k, v2) => `<div class="rpr"><span>${k}</span><span>${v2}</span></div>`;
+    return `<section class="rpcard"><div class="rph"><h2>🛡 الضمان</h2><span class="mut">من نتائجه المحفوظة والدروس اللي شاهدها كاملة (من نسخة 126 تنزامن مع حسابه)</span></div><div class="rptbl eng-rpt">
+      ${li('حل كل الأقسام والنماذج (ضمان 90)', `${st(t90)} الكمي ${14 - q.length} من 14 · اللفظي ${14 - v.length} من 14${q.length ? ` <small>(باقي الأقسام ${q.join('، ')})</small>` : ''}${v.length ? ` <small>(باقي النماذج ${v.join('، ')})</small>` : ''}`)}
+      ${li('خلّص التأسيس كامل (ضمان 95)', `${st(f95)} شاهد ${33 - miss.length} من 33 درس${miss.length && miss.length <= 12 ? ` <small>(باقي: ${miss.join('، ')})</small>` : ''}`)}
+      ${li('باقته', pk === 'full' ? '«التأسيس والتدريب»: ضمان 95 يشمله' : pk === 'train' ? '«التدريب»: ضمان 90 بس' : 'قبل الباقات (كل المحتوى مفتوح)')}
+      </div></section>`;
+  }
+  // 🔤 قسم الإنجليزي في التقرير الشامل (من نفس البيانات)
+  function engRpt(sk) {
+    let D = null; try { D = sk && sk.data ? JSON.parse(sk.data) : null; } catch (e) {}
+    const a = (D && D.adv) || {}, c = (D && D.cov) || {}; if (!a.elv && !Number.isFinite(+c.a)) return '';
+    const l0 = a.elv0 || c.lv0 || a.elv || '', l1 = c.lv || a.elv || '', m = Array.isArray(c.m) ? c.m : [];
+    const li = (k, v) => `<div class="rpr"><span>${k}</span><span>${v}</span></div>`;
+    return `<section class="rpcard"><div class="rph"><h2>🔤 الإنجليزي</h2><span class="mut">${engStage(a)}${a.mins ? ' · ' + advMinsT(a.mins) + ' باليوم' : ''}${a.goal ? ` · هدفه ${a.goal}+` : ''}</span></div>
+      <div class="rptbl eng-rpt">
+        ${li('المستوى', l0 && l1 && l0 !== l1 ? `بدأ <b>${l0}</b> ووصل <b>${l1}</b> ${(c.lvh || []).map(x => `<small>(${x[0]} ${fmtDay(x[1])})</small>`).join(' ')}` : `<b>${l1 || l0 || '—'}</b>`)}
+        ${c.nx ? li('للمستوى اللي بعده', `${c.nx}: قطع <b>${+c.np || 0}%</b>`) : ''}
+        ${Number.isFinite(+c.a) ? li('التغطية لكلام الأسئلة', `<b>${c.a}%</b>${Number.isFinite(+c.p) && c.p !== null ? ` · الأسبوع اللي قبله ${c.p}%` : ''}`) : ''}
+        ${m.length ? li('يعرف من كلمات المستويات', `الأول ${m[0]}% · الثاني ${m[1]}% · الثالث ${m[2]}%`) : ''}
+        ${Number.isFinite(+c.k) ? li('كلماته', `يعرف ${c.k} · أتقن ${c.ms} · في قائمته ${c.n}`) : ''}
+        ${c.pt ? li('اختبار تحديد المستوى', `${(c.pt.s || []).join(' / ')} من 12`) : ''}
+        ${c.wt ? li('آخر اختبار أسبوع', `${c.wt.s} من ${c.wt.n} · ${fmtDay(engWkDay(c.wt.d))}`) : ''}
+        ${li('آخر تدريب في «كلماتي»', engAgo(engLast({ cov: c })))}
+      </div></section>`;
+  }
+
   async function renderUnpaid() {
     document.title = 'ما كمّلوا الدفع | Q-Guide';
     const top = () => { app.innerHTML = admTop('unpaid'); bindCtl(); $('#admref').onclick = () => { ADM.pf = null; renderUnpaid(); }; };

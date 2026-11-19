@@ -23,7 +23,7 @@ img{max-width:100%}
 .hd{background:var(--n8);color:#fff}
 .hdw{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:68px}
 .brand{display:inline-flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:.2px;direction:ltr;flex-shrink:0}
-.brand img{width:38px;height:38px;border-radius:50%;background:#fff}
+.brand img{width:38px;height:38px;border-radius:50%}
 .hdn{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .hl{color:#D8E1FA;text-decoration:none;font-weight:500;font-size:16px;padding:6px 10px;border-radius:10px}
 .hl:hover{color:#fff;background:rgba(255,255,255,.08)}
@@ -233,3 +233,6 @@ img{max-width:100%}
   .ft2 .c{margin-inline-start:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* 🛡 ضمان 95 على بطاقة «التأسيس والتدريب» (19 نوفمبر 2026) */
+.pk95{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;padding:10px 12px;border-radius:12px;background:rgba(233,162,59,.12);border:1px solid rgba(233,162,59,.45);font-size:14px;line-height:1.7}
+.pk95 b{margin-inline-end:4px}.pk95 a{font-weight:700}
