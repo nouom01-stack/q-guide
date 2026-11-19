@@ -6315,29 +6315,59 @@
         <div class="rfk"><div><b>${K.users || 0}</b><span>دخلوا البوت</span></div><div><b>${K.week || 0}</b><span>نشطين آخر 7 أيام</span></div><div><b>${K.n || 0}</b><span>سؤال انحل</span></div><div><b>${pct}</b><span>إجابات صحيحة</span></div><div><b>${K.site || 0}</b><span>زيارة للموقع من تيليقرام (30 يوم)</span></div></div>
       </section>`;
   }
-  // 💬 دعم واتساب الآلي (v118، API wa.js): الحالة + خطوات الربط + آخر الرسائل + «أنا أرد عليه»
+  // 💬 دعم واتساب الآلي (v118 · v120): الحالة + آخر الرسائل + «أنا أرد عليه» — API wa.js (adm_wa / adm_wa_human)
+  //   mode 'web' (cf-81؛ المالك رفض ميتا 19 نوفمبر 2026) = برنامج wa-web/wa_watch.py على جهازه يفتح واتساب ويب برقم الدعم: نبض كل 5 دقايق
+  //     web = {at, st: main · qr · stopped, n = ردوده اليوم, c = أسئلته لكلود اليوم}، و on = آخر نبض قبل أقل من 15 دقيقة وحالته مو qr / stopped
+  //   mode 'api' أو فاضي = بوت ميتا (نايم): «ناقص في Cloudflare» + خطوات الربط
   const WA_K = { faq: '📋 جواب جاهز', menu: '📋 القائمة', ai: '🤖 المساعد', human: '🙋 تحوّل لك', 'human-wait': '⏸ ينتظرك', media: '📎 صورة/صوت', 'menu-ai-off': '📋 القائمة (المساعد مشغول)', 'menu-max': '📋 القائمة (حدّه اليومي)', in: '…' };
+  // رقم جوال · غيره «t…» = محادثة باسم جهة اتصال محفوظة في جوال الدعم (البرنامج ما يشوف رقمها): بدون رقم ولا رابط واتساب ولا «أنا أرد عليه» (adm_wa_human ياخذ أرقام بس)
+  const waNum = wa => /^\d{6,15}$/.test(wa || '');
+  const waT = ms => new Date(ms).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
   function waBox() {
     const W = SET.wa; if (!W) return '<section class="setc"><h2>💬 دعم واتساب الآلي</h2><p class="mut setd">تعذّر تحميل الحالة. حدّث الصفحة.</p></section>';
+    const now = Date.now(), rows = (W.rows || []).filter(r => r.kind !== 'in').slice(0, 25);
+    const kpi = `<div><b>${W.users || 0}</b><span>راسلوا البوت</span></div><div><b>${W.d7 || 0}</b><span>آخر 7 أيام</span></div><div><b>${W.human || 0}</b><span>ينتظرون ردّك</span></div>`;
+    return `<section class="setc" aria-labelledby="set8"><h2 id="set8">💬 دعم واتساب الآلي</h2>
+        ${W.mode === 'web' ? waWebTop(W, now, kpi) : waApiTop(W, kpi)}
+        ${rows.length ? `<div class="walog">${rows.map(r => waRow(r, now)).join('')}</div>` : ''}
+      </section>`;
+  }
+  // 🖥 برنامج جهاز المالك (بدون ميتا ولا Cloudflare): وش يسوي + حالته (شغّال · يبي الرمز · واقف) + الأرقام، ومعها ردود اليوم وأسئلة كلود اليوم من آخر نبض (لو كان اليوم)
+  function waWebTop(W, now, kpi) {
+    const B = W.web || {}, at = Number(B.at) || 0, td = at && rDay(at) === rDay(now), beat = at ? ` آخر نبض: ${waT(at)}.` : '';
+    const st = W.on ? ['✓ شغّال على جهازك: يرد على الطلاب لحاله', 'يرسل نبض كل 5 دقايق.' + beat]
+      : B.st === 'qr' && now - at < 15 * 60e3 ? ['📵 واقف: واتساب ويب طلع من الحساب', 'افتح نافذة البرنامج في جهازك، وامسح الرمز من جوالك: الأجهزة المرتبطة ← ربط جهاز.' + beat]
+      : ['⏹ واقف: البرنامج مو شغّال على جهازك', 'جهازك طافي أو البرنامج مقفّل. شغّله من ملف <bdi dir="ltr">start-wa</bdi> في مجلد <bdi dir="ltr">wa-web</bdi>.' + beat];
+    return `<div class="mut setd">برنامج على جهازك يفتح واتساب ويب برقم الدعم، ويرد على أي طالب يراسله:<ul class="wapts">
+          <li>الأسعار والباقات والاشتراك والدفع والدخول: أجوبة جاهزة بدون أي تكلفة.</li>
+          <li>باقي الأسئلة يجاوبها كلود هايكو من جهازك.</li>
+          <li>لو كتب «5» أو طلب يكلّم أحد: يحوّل المحادثة لك، ويخليها غير مقروءة، ويوصلك تنبيه.</li>
+          <li>لو رديت أنت من جوالك على أي محادثة: يوقف الرد الآلي فيها 12 ساعة.</li></ul></div>
+        <div class="setrow"><div class="setl"><b>${st[0]}</b><small>${st[1]}</small></div></div>
+        <div class="rfk">${kpi}<div><b>${td ? B.n || 0 : 0}</b><span>ردود اليوم</span></div><div><b>${td ? B.c || 0 : 0}</b><span>أسئلة لكلود اليوم</span></div></div>`;
+  }
+  // بوت ميتا (cf-79، نايم): نفس اللوحة القديمة — الحالة + الأسرار الناقصة + خطوات الربط
+  function waApiTop(W, kpi) {
     const hook = 'https://q-guide-api.nouom01.workers.dev/wa/webhook';
     const st = W.on ? ['✓ شغّال: يرد على الطلاب لحاله', 'الأسئلة المعروفة لها أجوبة جاهزة، والباقي يجاوبه المساعد من الحصة المجانية، و«5» أو «موظف» يحوّل لك.']
       : ['⚠️ ما انربط للحين', 'ناقص في Cloudflare: ' + (W.missing || []).join('، ')];
-    const now = Date.now(), rows = (W.rows || []).filter(r => r.kind !== 'in').slice(0, 25);
-    return `<section class="setc" aria-labelledby="set8"><h2 id="set8">💬 دعم واتساب الآلي</h2>
-        <p class="mut setd">يرد على أي طالب يراسل رقم الدعم: الأسعار والباقات والاشتراك والدفع والدخول بأجوبة جاهزة (بدون أي تكلفة)، وغيرها يجاوبه المساعد من حصة اليوم المجانية. لو كتب «5» أو طلب موظف: يوقف الرد الآلي لرقمه 12 ساعة ويوصلك تنبيه.</p>
+    return `<p class="mut setd">يرد على أي طالب يراسل رقم الدعم: الأسعار والباقات والاشتراك والدفع والدخول بأجوبة جاهزة (بدون أي تكلفة)، وغيرها يجاوبه المساعد من حصة اليوم المجانية. لو كتب «5» أو طلب موظف: يوقف الرد الآلي لرقمه 12 ساعة ويوصلك تنبيه.</p>
         <div class="setrow"><div class="setl"><b>${st[0]}</b><small>${esc(st[1])}</small></div></div>
-        ${W.on ? `<div class="rfk"><div><b>${W.users || 0}</b><span>راسلوا البوت</span></div><div><b>${W.d7 || 0}</b><span>آخر 7 أيام</span></div><div><b>${W.human || 0}</b><span>ينتظرون ردّك</span></div></div>` : `<details class="wasetup"><summary>خطوات الربط (مرة وحدة)</summary><ol>
+        ${W.on ? `<div class="rfk">${kpi}</div>` : `<details class="wasetup"><summary>خطوات الربط (مرة وحدة)</summary><ol>
           <li>من <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">Meta for Developers</a>: أنشئ تطبيق نوعه Business وأضف له WhatsApp.</li>
           <li>اربط رقم الدعم (أو رقم جديد للبوت) من WhatsApp → API Setup، وانسخ «Phone number ID».</li>
           <li>من Business Settings → System users: أنشئ مستخدم نظام وأعطه صلاحية whatsapp_business_messaging، وطلّع له توكن دائم.</li>
           <li>من إعدادات التطبيق انسخ «App secret».</li>
           <li>في Cloudflare → Workers → q-guide-api → Settings → Variables and Secrets: أضف WA_TOKEN و WA_PHONE_ID و WA_APP_SECRET، و WA_VERIFY (أي كلمة تختارها).</li>
-          <li>في WhatsApp → Configuration → Webhook: الرابط <code dir="ltr">${hook}</code> و Verify token نفس كلمة WA_VERIFY، واشترك في «messages».</li></ol></details>`}
-        ${rows.length ? `<div class="walog">${rows.map(r => `<div class="wal"><div class="wah"><b>${esc(r.name || r.wa)}</b><small dir="ltr">+${esc(r.wa)}</small><span class="wak">${WA_K[r.kind] || esc(r.kind)}</span><small>${new Date(r.at).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' })}</small><span class="wabt">
+          <li>في WhatsApp → Configuration → Webhook: الرابط <code dir="ltr">${hook}</code> و Verify token نفس كلمة WA_VERIFY، واشترك في «messages».</li></ol></details>`}`;
+  }
+  // محادثة: الاسم (أو الرقم لو ما له اسم، مرة وحدة) · نوع الرد · الوقت · «أنا أرد عليه» / «رجّع الرد الآلي» + رابط واتساب للأرقام بس
+  function waRow(r, now) {
+    const num = waNum(r.wa);
+    return `<div class="wal"><div class="wah"><b${!r.name && num ? ' dir="ltr"' : ''}>${esc(r.name || (num ? '+' + r.wa : 'جهة اتصال'))}</b>${num ? (r.name ? `<small dir="ltr">+${esc(r.wa)}</small>` : '') : '<small>محفوظ في جوالك</small>'}<span class="wak">${WA_K[r.kind] || esc(r.kind)}</span><small>${waT(r.at)}</small>${num ? `<span class="wabt">
           ${r.human_until > now ? `<button type="button" class="btn sm ghost" data-wah="${esc(r.wa)}" data-on="0">🤖 رجّع الرد الآلي</button>` : `<button type="button" class="btn sm ghost" data-wah="${esc(r.wa)}" data-on="1">🙋 أنا أرد عليه</button>`}
-          <a class="btn sm ghost" href="https://wa.me/${esc(r.wa)}" target="_blank" rel="noopener">واتساب</a></span></div>
-          <p dir="auto" class="waq">${esc(r.q || '')}</p>${r.a ? `<p dir="auto" class="waa">${esc(r.a)}</p>` : ''}</div>`).join('')}</div>` : ''}
-      </section>`;
+          <a class="btn sm ghost" href="https://wa.me/${esc(r.wa)}" target="_blank" rel="noopener">واتساب</a></span>` : ''}</div>
+          <p dir="auto" class="waq">${esc(r.q || '')}</p>${r.a ? `<p dir="auto" class="waa">${esc(r.a)}</p>` : ''}</div>`;
   }
   function waBind(repaint) {
     document.querySelectorAll('[data-wah]').forEach(b => b.onclick = async () => { b.disabled = true;

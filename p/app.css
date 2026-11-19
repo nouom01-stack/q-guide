@@ -3676,6 +3676,8 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .wal{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:4px}
 .wah{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.wabt{display:flex;gap:6px;margin-inline-start:auto}.wah small{color:var(--mut)}.wak{font-size:calc(12px * var(--fs));font-weight:800;border-radius:999px;padding:1px 9px;background:var(--dotbg);color:var(--royal)}
 .waq,.waa{margin:0;white-space:pre-wrap;font-size:calc(13.5px * var(--fs));line-height:1.6}.waq{font-weight:700}.waa{color:var(--mut);border-inline-start:3px solid var(--line);padding-inline-start:8px}
+/* v120: وش يسوي برنامج جهاز المالك (mode 'web') */
+.wapts{margin:4px 0 0;padding-inline-start:20px;display:grid;gap:2px}.wapts li::marker{color:var(--gold)}
 /* 📚 v119 «كلماتي»: صفحة الكلمات + التدريب + اختبار تحديد المستوى */
 .wdp .wdh{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 20px;box-shadow:var(--sh)}
 .wdh h1{margin:0;font-family:var(--disp);font-size:calc(26px * var(--fs));color:var(--ink2)}
