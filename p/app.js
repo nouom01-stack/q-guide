@@ -36,11 +36,12 @@
   //    auth.plan = اللي مفتوح للمشترك الحين: 'train' = بدون التأسيس (دروس التأسيس بالفيديو واختباراتها ومذكرتا التأسيس) · غيرها = كل شي. المشترك من قبل الباقات يبقى له كل شي.
   //    auth.pkg = الباقة اللي اشتراها ('' = قديم) · auth.fu = التأسيس باقي مفتوح له لين هالوقت (جدّد «التدريب» وكان عنده كل شي)
   const PKN = k => (k === 'full' ? _T('التأسيس والتدريب') : _T('التدريب'));
-  const pkDur = m => (m === 2 ? _T('شهرين') : _T('شهر'));
+  // 🎁 f = الشهور المجانية فوق مدة الباقة وقت العرض (v116، طلب المالك 19 نوفمبر 2026: «شهر وشهر مجاناً» و«شهرين وشهرين مجاناً»، والسعر 149 / 239)
+  const pkDur = (m, f) => !f ? (m === 2 ? _T('شهرين') : _T('شهر')) : f === m ? (m === 2 ? _T('شهرين + شهرين مجاناً') : _T('شهر + شهر مجاناً')) : _T`${m + f} شهور`;
   const pkList = () => { const g = sallaOn() ? auth.salla : payOn() ? auth.pay : null, pk = (g && g.pk) || null;
     const T = (pk && pk.train) || {}, U = (pk && pk.full) || {};   // 🏷 وقت العرض: was = السعر الأصلي (يطلع مشطوب) · until = نهاية العرض
-    const L = [{ k: 'train', price: T.price || (g && g.price) || PRICE, was: T.was || 0, until: T.until || 0, months: 1, url: T.url || (g && g.url) || '' }];
-    if (!g || (pk && pk.full)) L.push({ k: 'full', price: U.price || PRICE2, was: U.was || 0, until: U.until || 0, months: 2, url: U.url || '' });
+    const L = [{ k: 'train', price: T.price || (g && g.price) || PRICE, was: T.was || 0, free: T.free || 0, until: T.until || 0, months: 1, url: T.url || (g && g.url) || '' }];
+    if (!g || (pk && pk.full)) L.push({ k: 'full', price: U.price || PRICE2, was: U.was || 0, free: U.free || 0, until: U.until || 0, months: 2, url: U.url || '' });
     return L; };
   // 🏷 وقت العرض الكتابة «عرض لفترة محدودة» (طلب المالك 14 نوفمبر: بدون تاريخ، والعرض فعلاً ينتهي لحاله في until — صندوق المالك يعرض التاريخ)   // «30 نوفمبر»
   const pkTwo = () => pkList().length > 1;
@@ -104,8 +105,15 @@
   // ---------- utils ----------
   // يلفّ المقاطع الرياضية/الإنجليزية داخل النص العربي بعنصر LTR حتى لا تنعكس (مثل 10 + 10 − 1 = 19)
   const MATHRUN = /[0-9A-Za-z√π°²³⁴¹⁰⁻⁺\(\)\[\]\+\-−×÷=≈≤≥<>\/\.,%:'’ ]+/g;
+  // 🐞 v116: نلقى المقاطع في النص الأصلي ونهرّب كل قطعة لحالها. قبل كان يهرّب النص كله أول، فـ«x < 0» يصير «x &lt; 0» والمقطع
+  //    يقص «lt» من وسط الرمز، فيطلع «&lt;» مكتوب في 44 شرح (وفي بطاقات الاستوديو)
   function wrapMath(raw) {
-    return esc(raw).replace(MATHRUN, m => {
+    const s = String(raw == null ? '' : raw); let out = '', last = 0;
+    for (const mm of s.matchAll(MATHRUN)) { out += esc(s.slice(last, mm.index)) + mathRun(mm[0]); last = mm.index + mm[0].length; }
+    return out + esc(s.slice(last));
+  }
+  function mathRun(m) {
+    {
       let lead = '', trail = '', core = m, x, ch = true;
       const bal = t => (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
       // أطراف المقطع اللي تخص الجملة العربية تبقى برا (وإلا تنقلب للطرف الثاني من المقطع):
@@ -120,10 +128,10 @@
       }
       const t = core.trim();
       const mathy = /[+−\-×÷=≈≤≥<>\/√π]/.test(t) || /[A-Za-z]/.test(t) || /\d\s*[,.]\s*\d/.test(t);
-      if (t.length < 2 || !mathy || !/[0-9A-Za-z√π]/.test(t)) return m;
+      if (t.length < 2 || !mathy || !/[0-9A-Za-z√π]/.test(t)) return esc(m);
       const ls = /^\s*/.exec(core)[0], ts = /\s*$/.exec(core)[0];   // المسافات تبقى برا المقطع (وإلا تروح للطرف الثاني وتلتصق الكلمة بالعربي اللي بعدها)
-      return lead + ls + '<bdi dir="ltr">' + t + '</bdi>' + ts + trail;
-    });
+      return esc(lead + ls) + '<bdi dir="ltr">' + esc(t) + '</bdi>' + esc(ts + trail);
+    }
   }
   function fmtExp(t) {
     const h = fmtExp0(t); return EN ? '<div class="arc" dir="rtl" lang="ar">' + h + '</div>' : h;
@@ -391,12 +399,13 @@
   function cmwBadge() { const a = document.querySelector('a.tn[href="#my-vids"]'); if (!a) return; let b = a.querySelector('.tnb');
     if (!auth || !auth.cmw) { if (b) b.remove(); return; }
     if (!b) { b = document.createElement('small'); b.className = 'tnb'; b.title = _T('تعليقات طلاب تنتظر ردّك'); a.appendChild(b); } b.textContent = auth.cmw; }
-  // 🔒 جلسة واحدة لكل طالب: نتأكد من الخادم عند الفتح وكل 3 دقائق
+  // 🔑 نتأكد من الجلسة عند الفتح وكل 3 دقائق، والخادم يجدّدها (v116: الدخول دائم وكل أجهزته شغّالة — انشال «جهاز واحد» بطلب المالك)
   let hbBusy = false;
   async function heartbeat() {
     if (!auth || hbBusy || payPending()) return; hbBusy = true;   // 💳 أثناء التحقق من الدفع ما نلمس الجلسة
     try {
       const r = await api({ op: 'me', session: auth.session });
+      if (r && r.ok && r.session && auth) { auth.session = r.session; auth.exp = r.exp || auth.exp; lsSet(LS.auth, auth); }   // 🔑 الدخول الدائم (v116): الخادم يجدّد الجلسة مرة باليوم، فما يطلع أبداً ما دام يفتح الموقع
       if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 👨‍🏫 صار يرفع مقاطعه؟
@@ -446,10 +455,10 @@
     const feats = { train: [_T('14 قسم كمي و14 نموذج لفظي بالشرح والفيديو'), _T('17 اختبار محاكي بنفس نظام قياس'), _T('مرشدك الأكاديمي ومذكرات التدريب')],
       full: [_T('كل اللي في باقة «التدريب»'), _T('تأسيس اللفظي بالفيديو واختبار بعد كل درس'), _T('مذكرتا التأسيس: قواعد الكمي واللفظي')] };
     const trPk = PK.find(p => p.k === 'train');   // 💡 الباقة الطويلة: كم تطلع بالشهر وكم يوفّر مقابل «التدريب» (السعر الحالي، عرض أو أصلي)
-    const perM = x => { if (!trPk || x.months < 2) return ''; const pm = Math.round(x.price / x.months), sv = trPk.price - pm; return sv > 0 ? `<span class="pkg-m">${_T`تطلع ${pm} ريال بالشهر، وتوفّر ${sv} ريال كل شهر`}</span>` : ''; };
+    const perM = x => { if (!trPk || x.k !== 'full') return ''; const pm = Math.round(x.price / (x.months + (x.free || 0))), sv = Math.round(trPk.price / (1 + (trPk.free || 0))) - pm; return sv > 0 ? `<span class="pkg-m">${_T`تطلع ${pm} ريال بالشهر، وتوفّر ${sv} ريال كل شهر`}</span>` : ''; };
     const card = x => `<label class="pkg${x.k === sel.k ? ' on' : ''}" data-pk="${x.k}"><input type="radio" name="qgpkg" value="${x.k}"${x.k === sel.k ? ' checked' : ''}>
-        <b class="pkg-n">${PKN(x.k)}</b>
-        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months)}</span></span>${x.was ? `<span class="pkg-off">${_T('🏷 عرض لفترة محدودة')}</span>` : ''}${perM(x)}
+        <b class="pkg-n">${PKN(x.k)}</b>${x.k === 'full' ? `<span class="pkg-top">${_T('⭐ الأكثر طلباً')}</span>` : ''}
+        <span class="pkg-p">${x.was ? `<s class="pkg-was" aria-label="${_T`بدل ${x.was} ريال`}">${x.was}</s>` : ''}<b>${x.price}</b> ${_T('ريال')} <span class="pkg-d">${pkDur(x.months, x.free)}</span></span>${x.was || x.free ? `<span class="pkg-off">${x.free ? _T('🎁 عرض لفترة محدودة') : _T('🏷 عرض لفترة محدودة')}</span>` : ''}${perM(x)}
         <span class="pkg-l">${feats[x.k].map(f => `<span>${f}</span>`).join('')}${x.k === 'train' ? `<span class="no">${_T('بدون التأسيس')}</span>` : ''}</span></label>`;
     const cards = two ? `<div class="pkgs" role="radiogroup" aria-label="${_T('اختر باقتك')}">${PK.map(card).join('')}</div>` : '';
     const head = up ? _T`<p class="sub-lock">🔒 ${esc(what)} ضمن باقة «التأسيس والتدريب»</p>
@@ -464,7 +473,7 @@
       <h3 id="subh">اشترك في دورة Q-Guide</h3>
       <ul class="sub-l"><li><b>14</b> قسم كمي و<b>14</b> نموذج لفظي بالشرح والفيديو</li><li>دروس التأسيس واختباراتها مع مدرسين الدورة</li><li><b>17</b> اختبار محاكي بنفس نظام قياس</li><li>مرشدك الأكاديمي الذكي وخطة مذاكرة على موعد اختبارك</li><li>الساحة 1v1 بدون حد، والمذكرات ولوحات الصدارة</li></ul>`;
     // زر الدفع وما تحته: ينرسم من جديد كل ما غيّر الباقة (السعر والمدة يتبعونها)
-    const goTxt = () => renew ? (sel.months === 2 ? _T`💳 ادفع ${sel.price} ريال وجدّد شهرين` : _T`💳 ادفع ${sel.price} ريال وجدّد شهر`) : _T`💳 ادفع ${sel.price} ريال واشترك الحين`;
+    const goTxt = () => renew ? (sel.free ? _T`💳 ادفع ${sel.price} ريال وجدّد ${pkDur(sel.months, sel.free)}` : sel.months === 2 ? _T`💳 ادفع ${sel.price} ريال وجدّد شهرين` : _T`💳 ادفع ${sel.price} ريال وجدّد شهر`) : _T`💳 ادفع ${sel.price} ريال واشترك الحين`;
     const keep = () => !(two && renew && auth.plan !== 'train' && sel.k === 'train') ? '' : `<p class="pkg-keep">${left != null && left >= 0 ? _T`التأسيس يبقى مفتوح لك لين ${meDay(auth.pkg === 'train' && auth.fu > Date.now() ? auth.fu : R.until)}، وبعدها تكمّل على «التدريب» بدون التأسيس.` : _T('باقة «التدريب» بدون التأسيس: دروس التأسيس واختباراتها ومذكرتا التأسيس تنقفل عنك.')}</p>`;
     const grt = _T`<p class="sub-grt"><b>🛡 ضمان الدرجة:</b> حل كل أسئلة الأقسام والنماذج، وإذا جبت أقل من 90 نرجّع لك اشتراكك. <a href="/terms/#refund" target="_blank" rel="noopener">الشروط</a></p>`;   // 🛡 الرسالة الأساسية (طلب المالك 14 نوفمبر): تحت زر الدفع على طول (الزر يبقى أول وقفة بعد الباقات بالكيبورد)
     const bodyOf = () => { const SL = SL0 && (!two || sel.url) ? SL0 : null;   // 📦 الباقة اللي ما لها رابط منتج في سلة (المالك ما حطه): تنطلب بواتساب
@@ -515,7 +524,7 @@
     box.innerHTML = _T`<button class="sub-x" type="button" aria-label="إغلاق">✕</button>
       <button type="button" class="lnk slp-back">→ رجوع</button>
       <h3 id="subh">ادفع عن طريق متجرنا في سلة</h3>
-      ${two && !ref ? `<p class="slp-pk"><span aria-hidden="true">📦</span> <b>${PKN(P.k)}</b> · ${P.price} ${_T('ريال')} · ${pkDur(P.months)}</p>` : ''}
+      ${two && !ref ? `<p class="slp-pk"><span aria-hidden="true">📦</span> <b>${PKN(P.k)}</b> · ${P.price} ${_T('ريال')} · ${pkDur(P.months, P.free)}</p>` : ''}
       <ol class="slp-s">
         <li><span class="slp-n" aria-hidden="true">1</span><div class="slp-t"><b>افتح صفحة الدفع وادفع</b><small>بمدى أو Apple Pay أو البطاقة.</small><small class="slp-tip">📱 سلة تطلب رقم جوالك أول: اكتبه وأكّده بالرمز اللي يوصلك، وبعدها اضغط الدفع.</small><a class="btn gold slp-go" id="slopen" href="${esc(purl)}" target="_blank" rel="noopener">🛍 افتح صفحة الدفع</a><button type="button" class="lnk slp-share" id="slshare">👨‍👩‍👦 أحد ثاني بيدفع عنك؟ أرسل له رابط الدفع</button></div></li>
         <li><span class="slp-n" aria-hidden="true">2</span><div class="slp-t"><b class="slp-b1">الصق رقم الطلب هنا</b><b class="slp-b2">ارجع هنا بعد الدفع</b><small class="slp-s1">يطلع لك بعد الدفع في صفحة الطلب، ويوصلك برسالة من سلة على جوالك.</small><small class="slp-s2">اشتراكك يتفعّل لحاله بعد الدفع بثواني، بدون ما تكتب شي.</small>
@@ -652,8 +661,9 @@
     if (renew) show('🎉', 'ok', _T`<h2>تم تجديد اشتراكك</h2><p>انضاف ${months === 2 ? _T('شهرين') : months > 1 ? _T`${months} شهور` : _T('شهر')} على اشتراكك، وتقدّمك ونتائجك كلها مثل ما هي.</p>${opened ? _T('<p class="pdpk">📦 باقتك صارت «التأسيس والتدريب»: دروس التأسيس واختباراتها ومذكرتا التأسيس انفتحت لك.</p>') : ''}${end ? _T`<p class="pdend">اشتراكك الحين ينتهي <b>${end}</b></p>` : ''}
       <div class="pdact"><a class="btn gold" href="#">كمّل مذاكرتك</a>${opened ? _T('<a class="btn ghost" href="#sharh">🧱 دروس التأسيس</a>') : ''}</div>`);
     else show('🎉', 'ok', _T`<h2>تم الاشتراك بنجاح</h2><p>${!named ? _T('الدورة كاملة مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، والمذكرات.') : pkg === 'full' ? _T('باقة «التأسيس والتدريب» مفتوحة لك الحين: دروس التأسيس واختباراتها ومذكرتا التأسيس، وكل الأقسام والنماذج بالشرح، والاختبارات المحاكية.') : _T('باقة «التدريب» مفتوحة لك الحين: كل الأقسام والنماذج بالشرح، والاختبارات المحاكية، ومذكرات التدريب.')}</p>${g ? _T`<p class="pdgift">🎁 وانضاف لك ${refDays(g)} مجاناً لأن صديقك دعاك.</p>` : ''}${end ? (months > 1 || g ? _T`<p class="pdend">اشتراكك مفعّل وينتهي <b>${end}</b></p>` : _T`<p class="pdend">اشتراكك لمدة شهر وينتهي <b>${end}</b></p>`) : ''}
-      <div class="pdact"><a class="btn gold" href="#">ابدأ المذاكرة</a></div>`);
+      <div class="pdact">${obDone() ? _T('<a class="btn gold" href="#">ابدأ المذاكرة</a>') : _T('<button type="button" class="btn gold" id="pdob">🧭 جهّز مسارك (دقيقتين)</button><a class="btn ghost" href="#">الرئيسية</a>')}</div>`);
     confetti(); if (window.QGT) QGT.ev('paid', 'تم الدفع'); lsDel(PAYTRY_LS); lsDel(WHY_LS);
+    const ob = $('#pdob'); if (ob) { ob.onclick = () => obDlg(); setTimeout(() => { if ($('#pdob') && !document.querySelector('.obm')) obDlg(); }, 1600); }   // 🧭 v116: بعد الدفع يجهّز مساره (اسمه ومستواه وموعده)
   }
   async function renderPaid() {
     document.title = _T('الاشتراك في الدورة | Q-Guide');
@@ -821,7 +831,8 @@
       case 'parent': return { t: sallaOn() ? _T('أرسل رابط الدفع لولي أمرك أو أي أحد بيدفع عنك: يدفع من جواله، واشتراكك يتفعّل على حسابك.') : _T('كلّمنا على واتساب ونرتّب الدفع مع ولي أمرك.'), a: sallaOn() ? [['share', _T('🔗 انسخ رابط الدفع')], wa] : [wa] };
       case 'price': { const F = pkList().find(x => x.k === 'full'), T = pkList()[0];   // 📦 باقتين: نذكر الاثنين بسعرهم ومدتهم (🏷 ووقت العرض: الأصلي ونهاية العرض)
         const offT = T.was ? _T` (بدل ${T.was}، عرض لفترة محدودة)` : '', offF = F && F.was ? _T` (بدل ${F.was})` : '';
-        return { t: F ? _T`باقة «التدريب» ${price} ريال للشهر${offT}، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال لشهرين${offF} ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
+        return { t: F && (T.free || F.free) ? _T`باقة «التدريب» ${price} ريال (${pkDur(1, T.free)})${offT}: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال (${pkDur(2, F.free)})${offF} ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
+          : F ? _T`باقة «التدريب» ${price} ريال للشهر${offT}، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ومرشدك الذكي. وباقة «التأسيس والتدريب» ${F.price} ريال لشهرين${offF} ومعها دروس التأسيس. عندك سؤال عن السعر؟ كلّمنا.`
           : _T`الاشتراك ${price} ريال للشهر كامل، يعني أقل من ${Math.floor(price / 30) + 1} ريال في اليوم: 14 قسم كمي و14 نموذج لفظي بشروحاتها، و17 اختبار محاكي، ودروس التأسيس، ومرشدك الذكي. عندك سؤال عن السعر؟ كلّمنا.`, a: [pay, wa] }; }
       case 'later': return { t: _T('تمام 👌 حسابك المجاني يبقى شغّال، ووقت ما تبي تكمل اضغط «اشترك» من فوق.'), a: [] };
       case 'far': return { t: _T('خذ راحتك 👌 حسابك المجاني يبقى شغّال (القسم 1 والنموذج 1 والاختبار المحاكي 1). وأول ما يقرب اختبارك اشترك ونرتّب لك خطة مذاكرة على موعده.'), a: [] };
@@ -841,7 +852,7 @@
     const own = !!url; if (!url) url = P.url || (auth.salla && auth.salla.url) || ''; if (!url) return;
     if (window.QGT) { QGT.ev('subgo', 'رابط لولي الأمر'); QGT.flush(true); }
     if (own) { try { sessionStorage.setItem(SAL_SS, String(Date.now())); } catch (e) {} sallaHot(); }   // لو دفع الحين: يتفعّل هنا خلال ثواني
-    const txt = P.k === 'full' ? _T`رابط دفع باقة «التأسيس والتدريب» في Q-Guide (${P.price} ريال لشهرين) لحساب ${auth.display || auth.name || auth.email}:` : _T`رابط دفع اشتراك Q-Guide (${P.price} ريال للشهر) لحساب ${auth.display || auth.name || auth.email}:`;
+    const txt = P.free ? _T`رابط دفع باقة «${PKN(P.k)}» في Q-Guide (${P.price} ريال · ${pkDur(P.months, P.free)}) لحساب ${auth.display || auth.name || auth.email}:` : P.k === 'full' ? _T`رابط دفع باقة «التأسيس والتدريب» في Q-Guide (${P.price} ريال لشهرين) لحساب ${auth.display || auth.name || auth.email}:` : _T`رابط دفع اشتراك Q-Guide (${P.price} ريال للشهر) لحساب ${auth.display || auth.name || auth.email}:`;
     try { if (navigator.share && window.matchMedia && matchMedia('(pointer:coarse)').matches) { await navigator.share({ text: txt, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(txt + '\n' + url); toast(own ? _T('انسخ رابط الدفع ✓ أرسله له، وأول ما يدفع يتفعّل اشتراكك لحاله') : _T('انسخ رابط الدفع ✓ بعد ما يدفع اكتب رقم الطلب هنا')); } catch (e) { QGDlg.alert(url); }
   }
@@ -1240,7 +1251,7 @@
     app.innerHTML = topbar(_T`<span class="sp"></span><nav class="tnav"><a class="tn ar" href="#arena" title="الساحة 1v1: تحدَّ طالب مباشرة"><span class="i">⚔️</span><span class="l">الساحة</span></a>${isFree() ? _T('<button type="button" class="tn subn" data-sub title="اشترك في الدورة"><span class="i">⭐</span><span class="l">اشترك</span></button>') : _T('<a class="tn" href="#board" title="لوحة الصدارة"><span class="i">🏆</span><span class="l">الصدارة</span></a><a class="tn" href="#skills" title="نقاط القوة والضعف"><span class="i">🎯</span><span class="l">مهاراتي</span></a>')}${adminLinks}</nav><button class="chip me" id="me" title="ملفي: اشتراكك واسمك وصورتك">${avatarHtml(auth.avatar, auth.display || auth.name, 26)}<span>${esc(auth.display || auth.name || auth.email)}</span></button><button class="ib lo" id="lo" title="تسجيل الخروج" aria-label="تسجيل الخروج">${LOSVG}</button>`) +
     _T`<main class="wrap home">
       ${FR ? freeHero() + payNudge() + resStrip() : `<div id="rnw">${renewBar()}</div>`}<div id="rz">${rzHtml()}</div>
-      ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>${FR ? '' : invStrip()}
+      ${FR ? '' : '<div id="trip"></div>'}<div id="focus">${focusHtml()}</div>${FR ? '' : '<div id="pth">' + pathStrip() + '</div>'}${FR ? '' : invStrip()}
       <div class="hrow"><div class="tabs" role="tablist"><button role="tab" data-t="quant" class="${tab === 'quant' ? 'on' : ''}" aria-selected="${tab === 'quant'}">📐 الكمي <small>14 قسم</small></button><button role="tab" data-t="verbal" class="${tab === 'verbal' ? 'on' : ''}" aria-selected="${tab === 'verbal'}">📖 اللفظي <small>14 نموذج</small></button></div>
         <span class="sp"></span><a class="rvid rl" href="#sharh"><span class="i">👨‍🏫</span><span>الشرح والمدرسين</span></a>${!RULES_ON ? '' : tab === 'quant' ? _T('<a class="rvid rl" href="#rules"><span class="i">📐</span><span>ملخص القوانين</span></a>') : _T('<a class="rvid rl" href="#rules-v"><span class="i">📘</span><span>ملخص القواعد</span></a>')}</div>
       <div class="sheets" id="grid"></div>
@@ -1285,8 +1296,8 @@
     bindGoal();
     const rb = $('#rem'); if (rb) rb.onclick = () => remDlg().then(() => { const l = $('#reml'); if (l) l.textContent = remLabel(); });
     if (!isFree()) badgeCheckSoon(); remCtx();
-    const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; };
-    if (!isFree()) paintTrip();
+    const paintTrip = () => { const t = $('#trip'); if (!t) return; t.innerHTML = tripHtml(); bindExam(t, paintTrip); const x = $('#trx'); if (x) x.onclick = () => { lsSet(TRIPX_LS, 1); t.innerHTML = ''; }; const ph = $('#pth'); if (ph) ph.innerHTML = pathStrip(); };
+    if (!isFree()) { paintTrip(); obMaybe(); }   // 🧭 v116: مسار المشترك (يجهّزه مرة وحدة)
     const bindFocus = () => { const b = $('#fxask'); if (b) b.onclick = () => { if (window.QGAI) QGAI.help(); }; bindSub($('#focus')); advBind($('#focus'), () => { const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } paintTrip(); }); }; bindFocus();
     if (!homePulled) { progPull().then(ch => { if (ch.length && auth && (location.hash === '' || location.hash === '#')) renderHome(); }).catch(() => {}); }   // 🔄 تقدّمه من جهازه الثاني: البطاقات و«كمّل» تتحدّث
     if (!homePulled) { homePulled = true; skillsPull().then(() => { const z = $('#rz'); if (z && (location.hash === '' || location.hash === '#')) { z.innerHTML = rzHtml(); bindGoal(); paintTrip(); const f = $('#focus'); if (f) { f.innerHTML = focusHtml(); bindFocus(); } } }).catch(() => {}); }
@@ -1303,13 +1314,9 @@
   }
   async function renderWorkbooks() {
     const el = $('#wb'); if (!el) return;
-    if (!auth.files || !auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || auth.phone || ''; auth.member = r.member || ''; lsSet(LS.auth, auth); } } catch (e) {} }
-    // المضاف من اللوحة (مجاني/تحويل غالباً): ما له صف في الشيت، فما له PDF في Drive — المذكرة التفاعلية والمحلولة داخل الموقع باسمه وإيميله
-    const man = auth.member === 'manual', f = auth.files || {}; if (!$('#wb')) return;
-    const drive = id => id ? _T`<a class="btn sm ghost" href="https://drive.google.com/file/d/${esc(id)}/view" target="_blank" rel="noopener">PDF في Drive</a>` : '';
-    const card = (id, title, icon, desc, k) => id || man ? _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
-        <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a>${drive(id)}</div></div>`
-      : `<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${auth.role === 'admin' ? _T('المشرف ليس له مذكرة شخصية') : _T('تتجهّز نسختك خلال دقائق — حدّث الصفحة لاحقاً')}</span></div></div>`;
+    // v116 (طلب المالك 19 نوفمبر 2026): انشال «PDF في Drive» واسم الطالب ورقمه من صفحات المذكرة — المذكرة نفسها لكل المشتركين داخل الموقع
+    const card = (title, icon, desc, k, more) => _T`<div class="wbc"><div class="ic">${icon}</div><div class="tx"><b>${title}</b><span class="mut">${desc}</span></div>
+        <div class="ac"><a class="btn sm" href="#wb-${k}">📖 افتح المذكرة التفاعلية (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-${k}s">📗 النسخة المحلولة</a>${more || ''}</div></div>`;
     // 🧱 مذكرات التأسيس (لكل المشتركين): تنقرا وينكتب عليها بالقلم داخل الموقع، وما تتحمّل
     const pkl = noFound();   // 📦 باقة «التدريب»: مذكرتا التأسيس مقفلتين (زر الترقية)
     const fcard = (k, icon, desc, more) => pkl ? _T`<div class="wbc lk"><div class="ic">${icon}</div><div class="tx"><b>${WB_T[k][0]} <span class="lkb">🔒 باقة التأسيس</span></b><span class="mut">${desc}</span></div>
@@ -1319,9 +1326,9 @@
     el.innerHTML = _T('<h3 class="wbg">🧱 التأسيس</h3>') + fcard('tq', '📐', _T('قواعد الكمي · 271 صفحة · 5 مهارات و24 درس، كل قانون مع أمثلة محلولة وترجمة عربية')) +
       fcard('tv', '📖', _T('قواعد اللفظي · طريقة حل كل نوع من أسئلة اللفظي')) +
       _T('<h3 class="wbg">🏋️ التدريب</h3>') +
-      card(f.quant, _T('مذكرة الكمي'), '📐', man ? _T('نسختك الخاصة باسمك وإيميلك · 194 صفحة · 14 قسماً') : _T('نسختك الخاصة باسمك ورقمك · 194 صفحة · 14 قسماً'), 'q') +
-      card(f.verbal, _T('مذكرة اللفظي'), '📖', man ? _T('نسختك الخاصة باسمك وإيميلك · 193 صفحة · 14 نموذجاً') : _T('نسختك الخاصة باسمك ورقمك · 193 صفحة · 14 نموذجاً'), 'v') +
-      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">${man ? _T('المذكرة مسجّلة باسمك وإيميلك، وتفتحها من حسابك في الموقع. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.') : _T('المذكرة مسجّلة باسمك ورقم جوالك، وتفتح بحساب Google هذا فقط. يُمنع نشرها أو مشاركتها. كتابتك بالقلم تُحفظ على جهازك.')}<br>${_T('📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.')}</p>`;
+      card(_T('مذكرة الكمي'), '📐', _T('194 صفحة · 14 قسماً'), 'q') +
+      card(_T('مذكرة اللفظي'), '📖', _T('193 صفحة · 14 نموذجاً'), 'v') +
+      `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">${_T('تفتح المذكرات من حسابك في الموقع، وكتابتك بالقلم تُحفظ على جهازك.')}<br>${_T('📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.')}</p>`;
     bindUp(el);
   }
 
@@ -1335,8 +1342,6 @@
     const found = !!WB_T[kind];
     const title = found ? WB_T[kind][0] : EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
     document.title = title + ' | Q-Guide';
-    if (!auth.phone) { try { const r = await api({ op: 'files', session: auth.session }); if (r.ok) { auth.files = r.files; auth.phone = r.phone || ''; lsSet(LS.auth, auth); } } catch (e) {} }
-    if (!found && auth.role !== 'admin' && auth.member !== 'manual' && !(auth.files && auth.files[kind === 'q' ? 'quant' : 'verbal'])) { toast(_T('مذكرتك لم تُجهَّز بعد، حاول بعد دقائق')); location.hash = ''; return; }
     let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json?v=' + WB_V)).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
     const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, startPage || lsGet(lastKey, 1)));
     WB = { kind, meta, page, cache: {}, pen: null, solved: !!solved, sp: new Set(meta.sp || []) };
@@ -1366,22 +1371,14 @@
     const keys = Object.keys(WB.cache); if (keys.length > 12) delete WB.cache[keys[0]];
     WB.cache[key] = bmp; return bmp;
   }
-  function stamp(ctx, meta, n) {
-    const sc = meta.scale, S = meta.slots, local = (auth.phone || '').replace(/^966/, '0') || (auth.member === 'manual' ? auth.email || '' : '');   // المضاف من اللوحة: إيميله بدل الجوال
-    const who = (auth.name || '') + (local ? ' · ' + local : ''); if (!who.trim()) return;
-    const txt = (x, baseline, size, align, text) => { ctx.save(); ctx.font = `${Math.round(size * sc * 1.15)}px Tajawal, "Segoe UI", Tahoma, sans-serif`; ctx.fillStyle = '#5B6675'; ctx.textAlign = align; ctx.direction = 'rtl'; ctx.fillText(text, x * sc, baseline * sc); ctx.restore(); };
-    txt(S.header.x, S.header.baseline, S.header.size, S.header.align || 'right', who);
-    const owners = (S.owner && S.owner.pages || []).map(p => Array.isArray(p) ? p : [p, S.owner.baseline]);
-    const o = owners.find(p => p[0] === n - 1); if (o) txt(S.owner.x, o[1], S.owner.size, 'right', who);
-    if (S.cover && S.cover.page === n - 1) txt(S.cover.x, S.cover.baseline, S.cover.size, 'center', who);
-  }
+  // v116 (طلب المالك 19 نوفمبر 2026): انشال ختم «اسم الطالب · رقمه» من رأس كل صفحة والغلاف وأول كل قسم (meta.slots باقية بس ما تنرسم)
   async function showPage(n) {
     const { kind, meta } = WB; const el = $('#wbpage'); if (!el) return;
     $('#pglabel').textContent = _T('صفحة ') + n + _T(' من ') + meta.pages;
     try {
       const bmp = await pageBitmap(kind, n); if (!WB || WB.page !== n) return;
       let cv = el.querySelector('canvas'); if (!cv) { el.innerHTML = ''; cv = document.createElement('canvas'); el.appendChild(cv); }
-      cv.width = meta.w; cv.height = meta.h; const ctx = cv.getContext('2d'); ctx.drawImage(bmp, 0, 0); stamp(ctx, meta, n);
+      cv.width = meta.w; cv.height = meta.h; const ctx = cv.getContext('2d'); ctx.drawImage(bmp, 0, 0);
       WB.pen.setKey('qg_wb_' + kind + (WB.meta.v ? 'v' + WB.meta.v : '') + '_' + n); WB.pen.resize();   // نسخة جديدة من المذكرة = صفحات جديدة، فكتابة القلم القديمة ما تنحط عليها
       window.scrollTo({ top: 0 });
       pageBitmap(kind, Math.min(meta.pages, n + 1)).catch(() => {});
@@ -1389,7 +1386,7 @@
   }
 
   // ---------- 🎬 مشغّل المقاطع داخل الموقع (المجاني والتحويل) ----------
-  // الرابط مؤقت (4 ساعات) وموقّع، ويشتغل من الموقع بس. إيميل الطالب ورقمه يتحركون فوق المقطع (حتى في ملء الشاشة).
+  // الرابط مؤقت (4 ساعات) وموقّع، ويشتغل من الموقع بس. (v116: انشالت علامة الإيميل والرقم اللي كانت تتحرك فوق المقطع)
   const VW_LS = 'qg_vw';   // {مفتاح: {t: آخر ثانية, w: 1 = شافه كامل تقريباً}}
   let VID = null;
   // 👨‍🏫 مقاطع المدرسين اللي ما لها يوتيوب (داخل الموقع لكل المشتركين): مين المدرس، وصفحته وقسمها، ورابط قواعد الدرس في مذكرة التأسيس
@@ -1417,7 +1414,7 @@
     YT[k].v.forEach((raw, i) => L.push({ key: k + ':' + (i + 1), h: k + (i + 1), n: i + 1, label: vLabel(k, i + 1), dur: raw.slice(raw.indexOf(':') + 1) }));
     return L;
   }
-  function vidStop() { if (!VID) return; clearInterval(VID.wm); clearInterval(VID.sv); document.removeEventListener('fullscreenchange', VID.fs); try { VID.v.pause(); VID.v.removeAttribute('src'); VID.v.load(); } catch (e) {} VID = null; }
+  function vidStop() { if (!VID) return; clearInterval(VID.sv); document.removeEventListener('fullscreenchange', VID.fs); try { VID.v.pause(); VID.v.removeAttribute('src'); VID.v.load(); } catch (e) {} VID = null; }
   async function renderWatch(h) {
     vidStop();
     const hm = /^(af|at|sf|ss|ts|tf|tb|tq|tm|q|v)(\d{1,2})$/.exec(h) || [], k = hm[1], n = +hm[2], X = TK[k], fd = !!(X && X.tab === 'f'), L = k ? vidList(k) : [], cur = L.find(x => x.n === n);
@@ -1447,34 +1444,27 @@
     app.innerHTML = topbar(_T`<span class="ttl">🎬 ${what}</span><span class="sp"></span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
       _T`<main class="wrap watch">
         <div class="wvbox" id="wvbox"><video id="wvv" playsinline controls preload="metadata" controlslist="nodownload nofullscreen noremoteplayback" disablepictureinpicture disableremoteplayback></video>
-          <div class="wvwm" id="wvwm" aria-hidden="true"></div><div class="wvmsg" id="wvmsg"><div class="spin"></div></div>
+          <div class="wvmsg" id="wvmsg"><div class="spin"></div></div>
           <button type="button" class="wvfs" id="wvfs" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
         <div class="wvbar"><div class="wvt"><b>${what}</b><span class="mut"><span class="wvteach">👨‍🏫 ${teach}</span> · ${sub}</span></div>
           <div class="wvact">${solve}${prev ? nav(prev, _T('‹ السابق')) : ''}${next ? nav(next, _T('التالي ›')) : ''}</div></div>
         ${hasQ ? _T`<a class="wvq" id="wvq" href="#fq-${n}"${W[cur.key] && W[cur.key].w ? '' : ' hidden'}><span class="wvqi" aria-hidden="true">📝</span><span class="wvqx"><b>خلّصت الدرس؟ اختبر فهمك</b><small>12 سؤال قصير، وبعد كل سؤال شرحه والقاعدة اللي تخصه</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>` : ''}
-        <p class="wvnote">🔒 المقطع خاص بك: إيميلك ظاهر عليه، ويُمنع تصويره أو نشره.</p>
         ${cmOk ? cmBox() : ''}
         <div class="wvhead">${head}</div>
         <div class="wvlist">${L.map(li).join('')}</div>
       </main>`;
     bindCtl(); window.scrollTo({ top: 0 }); if (cmOk) cmInit(cur.key);
     if (fr) { bindSub(app); app.querySelectorAll('[data-lock]').forEach(b => b.addEventListener('click', () => { try { $('#wvv').pause(); } catch (e) {} })); }   // 🆓 نافذة الاشتراك فوق المقطع: نوقّفه
-    const box = $('#wvbox'), v = $('#wvv'), wm = $('#wvwm'), msg = $('#wvmsg');
+    const box = $('#wvbox'), v = $('#wvv'), msg = $('#wvmsg');
     const say = (t, link) => { msg.innerHTML = `<div class="wvm">${t}${link || ''}</div>`; msg.hidden = false; };
     // ما انرفع للموقع للحين: «قريباً» لكل أحد (المقاطع داخل الموقع بس، ما فيه يوتيوب)
     const soon = t => { say(t); $('#wvfs').hidden = true; };
     if (X && isFree()) { say(fd ? _T('مقاطع التأسيس للمشتركين في الدورة.') : _T('مقاطع التدريب للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
     if (!X && !(vidSub() || auth.role === 'admin' || freeVid(cur.key))) { say(_T('مقاطع الشرح للمشتركين في الدورة.')); $('#wvfs').hidden = true; return; }
-    VID = { v, key: cur.key, wm: 0, sv: 0, fs: null, tries: 0 };
+    VID = { v, key: cur.key, sv: 0, fs: null, tries: 0 };
     box.oncontextmenu = e => { e.preventDefault(); return false; };
-    // 💧 العلامة: إيميله ورقمه، تتنقّل كل شوي بين أماكن ما تغطي أزرار المشغّل
-    const local = (auth.phone || '').replace(/^966/, '0');
-    wm.textContent = auth.email + (local ? ' · ' + local : '');
-    const spots = [[6, 8], [52, 10], [10, 46], [48, 52], [26, 30], [58, 32], [8, 66], [50, 68]];
-    let sp = Math.floor(Math.random() * spots.length);
-    const move = () => { sp = (sp + 1 + Math.floor(Math.random() * (spots.length - 1))) % spots.length; wm.style.insetInlineStart = spots[sp][0] + '%'; wm.style.top = spots[sp][1] + '%'; };
-    move(); VID.wm = setInterval(move, 9000);
-    // ملء الشاشة على الصندوق كامل (عشان العلامة تبقى) · آيفون: ملء الشاشة حق الفيديو نفسه
+    // v116 (طلب المالك 19 نوفمبر 2026: «حركة الحقوق بالمقاطع شيلها»): ما فيه إيميل ولا رقم يتحرّك فوق المقطع
+    // ملء الشاشة على الصندوق كامل · آيفون: ملء الشاشة حق الفيديو نفسه
     const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
     const fsToggle = () => { if (fsOn()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
       const f = box.requestFullscreen || box.webkitRequestFullscreen; if (f) { const p = f.call(box); if (p && p.catch) p.catch(() => { if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); }); } else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); };
@@ -1873,6 +1863,8 @@
     // مهام يوم الخطة الحالي اللي لسا ما خلصت (اللي علّمها ✓ ما نرجّعه لها)
     const todo = I && I.cur ? I.cur.tasks.filter((x, i) => !I.tDone(I.cur, i)) : [], curSet = todo.find(x => x.set) || null;
     const todoT = [...new Set(todo.map(x => x.set ? SET_NAME(x.set) : x.k === 'rest' ? _T('يوم راحة') : _T('مراجعة أخطائك')))].join(EN ? ' and ' : ' و');
+    // ⓪ v116: ما جهّز مساره (اسمه ومستواه في الإنجليزي وموعده): هذي أول شي — لازم بعد الاشتراك (طلب المالك)
+    if (!obDone() && auth.role !== 'admin') return { k: 'setup', i: '🧭', t: _T('جهّز مسارك'), s: _T('اسمك ومستواك في الإنجليزي وموعد اختبارك، ونرتب لك مسار يوصلك لدرجتك ويقوّي إنجليزيك.'), a: [{ t: _T('▶ جهّز مساري'), act: 'data-adv="setup"' }] };
     // ① أول مرة: ما رتّب مذاكرته وما عنده بيانات
     if (needSetup && !any && dl == null) return { k: 'setup', i: '🎓', t: _T('خلني أرتب لك مذاكرتك'), s: _T('3 أسئلة سريعة عن موعد اختبارك ووقتك، وأجهّز لك خطة تمشي عليها يوم بيوم.'), a: [{ t: _T('▶ ابدأ مع مرشدك'), act: 'data-adv="setup"' }, { t: _T('🧭 تحديد المستوى'), h: '#level', g: 1 }] };
     // ② يوم الاختبار وبعده
@@ -1901,10 +1893,32 @@
     // ⑩ ما فيه بيانات تكفي
     return { k: 'start', i: '🧭', t: _T('اعرف وين تركّز'), s: _T('حل كم سؤال أو اختبار تحديد المستوى، ونقولك أضعف مهاراتك ونتدرّب عليها'), a: [{ t: _T('🧭 تحديد المستوى'), h: '#level' }].concat(needSetup ? [setup] : []) };
   }
+  // 🎓 v116 (طلب المالك 19 نوفمبر 2026: «اذا الطالب طلب منك عدل لي جدولي او حط لي خطة انت سو الطلب حقه في المساعد الذكي لاتخليه هو يسوي»):
+  //   المرشد يكتب في آخر رده {{do-…}}، والمساعد (assets/ai.js) يستدعي هذي مرة وحدة بعد ما يخلص الرد، واللي ترجّعه يطلع تحت الرد كـ«✓ …»
+  //   do-plan:<id> = يبدأ الخطة من اليوم · do-shift = يرتّب خطته الحالية: اليوم يصير أول يوم ما خلص (بدل ما يبقى متأخر) · do-exam:YYYY-MM-DD · do-mins:N · do-goal:N
+  function advAct(tok) {
+    if (!auth || isFree()) return '';   // الخطط للمشتركين
+    let m, out = '';
+    const A = advGet() || {}, saveA = o => { lsSet(ADV_LS, Object.assign({ mins: A.mins || 120, goal: A.goal || 90 }, A, o, { up: Date.now() })); skillsPushSoon(1500); };
+    if ((m = /^do-plan:(strong|intense|balanced|relaxed)$/.exec(tok))) { const pl = PLANS.find(p => p.id === m[1]), st = planState();
+      if (!(st.id === pl.id && day0(st.started || 0) === day0())) planStart(pl.id);
+      out = _T`✓ بدأت لك «${pl.name}» من اليوم (${pl.days} يوم) · <a href="#plan">افتح الخطة</a>`; }
+    else if (tok === 'do-shift') { const st = planState(), plan = PLANS.find(p => p.id === st.id); if (!plan) return ''; const I = planInfo(plan, st); if (!I.cur) return '';
+      const ns = addDays(day0(), -(I.cur.n - 1)); if (day0(st.started || 0) !== ns) { st.started = ns; planSave(st); }
+      out = _T`✓ رتّبت خطتك: اليوم صار اليوم ${I.cur.n} من ${plan.days}، وتخلص ${fmtDay(addDays(ns, plan.days - 1))} · <a href="#plan">افتح الخطة</a>`; }
+    else if ((m = /^do-exam:(\d{4}-\d{2}-\d{2})$/.exec(tok))) { const d = m[1], ex = examGet(), t = (ex && ex.t) || '08:00';
+      if (examAt({ d, t }) < Date.now() - DAYMS) return '';
+      if (!ex || ex.d !== d) { lsSet(EXAM_LS, { d, t, up: Date.now() }); lsDel(TRIPX_LS); skillsPushSoon(1500); }
+      out = _T`✓ حطيت موعد اختبارك: ${fmtDay(examAt({ d, t }))}`; }
+    else if ((m = /^do-mins:(\d{1,3})$/.exec(tok))) { const v = ADV_MINS.reduce((a, b) => (Math.abs(b - +m[1]) < Math.abs(a - +m[1]) ? b : a)); saveA({ mins: v }); out = _T`✓ وقتك اليومي للمذاكرة: ${advMinsT(v)}`; }
+    else if ((m = /^do-goal:(\d{2,3})$/.exec(tok))) { const v = Math.max(60, Math.min(100, +m[1])); saveA({ goal: v }); out = _T`✓ هدفك: ${v}+`; }
+    if (out && /^(#|#plan|#advisor)?$/.test(location.hash)) setTimeout(() => { if (/^(#|#plan|#advisor)?$/.test(location.hash)) route(); }, 60);   // الصفحة اللي تحت المساعد تتحدّث
+    return out;
+  }
   // أزرار بطاقة النصيحة: الإعداد · موعد الاختبار · بدء الخطة المقترحة
   function advBind(root, after) {
     if (!root) return;
-    root.querySelectorAll('[data-adv="setup"]').forEach(b => b.onclick = async () => { if (await advSetup()) after(); });
+    root.querySelectorAll('[data-adv="setup"]').forEach(b => b.onclick = async () => { if (await (obDone() ? advSetup() : obDlg())) after(); });   // 🧭 v116: أول مرة = مساره كامل
     root.querySelectorAll('[data-advplan]').forEach(b => b.onclick = () => { const pl = PLANS.find(p => p.id === b.dataset.advplan); if (!pl) return; planStart(pl.id); toast(_T('بدأت ') + pl.name + ' ✓'); after(); });
     bindExam(root, after);
   }
@@ -1958,6 +1972,142 @@
         box.querySelector('#advgo').focus();
       };
       setTimeout(() => { const i = box.querySelector('#advd'); if (i && !i.disabled && !i.value) i.focus(); }, 60);
+    });
+  }
+  // ---------- 🧭 v116: بداية المشترك ← مساره (طلب المالك 19 نوفمبر 2026) ----------
+  // «بعد عملية الدفع والاشتراك لازم الطالب يعبي بيانات مثل مستواه باللغة الإنجليزية واذا مايعرف كم مستواه يختبر اختبار سريع ويحط اسمه …
+  //  يصير له مسار دراسي يمشي عليه يطور لغته الإنجليزية اذا كانت جداً ضعيفة ويصير مسار تعليمي واحد يجيب درجة القدرات اللي يبيها … لازم مستواك يكون B1,B2»
+  // obDlg: اسمه ← مستواه (أو اختبار سريع 15 سؤال) ← موعده ووقته وهدفه ← مساره: تقوية الإنجليزي أول (A1 / A2) + خطة القدرات، وكل يوم مهمة إنجليزي
+  //   المحفوظ في qg_adv (ينزامن مع حسابه، والمرشد يقراه): elv = مستواه · ed = أيام التقوية قبل الخطة · es = أول يوم في مساره
+  const ELV = { A1: { t: _T('مبتدئ'), s: _T('أعرف كلمات بسيطة، وما أفهم جملة كاملة'), d: 14, m: 45 },
+    A2: { t: _T('أساسي'), s: _T('أفهم جمل قصيرة وبسيطة'), d: 7, m: 30 },
+    B1: { t: _T('متوسط'), s: _T('أفهم نص سهل وأقدر أكتب جمل'), d: 0, m: 20 },
+    B2: { t: _T('فوق المتوسط'), s: _T('أقرأ وأفهم أغلب النصوص'), d: 0, m: 10 },
+    C1: { t: _T('متقدم'), s: _T('أقرأ وأفهم بسهولة'), d: 0, m: 0 } };
+  const ELV_K = ['A1', 'A2', 'B1', 'B2', 'C1'];
+  // اختبار سريع (أسئلتنا، مو من بنك الدورة): 3 لكل مستوى، من الأسهل للأصعب · الدرجة من 15 ← المستوى
+  const ENG_Q = [
+    ['I ___ a student.', ['am', 'is', 'are', 'be'], 0], ['She has two ___.', ['cat', 'cats', 'a cat', 'cates'], 1], ['The opposite of "big" is:', ['tall', 'small', 'long', 'fast'], 1],
+    ['Yesterday we ___ to the park.', ['go', 'goes', 'went', 'going'], 2], ['This book is ___ than that one.', ['interesting', 'more interesting', 'most interesting', 'interestinger'], 1], ['He can\'t come today because he is ___.', ['busy', 'bus', 'business', 'busily'], 0],
+    ['If it rains tomorrow, we ___ at home.', ['stay', 'will stay', 'stayed', 'would stayed'], 1], ['I have lived in Riyadh ___ 2019.', ['for', 'since', 'from', 'at'], 1],
+    ['"Sara always forgets her keys, so she now keeps a spare set at her neighbor\'s house." Why does Sara keep a spare set?', ['She lost her house', 'She often forgets her keys', 'Her neighbor asked her to', 'She wants to move'], 1],
+    ['The meeting was ___ because the manager was ill.', ['called off', 'called up', 'called on', 'called in'], 0], ['Hardly ___ the station when the train left.', ['I had reached', 'had I reached', 'I reached', 'did I reached'], 1], ['"Reluctant" is closest in meaning to:', ['eager', 'unwilling', 'careful', 'angry'], 1],
+    ['Her argument was so ___ that nobody could disagree.', ['compelling', 'compelled', 'compulsive', 'complacent'], 0], ['Had they left earlier, they ___ the flight.', ['would catch', 'would have caught', 'will catch', 'had caught'], 1],
+    ['"Although the new policy was meant to reduce traffic, critics argue that it merely shifted the congestion to nearby neighborhoods." What do the critics believe?', ['The policy ended traffic', 'The policy moved the problem elsewhere', 'The policy was never applied', 'People asked for the policy'], 1]];
+  const engLvl = sc => (sc <= 3 ? 'A1' : sc <= 6 ? 'A2' : sc <= 9 ? 'B1' : sc <= 12 ? 'B2' : 'C1');
+  const elvName = k => (ELV[k] ? `${ELV[k].t} <bdi dir="ltr">(${k})</bdi>` : '');
+  const elvLow = k => k === 'A1' || k === 'A2';
+  // المسار: أيام تقوية الإنجليزي (لو مستواه A1 / A2 والوقت يكفي: نخلّي 9 أيام على الأقل لخطة القدرات) ← خطة القدرات المناسبة للباقي
+  function pathOf(elv, dl, mins) {
+    const L = ELV[elv] || ELV.B1; let ed = L.d;
+    if (dl != null && dl >= 0) ed = Math.max(0, Math.min(ed, dl - 9));
+    const left = dl != null && dl >= 0 ? dl - ed : null;
+    return { ed, plan: advPlan(left, mins) };
+  }
+  // مهام الإنجليزي لليوم: أيام التقوية = كلمات نموذج + تدريب (التناظر للمبتدئ، إكمال الجمل للأساسي) + درس تأسيس لو باقته فيها التأسيس
+  //   وبعدها مع خطة القدرات: كلمات النموذج اللفظي اللي بتحله اليوم (تعرف كلماته قبل ما تحل)
+  function engToday() {
+    const A = advGet(); if (!A || !A.elv || isFree()) return null; const L = ELV[A.elv]; if (!L) return null;
+    const n = Math.max(1, dayDiff(A.es || day0(), Date.now()) + 1), p1 = A.ed > 0 && n <= A.ed, T = [];
+    if (p1) { const m = ((n - 1) % 14) + 1, k = Math.ceil(n / 2);
+      T.push({ i: '📖', t: _T`كلمات النموذج ${m} ونطقها`, h: '#vocab-v' + m });
+      T.push(A.elv === 'A1' ? { i: '🔗', t: _T('تدريب التناظر (معاني الكلمات)'), h: '#t-ana' } : { i: '✍️', t: _T('تدريب إكمال الجمل'), h: '#t-sen' });
+      if (!noFound() && k <= 4) T.push(n % 2 ? { i: '🧱', t: _T`درس تأسيس اللفظي ${k}`, h: '#watch-af' + k } : { i: '📝', t: _T`اختبار الدرس ${k}`, h: '#fq-' + k });
+      return { n, p1, ed: A.ed, elv: A.elv, T }; }
+    if (!L.m) return null;
+    const st = planState(), plan = PLANS.find(p => p.id === st.id), I = plan ? planInfo(plan, st) : null;
+    const vt = I && I.cur ? I.cur.tasks.find(t => t.set && t.k === 'v') : null, m = vt ? +vt.set.slice(1) : ((n - 1) % 14) + 1;
+    T.push({ i: '📖', t: _T`كلمات النموذج ${m} قبل ما تحله`, h: '#vocab-v' + m });
+    if (elvLow(A.elv) || A.elv === 'B1') T.push({ i: '🎧', t: _T`اسمع قطع النموذج ${m}`, h: '#v' + m });
+    return { n, p1: false, elv: A.elv, T };
+  }
+  // شريط «مسارك» (الرئيسية وصفحة الخطة)
+  function pathStrip() {
+    const E = engToday(); if (!E) return '';
+    const st = planState(), plan = PLANS.find(p => p.id === st.id);
+    const head = E.p1 ? _T`<b>🧭 مسارك: تقوية الإنجليزي</b> <span class="mut">اليوم ${E.n} من ${E.ed}${plan ? _T`، وبعدها ${plan.name}` : ''}</span>` : _T`<b>🧭 مسارك</b> <span class="mut">مستواك ${elvName(E.elv)} · القدرات تحتاج <bdi dir="ltr">B1–B2</bdi></span>`;
+    return `<section class="pth" aria-label="${_T('مسارك')}"><div class="pth-h">${head}</div><div class="pth-t"><span class="pth-k">${E.p1 ? _T('مهام اليوم:') : _T('إنجليزي اليوم:')}</span>${E.T.map(x => `<a class="tchip" href="${x.h}"><span aria-hidden="true">${x.i}</span> ${x.t}</a>`).join('')}</div></section>`;
+  }
+  const obDone = () => { const A = advGet(); return !!(A && A.elv); };
+  const OB_ASK = 'qg_onb_ask';
+  // يفتح لحاله: بعد الدفع، ومرة باليوم في الرئيسية للمشترك اللي ما جهّز مساره
+  function obMaybe() { if (!auth || isFree() || auth.role === 'admin' || obDone() || document.querySelector('.obm')) return;
+    if (lsGet(OB_ASK, '') === dayKey()) return; lsSet(OB_ASK, dayKey()); setTimeout(() => { if (!location.hash || location.hash === '#') obDlg(); }, 900); }
+  function obDlg() {
+    return new Promise(res => {
+      document.querySelectorAll('.obm').forEach(x => x.remove());
+      const A0 = advGet() || {}, ex0 = examGet(), box = document.createElement('div'); box.className = 'modal obm';
+      const S = { name: (auth && (auth.display || auth.name)) || '', elv: A0.elv || '', mins: A0.mins || 0, goal: A0.goal || 0, d: ex0 ? ex0.d : '', t: ex0 ? ex0.t || '08:00' : '08:00', noex: false, q: 0, a: [] };
+      const W = document.createElement('div'); W.className = 'm advm obw'; W.setAttribute('role', 'dialog'); W.setAttribute('aria-modal', 'true'); W.setAttribute('aria-labelledby', 'obh'); box.appendChild(W); document.body.appendChild(box);
+      let done = false; const close = v => { box.remove(); document.removeEventListener('keydown', onK); res(v || done); };
+      const onK = e => { if (e.key === 'Escape') close(false); }; document.addEventListener('keydown', onK);
+      const dots = k => `<div class="obd" aria-hidden="true">${[1, 2, 3].map(i => `<i class="${i <= k ? 'on' : ''}"></i>`).join('')}</div>`;
+      const later = `<button type="button" class="btn ghost" id="oblater">${_T('لاحقاً')}</button>`;
+      const bindLater = () => { const b = W.querySelector('#oblater'); if (b) b.onclick = () => close(false); };
+      // ① الاسم
+      const s1 = () => { W.innerHTML = dots(1) + _T`<h3 id="obh">🧭 خلنا نجهّز مسارك</h3><p class="mut">دقيقتين بس: اسمك ومستواك في الإنجليزي وموعد اختبارك، ونرتب لك مسار يوصلك لدرجتك ويقوّي إنجليزيك.</p>
+          <label class="obl"><span>اسمك</span><input id="obn" maxlength="40" autocomplete="name" value="${esc(S.name)}"></label>
+          <div class="acts"><button class="btn" id="obgo">التالي</button>${later}</div>`;
+        bindLater(); const n = W.querySelector('#obn'); setTimeout(() => n.focus(), 50);
+        const go = () => { const v = n.value.replace(/[<>"'`]/g, '').trim(); if (v.length < 2) { toast(_T('اكتب اسمك')); n.focus(); return; } S.name = v; s2(); };
+        W.querySelector('#obgo').onclick = go; n.onkeydown = e => { if (e.key === 'Enter') go(); }; };
+      // ② مستواه في الإنجليزي
+      const s2 = () => { W.innerHTML = dots(2) + _T`<h3 id="obh">وش مستواك في الإنجليزي؟</h3><p class="mut">اختبار القدرات الإنجليزي يحتاج مستوى <bdi dir="ltr">B1</bdi> إلى <bdi dir="ltr">B2</bdi> عشان تفهم الأسئلة وتحلها صح. اختر الأقرب لك:</p>
+          <div class="obls">${ELV_K.map(k => `<button type="button" class="obo${S.elv === k ? ' on' : ''}" data-l="${k}"><b><bdi dir="ltr">${k}</bdi> · ${ELV[k].t}</b><small>${ELV[k].s}</small></button>`).join('')}</div>
+          <button type="button" class="btn ghost obt" id="obtest">🤔 ما أعرف مستواي: اختبرني (15 سؤال، 5 دقايق)</button>
+          <div class="acts"><button class="btn" id="obgo"${S.elv ? '' : ' disabled'}>التالي</button><button type="button" class="btn ghost" id="obback">رجوع</button></div>`;
+        W.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { S.elv = b.dataset.l; W.querySelectorAll('[data-l]').forEach(x => x.classList.toggle('on', x === b)); W.querySelector('#obgo').disabled = false; });
+        W.querySelector('#obtest').onclick = () => { S.q = 0; S.a = []; sq(); };
+        W.querySelector('#obgo').onclick = () => { if (S.elv) s3(); }; W.querySelector('#obback').onclick = s1; };
+      // ②ب الاختبار السريع: سؤال سؤال
+      const sq = () => { const [q, o] = ENG_Q[S.q];
+        W.innerHTML = _T`<div class="obq-h"><b>اختبار مستوى الإنجليزي</b><span class="mut"><bdi dir="ltr">${S.q + 1} / ${ENG_Q.length}</bdi></span></div><div class="obbar"><i style="width:${Math.round(S.q * 100 / ENG_Q.length)}%"></i></div>
+          <p class="obqq" dir="ltr" lang="en">${esc(q)}</p><div class="obqo" dir="ltr">${o.map((x, i) => `<button type="button" class="obo" data-i="${i}" lang="en"><b>${'ABCD'[i]})</b> ${esc(x)}</button>`).join('')}</div>
+          <div class="acts"><button type="button" class="btn ghost" id="obqx">وقّف الاختبار</button></div>`;
+        W.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { S.a[S.q] = +b.dataset.i; S.q++; if (S.q < ENG_Q.length) sq(); else sr(); });
+        W.querySelector('#obqx').onclick = s2; };
+      // ②ج نتيجة الاختبار
+      const sr = () => { const sc = ENG_Q.reduce((n, q, i) => n + (S.a[i] === q[2] ? 1 : 0), 0); S.elv = engLvl(sc);
+        const ok = !elvLow(S.elv);
+        W.innerHTML = _T`<h3 id="obh">مستواك: ${elvName(S.elv)}</h3><p class="obsc">جبت <b>${sc}</b> من ${ENG_Q.length}</p>
+          <p class="mut">${ok ? _T('مستواك يكفي تفهم أسئلة القدرات، ونركّز في مسارك على حل الأسئلة والمراجعة.') : _T('القدرات الإنجليزي تحتاج B1 إلى B2. مسارك يبدأ بتقوية إنجليزيك أيام قليلة، وبعدها خطة القدرات، ومعها كل يوم كلمات النموذج اللي بتحله.')}</p>
+          <div class="acts"><button class="btn" id="obgo">التالي</button><button type="button" class="btn ghost" id="obagain">أعد الاختبار</button></div>`;
+        W.querySelector('#obgo').onclick = s3; W.querySelector('#obagain').onclick = () => { S.q = 0; S.a = []; sq(); }; };
+      // ③ موعده ووقته وهدفه
+      const chips = (arr, cur, key, lab) => arr.map(v => `<button type="button" class="advc${v === cur ? ' on' : ''}" data-${key}="${v}" aria-pressed="${v === cur}">${lab(v)}</button>`).join('');
+      const s3 = () => { W.innerHTML = dots(3) + _T`<h3 id="obh">موعد اختبارك ووقتك</h3>
+          <div class="advq"><b>متى اختبارك؟</b><div class="exf"><label><span>التاريخ</span><input type="date" id="obd" min="${dayKey()}" value="${S.d}" dir="ltr"></label><label><span>الوقت <small>(اختياري)</small></span><input type="time" id="obt" value="${S.t}" dir="ltr"></label></div>
+            <label class="advno"><input type="checkbox" id="obnx"${S.noex ? ' checked' : ''}> ما حجزت موعد للحين</label></div>
+          <div class="advq"><b>كم تقدر تذاكر كل يوم؟</b><div class="advcs" role="group">${chips(ADV_MINS, S.mins, 'm', advMinsT)}</div></div>
+          <div class="advq"><b>وش الدرجة اللي تطمح لها؟</b><div class="advcs" role="group">${chips(ADV_GOALS, S.goal, 'g', v => `<bdi dir="ltr">${v}+</bdi>`)}</div></div>
+          <div class="acts"><button class="btn gold" id="obgo">جهّز مساري</button><button type="button" class="btn ghost" id="obback">رجوع</button></div>`;
+        const D = W.querySelector('#obd'), NX = W.querySelector('#obnx'); NX.onchange = () => { D.disabled = W.querySelector('#obt').disabled = NX.checked; }; NX.onchange(); D.oninput = () => { if (D.value) NX.checked = false; };
+        const pick = key => W.querySelectorAll(`[data-${key}]`).forEach(b => b.onclick = () => { S[key === 'm' ? 'mins' : 'goal'] = +b.dataset[key]; W.querySelectorAll(`[data-${key}]`).forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); }); });
+        pick('m'); pick('g'); W.querySelector('#obback').onclick = s2;
+        W.querySelector('#obgo').onclick = () => { S.d = D.value; S.t = W.querySelector('#obt').value || '08:00'; S.noex = NX.checked;
+          if (!S.noex && !/^\d{4}-\d{2}-\d{2}$/.test(S.d)) { toast(_T('اختر تاريخ اختبارك، أو علّم «ما حجزت موعد»')); D.focus(); return; }
+          if (!S.noex && examAt({ d: S.d, t: S.t }) < Date.now() - DAYMS) { toast(_T('التاريخ اللي اخترته مضى')); return; }
+          if (!S.mins) { toast(_T('اختر كم تقدر تذاكر كل يوم')); return; } if (!S.goal) { toast(_T('اختر الدرجة اللي تطمح لها')); return; }
+          s4(); }; };
+      // ④ مساره
+      const s4 = () => { const dl = S.noex ? null : dayDiff(Date.now(), examAt({ d: S.d, t: S.t })), P = pathOf(S.elv, dl, S.mins), pl = PLANS.find(p => p.id === P.plan);
+        const pStart = addDays(day0(), P.ed), steps = [];
+        if (P.ed) steps.push(_T`<li><b>تقوية الإنجليزي · ${P.ed} أيام</b><span>كلمات كل نموذج ونطقها، وتدريب ${S.elv === 'A1' ? _T('التناظر') : _T('إكمال الجمل')}${noFound() ? '' : _T('، ودروس تأسيس اللفظي')}.</span></li>`);
+        steps.push(_T`<li><b>${pl.name} · ${pl.days} يوم</b><span>${P.ed ? _T`تبدأ ${fmtDay(pStart)}. ` : ''}${pl.daily}، وتخلّص فيها كل الأقسام والنماذج.</span></li>`);
+        if (ELV[S.elv].m) steps.push(_T`<li><b>إنجليزي كل يوم</b><span>كلمات النموذج اللي بتحله قبل ما تحله${elvLow(S.elv) || S.elv === 'B1' ? _T('، وتسمع قطعه') : ''}.</span></li>`);
+        steps.push(_T`<li><b>الأسبوع الأخير</b><span>اختبار محاكي كل يوم ومراجعة أخطائك.</span></li>`);
+        W.innerHTML = _T`<h3 id="obh">🧭 مسارك جاهز يا ${esc(firstName(S.name) || S.name)}</h3>
+          <p class="mut">مستواك ${elvName(S.elv)} · هدفك <bdi dir="ltr">${S.goal}+</bdi>${dl != null ? _T` · باقي ${dLabel(dl)} على اختبارك` : ''}</p>
+          <ol class="obst">${steps.join('')}</ol>
+          <div class="acts"><button class="btn gold" id="obgo">▶ ابدأ مساري</button><button type="button" class="btn ghost" id="obback">رجوع</button></div>`;
+        W.querySelector('#obback').onclick = s3;
+        W.querySelector('#obgo').onclick = async () => { const b = W.querySelector('#obgo'); b.disabled = true;
+          if (!S.noex) { const old = examGet(); if (!old || old.d !== S.d || (old.t || '08:00') !== S.t) { lsSet(EXAM_LS, { d: S.d, t: S.t, up: Date.now() }); lsDel(TRIPX_LS); } }
+          lsSet(ADV_LS, { mins: S.mins, goal: S.goal, elv: S.elv, ed: P.ed, es: day0(), up: Date.now() });
+          const st = planState(); if (!(st.id === pl.id && !P.ed)) { planStart(pl.id); if (P.ed) { const s2x = planState(); s2x.started = pStart; planSave(s2x); } }
+          if (S.name && S.name !== (auth.display || auth.name)) { try { const r = await api({ op: 'profile_set', session: auth.session, name: S.name }); if (r && r.ok) { auth.display = S.name; lsSet(LS.auth, auth); } } catch (e) {} }
+          skillsPushSoon(800); done = true; toast(_T('مسارك جاهز ✓')); close(true); if (!location.hash || location.hash === '#' || location.hash === '#plan' || location.hash === '#paid') { if (location.hash === '#paid') location.hash = ''; else route(); } }; };
+      s1();
     });
   }
   // 🎓 صفحة المرشد
@@ -2115,7 +2265,7 @@
   }
   function onKey(e) {
     if (!P || e.ctrlKey || e.metaKey || e.altKey) return;
-    const k = e.key.toLowerCase();
+    const k = (e.key || '').toLowerCase();   // 🐞 v116: Safari يرسل أحياناً keydown بدون key (التعبئة التلقائية) — كان يطيّح الصفحة
     const nav = $('#nav'); if (nav && nav.classList.contains('open')) { if (k === 'escape') nav.classList.remove('open'); return; }
     const idx = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : ('1234'.indexOf(k) >= 0 ? '1234'.indexOf(k) : -1);
     if (idx >= 0) { const b = document.querySelectorAll('.opt')[idx]; if (b && !b.disabled) b.click(); }
@@ -2380,7 +2530,7 @@
     (function count() { const ring = $('#ring'), rp = $('#rp'); if (!ring) return; if (RM()) { ring.style.setProperty('--p', pct); rp.textContent = pct; return; } const t0 = performance.now(), D = 900; (function f(t) { const e = Math.min(1, (t - t0) / D), v = Math.round(pct * (1 - Math.pow(1 - e, 3))); ring.style.setProperty('--p', v); rp.textContent = v; if (e < 1) requestAnimationFrame(f); })(t0); })();
     if (pct >= 85) setTimeout(confetti, 350);
     skillsPushSoon(1500);
-    if (set.topicSet) { $('#saved').textContent = _T('تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'); return; }
+    if (set.topicSet) { const st = $('#saved'); if (st) st.textContent = _T('تدريب موجّه: يُحتسب في نقاط قوتك وضعفك فقط (لا يدخل لوحة الصدارة)'); return; }   // 🐞 v116: الصفحة تبدّلت قبلها
     // 📨 مرة وحدة لكل محاولة: لو انحفظت مع آخر إجابة ما تنرسل مرة ثانية، ولو ما وصلت يعيد الموقع إرسالها بنفسه
     const sv = $('#saved'); if (sv && !prog.rs) sv.textContent = _T('⏳ نحفظ نتيجتك…');
     const r = await resSave(P.id, set, items, prog), s2 = $('#saved'); if (!s2) return;
@@ -3322,7 +3472,7 @@
     $('#lvp').onclick = () => levelQ(i - 1);
     const nb = $('#lvn'); if (nb) nb.onclick = () => levelQ(i + 1);
     const fb = $('#lvf'); if (fb) fb.onclick = async () => { const un = n - Object.keys(LV.a).length; if (un && !await QGDlg.confirm(_T`باقي ${un} سؤال بدون إجابة وتنحسب خطأ. تنهي الاختبار؟`, { ok: _T('إنهاء') })) return; levelFinish(); };
-    document.onkeydown = e => { if (e.ctrlKey || e.metaKey || e.altKey) return; const k = e.key.toLowerCase(), idx = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : '1234'.indexOf(k); if (idx >= 0) { const b = document.querySelectorAll('.lvl .opt')[idx]; if (b) b.click(); } else if (k === 'enter' || k === 'arrowleft') { const b = $('#lvn') || $('#lvf'); if (b) b.click(); } else if (k === 'arrowright') { const b = $('#lvp'); if (b && !b.disabled) b.click(); } };
+    document.onkeydown = e => { if (e.ctrlKey || e.metaKey || e.altKey) return; const k = (e.key || '').toLowerCase(), idx = 'abcd'.indexOf(k) >= 0 ? 'abcd'.indexOf(k) : '1234'.indexOf(k); if (idx >= 0) { const b = document.querySelectorAll('.lvl .opt')[idx]; if (b) b.click(); } else if (k === 'enter' || k === 'arrowleft') { const b = $('#lvn') || $('#lvf'); if (b) b.click(); } else if (k === 'arrowright') { const b = $('#lvp'); if (b && !b.disabled) b.click(); } };
   }
   function levelFinish() {
     const { set, a, t0 } = LV; clearInterval(LV.tm); document.onkeydown = null;
@@ -5351,7 +5501,7 @@
       ${openBar}
       <p class="pbsum">${PY.paid ? `${PY.paid === 1 ? 'عملية ناجحة وحدة' : PY.paid === 2 ? 'عمليتين ناجحة' : PY.paid + ' عمليات ناجحة'} · المجموع <b>${PY.total} ريال</b>` : 'ما فيه دفع حقيقي للحين'} · «التدريب» <b>${PY.price} ريال</b>${PY.price2 ? ` · «التأسيس والتدريب» <b>${PY.price2} ريال</b>` : ''}${PY.test_price ? ` · حساب التجربة يدفع <b>${PY.test_price} ريال</b>` : ''}</p>
       ${PY.rows.length ? `<div class="pblist">${L.map(p => { const S = PB_ST[p.status] || ['na', esc(p.status)], m = PB_M[String(p.method || '').toUpperCase()] || p.method || '';
-        return `<div class="pbrow" data-e="${esc(p.email)}" role="button" tabindex="0" title="${p.err ? esc('السبب: ' + p.err) : 'بطاقة الطالب'}"><span class="pbwho"><b>${esc(p.display || p.name || p.email.split('@')[0])}</b><small class="ltr">${esc(p.email)}</small></span><span class="pbamt">${p.amount} ريال${m ? `<small>${esc(m)}</small>` : ''}${p.pkg === 'full' ? '<small class="pbpk">📦 تأسيس وتدريب · شهرين</small>' : ''}</span><span class="pbst ${S[0]}">${S[1]}${p.live ? '' : '<small>🧪 تجربة</small>'}</span><span class="pbdt">${fmtD(p.paid_at || p.created_at)}</span></div>`; }).join('')}</div>
+        return `<div class="pbrow" data-e="${esc(p.email)}" role="button" tabindex="0" title="${p.err ? esc('السبب: ' + p.err) : 'بطاقة الطالب'}"><span class="pbwho"><b>${esc(p.display || p.name || p.email.split('@')[0])}</b><small class="ltr">${esc(p.email)}</small></span><span class="pbamt">${p.amount} ريال${m ? `<small>${esc(m)}</small>` : ''}${p.pkg === 'full' ? '<small class="pbpk">📦 تأسيس وتدريب · ' + (p.months > 2 ? p.months + ' شهور' : 'شهرين') + '</small>' : ''}</span><span class="pbst ${S[0]}">${S[1]}${p.live ? '' : '<small>🧪 تجربة</small>'}</span><span class="pbdt">${fmtD(p.paid_at || p.created_at)}</span></div>`; }).join('')}</div>
         ${PY.rows.length > 6 ? `<button type="button" class="lnk" id="pball">${ADM.payAll ? 'عرض أقل' : `عرض كل العمليات (${PY.rows.length})`}</button>` : ''}` : '<p class="mut pbempty">أول ما يدفع أحد من الموقع يطلع هنا.</p>'}
     </section>`;
   }
@@ -5395,7 +5545,7 @@
           <label class="slpr"><span>${SL.offer ? 'السعر الأصلي' : 'السعر على الزر'}</span><span class="slpi"><input id="slprice" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price || PRICE))}"><small>ريال</small></span></label></div>
         <div class="slpk"><b class="slpk-n">📦 التأسيس والتدريب <small>شهرين</small></b><label class="slu"><span>رابط منتج «تأسيس وتدريب» في سلة</span><input id="slurl2" type="url" dir="ltr" inputmode="url" placeholder="https://….salla.sa/…" value="${esc(SL.url2 || '')}" autocomplete="off"></label>
           <label class="slpr"><span>${SL.offer ? 'السعر الأصلي' : 'السعر على الزر'}</span><span class="slpi"><input id="slprice2" type="number" min="1" max="5000" step="1" value="${esc(String(SL.price2 || PRICE2))}"><small>ريال</small></span></label></div>
-        ${SL.offer ? `<p class="slpk-h slof">🏷 عرض شغّال لين ${new Date(SL.offer.until).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' })} الساعة 11:59 الليل: «التدريب» ${SL.offer.p1} بدل ${SL.offer.was1} · «التأسيس والتدريب» ${SL.offer.p2} بدل ${SL.offer.was2}. الطلاب يشوفون السعر الأصلي مشطوب وتاريخ النهاية، وبعدها يرجع السعر الأصلي لحاله هنا وفي سلة.</p>` : ''}
+        ${SL.offer ? `<p class="slpk-h slof">🏷 عرض شغّال لين ${new Date(SL.offer.until).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' })} الساعة 11:59 الليل: «التدريب» ${SL.offer.p1} بدل ${SL.offer.was1} · «التأسيس والتدريب» ${SL.offer.p2} بدل ${SL.offer.was2}${SL.offer.x > 1 ? ' · 🎁 ومعها شهور مجانية: «التدريب» شهر + شهر، «التأسيس والتدريب» شهرين + شهرين (الموقع يفتح المدة كاملة لحاله)' : ''}. الطلاب يشوفون السعر الأصلي مشطوب و«عرض لفترة محدودة»، وبعد التاريخ يرجع السعر الأصلي والمدة العادية لحالهم هنا وفي سلة.</p>` : ''}
         <p class="slpk-h">${SL.url2 ? 'الطالب يختار بين الباقتين في نافذة الاشتراك. السعر هنا لازم يطابق سعر المنتج في سلة، لأن الموقع يعرف الباقة من مبلغ الطلب.' : 'بدون رابط منتج «تأسيس وتدريب»: الطالب يشوف الباقتين، و«التأسيس والتدريب» يطلبها منك على واتساب وتضيفه أنت من «➕ إضافة يدوية».'}</p>
         <button type="submit" class="btn sm" id="slsave" disabled>حفظ</button></form>
       ${openBar}
@@ -6115,7 +6265,7 @@ ${tgBox()}
         <div class="sroles" role="radiogroup" aria-label="باقتهم">${[['train', '📦 التدريب · شهر', 'كل شي ما عدا التأسيس'], ['full', '📦 التأسيس والتدريب · شهرين', 'كل المحتوى مع دروس التأسيس']].map(([v, b, t]) => `<label class="ropt"><input type="radio" name="m_pkg" value="${v}" ${(ADM.mpkg === 'full' ? 'full' : 'train') === v ? 'checked' : ''}><span><b>${b}</b><small>${t}</small></span></label>`).join('')}</div>
         <div class="acts"><button class="btn gold" type="submit" id="m_go" disabled>إضافة</button><span class="mcnt" id="m_cnt"></span></div>
         ${resHtml}
-        <p class="mnote">مدة الاشتراك تبدأ من الحين: شهر لباقة «التدريب» وشهرين لباقة «التأسيس والتدريب»، وتقدر تغيّر الباقة أو التاريخ بعدين من «الاشتراكات». يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة تطلع لهم داخل الموقع (التفاعلية والمحلولة) باسمهم وإيميلهم، ونسخة PDF في Drive تنعمل من الشيت بس.</p></form>
+        <p class="mnote">مدة الاشتراك تبدأ من الحين: شهر لباقة «التدريب» وشهرين لباقة «التأسيس والتدريب»، وتقدر تغيّر الباقة أو التاريخ بعدين من «الاشتراكات». يدخلون الموقع فوراً بنفس إيميل Google، وما يحتاج تضيفهم في الشيت. المذكرة تطلع لهم داخل الموقع (التفاعلية والمحلولة).</p></form>
       <h3 class="sh">المضافون من اللوحة <small>${M.length}</small></h3>
       ${M.length > 8 ? `<div class="abar"><input id="mq" type="search" placeholder="ابحث بالاسم أو الإيميل…" value="${esc(ADM.mq)}"></div>` : ''}
       <div class="slist">${list.length ? list.map(row).join('') : `<div class="sempty">${M.length ? 'لا نتائج' : 'ما أضفت أحد بعد — اكتب الإيميلات فوق واضغط «إضافة».'}</div>`}</div></div>`;
@@ -6386,7 +6536,7 @@ ${tgBox()}
       return _T('<span class="tchip ok">✓ مراجعة</span>'); };
     const finHtml = d => _T`<div class="dn ${planArrive.indexOf(d.n) >= 0 ? 'arrive' : ''}" id="dn${d.n}"><label class="dchk" title="شيل العلامة لو علّمته بالغلط"><input type="checkbox" data-day="${d.n}" checked><span>اليوم ${d.n}</span></label><span class="mut">${fmtDay(addDays(I.start, d.n - 1))}${d.n === I.tn ? _T(' · <b class="dtod">اليوم</b>') : ''}</span><span class="dnl">${d.tasks.map((t, i) => dnChip(d, t, i)).join('')}</span></div>`;
     const doneTxt = I.nDone ? _T`خلّصت ${dLabel(I.nDone)} من ${days.length}` : _T`ما خلّصت أي يوم من ${days.length} للحين`;
-    W.innerHTML = _T`<div class="hero"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>
+    W.innerHTML = pathStrip() + _T`<div class="hero"><div><h1>${plan.name}</h1><p>${plan.days} يوماً · ${plan.daily}</p></div>
         <div class="pctl"><button class="btn sm ghost" id="chg">تغيير الخطة</button><button class="btn sm ghost" id="rst" title="يمسح علاماتك ويبدأ الخطة من اليوم">إعادة البدء</button></div></div>
       <div class="pstats">
         <div class="pst pg"><span class="pk">✅ نسبة الإنجاز</span><b class="pgv"><span data-pct>${from}</span>%</b><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="نسبة إنجازك في الخطة"><i style="width:${from}%"></i></div><span class="ps">${doneTxt}</span><span class="ps2">${lagT}</span></div>
@@ -6858,7 +7008,7 @@ ${tgBox()}
     window.addEventListener('unhandledrejection', e => { const r = e && e.reason; if (r && (r.stack || r.message) && !/API not configured|locked|bad key/.test(r.message || '')) send((r.name || 'Error') + ': ' + (r.message || ''), String(r.stack || '').split('\n')[1] ? String(r.stack).split('\n')[1].trim().slice(0, 80) : ''); }); }
   // 🤖 المساعد الذكي «اشرح لي» (assets/ai.js): نفس منسّق المعادلات، ونافذة الاشتراك للزائر
   if (window.QGAI) QGAI.init({ api: QG.API, session: () => auth && auth.session, fmt: arFx, free: isFree, onSub: () => subDlg('', 'المساعد الذكي'), onAuth: r => setTimeout(() => { QGAI.close(); logout(esc(r.msg || '')); }, 1800),   // i18n:skip (اسم الإحصائية بالعربي)
-    help: { find: helpFind, profile: helpProfile, link: helpLink, name: () => firstName(auth && (auth.display || auth.name)) } });   // 🙋 المساعد العام
+    help: { find: helpFind, profile: helpProfile, link: helpLink, act: advAct, name: () => firstName(auth && (auth.display || auth.name)) } });   // 🙋 المساعد العام
   applyFs(); applyTheme();
   // 💳 الرجوع من صفحة الدفع: تاب يضيف ?tap_id=chg_… لرابط الرجوع — نحفظه ونروح لصفحة التحقق
   (function () { const m = /[?&]tap_id=(chg_[A-Za-z0-9]+)/.exec(location.search); if (!m) return; try { sessionStorage.setItem(PAY_SS, m[1]); } catch (e) {} history.replaceState(null, '', location.pathname + '#paid'); })();

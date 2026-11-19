@@ -126,7 +126,8 @@ img{max-width:100%}
 .psl{margin:0 0 28px;color:#C8D3F1;font-size:17.5px;max-width:42em}
 .pks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
 .pk{display:flex;flex-direction:column;padding:26px 26px 24px;border:1.5px solid rgba(255,255,255,.18);border-radius:22px;background:rgba(255,255,255,.04)}
-.pk.two{border-color:var(--gold);background:rgba(233,162,59,.07)}
+.pk.two{position:relative;border-color:var(--gold);background:rgba(233,162,59,.07)}
+.pktop{position:absolute;top:-15px;inset-inline-start:22px;margin:0;padding:3px 14px;border-radius:999px;background:var(--gold);color:#0E2458;font-size:14px;font-weight:800;line-height:1.6;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .pk h3{font-family:var(--disp);font-weight:800;font-size:25px;line-height:1.3;margin:0;color:#fff}
 .pkp{display:flex;align-items:baseline;gap:10px;margin:4px 0 16px}
 .pkp b{font-family:var(--disp);font-weight:800;font-size:60px;line-height:1.05;color:var(--gold);letter-spacing:-.5px}

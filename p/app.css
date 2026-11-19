@@ -2091,8 +2091,6 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .wvbox{position:relative;width:100%;aspect-ratio:16/9;background:#05070D;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(14,36,88,.22);user-select:none;-webkit-user-select:none}
 .wvbox video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070D;outline:none}
 .wvbox.fs,.wvbox:fullscreen{border-radius:0;aspect-ratio:auto;width:100vw;height:100vh}
-.wvwm{position:absolute;z-index:2;pointer-events:none;color:#fff;opacity:.34;font:600 clamp(11px,1.5vw,15px)/1.3 "Poppins","Tajawal",sans-serif;direction:ltr;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.65);transition:top 1.2s ease,inset-inline-start 1.2s ease}
-.wvbox.fs .wvwm,.wvbox:fullscreen .wvwm{font-size:clamp(14px,1.6vw,20px)}
 .wvmsg{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:20px;background:#05070D}
 .wvmsg[hidden]{display:none}
 .wvm{color:#E7EBF5;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;font-size:calc(15px * var(--fs));line-height:1.7}
@@ -3373,6 +3371,10 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 .pkg::after{content:"";position:absolute;top:13px;inset-inline-end:13px;width:20px;height:20px;border-radius:50%;border:2px solid var(--dot);background:var(--card);box-sizing:border-box}
 .pkg.on::after{border-color:var(--royal);background:var(--royal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.4l3 3 6-6.6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
 .pkg-m{font-size:calc(12.5px * var(--fs));line-height:1.5;font-weight:800;color:var(--okt)}
+/* ⭐ «الأكثر طلباً» على «التأسيس والتدريب» (v116، طلب المالك 19 نوفمبر 2026) */
+.pkg-top{position:absolute;top:-11px;inset-inline-start:12px;z-index:1;font-size:calc(11.5px * var(--fs));font-weight:800;line-height:1.6;padding:1px 10px;border-radius:999px;background:var(--gold3);color:#0E2458;box-shadow:0 2px 8px rgba(14,36,88,.18);white-space:nowrap}
+.pkgs:has(.pkg-top){padding-top:8px}
+.pkg[data-pk="full"]:not(.on){border-color:color-mix(in srgb,var(--gold3) 55%,var(--line))}
 /* 🛡 ضمان الدرجة = الرسالة الأساسية: فوق زر الدفع في نافذة الاشتراك، وتحت نص الحساب المجاني في الصفحة الرئيسية */
 .qgdlg-box p.sub-grt,.fh-g{margin:14px 0 0;padding:9px 12px;border-radius:12px;background:var(--okbg);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ink);font-size:calc(13.5px * var(--fs));line-height:1.7}
 .sub-grt b,.fh-g b{color:var(--okt);font-weight:800}
@@ -3630,3 +3632,29 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 [data-theme=dark] .rp-pub summary{color:#E7EBF5}
 [data-theme=dark] .seg.rp-tpl{background:#1B2540}
 @media (max-aspect-ratio:2/3){.rail #lskip{display:none}}   /* الجوال بالطول: «سؤال ثاني» من اللوحة */
+/* 🧭 v116 بداية المشترك (obDlg) + شريط «مسارك» (pathStrip) — طلب المالك 19 نوفمبر 2026 */
+.obw{max-width:520px}
+.obw h3{font-family:var(--disp);font-size:calc(21px * var(--fs));line-height:1.35;margin:0 0 8px}
+.obw p.mut{margin:0 0 14px;line-height:1.7;font-size:calc(14.5px * var(--fs))}
+.obd{display:flex;gap:6px;margin:0 0 14px}.obd i{flex:1;height:5px;border-radius:9px;background:var(--dotbg)}.obd i.on{background:var(--royal)}
+.obl{display:grid;gap:6px;font-weight:700}.obl input{font:inherit;font-size:calc(16px * var(--fs));padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+.obl input:focus{outline:none;border-color:var(--royal);box-shadow:0 0 0 3px color-mix(in srgb,var(--royal) 18%,transparent)}
+.obls,.obqo{display:grid;gap:8px}
+.obo{display:grid;gap:2px;text-align:start;width:100%;font:inherit;cursor:pointer;padding:10px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);transition:border-color .15s,background .15s}
+.obo b{font-weight:800;color:var(--ink2)}.obo small{color:var(--mut);font-size:calc(13px * var(--fs));line-height:1.5}
+.obo:hover{border-color:color-mix(in srgb,var(--royal) 45%,var(--line))}
+.obo.on{border-color:var(--royal);background:color-mix(in srgb,var(--royal) 7%,var(--card))}
+.obqo .obo{display:block;font-size:calc(15.5px * var(--fs))}.obqo .obo b{margin-inline-end:6px}
+.obt{width:100%;margin-top:10px}
+.obq-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.obbar{height:6px;border-radius:9px;background:var(--dotbg);overflow:hidden;margin-bottom:16px}.obbar i{display:block;height:100%;background:var(--royal);border-radius:9px;transition:width .25s}
+.obqq{font-size:calc(17px * var(--fs));line-height:1.6;font-weight:700;margin:0 0 12px;text-align:left}
+.obsc{font-size:calc(16px * var(--fs));margin:0 0 6px}.obsc b{font-family:var(--disp);font-size:1.4em;color:var(--royal)}
+.obst{margin:0 0 4px;padding:0;list-style:none;counter-reset:ob;display:grid;gap:10px}
+.obst li{counter-increment:ob;position:relative;padding:10px 14px 10px 14px;padding-inline-start:46px;border:1px solid var(--line);border-radius:14px;display:grid;gap:2px}
+.obst li::before{content:counter(ob);position:absolute;inset-inline-start:12px;top:11px;width:24px;height:24px;border-radius:50%;background:var(--royal);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.obst li b{color:var(--ink2)}.obst li span{color:var(--mut);font-size:calc(13.5px * var(--fs));line-height:1.6}
+.pth{margin:12px 0 0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--royal) 25%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--royal) 5%,var(--card));display:grid;gap:8px}
+.pth-h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}.pth-h b{color:var(--ink2);font-family:var(--disp)}
+.pth-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pth-k{font-weight:700;color:var(--mut);font-size:calc(13px * var(--fs));margin-inline-end:2px}
+#planwrap>.pth{margin:0 0 14px}

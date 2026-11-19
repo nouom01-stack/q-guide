@@ -46,7 +46,7 @@
   function inline(s) {
     const f = CFG.fmt || esc;
     // {{q3}} {{rules:circles}} {{plan}}… → زر ينقل الطالب للصفحة (المساعد العام)، وأي رمز ما نعرفه ينشال
-    return s.split(/\{\{([a-z0-9:-]{1,24})\}\}/i).map((p, i) => i % 2 ? ((CFG.help && CFG.help.link && CFG.help.link(p.toLowerCase())) || '') : p.split('**').map((x, j) => j % 2 ? `<b>${f(x)}</b>` : f(x)).join('')).join('').replace(/^[\s،,:·]+(?=<a )/, '');
+    return s.split(/\{\{([a-z0-9:-]{1,24})\}\}/i).map((p, i) => i % 2 ? (/^do-/i.test(p) ? '' : (CFG.help && CFG.help.link && CFG.help.link(p.toLowerCase())) || '') : p.split('**').map((x, j) => j % 2 ? `<b>${f(x)}</b>` : f(x)).join('')).join('').replace(/^[\s،,:·]+(?=<a )/, '');
   }
   function render(text) {
     let h = '';
@@ -73,7 +73,7 @@
     const help = !!C.help, ov = document.createElement('div'); ov.className = 'qgai' + (help ? ' qgh-p' : ''); ov.setAttribute('dir', EN() ? 'ltr' : 'rtl');
     const camL = _T('صوّر السؤال أو ارفع صورته');
     ov.innerHTML = `<section class="qgai-p" role="dialog" aria-modal="true" aria-labelledby="qgai-t">
-      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">${help ? _T('مرشدك الأكاديمي') : _T('مساعد Q-Guide')}</b><small>${help ? _T('اسألني عن مذاكرتك، أو صوّر سؤال وأشرحه لك') : _T('يشرح لك السؤال على طريقة شرح الدورة')}</small></div>${lgHtml()}<button type="button" class="qgai-x" aria-label="${_T('إغلاق')}">✕</button></header>
+      <header class="qgai-h"><span class="qgai-av" aria-hidden="true">${SPARK}</span><div class="qgai-ht"><b id="qgai-t">${help ? _T('مرشدك الأكاديمي') : _T('مساعد Q-Guide')}</b>${help ? '' : `<small>${_T('يشرح لك السؤال على طريقة شرح الدورة')}</small>`}</div>${lgHtml()}<button type="button" class="qgai-x" aria-label="${_T('إغلاق')}">✕</button></header>
       <div class="qgai-ctx">${label.split(' · ').filter(Boolean).map(t => `<span class="${/✗/.test(t) ? 'bad' : /الصحيحة|correct/i.test(t) ? 'ok' : ''}">${esc(t)}</span>`).join('')}</div>
       <div class="qgai-log" aria-live="polite"></div>
       ${help ? '<div class="qgh-ctx" hidden></div>' : ''}
@@ -147,7 +147,7 @@
     if (m.r === 'lim') return `<div class="qgai-lim"><span class="qgai-li" aria-hidden="true">🔒</span><b>${m.free ? _T('خلصت شروحاتك المجانية اليوم') : _T('خلص رصيد اليوم')}</b><p>${esc(m.t)}</p>${m.free && CFG.onSub ? _T('<button type="button" class="qgai-sub">اشترك في الدورة</button>') : ''}</div>`;
     if (m.r === 'e') return `<div class="qgai-m e"><span>${esc(m.t)}</span>${m.retry ? _T`<button type="button" class="qgai-rt" data-i="${i}">حاول مرة ثانية</button>` : ''}</div>`;
     const typing = m.live && !m.t;
-    return `<div class="qgai-m a${m.live ? ' live' : ''}">${help && m.first ? `<div class="qgh-lead">${SPARK}<span>${_T('الشرح')}</span></div>` : ''}${typing ? _T('<div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>المساعد يكتب الشرح…</div>') : `<div class="qgai-tx" dir="${m.lg === 'en' ? 'ltr' : 'rtl'}" lang="${m.lg === 'en' ? 'en' : 'ar'}">${render(m.t)}</div>`}${!m.live && m.id ? `<div class="qgai-ma">${m.flag ? _T('<span class="qgai-fl ok">✓ وصل بلاغك، بنراجع الشرح</span>') : _T`<button type="button" class="qgai-fl" data-i="${i}">🚩 الشرح فيه غلط؟</button>`}</div>` : ''}</div>`;
+    return `<div class="qgai-m a${m.live ? ' live' : ''}">${help && m.first ? `<div class="qgh-lead">${SPARK}<span>${_T('الشرح')}</span></div>` : ''}${typing ? _T('<div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>المساعد يكتب الشرح…</div>') : `<div class="qgai-tx" dir="${m.lg === 'en' ? 'ltr' : 'rtl'}" lang="${m.lg === 'en' ? 'en' : 'ar'}">${render(m.t)}</div>`}${m.did && m.did.length ? `<div class="qgh-did">${m.did.map(d => `<span>${d}</span>`).join('')}</div>` : ''}${!m.live && m.id ? `<div class="qgai-ma">${m.flag ? _T('<span class="qgai-fl ok">✓ وصل بلاغك، بنراجع الشرح</span>') : _T`<button type="button" class="qgai-fl" data-i="${i}">🚩 الشرح فيه غلط؟</button>`}</div>` : ''}</div>`;
   }
   function paint() {
     if (!W) return; if (W.C.help) return paintHelp();
@@ -164,24 +164,17 @@
     W.ta.disabled = C.busy || blocked || full || !any;
     W.ta.placeholder = full ? _T('وصلت لحد الأسئلة على هذا السؤال') : blocked ? _T('خلص رصيد اليوم') : _T('اسأل عن هذا السؤال…');
     W.ov.querySelector('.qgai-s').disabled = W.ta.disabled;
-    const lf = W.ov.querySelector('.qgai-left'); lf.textContent = ST && ST.limit && ST.left != null ? leftTxt(ST.left) : '';
+    const lf = W.ov.querySelector('.qgai-left'); lf.textContent = ST && ST.limit && ST.left != null && ST.left <= 20 ? leftTxt(ST.left) : '';   // v116: الرصيد يطلع بس لما يقرب يخلص
   }
   let raf = 0; const paintSoon = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); };
 
   // ---------- 🙋 المساعد العام: رسم المحادثة بدون ما نعيد رسم البطاقات (عشان البلاغ والصور والتفاصيل المفتوحة تبقى) ----------
   const nD = n => EN() ? (n === 1 ? '1 day' : n + ' days') : n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';   // i18n:skip
   function hm(m, i) {
+    // 🎓 v116 (طلب المالك 19 نوفمبر 2026: «ليه كل ذا؟ صور السؤال واكتب سؤالك بس، وحط هلا والاسم»): ترحيب بسطرين + زرّين بس
     if (m.r === 'w') { const P = (CFG.help && CFG.help.profile && CFG.help.profile()) || {}, n = P.name || '';
-      const st = [];   // حالة الطالب: الاختبار، السلسلة، أضعف مهارة
-      if (P.examIn != null) st.push(P.examIn > 0 ? `⏳ ${EN() ? 'Your test is in ' + nD(P.examIn) : 'باقي ' + nD(P.examIn) + ' على اختبارك'}` : P.examIn === 0 ? _T('🎓 اختبارك اليوم!') : '');   // i18n:skip
-      if (P.streak >= 2) st.push(`🔥 ${EN() ? nD(P.streak) + ' in a row' : nD(P.streak) + ' متتالية'}`);   // i18n:skip
-      if (P.weak && P.weak[0]) st.push(`🎯 ${_T('أضعف مهارة:')} ${esc(P.weak[0].t)} ${P.weak[0].p}%`);
-      if (P.lag > 0) st.push(`📅 ${EN() ? 'Behind your plan by ' + nD(P.lag) : 'متأخر ' + nD(P.lag) + ' عن خطتك'}`);   // i18n:skip
-      const sug = P.weak && P.weak[0] ? [['📅', _T('وش أذاكر اليوم؟')], ['🗓', _T('رتّب لي جدول لين اختباري')], ['🎯', _T('كيف أقوّي ضعفي؟')], ['💡', _T('نصايح للاختبار')]] : [['🧭', _T('من وين أبدأ؟')], ['🗓', _T('رتّب لي جدول لين اختباري')], ['📅', _T('كيف أرتب مذاكرتي؟')], ['💡', _T('نصايح للاختبار')]];
-      return `<div class="qgai-m a qgh-w"><div class="qgai-tx"><b>${n ? _T`هلا ${esc(n)} 👋` : _T('هلا 👋')}</b><div class="qgai-l">${_T('أنا مرشدك الأكاديمي في القدرات: أرتب لك خطتك وأتابع تقدّمك، وأحل لك أي سؤال وأشرح قاعدته.')}</div></div>
-        ${st.filter(Boolean).length ? `<div class="qgh-st">${st.filter(Boolean).map(t => `<span>${t}</span>`).join('')}</div>` : ''}
-        <div class="qgh-go"><button type="button" class="qgh-gb" data-go="cam"><span class="i" aria-hidden="true">📷</span><b>${_T('صوّر السؤال')}</b><small>${_T('من الكاميرا أو الصور')}</small></button><button type="button" class="qgh-gb" data-go="txt"><span class="i" aria-hidden="true">✍️</span><b>${_T('اكتب سؤالك')}</b><small>${_T('بالعربي أو الإنجليزي')}</small></button></div>
-        <div class="qgh-sug">${sug.map(([ic, q]) => `<button type="button" data-q="${esc(q)}"><span aria-hidden="true">${ic}</span>${esc(q)}</button>`).join('')}</div></div>`; }
+      return `<div class="qgai-m a qgh-w"><div class="qgai-tx"><b>${n ? _T`هلا ${esc(n)} 👋` : _T('هلا 👋')}</b><div class="qgai-l">${_T('أنا مرشدك الأكاديمي، أساعدك في أي شي.')}</div></div>
+        <div class="qgh-go"><button type="button" class="qgh-gb" data-go="cam"><span class="i" aria-hidden="true">📷</span><b>${_T('صوّر السؤال')}</b><small>${_T('من الكاميرا أو الصور')}</small></button><button type="button" class="qgh-gb" data-go="txt"><span class="i" aria-hidden="true">✍️</span><b>${_T('اكتب سؤالك')}</b><small>${_T('أو اطلب أي شي: خطة، جدول، نصيحة')}</small></button></div></div>`; }
     if (m.r === 'nf') return `<div class="qgh-nf"><span>${_T('✕ مو من أسئلة الدورة، بس أحلّه لك:')}</span>${m.html}</div>`;
     if (m.r === 'ui') return `<div class="qgai-m u qgh-ui"><img src="${m.src}" alt="${_T('صورة السؤال')}">${m.ocr ? `<small dir="ltr">${esc(m.ocr.length > 240 ? m.ocr.slice(0, 240) + '…' : m.ocr)}</small>` : ''}</div>`;
     if (m.r === 'f') return m.wait ? `<div class="qgai-m a"><div class="qgai-ty"><span class="qgai-dots"><i></i><i></i><i></i></span>${m.img ? _T('أقرأ الصورة وأدوّر السؤال في الدورة…') : _T('أدوّر سؤالك في الدورة…')}</div></div>`
@@ -240,7 +233,7 @@
     if (C.ref && C.label) { if (cx.dataset.k !== C.tk) { cx.dataset.k = C.tk; cx.innerHTML = `<span>${_T('تسأل عن:')} <b>${C.label}</b></span><button type="button" class="qgh-nw">${_T('سؤال جديد')}</button>`;
         cx.querySelector('button').onclick = () => { if (C.busy) return; C.ref = ''; C.label = ''; paint(); W && W.ta.focus(); }; } cx.hidden = false; }
     else { cx.hidden = true; cx.dataset.k = ''; }
-    const lf = W.ov.querySelector('.qgai-left'); lf.textContent = ST && ST.on && ST.limit && ST.left != null ? leftTxt(ST.left) : '';
+    const lf = W.ov.querySelector('.qgai-left'); lf.textContent = ST && ST.on && ST.limit && ST.left != null && ST.left <= 20 ? leftTxt(ST.left) : '';
   }
   // الطالب أرسل سؤال (نص أو صورة): ندوّره في الدورة، وإذا لقيناه نبدأ الشرح على طول
   async function seek(p, again) {
@@ -321,7 +314,11 @@
       if (!am.t && C.msgs.indexOf(am) >= 0) fail(_T('ما وصلني شرح، حاول مرة ثانية.'), true);
     } catch (e) {
       if (am.t) am.t += '\n…'; else fail(_T('تعذّر الاتصال، تأكد من النت وحاول مرة ثانية.'), true);
-    } finally { am.live = false; C.busy = false; show(); if (W && W.C === C && !W.ta.disabled && text) W.ta.focus({ preventScroll: true });
+    } finally { am.live = false; C.busy = false;
+      // 🎓 v116 (طلب المالك: «إذا طلب منك عدّل جدولي أو حط لي خطة، سو الطلب حقه في المساعد الذكي، لا تخليه هو يسوي»):
+      //   المرشد يكتب {{do-…}} في آخر رده، والموقع ينفّذه مرة وحدة هنا (CFG.help.act يرجّع وش انعمل) ويطلع تحت الرد
+      if (C.help && am.t && !am.did && CFG.help && CFG.help.act) { const did = []; (am.t.match(/\{\{do-[a-z0-9:-]{1,24}\}\}/gi) || []).slice(0, 4).forEach(t => { try { const d = CFG.help.act(t.slice(2, -2).toLowerCase()); if (d) did.push(d); } catch (e) {} }); am.did = did; }
+      show(); if (W && W.C === C && !W.ta.disabled && text) W.ta.focus({ preventScroll: true });
       if (W && W.C === C && C.wantLg) { const l = C.wantLg; C.wantLg = null; if (l === LANG) reLang(); } }
   }
   async function flag(i) {
@@ -366,7 +363,7 @@
     status().then(() => { if (W && W.C === H) paint(); });   // رصيد الشرح اليوم
   }
 
-  const css = document.createElement('style'); css.textContent = `
+  const css = document.createElement('style'); css.textContent = `   // i18n:skip (CSS، مو نص يترجم)
 :root{--ai:#2350C4;--ai2:#0E2458;--aibg:#F0F4FF;--aibd:#D5E0FB;--aihv:#E4ECFF;--aigold:#F2B33D}
 [data-theme="dark"]{--ai:#8FA8FF;--ai2:#C9D6FF;--aibg:#1B2645;--aibd:#2E4170;--aihv:#22305A}
 .qgai-btn{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;background:var(--aibg);border:1px solid var(--aibd);border-radius:10px;padding:9px 12px;color:var(--ai);font:inherit;text-align:start;cursor:pointer;transition:background .15s,border-color .15s}
@@ -474,6 +471,7 @@ bdi{unicode-bidi:isolate}
 .qgh-lead{display:flex;align-items:center;gap:6px;color:var(--ai);font-weight:800;font-size:calc(13px * var(--fs,1));margin-bottom:4px}
 .qgh-lead svg{width:16px;height:16px}.qgh-lead svg path+path{fill:var(--aigold)}
 .qgh-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:-4px}
+.qgh-did{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.qgh-did span{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;border-radius:12px;padding:6px 12px;background:var(--okbg,#E6F6EE);color:var(--okt,#0B7A4B);font-weight:800;font-size:calc(13px * var(--fs,1));line-height:1.5}.qgh-did a{color:inherit;text-decoration:underline}
 .qgh-chips button{border:1px solid var(--aibd);background:var(--aibg);color:var(--ai2);border-radius:999px;padding:7px 14px;font:inherit;font-weight:700;font-size:calc(13.5px * var(--fs,1));cursor:pointer;transition:background .15s,border-color .15s}
 .qgh-chips button:hover{background:var(--aihv);border-color:var(--ai)}
 .qgh-ctx{display:flex;align-items:center;gap:10px;padding:9px 16px 0;font-size:calc(13px * var(--fs,1));color:var(--mut,#6B7590)}
