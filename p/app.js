@@ -2116,7 +2116,7 @@
   //   + lv (المستوى اللي يتعلم منه) + dd (عدّادات اليوم) + u (عدّاد التعديلات) — ينزامن مع حسابه مثل الأقسام (prog_set، الصف wd).
   // التكرار المتباعد: صح ← بعد يوم، ثم 3، ثم 7، ثم 14، ثم 30 · غلط ← بكرة (ونعيدها آخر التدريب) · كلمة جديدة جاوبها صح من أول مرة = يعرفها:
   //   ترجع بعد أسبوع وما تنحسب من كلمات اليوم الجديدة (12 لوقت نص ساعة، 20 لساعة وأكثر).
-  const WD_V = 1, WD_ID = 'wd', WD_INT = [1, 1, 3, 7, 14, 30], WD_KNOWN = 3, WD_EPOCH = new Date(2026, 0, 1).getTime();
+  const WD_V = 2, WD_ID = 'wd', WD_INT = [1, 1, 3, 7, 14, 30], WD_KNOWN = 3, WD_EPOCH = new Date(2026, 0, 1).getTime();
   const WD_LV = { 1: [_T('المستوى الأول'), _T('لغة الكمي والكلمات الأكثر تكراراً')], 2: [_T('المستوى الثاني'), _T('كلمات الربط وصيغ الأسئلة')], 3: [_T('المستوى الثالث'), _T('كلمات اللفظي حسب التكرار')] };
   const wdNw = n => EN ? enN(n, 'word', 'words') : n === 1 ? 'كلمة وحدة' : n === 2 ? 'كلمتين' : n <= 10 ? n + ' كلمات' : n + ' كلمة';   // i18n:skip
   const wdMin = n => EN ? enN(n, 'minute', 'minutes') : n <= 1 ? 'دقيقة' : n === 2 ? 'دقيقتين' : n <= 10 ? n + ' دقايق' : n + ' دقيقة';   // i18n:skip
@@ -2138,20 +2138,43 @@
     for (const id in (P.a || {})) { const s = wdSt(P, id); if (!s) continue; if (s.d <= t) due++; else if (s.d === t + 1) tom++; if (s.b >= WD_KNOWN) mast++; else learn++; }
     return { due, mast, learn, tom, all: mast + learn };
   }
-  let WD = null, wdLoading = null;
+  let WD = null, wdLoading = null, WDX = null, wdxLoading = null, WDF = null;
+  async function wdBin(name) {   // ملف مشفّر بالمفتاح الثاني (gzip، أو بدون ضغط للمتصفحات القديمة)
+    const gz = typeof DecompressionStream === 'function';
+    const r = await fetch('/p/data/' + name + (gz ? '' : '0') + '.bin?v=' + WD_V, { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
+    const buf = new Uint8Array(await r.arrayBuffer()), key = await getKey2();
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
+    return JSON.parse(gz ? await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : new TextDecoder().decode(plain));
+  }
   async function wdLoad() {
     if (WD) return WD; if (wdLoading) return wdLoading;
-    return (wdLoading = (async () => {
-      const gz = typeof DecompressionStream === 'function';
-      const r = await fetch('/p/data/' + (gz ? 'words' : 'words0') + '.bin?v=' + WD_V, { cache: 'force-cache' }); if (!r.ok) throw new Error('data ' + r.status);
-      const buf = new Uint8Array(await r.arrayBuffer()), key = await getKey2();
-      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
-      const txt = gz ? await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : new TextDecoder().decode(plain);
-      const J = JSON.parse(txt), by = {}, lv = { 1: [], 2: [], 3: [] };
+    return (wdLoading = wdBin('words').then(J => {
+      const by = {}, lv = { 1: [], 2: [], 3: [] };
       J.items.forEach(it => { by[it[0]] = it; (lv[it[3]] || (lv[it[3]] = [])).push(it); });
       [1, 2, 3].forEach(k => lv[k].sort((a, b) => b[4] - a[4]));
-      WD = { v: J.v, items: J.items, by, lv, pool: J.pool, target: J.lv, tot: J.tot }; return WD;
-    })().catch(e => { wdLoading = null; throw e; }));
+      WD = { v: J.v, items: J.items, by, lv, pool: J.pool, target: J.lv, tot: J.tot, oph: J.oph || {} }; WDF = null; return WD;
+    }).catch(e => { wdLoading = null; throw e; }));
+  }
+  // v120: جمل حقيقية من أسئلة الدورة لتمرين «الكلمة داخل سؤال» (wordex.bin، ملف لحاله ينزل وقت التدريب): {id: [[set, جملة], …]}
+  async function wdExLoad() {
+    if (WDX) return WDX; if (wdxLoading) return wdxLoading;
+    return (wdxLoading = wdBin('wordex').then(J => (WDX = J.ex || {})).catch(e => { wdxLoading = null; throw e; }));
+  }
+  // كلمة بأي صيغة (studies، studied…) ← عنصرها في «كلماتي» (للضغط على الكلمات في الأسئلة والقطع)
+  function wdFind(w) {
+    if (!WD) return null;
+    if (!WDF) { WDF = {}; WD.items.forEach(it => { if (it[2] !== 'w') return; [it[1]].concat(String(it[12] || '').split(' ')).forEach(f => { if (f && !WDF[f]) WDF[f] = it; }); }); }
+    return WDF[String(w || '').toLowerCase().replace(/’/g, "'").replace(/'s$/, '')] || null;
+  }
+  // زر «أضف لكلماتي» في فقاعة الكلمة: تنضاف لتدريب اليوم (الصندوق 0) · لو هي في كلماته يقول له
+  function wdTipAdd(id) {
+    if (!id || !WD || !WD.by[id] || isFree() || !auth || !auth.wbk) return '';
+    return wdSt(wdP(), id) ? _T('<small class="vtst">✓ في كلماتك</small>') : _T`<button type="button" class="vtadd" data-wid="${id}">➕ أضف لكلماتي</button>`;
+  }
+  function wdAddTap(b) {
+    const id = b.dataset.wid, P = wdP(); if (!id || !WD || !WD.by[id]) return;
+    if (!P.a[id]) { const t = wdDay(); wdPut(P, id, 0, t, t); wdSave(P); }
+    b.outerHTML = _T('<small class="vtst">✓ انضافت لكلماتك، وتطلع لك في تدريب اليوم</small>');
   }
   // المستوى اللي يتعلم منه: اللي اختاره · وإلا نتيجة اختبار المستوى · وإلا مستواه في الإنجليزي من بداية مساره · وإلا الأول
   const wdLv = P => P.lv || (P.pt && P.pt.lv) || (() => { const A = advGet(), e = A && A.elv; return e === 'B2' || e === 'C1' ? 3 : e === 'B1' ? 2 : 1; })();
@@ -2164,15 +2187,29 @@
     return out;
   }
   // 4 خيارات: الصح + 3 من نفس النوع (كلمة / عبارة / كلمة ربط / صيغة سؤال) ونفس المستوى، بمعنى مختلف (ولا نصف معنى مشترك)
-  function wdOpts(D, it, toEn) {
+  function wdOpts(D, it, toEn, ar) {
     const fam = x => x[2] === 'w' ? (x[3] === 2 ? 'l' : x[7] ? 'f' : 'w') : x[2] === 'q' ? 'w' : x[2];
-    const F = fam(it), seg = new Set(wdSeg(wdAr(it))), right = toEn ? it[1] : wdAr(it), used = new Set([right.toLowerCase()]);
+    const F = fam(it), seg = new Set(wdSeg(ar || wdAr(it)).concat(wdSeg(wdAr(it)))), right = toEn ? it[1] : (ar || wdAr(it)), used = new Set([right.toLowerCase()]);
     const ok = x => { if (x === it || fam(x) !== F) return false; const t = (toEn ? x[1] : wdAr(x)).toLowerCase(); if (!t || used.has(t)) return false;
       return !wdSeg(wdAr(x)).some(s => seg.has(s)); };
     const near = D.lv[it[3]] || [], i0 = Math.max(0, near.indexOf(it)), pick = [];
     const tryList = list => { for (const x of wdShuf(list)) { if (pick.length >= 3) break; if (ok(x)) { pick.push(x); used.add((toEn ? x[1] : wdAr(x)).toLowerCase()); } } };
     tryList(near.slice(Math.max(0, i0 - 60), i0 + 60)); if (pick.length < 3) tryList(near); if (pick.length < 3) tryList(D.items);
-    return wdShuf([it].concat(pick)).map(x => ({ t: toEn ? x[1] : wdAr(x), ok: x === it }));
+    return wdShuf([it].concat(pick)).map(x => ({ t: x === it ? right : toEn ? x[1] : wdAr(x), ok: x === it }));
+  }
+  // خيارات تمرين العملية: عملية الكلمة + 3 عمليات ثانية من كلمات الكمي
+  function wdOpOpts(D, it) {
+    const right = it[13], all = [...new Set(D.items.filter(x => x[13] && D.oph[x[0]]).map(x => x[13]))].filter(o => o !== right);
+    return wdShuf([right].concat(wdShuf(all).slice(0, 3))).map(t => ({ t, ok: t === right }));
+  }
+  // نوع التمرين في المراجعة بالتناوب: من الإنجليزي للعربي · العملية (كلمات الكمي) · الكلمة داخل سؤال حقيقي (بعد أول مرة صح) · من العربي للإنجليزي (من الصندوق 2)
+  function wdMode(it, b, k, EX) { const c = ['ea']; if (it[13] && WD.oph[it[0]]) c.push('op'); if (EX && EX[it[0]] && b >= 1) c.push('ctx'); if (b >= 2) c.push('ae'); return c[k % c.length]; }
+  // الكلمة داخل جملتها: أول صيغة منها تنعلّم
+  function wdMarkIn(t, it) {
+    const fs = [it[1]].concat(String(it[12] || '').split(' ')).filter(Boolean).sort((a, b) => b.length - a.length).map(f => f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const m = new RegExp('(^|[^A-Za-z])(' + fs.join('|') + ')(?![A-Za-z])', 'i').exec(t); if (!m) return esc(t);
+    const at = m.index + m[1].length, n = m[2].length;
+    return esc(t.slice(0, at)) + '<mark class="wdm">' + esc(t.slice(at, at + n)) + '</mark>' + esc(t.slice(at + n));
   }
   // إجابة على كلمة: صح ← الصندوق اللي بعده (أول مرة صح = يعرفها) · غلط أو «ما أعرفها» ← الصندوق 0، ترجع بكرة
   function wdMark(P, it, ok) {
@@ -2254,38 +2291,53 @@
   }
 
   // ▶ تدريب اليوم (#words-go) أو كلمات زيادة (#words-more)
-  let WS = null;   // {D, P, q: [{it, toEn, kind}], i, a, n, k, r, bad, again}
+  let WS = null;   // {D, EX, q: [{it, mode, kind, ar?}], i, n, k, r, bad, badw, again, quota, fresh, fi, more}
   async function renderWordsGo(more) {
     document.title = _T('تدريب كلماتي | Q-Guide'); document.onkeydown = null;
     app.innerHTML = wdTop(_T('📚 تدريب كلماتي'), '<span class="chip cnt" id="wdcnt"></span>') + '<div class="pbar"><i id="wdpb"></i></div><main class="wrap wdg" id="wdg"><div class="center"><div class="spin" style="margin:0 auto"></div></div></main>'; bindCtl();
     const D = await wdReady($('#wdg')); if (!D || !/^#words-(go|more)$/.test(location.hash)) return;
+    const EX = await Promise.race([wdExLoad().catch(() => null), new Promise(r => setTimeout(() => r(null), 2500))]);
+    if (!/^#words-(go|more)$/.test(location.hash)) return;
     const P = wdP(), t = wdDay(), T = wdToday(P), due = [];
     for (const id in P.a) { const s = wdSt(P, id); if (s && s.d <= t && D.by[id]) due.push([s.d, s.b, D.by[id]]); }
     due.sort((a, b) => a[0] - b[0] || b[2][4] - a[2][4]);
     const quota = more ? wdQuota() : Math.max(0, wdQuota() - T.n);
-    const rev = (more ? [] : due.slice(0, 80)).map(([d, b, it], k) => ({ it, kind: 'rev', toEn: b >= 2 && k % 2 === 1 }));
-    WS = { D, quota, q: rev, fresh: wdFresh(D, P, Math.max(quota * 3, 12)), fi: 0, i: 0, n: 0, k: 0, r: 0, bad: 0, badw: new Set(), again: [], more };
+    const rev = (more ? [] : due.slice(0, 80)).map(([d, b, it], k) => ({ it, kind: 'rev', mode: wdMode(it, b, k, EX) }));
+    WS = { D, EX, quota, q: rev, fresh: wdFresh(D, P, Math.max(quota * 3, 12)), fi: 0, i: 0, n: 0, k: 0, r: 0, bad: 0, badw: new Set(), again: [], more };
     wdNext();
   }
   // الكلمة الجاية: المراجعات أول، بعدها كلمات جديدة لين يتعلم حصة اليوم (اللي يعرفها من أول مرة ما تنحسب)، وآخر شي اللي غلط فيها مرة ثانية
   function wdNext() {
     const S = WS; if (!S) return;
     if (S.i >= S.q.length) {
-      if (S.n < S.quota && S.fi < S.fresh.length) S.q.push({ it: S.fresh[S.fi++], kind: 'new', toEn: false });
+      if (S.n < S.quota && S.fi < S.fresh.length) S.q.push({ it: S.fresh[S.fi++], kind: 'new', mode: 'ea' });
       else if (S.again.length) S.q.push(S.again.shift());
     }
     if (S.i >= S.q.length) return wdDone();
     wdShow();
   }
   function wdShow() {
-    const S = WS, x = S.q[S.i], it = x.it, opts = wdOpts(S.D, it, x.toEn), total = Math.max(S.q.length, S.i + 1 + (S.quota - S.n > 0 ? S.quota - S.n : 0) + S.again.length);
+    const S = WS, x = S.q[S.i], it = x.it, total = Math.max(S.q.length, S.i + 1 + (S.quota - S.n > 0 ? S.quota - S.n : 0) + S.again.length);
+    let stem, opts, aro = true, tag2 = wdKind(it);
+    if (x.mode === 'ctx') {   // 🔤 الكلمة داخل سؤال حقيقي من الدورة: معناها في هالجملة
+      const ex = S.EX[it[0]], e = ex[(S.i + it[4]) % ex.length], q = /^q/.test(e[0]);
+      x.ar = q ? it[9] || it[8] : it[10] || it[8]; opts = wdOpts(S.D, it, false, x.ar); tag2 = _T('🔤 داخل سؤال');
+      stem = _T`<p class="wdctx ltr" lang="en">${wdMarkIn(e[1], it)}</p><p class="wdsrc">من ${SET_NAME(e[0])}</p><p class="wdask">وش معنى الكلمة اللي تحتها خط؟</p>`;
+    } else if (x.mode === 'op') {   // ➗ عملية الكلمة في الحساب
+      opts = wdOpOpts(S.D, it); tag2 = _T('➗ العملية');
+      stem = `<p class="wdw ltr" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">${_T('وش العملية في الحساب؟')}</p>`;
+    } else if (x.mode === 'ae') {
+      opts = wdOpts(S.D, it, true); aro = false;
+      stem = `<p class="wdw wdar">${esc(wdAr(it))}</p><p class="wdask">${_T('وش هي بالإنجليزي؟')}</p>`;
+    } else {
+      opts = wdOpts(S.D, it, false);
+      stem = `<p class="wdw ltr" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">${_T('وش معناها؟')}</p>`;
+    }
     x.opts = opts; x.done = false;
     $('#wdcnt').innerHTML = `<bdi dir="ltr">${S.i + 1} / ${total}</bdi>`; $('#wdpb').style.width = Math.round(S.i * 100 / Math.max(1, total)) + '%';
-    const tag = x.kind === 'new' ? _T('✨ جديدة') : x.kind === 'again' ? _T('🔁 مرة ثانية') : _T('🔁 مراجعة'), kd = wdKind(it);
-    const stem = x.toEn ? `<p class="wdw wdar">${esc(wdAr(it))}</p><p class="wdask">${_T('وش هي بالإنجليزي؟')}</p>`
-      : `<p class="wdw ltr" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">${_T('وش معناها؟')}</p>`;
-    $('#wdg').innerHTML = `<div class="q wdq"><div class="hd"><span class="n">${tag}</span>${kd ? `<span class="tag">${kd}</span>` : ''}</div>${stem}
-        <div class="opts two wdo${x.toEn ? '' : ' wdaro'}">${opts.map((o, k) => `<button type="button" class="opt" data-k="${k}"${x.toEn ? ' lang="en"' : ''}><span class="L">${k + 1}</span><span>${esc(o.t)}</span></button>`).join('')}</div>
+    const tag = x.kind === 'new' ? _T('✨ جديدة') : x.kind === 'again' ? _T('🔁 مرة ثانية') : _T('🔁 مراجعة');
+    $('#wdg').innerHTML = `<div class="q wdq"><div class="hd"><span class="n">${tag}</span>${tag2 ? `<span class="tag">${tag2}</span>` : ''}</div>${stem}
+        <div class="opts two wdo${aro ? ' wdaro' : ''}${x.mode === 'op' ? ' wdops' : ''}">${opts.map((o, k) => `<button type="button" class="opt" data-k="${k}"${aro ? '' : ' lang="en"'}><span class="L">${k + 1}</span><span><bdi>${esc(o.t)}</bdi></span></button>`).join('')}</div>
         <button type="button" class="btn ghost wdk" id="wdk">${_T('🤷 ما أعرفها')}</button>
         <div id="wdfb"></div>
         <div class="acts" id="wdact" style="display:none"><span class="sp"></span><button class="btn" id="wdnx">${_T('التالي ←')}</button></div>
@@ -2303,17 +2355,19 @@
     const b = wdMark(P, it, ok);
     if (x.kind === 'new') { if (ok && first) { S.k++; T.k++; } else if (first) { S.n++; T.n++; } }
     else if (x.kind === 'rev') { S.r++; T.r++; }
-    if (!ok) { S.bad++; S.badw.add(it[0]); if (x.kind !== 'again') S.again.push({ it, kind: 'again', toEn: false }); }
+    if (!ok) { S.bad++; S.badw.add(it[0]); if (x.kind !== 'again') S.again.push({ it, kind: 'again', mode: x.mode === 'op' ? 'op' : 'ea' }); }
     P.dd = T; wdSave(P);
     document.querySelectorAll('.wdq .opt').forEach((o, j) => { o.disabled = true; if (x.opts[j].ok) o.classList.add('ok'); else if (j === k) o.classList.add('bad'); });
     $('#wdk').disabled = true;
     const okB = document.querySelector('.wdq .opt.ok'); if (okB && !RM()) { if (ok) burst(okB); else { const bb = document.querySelector('.wdq .opt.bad'); if (bb) bb.classList.add('shake'); } }
     const back = b === 0 ? _T('ترجع لك بكرة، ونعيدها لك آخر التدريب.') : WD_INT[b] === 1 ? _T('ترجع لك بكرة.') : _T`ترجع لك بعد ${dLabel(WD_INT[b])}.`;
     const two = it[9] && it[10] ? _T`<p class="wdtwo">في الكمي: <b>${esc(it[9])}</b> · في اللفظي: <b>${esc(it[10])}</b></p>` : '';
-    const where = wdSets(it);
-    $('#wdfb').innerHTML = _T`<div class="fb ${ok ? 'ok' : 'bad'} wdfb"><div class="h">${ok ? (first && x.kind === 'new' ? _T('✅ تعرفها') : _T('✅ صح')) : k < 0 ? _T('معناها:') : _T('❌ معناها:')}</div>
-      <p class="wdpair"><b class="ltr" lang="en">${esc(it[1])}</b> ${sayBtn(it[1], 'en', '', 'sm')} <span>${esc(wdAr(it))}</span></p>${two}
-      ${it[13] && it[2] === 'w' && it[3] === 1 ? _T`<p class="wdop">في الحساب: <b dir="ltr">${esc(it[13])}</b></p>` : ''}
+    const where = wdSets(it), how = S.D.oph[it[0]];
+    const head = ok ? (first && x.kind === 'new' ? _T('✅ تعرفها') : _T('✅ صح')) : x.mode === 'op' ? (k < 0 ? _T('العملية:') : _T('❌ العملية:')) : k < 0 ? _T('معناها:') : _T('❌ معناها:');
+    $('#wdfb').innerHTML = _T`<div class="fb ${ok ? 'ok' : 'bad'} wdfb"><div class="h">${head}</div>
+      ${x.mode === 'op' ? _T`<p class="wdopb"><b dir="ltr">${esc(it[13])}</b>${how ? ` <span>${esc(how)}</span>` : ''}</p>` : ''}
+      <p class="wdpair"><b class="ltr" lang="en">${esc(it[1])}</b> ${sayBtn(it[1], 'en', '', 'sm')} <span>${esc(x.ar || wdAr(it))}</span></p>${two}
+      ${x.mode !== 'op' && it[13] && how ? _T`<p class="wdop">في الحساب: <b dir="ltr">${esc(it[13])}</b></p>` : ''}
       ${where ? _T`<p class="wdwh">تجي في: ${where}</p>` : ''}<p class="wdbk">${back}</p></div>`;
     $('#wdact').style.display = '';
     if (ok) setTimeout(() => { if (WS === S && S.q[S.i] === x) { S.i++; wdNext(); } }, 1100); else $('#wdnx').focus();
@@ -2500,7 +2554,9 @@
     app.innerHTML = topbar(_T`<span class="ttl">جارٍ التحميل…</span>`, _T`<a class="ib" href="#" title="رجوع">→</a>`) + _T('<div class="center"><div class="spin" style="margin:0 auto 12px"></div><span id="ldmsg">تحميل الأسئلة…</span></div>');
     if (RULES_ON && !isFree()) ruleMapLoad();   // خريطة «راجع القاعدة» تنزل مع الأسئلة
     let set; try { set = await loadSet(id); } catch (e) { app.innerHTML = topbar('', `<a class="ib" href="#">→</a>`) + _T('<div class="center">تعذّر فتح الأسئلة (') + esc(e.message) + _T('). <a href="#">رجوع</a></div>'); return; }
-    if (set.kind === 'verbal') await loadVocab(); else if (rmapP) await rmapP;
+    const wdq = !isFree() && auth && auth.wbk ? wdLoad().catch(() => null) : null;   // 📚 كلمات «كلماتي»: معنى أدق وزر «أضف لكلماتي» لما يضغط كلمة
+    await loadVocab(); if (set.kind !== 'verbal' && rmapP) await rmapP;
+    if (wdq) await Promise.race([wdq, new Promise(r => setTimeout(r, 1500))]);
     if (progSyncOn() && !PSY.pulled && PROG_ID.test(id)) {   // 🔄 أول فتح بعد الدخول: ننتظر نسخة حسابه (لو حل من جهاز ثاني يكمل من وين وقف)
       const pull = progPull(); await Promise.race([pull, new Promise(r => setTimeout(r, 3000))]);
       if (!PSY.pulled) pull.then(ch => { if (ch.indexOf(id) >= 0 && P && P.id === id && location.hash.replace(/^#/, '').replace(/@\d+$/, '') === id) renderPlayer(id); });
@@ -2574,7 +2630,7 @@
     }
     const tag = set.kind === 'quant' ? (it.part ? `Question ${it.n} (Part ${it.part})` : `Question ${it.n}`) : `Q ${it.n}`;
     html += _T`<div class="q"><div class="hd"><span class="n">سؤال ${p + 1}<small>من ${items.length}</small></span><span class="hd-r">${set.kind === 'verbal' ? sayBtn(it.q, 'en') : ''}<button type="button" class="mk st ${mk && mk.s ? 'on' : ''}" id="mkS" aria-pressed="${!!(mk && mk.s)}" title="احفظ السؤال في دفتري" aria-label="احفظ السؤال في دفتري">${STARSVG}</button><button type="button" class="mk nt ${mk && mk.n ? 'on' : ''}" id="mkN" title="اكتب ملاحظتك على السؤال" aria-label="ملاحظتي">${NOTESVG}</button><span class="tag ltr">${tag}</span></span></div>`;
-    if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">` + qtrHtml(it);
+    if (set.kind === 'quant') html += `<img class="qi" src="${it.img}" width="${it.w}" height="${it.h}" alt="Question ${it.n}">` + qenHtml(it) + qtrHtml(it);
     else html += (it.tag ? `<div class="qtag"><bdi dir="ltr">${esc(EN ? it.tag.split(' – ')[0] : it.tag)}</bdi></div>` : '') + `<p class="txt ltr">${wordsHtml(it.q)}</p>`;
     const two = set.kind === 'quant' || it.opts.every(o => o.length <= 28);
     html += `<div class="opts ${two ? 'two' : ''}">` + it.opts.map((o, k) => {
@@ -2590,6 +2646,7 @@
     $('#pm').innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' }); if (window.QGAI) QGAI.fill($('#pm'));
     { const vc = $('#vch'); if (vc) { vc.onclick = () => auPick(vc); auPaint(); } }   // 🗣 v118: اختيار صوت القطعة + تجهيزه
     bindWords();
+    const qt = $('#qent'); if (qt) qt.onclick = () => { const on = !lsGet(QEN_LS, 1); lsSet(QEN_LS, on ? 1 : 0); $('#qen').classList.toggle('off', !on); qt.textContent = on ? _T('إخفاء') : _T('إظهار'); qt.setAttribute('aria-expanded', on); };
     const qd = $('#qtr'); if (qd) qd.addEventListener('toggle', () => lsSet(QTR_LS, qd.open ? 1 : 0));
     $('#mkS').onclick = e => { const b = e.currentTarget, c = markOf(mkSrc, mkI), on = !(c && c.s); markSet(mkSrc, mkI, { s: on ? 1 : 0 }); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); toast(on ? _T('⭐ انحفظ السؤال في دفتري') : _T('انشال السؤال من دفتري')); badgeCheckSoon(); };
     $('#mkN').onclick = () => { const n = $('#nt'); n.classList.toggle('open'); if (n.classList.contains('open')) { const t = $('#ntx'); t.focus(); n.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } };
@@ -2723,6 +2780,12 @@
   // نص عربي فيه تعابير رياضية: نعزلها LTR ونرسم كسورها
   const MRUN_FX = /[A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷±∓=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄…→⇒!\[\]{} ]*[A-Za-z0-9Α-ω½⅓⅔¼¾√π∠△∥][A-Za-z0-9²³¹⁰-₟Α-ω½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞√∛∜π∞∠△°%+\-−–×÷±∓=≠≈<>≤≥^\/().,:'′″|∥⊥·⁄…→⇒!\[\]{} ]*/g;
   const arFx = s => arMath(s, mx, MRUN_FX, 1);
+  // 🔤 v120: نص سؤال الكمي بالإنجليزي تحت الصورة، وكل كلمة لها معنى تنضغط (it.en من ملف الأسئلة المشفّر) · يخفيه الطالب لو ما يحتاجه (qg_qen)
+  const QEN_LS = 'qg_qen';
+  function qenHtml(it) {
+    if (!it.en) return ''; const on = lsGet(QEN_LS, 1);
+    return _T`<div class="qen${on ? '' : ' off'}" id="qen"><div class="qen-h"><span class="qen-k">🔤 نص السؤال بالإنجليزي <small>اضغط أي كلمة تشوف معناها</small></span><button type="button" class="lnk" id="qent" aria-expanded="${on ? 'true' : 'false'}">${on ? _T('إخفاء') : _T('إظهار')}</button></div><p class="qen-t ltr" lang="en">${wordsHtml(it.en, { q: 1, wd: it.wd })}</p></div>`;
+  }
   function qtrHtml(it) {
     const ar = it.ar; if (!ar || !ar.q) return ''; const w = (it.wd || []).filter(x => !QNAMES.has(x[0]));
     const ot = (ar.o || []).some(Boolean) ? `<ol class="qt-o">${it.opts.map((o, k) => ar.o[k] ? `<li><span class="L">${LETTERS[k]}</span><span class="en ltr">${esc(o.replace(/^[A-D]\)\s*/, ''))}</span><span class="arr">${arMath(ar.o[k])}</span></li>` : '').join('')}</ol>` : '';
@@ -2867,9 +2930,13 @@
     return '';
   }
   // يلفّ الكلمات التي لها ترجمة بعنصر قابل للضغط
-  function wordsHtml(text) {
-    if (!VOC) return esc(text);
-    return (text || '').split(/([A-Za-z][A-Za-z'’]*)/).map((w, i) => { if (!(i % 2)) return esc(w); if (STOP.has(w.toLowerCase())) return esc(w); const ar = vocLook(w.replace(/’/g, "'")); return ar ? `<span class="vw" data-ar="${esc(ar)}">${esc(w)}</span>` : esc(w); }).join('');
+  function wordsHtml(text, X) {   // X = {q: سؤال كمي, wd: [[كلمة, معنى]] كلمات السؤال} · كلمات «كلماتي» (المشترك) قبل قاموس الموقع
+    if (!VOC && !WD) return esc(text);
+    const own = {}; ((X && X.wd) || []).forEach(p => { if (p && p[0]) own[String(p[0]).toLowerCase()] = p[1]; });
+    return (text || '').split(/([A-Za-z][A-Za-z'’]*)/).map((w, i) => { if (!(i % 2)) return esc(w); const lw = w.toLowerCase().replace(/’/g, "'");
+      if (STOP.has(lw)) return esc(w);
+      const it = wdFind(lw), ar = own[lw] || (it ? (X && X.q ? it[9] || it[8] : it[10] || it[8]) : '') || vocLook(lw);
+      return ar ? `<span class="vw" data-ar="${esc(ar)}"${it ? ` data-wid="${it[0]}"` : ''}>${esc(w)}</span>` : esc(w); }).join('');
   }
   const vcChip = (w, ar) => _T`<button type="button" class="vc" data-say="${esc(w)}" data-lang="en" title="اضغط لسماع النطق"><b>${esc(w)}</b><span>${esc(ar)}</span>${SAYSVG}</button>`;
   function vocabChips(text, max) {
@@ -2982,11 +3049,12 @@
   function bindWords() {
     if (bindWords.done) return; bindWords.done = true;
     document.addEventListener('click', e => {
+      const ad = e.target.closest('.vtadd'); if (ad) { wdAddTap(ad); return; }   // 📚 «أضف لكلماتي»
       if (e.target.closest('.vtip')) return;
       const w = e.target.closest('.vw'); if (!vtip) { vtip = document.createElement('div'); vtip.className = 'vtip'; document.body.appendChild(vtip); }
       document.querySelectorAll('.vw.hl').forEach(x => x.classList.remove('hl'));
       if (!w) { vtip.classList.remove('on'); return; }
-      vtip.innerHTML = `<b class="ltr">${esc(w.textContent)}${sayBtn(w.textContent, 'en', '', 'sm inv')}</b><span>${esc(w.dataset.ar)}</span>`; vtip.classList.add('on'); w.classList.add('hl');
+      vtip.innerHTML = `<b class="ltr">${esc(w.textContent)}${sayBtn(w.textContent, 'en', '', 'sm inv')}</b><span>${esc(w.dataset.ar)}</span>${wdTipAdd(w.dataset.wid)}`; vtip.classList.add('on'); w.classList.add('hl');
       const r = w.getBoundingClientRect(); const tw = Math.min(260, window.innerWidth - 16); vtip.style.width = tw + 'px';
       vtip.style.left = Math.max(8, Math.min(window.innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)) + 'px';
       const th = vtip.offsetHeight || 60; vtip.style.top = (r.top + window.scrollY - th - 8 > window.scrollY ? r.top + window.scrollY - th - 8 : r.bottom + window.scrollY + 8) + 'px';

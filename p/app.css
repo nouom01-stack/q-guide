@@ -3747,3 +3747,19 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 }
 [data-theme="dark"] .wdh h1,[data-theme="dark"] .wdtest h2,[data-theme="dark"] .wdday h2,[data-theme="dark"] .wdtiles b,[data-theme="dark"] .wdlx b,[data-theme="dark"] .wdq .wdw,[data-theme="dark"] .wdth,[data-theme="dark"] .obw .wdw{color:#DCE4FF}
 [data-theme="dark"] .wdday.done h2{color:#5FD39A}
+/* 🔤 v120: نص سؤال الكمي بالإنجليزي تحت الصورة + «أضف لكلماتي» في فقاعة الكلمة + تمرين الكلمة داخل سؤال والعملية */
+.qen{margin:0 0 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:8px 12px}
+.qen-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.qen-k{font-weight:700;color:var(--ink2);font-size:calc(13.5px * var(--fs))}.qen-k small{color:var(--mut);font-weight:500;margin-inline-start:4px}
+.qen-t{margin:6px 0 2px;font-size:calc(17px * var(--fs));line-height:1.7;color:var(--ink)}
+.qen.off .qen-t{display:none}
+.vtadd{display:block;margin:8px auto 0;font:inherit;font-weight:700;font-size:calc(13.5px * var(--fs));color:#1a1a1a;background:var(--gold);border-radius:999px;padding:4px 14px;cursor:pointer}
+.vtadd:hover{background:var(--gold2)}
+.vtst{display:block;margin-top:6px;color:#9FE3BF;font-size:calc(12.5px * var(--fs))}
+.wdctx{font-size:calc(19px * var(--fs));line-height:1.7;text-align:center;margin:8px 0 2px;color:var(--ink)}
+.wdm{background:#FFF1D6;color:inherit;border-bottom:2px solid var(--gold2);border-radius:4px;padding:0 3px;font-weight:700}
+.wdsrc{text-align:center;color:var(--mut);font-size:calc(12.5px * var(--fs));margin:0 0 4px}
+.wdops .opt{font-size:calc(18px * var(--fs));font-weight:700}
+.wdopb{margin:0 0 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wdopb b{font-size:calc(20px * var(--fs))}
+[data-theme="dark"] .wdm{background:#4a3a12;border-bottom-color:var(--gold)}
+[data-theme="dark"] .qen-k{color:#DCE4FF}
