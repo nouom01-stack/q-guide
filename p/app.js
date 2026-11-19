@@ -332,7 +332,7 @@
   let skillsPulled = false;
   // كل اللي يتزامن بين أجهزة الطالب في رسالة وحدة
   function syncPayload() {
-    const pl = planState(), o = { v: 1, items: histGet().items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null, marks: marksGet(), badges: lsGet(BADGE_LS, {}), lvl: lsGet(LVL_LS, null), fc: lsGet(FC_LS, null), fq: fqGet(), adv: lsGet(ADV_LS, null) };
+    const pl = planState(), o = { v: 1, items: histGet().items, days: daysGet(), exam: lsGet(EXAM_LS, null), plan: planUp(pl) ? pl : null, marks: marksGet(), badges: lsGet(BADGE_LS, {}), lvl: lsGet(LVL_LS, null), fc: lsGet(FC_LS, null), fq: fqGet(), adv: lsGet(ADV_LS, null), cov: lsGet('qg_wcov', null) };
     let s = JSON.stringify(o); if (s.length < 140000) return s;   // حد الخادم 150 ألف حرف: نخفّف الأقل أهمية أول
     o.fc = null; if (o.lvl) o.lvl = Object.assign({}, o.lvl, { a: {} }); s = JSON.stringify(o); if (s.length < 140000) return s;
     const M = JSON.parse(JSON.stringify(o.marks)); for (const k in M.items) for (const i in M.items[k]) if (M.items[k][i].n) M.items[k][i].n = M.items[k][i].n.slice(0, 160); o.marks = M; return JSON.stringify(o);
@@ -1003,6 +1003,7 @@
     if (h === 'words-go' || h === 'words-more') return renderWordsGo(h === 'words-more');
     if (h === 'words-test') return renderWordsTest();
     if (h === 'words-challenge') return renderWordsCh();   // ⏱ تحدي الدقيقة
+    if (h === 'words-week') return renderWordsWeek();   // 🧪 اختبار الأسبوع
     if (/^words-les-(ss|sf|ts|tf)\d{1,2}$/.test(h)) return renderWordsLes(h);   // 📚 اختبار كلمات درس تأسيس الكمي
     if (h === 'studio-view') { if (auth.role === 'admin') return renderStView(); location.hash = ''; return; }
     if (h === 'studio' || /^studio-[qvcrf]-\d{1,3}$/.test(h)) { if (auth.role === 'admin') return h === 'studio' ? renderStudio() : renderRec(h[7], +h.slice(9)); location.hash = ''; return; }
@@ -1905,7 +1906,10 @@
     // ⑧ أضعف مهارة
     if (w) return { k: 'weak', i: '🎯', tag: _T('نقطة ضعفك'), t: _T`ركّز اليوم على ${esc(w.t)}`, s: _T`دقتك فيها ${w.p}% — أضعف مهاراتك الحين${P.weak[1] ? _T`، وبعدها ${esc(P.weak[1].t)} ${P.weak[1].p}%` : ''}`, a: weakA().concat(needSetup ? [setup] : []) };
     // ⑨ مهمة اليوم من خطته
-    if (I && I.cur && todo.length) { const t = curSet;
+    if (I && I.cur && todo.length) { const t = curSet, cv = t && engToday() ? ((lsGet(COV_LS, null) || {}).s || {})[t.set] : null;
+      // 📖 v124: تغطيته لكلام قسم اليوم قليلة (أقل من 70%): كلماته الجديدة أول من «جلسة اليوم»، وبعدها المقطع والحل
+      if (t && cv != null && cv < 70) return { k: 'today', i: '✅', tag: _T('خطتك'), t: _T`مهمتك اليوم: ${esc(todoT)}`, s: _T`اليوم ${I.cur.n} من ${plan.days}. تعرف ${cv}% من كلام ${SET_NAME(t.set)}: خذ كلماته الجديدة أول، وبعدها شاهد المقطع وحل الأسئلة.`,
+        a: [{ t: _T('📚 كلماته الجديدة'), h: '#words-go' }, { t: _T`▶ ${SET_NAME(t.set)}`, h: '#' + t.set, g: 1 }] };
       return { k: 'today', i: '✅', tag: _T('خطتك'), t: _T`مهمتك اليوم: ${esc(todoT)}`, s: t ? _T`اليوم ${I.cur.n} من ${plan.days}. شاهد المقطع أول، وبعدها حل الأسئلة.` : _T`اليوم ${I.cur.n} من ${plan.days}. خلّص اللي باقي وعلّمه ✓ في خطتك.`,
         a: (t ? [{ t: _T`▶ ${SET_NAME(t.set)}`, h: '#' + t.set }] : []).concat([{ t: t ? _T('📅 الخطة') : _T('📅 افتح الخطة'), h: '#plan', g: t ? 1 : 0 }]) }; }
     // ⑩ ما فيه بيانات تكفي
@@ -2045,24 +2049,29 @@
     const P = wdP(), S = wdStats(P), T = wdToday(P), tm = wdTime(), q = wdQuota(), g = wdChGoal(), sv = ansToday(), sq = tm[2], cr = T.cr || 0;
     const sj = EN ? ' and ' : ' و';   // i18n:skip
     const nm = E.sets.length > 2 ? _T('أسئلة اليوم') : E.sets.map(SET_NAME).join(sj);
+    const cv = !E.p1 && WD && WD.stot ? wdCovIn(WD, wdCov(WD, P), E.sets) : null;   // 📖 كم يعرف من كلام أسئلة اليوم (لما يكون ملف الكلمات محمّل)
     const parts = [
       { i: '🔁', t: _T('راجع كلماتك'), m: tm[0], h: '#words-go', ok: !S.due, s: S.due ? _T`باقي ${wdNw(S.due)}` : T.r ? _T`راجعت ${wdNw(T.r)}` : _T('ما عندك مراجعة اليوم') },
-      { i: '✨', t: E.p1 ? _T('كلمات جديدة: لغة الكمي') : _T`كلمات ${nm} الجديدة`, m: tm[1], h: '#words-go', ok: T.n >= q, s: _T`تعلّمت ${Math.min(T.n, q)} من ${q}` },
+      { i: '✨', t: E.p1 ? _T('كلمات جديدة: لغة الكمي') : _T`كلمات ${nm} الجديدة`, m: tm[1], h: '#words-go', ok: T.n >= q, s: _T`تعلّمت ${Math.min(T.n, q)} من ${q}` + (cv != null ? _T` · تغطيتك ${cv}%` : '') },
       { i: '✍️', t: E.solve.t, m: tm[2], h: E.solve.h, ok: sv >= sq, s: _T`حليت ${Math.min(sv, sq)} من ${sq} سؤال` },
       { i: '⏱', t: _T('تحدي الدقيقة'), m: tm[3], h: '#words-challenge', ok: cr >= g, s: g > 1 ? _T`لعبت ${Math.min(cr, g)} من ${g} جولات` : cr ? _T('لعبت جولة') : _T('جولة دقيقة وحدة') } ];
     return { parts, mins: tm.reduce((a, b) => a + b, 0), next: parts.find(p => !p.ok), go: !!(T.r || T.n || T.k || sv || cr) };
   }
   // شريط «مسارك» (الرئيسية وصفحة الخطة): المرحلة + جلسة اليوم بأجزائها + زر يكمّل من أول جزء ما خلص
+  let PTH_L = 0;   // ملف الكلمات ينتظر نسخة حسابه ويتحمّل مرة وحدة (للتغطية)
   function pathStrip() {
     const E = engToday(); if (!E) return '';
-    const st = planState(), plan = PLANS.find(p => p.id === st.id), X = wdSess(E), all = !X.next;
+    const st = planState(), plan = PLANS.find(p => p.id === st.id), X = wdSess(E), all = !X.next, P = wdP(), xs = E.X.slice();
+    if (wdWtDue(P) && wdWtCan(P)) xs.push({ i: '🧪', t: _T('اختبار الأسبوع'), h: '#words-week' });
+    // ملف الكلمات يتحمّل بعد الرسم (للتغطية): نعيد رسم الشريط لما يوصل
+    if (!WD && !PTH_L && auth && auth.wbk && !isFree()) { PTH_L = 1; wdReady(null).then(D => { PTH_L = 0; if (!D) return; try { wdCovNote(D); } catch (e) {} document.querySelectorAll('section.pth').forEach(el => { el.outerHTML = pathStrip(); }); }).catch(() => { PTH_L = 0; }); }
     const head = E.p1 ? _T`<b>🧭 مسارك: تقوية الإنجليزي</b> <span class="mut">اليوم ${E.n} من ${E.ed}${plan ? _T`، وبعدها ${plan.name}` : ''}</span>` : _T`<b>🧭 مسارك</b> <span class="mut">مستواك ${elvName(E.elv)} · القدرات تحتاج <bdi dir="ltr">B1–B2</bdi></span>`;
     const row = (p, i) => `<li class="${p.ok ? 'ok' : ''}${p === X.next ? ' now' : ''}"><a href="${p.h}"><span class="ses-i" aria-hidden="true">${p.ok ? '✓' : i + 1}</span><span class="ses-x"><b><span aria-hidden="true">${p.i}</span> ${p.t}</b><small>${wdMin(p.m)} · ${p.s}</small></span></a></li>`;
     return `<section class="pth" aria-label="${_T('مسارك')}"><div class="pth-h">${head}</div>
       <div class="ses${all ? ' done' : ''}"><div class="ses-h"><b>${all ? _T('✓ خلّصت جلسة اليوم') : _T('جلسة اليوم')}</b><span class="mut">${_T`تقريباً ${wdMin(X.mins)}`}</span>${all ? '' : `<a class="btn sm gold ses-go" href="${X.next.h}">${X.go ? _T('▶ كمّل جلسة اليوم') : _T('▶ ابدأ جلسة اليوم')}</a>`}</div>
         <ol class="ses-l">${X.parts.map(row).join('')}</ol>
         <p class="ses-n mut">${_T('في الحل: اضغط على أي كلمة ما تعرفها، وأضفها لكلماتك.')}</p></div>
-      ${E.X.length ? `<div class="pth-t"><span class="pth-k">${_T('ومعها:')}</span>${E.X.map(x => `<a class="tchip" href="${x.h}"><span aria-hidden="true">${x.i}</span> ${x.t}</a>`).join('')}</div>` : ''}</section>`;
+      ${xs.length ? `<div class="pth-t"><span class="pth-k">${_T('ومعها:')}</span>${xs.map(x => `<a class="tchip" href="${x.h}"><span aria-hidden="true">${x.i}</span> ${x.t}</a>`).join('')}</div>` : ''}</section>`;
   }
   const obDone = () => { const A = advGet(); return !!(A && A.elv); };
   const OB_ASK = 'qg_onb_ask';
@@ -2150,7 +2159,7 @@
   //   + lv (المستوى اللي يتعلم منه) + dd (عدّادات اليوم) + u (عدّاد التعديلات) — ينزامن مع حسابه مثل الأقسام (prog_set، الصف wd).
   // التكرار المتباعد: صح ← بعد يوم، ثم 3، ثم 7، ثم 14، ثم 30 · غلط ← بكرة (ونعيدها آخر التدريب) · كلمة جديدة جاوبها صح من أول مرة = يعرفها:
   //   ترجع بعد أسبوع وما تنحسب من كلمات اليوم الجديدة (12 لوقت نص ساعة، 20 لساعة وأكثر).
-  const WD_V = 3, WD_ID = 'wd', WD_INT = [1, 1, 3, 7, 14, 30], WD_KNOWN = 3, WD_EPOCH = new Date(2026, 0, 1).getTime();
+  const WD_V = 4, WD_ID = 'wd', WD_INT = [1, 1, 3, 7, 14, 30], WD_KNOWN = 3, WD_EPOCH = new Date(2026, 0, 1).getTime();
   const WD_LV = { 1: [_T('المستوى الأول'), _T('لغة الكمي والكلمات الأكثر تكراراً')], 2: [_T('المستوى الثاني'), _T('كلمات الربط وصيغ الأسئلة')], 3: [_T('المستوى الثالث'), _T('كلمات اللفظي حسب التكرار')] };
   const wdNw = n => EN ? enN(n, 'word', 'words') : n === 1 ? 'كلمة وحدة' : n === 2 ? 'كلمتين' : n <= 10 ? n + ' كلمات' : n + ' كلمة';   // i18n:skip
   const wdMin = n => EN ? enN(n, 'minute', 'minutes') : n <= 1 ? 'دقيقة' : n === 2 ? 'دقيقتين' : n <= 10 ? n + ' دقايق' : n + ' دقيقة';   // i18n:skip
@@ -2186,7 +2195,7 @@
       const by = {}, lv = { 1: [], 2: [], 3: [] };
       J.items.forEach(it => { by[it[0]] = it; (lv[it[3]] || (lv[it[3]] = [])).push(it); });
       [1, 2, 3].forEach(k => lv[k].sort((a, b) => b[4] - a[4]));
-      WD = { v: J.v, items: J.items, by, lv, pool: J.pool, target: J.lv, tot: J.tot, oph: J.oph || {}, les: J.les || {}, lord: J.lord || [], lfn: J.lfn || {} }; WDF = null; return WD;
+      WD = { v: J.v, items: J.items, by, lv, pool: J.pool, target: J.lv, tot: J.tot, oph: J.oph || {}, les: J.les || {}, lord: J.lord || [], lfn: J.lfn || {}, stot: J.stot || {} }; WDF = null; return WD;
     }).catch(e => { wdLoading = null; throw e; }));
   }
   // v120: جمل حقيقية من أسئلة الدورة لتمرين «الكلمة داخل سؤال» (wordex.bin، ملف لحاله ينزل وقت التدريب): {id: [[set, جملة], …]}
@@ -2270,8 +2279,10 @@
     if (R.dd && (!L.dd || R.dd.d > L.dd.d)) out.dd = R.dd; else if (R.dd && L.dd && R.dd.d === L.dd.d) out.dd = { d: L.dd.d, n: mx(L.dd, R.dd, 'n'), k: mx(L.dd, R.dd, 'k'), r: mx(L.dd, R.dd, 'r'), c: mx(L.dd, R.dd, 'c'), cr: mx(L.dd, R.dd, 'cr') };
     if ((R.cb || 0) > (L.cb || 0)) out.cb = R.cb;   // ⏱ أفضل نتيجة في تحدي الدقيقة
     if (R.lq) { out.lq = Object.assign({}, L.lq); for (const k in R.lq) { const r = R.lq[k], l = out.lq[k]; if (r && (!l || r.s > l.s || (r.s === l.s && (r.at || 0) > (l.at || 0)))) out.lq[k] = r; } }   // 📚 اختبارات كلمات الدروس: الأعلى
+    if (R.cw) { out.cw = Object.assign({}, L.cw); for (const k in R.cw) out.cw[k] = Math.max(+out.cw[k] || 0, +R.cw[k] || 0); }   // 📖 تغطيته كل أسبوع: الأعلى
+    if (R.wt && (!L.wt || (R.wt.at || 0) > (L.wt.at || 0))) out.wt = R.wt;   // 🧪 آخر اختبار أسبوع
     out.m = Math.max(progM(L), rm || progM(R)); out.u = Math.max(L.u || 0, R.u || 0);
-    const key = o => JSON.stringify([Object.keys(o.a || {}).sort().map(k => k + o.a[k]), o.pt || null, o.lv || 0, o.dd ? ['d', 'n', 'k', 'r', 'c', 'cr'].map(f => o.dd[f] || 0) : 0, o.cb || 0, Object.keys(o.lq || {}).sort().map(k => k + ':' + o.lq[k].s + '/' + o.lq[k].n)]);
+    const key = o => JSON.stringify([Object.keys(o.a || {}).sort().map(k => k + o.a[k]), o.pt || null, o.lv || 0, o.dd ? ['d', 'n', 'k', 'r', 'c', 'cr'].map(f => o.dd[f] || 0) : 0, o.cb || 0, Object.keys(o.lq || {}).sort().map(k => k + ':' + o.lq[k].s + '/' + o.lq[k].n), Object.keys(o.cw || {}).sort().map(k => k + ':' + o.cw[k]), o.wt ? o.wt.at : 0]);
     const changed = key(L) !== key(out);
     if (changed || (L.m || 0) !== out.m) lsSet(LS.prog + WD_ID, out);
     if (key(R) === key(out)) { PSY.sig[WD_ID] = progSig(out); delete PSY.dirty[WD_ID]; } else PSY.dirty[WD_ID] = 1;
@@ -2280,7 +2291,7 @@
   const wdTop = (title, right, back) => topbar(`<span class="ttl">${title}</span><span class="sp"></span>${right || ''}`, `<a class="ib" href="${back || '#words'}" title="${_T('كلماتي')}">→</a>`);
   async function wdReady(W) {   // ملف الكلمات + نسخة حسابه قبل ما نرسم
     if (progSyncOn() && !PSY.pulled) { const pp = progPull(); await Promise.race([pp, new Promise(r => setTimeout(r, 3000))]);
-      pp.then(ch => { if (ch && ch.indexOf(WD_ID) >= 0 && WD && location.hash === '#words') wdPaint(WD); }).catch(() => {}); }   // نسخة حسابه وصلت بعد ما رسمنا
+      pp.then(ch => { if (!(ch && ch.indexOf(WD_ID) >= 0 && WD)) return; if (location.hash === '#words') wdPaint(WD); else if (location.hash === '#skills' && $('#cov')) covPaint(); }).catch(() => {}); }   // نسخة حسابه وصلت بعد ما رسمنا
     try { return await wdLoad(); } catch (e) { if (W) W.innerHTML = `<div class="sum">${_T('تعذّر تحميل الكلمات. تأكد من النت وحدّث الصفحة.')}</div>`; return null; }
   }
 
@@ -2320,6 +2331,7 @@
         <div class="wdta">${doneToday ? _T('<a class="btn" href="#words-more">✨ كلمات زيادة</a>') : _T('<a class="btn gold" href="#words-go">▶ ابدأ تدريب اليوم</a>')}${P.pt ? '' : _T('<a class="btn ghost" href="#words-test">🧭 اختبار المستوى</a>')}</div></section>`}
       <section class="wdtiles"><div><b>${S.mast}</b><span>${_T('كلمة أتقنتها')}</span></div><div><b>${S.learn}</b><span>${_T('كلمة تتعلمها')}</span></div><div><b>${S.tom}</b><span>${_T('مراجعة بكرة')}</span></div></section>
       <a class="wdchl" href="#words-challenge"><span class="wdti" aria-hidden="true">⏱</span><span class="wvqx"><b>${_T('تحدي الدقيقة')}</b><small>${_T('حوّل السؤال لمعادلة، أو اختر كلمة الربط اللي تكمّل الجملة')}${P.cb ? _T` · أفضل نتيجة لك ${P.cb}` : ''}</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>
+      <a class="wdchl" href="#skills"><span class="wdti" aria-hidden="true">📖</span><span class="wvqx"><b>${_T`تغطيتك ${wdCovNote(D).all}%`}</b><small>${_T('كم تعرف من كلام أسئلة الدورة، ولكل قسم ونموذج، واختبار الأسبوع')}</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>
       <h2 class="h2">المستويات</h2>
       <section class="wdlv">${[1, 2, 3].map(lvRow).join('')}</section>
       <p class="wdlvn mut">${_T`كلماتك الجديدة كل يوم: <b>${wdNw(q)}</b> حسب وقتك في مسارك. المستوى الثالث هدفه الكلمات اللي توصلك لفهم 90٪ من كلام أسئلة الدورة.`}</p>
@@ -2419,7 +2431,7 @@
     if (ok) setTimeout(() => { if (WS === S && S.q[S.i] === x) { S.i++; wdNext(); } }, 1100); else $('#wdnx').focus();
   }
   function wdDone() {
-    const S = WS; WS = null; document.onkeydown = null;
+    const S = WS; WS = null; document.onkeydown = null; try { wdCovNote(S.D); } catch (e) {}   // 📖 تغطيته بعد التدريب
     const P = wdP(), st = wdStats(P), learned = S.n, known = S.k, rev = S.r;
     if (!S.q.length) { app.innerHTML = wdTop(_T('📚 تدريب كلماتي')) + _T`<main class="wrap wdg"><section class="sum wdsum"><h2>✓ ما عندك شي اليوم</h2><p>خلّصت مراجعاتك وكلماتك الجديدة. تقدر تاخذ كلمات زيادة.</p><div class="wdta c"><a class="btn" href="#words-more">✨ كلمات زيادة</a><a class="btn ghost" href="#words">📚 كلماتي</a></div></section></main>`; bindCtl(); return; }
     app.innerHTML = wdTop(_T('📚 تدريب كلماتي')) + _T`<main class="wrap wdg"><section class="sum wdsum">
@@ -2596,11 +2608,11 @@
   const wdLesCard = (k, n, on) => { const P = wdP(), b = P.lq && P.lq[wdLesKey(k, n)];
     return `<a class="wvq wvlq" id="wvlq" href="#words-les-${k}${n}"${on ? '' : ' hidden'}><span class="wvqi" aria-hidden="true">📚</span><span class="wvqx"><b>${b ? _T`كلمات الدرس: عرفت ${b.s} من ${b.n}` : _T('اختبر كلمات الدرس')}</b><small>${b ? _T('أعد الاختبار، والكلمات اللي ما تعرفها تدخل كلماتك') : _T('الكلمات اللي لازم تعرف معناها في هالدرس، واللي ما تعرفه يدخل كلماتك')}</small></span><span class="wvqg" aria-hidden="true">${EN ? '›' : '‹'}</span></a>`; };
   // اختبار كلمات (قائمة) داخل W: الكلمة ونطقها + 4 معاني في الكمي + «ما أعرفها» · done(A) = إجاباته · quit() = وقّف
-  function wdQuizRun(W, D, list, head, done, quit) {
+  function wdQuizRun(W, D, list, head, done, quit, gen) {   // gen = المعنى العام (اختبار الأسبوع) بدل معنى الكمي (كلمات الدرس)
     const A = [];
-    const show = i => { const it = list[i], opts = wdOpts(D, it, false, it[9] || it[8]);
+    const show = i => { const it = list[i], opts = wdOpts(D, it, false, gen ? undefined : it[9] || it[8]);
       W.innerHTML = `<div class="obq-h"><b>${head}</b><span class="mut"><bdi dir="ltr">${i + 1} / ${list.length}</bdi></span></div><div class="obbar"><i style="width:${Math.round(i * 100 / list.length)}%"></i></div>
-        <p class="wdw ltr wdtw" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">${_T('وش معناها في الكمي؟')}</p>
+        <p class="wdw ltr wdtw" lang="en">${esc(it[1])} ${sayBtn(it[1], 'en', '', 'wds')}</p><p class="wdask">${gen ? _T('وش معناها؟') : _T('وش معناها في الكمي؟')}</p>
         <div class="opts two wdo wdaro">${opts.map((o, k) => `<button type="button" class="opt" data-k="${k}"><span class="L">${k + 1}</span><span>${esc(o.t)}</span></button>`).join('')}</div>
         <div class="acts"><button type="button" class="btn ghost wdk" id="wdk">${_T('🤷 ما أعرفها')}</button><span class="sp"></span><button type="button" class="btn ghost" id="wdtx">${_T('وقّف الاختبار')}</button></div>`;
       let gone = false;
@@ -2631,11 +2643,94 @@
     const fin = (list, A) => {
       const P = wdP(), t = wdDay(), miss = []; let ok = 0;
       list.forEach((it, i) => { const s = wdSt(P, it[0]); if (A[i]) { ok++; if (!s) wdPut(P, it[0], WD_KNOWN, t + WD_INT[WD_KNOWN], t); } else { miss.push(it); if (!s || s.b >= 1 || s.d > t) wdPut(P, it[0], 0, t, t); } });
-      P.lq = Object.assign({}, P.lq); const o = P.lq[les]; if (!o || ok >= o.s) P.lq[les] = { s: ok, n: list.length, at: Date.now() }; wdSave(P);
+      P.lq = Object.assign({}, P.lq); const o = P.lq[les]; if (!o || ok >= o.s) P.lq[les] = { s: ok, n: list.length, at: Date.now() }; wdSave(P); wdCovNote(D);
       W.innerHTML = _T`<h2 class="wdth">${ok === list.length ? _T('تعرف كل كلمات الدرس 👏') : _T('نتيجة كلمات الدرس')}</h2><p class="obsc">عرفت <b>${ok}</b> من ${list.length} كلمة</p>
         ${miss.length ? _T('<p>الكلمات اللي ما عرفتها دخلت كلماتك، وتطلع لك في تدريب اليوم:</p>') + `<div class="wdlist wdlm">${miss.map(it => `<div class="vr wdr"><span class="wdre"><b class="ltr" lang="en">${esc(it[1])}</b>${sayBtn(it[1], 'en', '', 'sm')}</span><span class="wdra">${esc(it[9] || it[8])}</span></div>`).join('')}</div>` : ''}
         <div class="wdta"><a class="btn gold" href="#words-go">▶ تدريب كلماتي</a><a class="btn ghost" href="${back}">رجوع للدرس</a><button type="button" class="btn ghost" id="wlre">🔁 أعد الاختبار</button></div>`;
       $('#wlre').onclick = run; };
+    intro();
+  }
+
+  // ---------- 📖 v124 «تغطيتك» (المرحلة الخامسة من مسار الإنجليزي): كم بالمئة من كلام أسئلة الدورة (بدون الكلمات الصغيرة) يعرف معناه ----------
+  // يعرف الكلمة = آخر إجابة له فيها صح (الصندوق 1 وفوق: اختبار المستوى، التدريب، اختبار الدرس، اختبار الأسبوع) · الكلمات بس (it[2] = 'w') بدون الصغيرة (it[7])
+  // الكل = مجموع تكرار كلماته المعروفة ÷ D.tot · كل قسم ونموذج = تكرارها فيه (it[11] أقسامها + it[14] كم مرة في كل واحد) ÷ D.stot · نقرّب لتحت (ما نعطيه رقم ما وصله)
+  // P.cw = {أسبوع: النسبة} للرسم الأسبوعي (الأسبوع = أيام من 1 يناير 2026 ÷ 7) · P.wt = آخر اختبار أسبوع · qg_wcov = ملخص للرئيسية والمرشد (يروح للخادم مع بيانات المهارات)
+  const COV_LS = 'qg_wcov';
+  const wdWeek = t => Math.floor(wdDay(t) / 7);
+  function wdCov(D, P) {
+    let k = 0; const ks = {};
+    for (const id in P.a) { const it = D.by[id]; if (!it || it[2] !== 'w' || it[7]) continue; const s = wdSt(P, id); if (!s || s.b < 1) continue;
+      k += it[4]; const ss = String(it[11] || '').split(' '), cc = String(it[14] || '').split(' ');
+      for (let i = 0; i < ss.length; i++) if (ss[i]) ks[ss[i]] = (ks[ss[i]] || 0) + (+cc[i] || 0); }
+    const pc = (a, b) => b ? Math.min(100, Math.floor(a * 100 / b)) : 0, sets = {};
+    for (const x in D.stot || {}) sets[x] = pc(ks[x] || 0, D.stot[x]);
+    return { all: pc(k, D.tot), sets, ks };
+  }
+  // تغطيته لكلام مجموعة أقسام مع بعض (أسئلة اليوم)
+  const wdCovIn = (D, c, sets) => { let a = 0, b = 0; (sets || []).forEach(x => { if (D.stot && D.stot[x]) { a += c.ks[x] || 0; b += D.stot[x]; } }); return b ? Math.min(100, Math.floor(a * 100 / b)) : null; };
+  // نحسبها ونحفظها: رقم هالأسبوع في P.cw (لو تغيّر) + الملخص في qg_wcov (لو تغيّر، ويروح للخادم)
+  function wdCovNote(D) {
+    const P = wdP(), c = wdCov(D, P), w = wdWeek();
+    if (!P.cw || P.cw[w] !== c.all) { P.cw = Object.assign({}, P.cw); P.cw[w] = c.all; const ks = Object.keys(P.cw).map(Number).sort((a, b) => a - b); while (ks.length > 26) delete P.cw[ks.shift()]; wdSave(P); }
+    const pk = Object.keys(P.cw).map(Number).filter(x => x < w).sort((a, b) => b - a), E = (() => { try { return engToday(); } catch (e) { return null; } })();
+    const S = { d: dayKey(), a: c.all, p: pk.length ? P.cw[pk[0]] : null, s: c.sets, td: E && !E.p1 ? (E.sets || []).filter(x => c.sets[x] != null).map(x => [x, c.sets[x]]) : [] };
+    if (JSON.stringify(lsGet(COV_LS, null)) !== JSON.stringify(S)) { lsSet(COV_LS, S); skillsPushSoon(4000); }
+    return c;
+  }
+  // 🧪 اختبار الأسبوع: مرة كل 7 أيام · يحتاج 10 كلمات في كلماته على الأقل
+  function wdWtDue(P) { return !P.wt || wdDay() - (P.wt.d || 0) >= 7; }
+  function wdWtCan(P) { return Object.keys(P.a || {}).length >= 10; }
+  const covOn = () => !!(auth && auth.wbk) && !isFree();
+  const COV_SPIN = '<section class="cov" id="cov"><div class="center"><div class="spin" style="margin:0 auto"></div></div></section>';
+  const covLv = p => p >= 80 ? 'ok' : p >= 50 ? 'mid' : 'low';
+  const wkDate = w => { const d = new Date(WD_EPOCH + w * 7 * DAYMS); return d.getDate() + '/' + (d.getMonth() + 1); };
+  // بطاقة «تغطيتك» في صفحة المهارات: الرقم + الأسبوع اللي قبله + رسم الأسابيع + اختبار الأسبوع + كل قسم ونموذج
+  async function covPaint() {
+    const D = await wdReady(null);   // نسخة حسابه أول (جهاز جديد ما يطلع له صفر)
+    const W = $('#cov'); if (!W) return; if (!D) { W.remove(); return; }
+    const c = wdCovNote(D), P = wdP(), w0 = wdWeek(), cw = P.cw || {};
+    const wks = Object.keys(cw).map(Number).filter(x => x <= w0).sort((a, b) => a - b).slice(-8), pk = wks.filter(x => x < w0), prev = pk.length ? cw[pk[pk.length - 1]] : null;
+    const due = wdWtDue(P), can = wdWtCan(P), wt = P.wt;
+    const tile = s => `<a class="cov-s ${covLv(c.sets[s])}" href="#${s}"><span>${SET_NAME(s)}</span><b>${c.sets[s]}%</b><i><u style="width:${c.sets[s]}%"></u></i></a>`;
+    const qs = Object.keys(D.stot || {}).filter(s => s[0] === 'q'), vs = Object.keys(D.stot || {}).filter(s => s[0] === 'v');
+    const test = !can ? _T`<div class="cov-t"><span class="wdti" aria-hidden="true">🧪</span><span class="wvqx"><b>اختبار الأسبوع</b><small>يفتح لما يصير عندك 10 كلمات في «كلماتي». عندك الحين ${Object.keys(P.a || {}).length}.</small></span><a class="btn sm" href="#words-go">📚 تدرّب</a></div>`
+      : due ? _T`<div class="cov-t"><span class="wdti" aria-hidden="true">🧪</span><span class="wvqx"><b>اختبار الأسبوع</b><small>15 كلمة: 10 من كلماتك و5 جديدة من مستواك، ونتيجته تحدّث تغطيتك.</small></span><a class="btn sm gold" href="#words-week">▶ ابدأ</a></div>`
+      : _T`<div class="cov-t done"><span class="wdti" aria-hidden="true">✅</span><span class="wvqx"><b>اختبار هالأسبوع: عرفت ${wt.s} من ${wt.n}</b><small>اختبارك الجاي بعد ${dLabel(Math.max(1, 7 - (wdDay() - wt.d)))}.</small></span></div>`;
+    W.innerHTML = _T`<div class="cov-top"><div class="cov-x"><h2>📖 تغطيتك لكلام الاختبار</h2><p>تعرف معنى <b>${c.all}%</b> من كلام أسئلة الدورة.</p><small>نحسب بس الكلمات اللي آخر إجابة لك فيها صح، بدون الكلمات الصغيرة مثل the و of.</small></div>
+        <div class="cov-n ${covLv(c.all)}"><b>${c.all}%</b>${prev == null ? '' : _T`<small>الأسبوع اللي قبله ${prev}%</small>`}</div></div>
+      <div class="cov-bar"><i style="width:${c.all}%"></i></div>
+      ${wks.length ? `<div class="cov-wk" role="img" aria-label="${_T('تغطيتك كل أسبوع')}">${wks.map(x => `<div class="cov-w${x === w0 ? ' now' : ''}"><span>${cw[x]}%</span><div class="cov-wb"><i style="height:${Math.max(4, cw[x])}%"></i></div><small><bdi dir="ltr">${wkDate(x)}</bdi></small></div>`).join('')}</div>${wks.length < 2 ? _T('<p class="cov-note mut">كل أسبوع ينضاف عمود جديد للرسم.</p>') : ''}` : ''}
+      ${test}
+      <h3 class="cov-h3">كل قسم ونموذج</h3><p class="mut cov-sub">كم تعرف من كلام كل قسم ونموذج قبل ما تحله.</p>
+      <div class="cov-sets"><div><b>📐 الكمي</b><div class="cov-g">${qs.map(tile).join('')}</div></div><div><b>📖 اللفظي</b><div class="cov-g">${vs.map(tile).join('')}</div></div></div>
+      <div class="wdta"><a class="btn" href="#words-go">📚 تدرّب على كلماتك</a></div>`;
+  }
+  // 🧪 اختبار الأسبوع (#words-week): 15 كلمة = 10 من كلماته (اللي ما جاوبها من 3 أيام أول) + 5 جديدة من مستواه ·
+  //   الصح = خطوة لقدّام في التكرار المتباعد (الجديدة = يعرفها) · الغلط أو «ما أعرفها» = تدريب اليوم · P.wt = {at, d, s, n, a: التغطية قبل, b: بعد}
+  async function renderWordsWeek() {
+    document.title = _T('اختبار الأسبوع | Q-Guide'); document.onkeydown = null;
+    app.innerHTML = wdTop(_T('🧪 اختبار الأسبوع'), '', '#skills') + '<main class="wrap wdg"><div class="q wdtst" id="wdt"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main>'; bindCtl();
+    const W = $('#wdt'), D = await wdReady(W); if (!D || location.hash !== '#words-week') return;
+    const back = _T('<a class="btn ghost" href="#skills">🎯 مهاراتي</a>');
+    const intro = () => { const P = wdP(), c = wdCov(D, P).all;
+      if (!wdWtCan(P)) { W.innerHTML = _T`<h2 class="wdth">🧪 اختبار الأسبوع</h2><p>يحتاج 10 كلمات في «كلماتي» على الأقل، وعندك الحين ${Object.keys(P.a || {}).length}. تدرّب كم يوم وارجع له.</p><div class="wdta"><a class="btn gold" href="#words-go">▶ تدريب كلماتي</a>${back}</div>`; return; }
+      if (!wdWtDue(P)) { W.innerHTML = _T`<h2 class="wdth">✅ سويت اختبار هالأسبوع</h2><p class="obsc">عرفت <b>${P.wt.s}</b> من ${P.wt.n} كلمة</p><p>اختبارك الجاي بعد ${dLabel(Math.max(1, 7 - (wdDay() - P.wt.d)))}. تغطيتك الحين ${c}%.</p><div class="wdta"><a class="btn gold" href="#words-go">▶ تدريب كلماتي</a>${back}</div>`; return; }
+      W.innerHTML = _T`<h2 class="wdth">🧪 اختبار الأسبوع</h2><p>15 كلمة: 10 من كلماتك و5 جديدة من مستواك. اختر معنى كل كلمة، وإذا ما تعرفها اضغط «ما أعرفها» بدل ما تخمّن. نتيجته تحدّث تغطيتك، وهي الحين ${c}%.</p><div class="wdta"><button type="button" class="btn gold" id="wkgo">▶ ابدأ</button>${back}</div>`;
+      $('#wkgo').onclick = run; };
+    const run = () => { const P = wdP(), t = wdDay();
+      const mine = Object.keys(P.a).map(id => [D.by[id], wdSt(P, id)]).filter(x => x[0] && x[1] && x[0][2] !== 'p' && !x[0][7]);   // بدون الكلمات الصغيرة (the، of…)
+      const pick = wdShuf(mine.filter(x => x[1].l <= t - 3)).concat(wdShuf(mine.filter(x => x[1].l > t - 3))).slice(0, 10).map(x => x[0]);
+      const list = wdShuf(pick.concat(wdFresh(D, P, 60).filter(it => !it[7]).slice(0, 15 - pick.length))), c0 = wdCov(D, P).all;
+      wdQuizRun(W, D, list, _T('اختبار الأسبوع'), A => fin(list, A, c0), intro, true); };
+    const fin = (list, A, c0) => {
+      const P = wdP(), t = wdDay(), miss = []; let ok = 0;
+      list.forEach((it, i) => { if (A[i]) { ok++; wdMark(P, it, true); } else { miss.push(it); wdPut(P, it[0], 0, t, t); } });
+      P.wt = { at: Date.now(), d: t, s: ok, n: list.length, a: c0 }; wdSave(P);
+      const c1 = wdCovNote(D).all, P2 = wdP(); P2.wt = Object.assign({}, P2.wt, { b: c1 }); wdSave(P2);
+      W.innerHTML = _T`<h2 class="wdth">${ok === list.length ? _T('ولا غلطة! 🎉') : _T('نتيجة اختبار الأسبوع')}</h2><p class="obsc">عرفت <b>${ok}</b> من ${list.length} كلمة</p>
+        <p class="wkcv">${c1 > c0 ? _T`📈 تغطيتك صارت ${c1}% (كانت ${c0}%)` : c1 < c0 ? _T`تغطيتك صارت ${c1}% (كانت ${c0}%): الكلمات اللي غلطت فيها ترجع لك في التدريب` : _T`تغطيتك ${c1}%`}</p>
+        ${miss.length ? _T('<p>الكلمات اللي ما عرفتها دخلت تدريب اليوم:</p>') + `<div class="wdlist wdlm">${miss.map(it => `<div class="vr wdr"><span class="wdre"><b class="ltr" lang="en">${esc(it[1])}</b>${sayBtn(it[1], 'en', '', 'sm')}</span><span class="wdra">${esc(wdAr(it))}</span></div>`).join('')}</div>` : ''}
+        <div class="wdta"><a class="btn gold" href="#words-go">▶ تدريب كلماتي</a>${back}</div>`; };
     intro();
   }
 
@@ -3681,7 +3776,7 @@
     return P;
   }
   // 🔗 روابط المساعد: {{q3}} {{v5}} {{t2}} {{rules:circles}} {{t-geo}} {{plan}}… → زر ينقل الطالب للصفحة
-  const HELP_PAGES = { rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
+  const HELP_PAGES = { words: ['📚', _T('كلماتي'), '#words'], 'words-challenge': ['⏱', _T('تحدي الدقيقة'), '#words-challenge'], rules: ['📐', _T('ملخص القوانين'), '#rules'], 'rules-v': ['📖', _T('قواعد اللفظي'), '#rules-v'], skills: ['🎯', _T('مهاراتي'), '#skills'], plan: ['📅', _T('خطة المذاكرة'), '#plan'], level: ['🧭', _T('تحديد المستوى'), '#level'],
     vocab: ['🃏', _T('بطاقات المفردات'), '#vocab'], 'wb-q': ['📘', _T('مذكرة الكمي'), '#wb-q'], 'wb-v': ['📗', _T('مذكرة اللفظي'), '#wb-v'], 'wb-tq': ['🧱', _T('تأسيس الكمي'), '#wb-tq'], 'wb-tv': ['🧱', _T('تأسيس اللفظي'), '#wb-tv'], sharh: ['🎬', _T('الشرح والمدرسين'), '#sharh'], arena: ['⚔️', _T('الساحة 1v1'), '#arena'], find: ['🔎', _T('ابحث عن سؤال'), '#find'], notes: ['📝', _T('ملاحظاتي'), '#notes'],
     't-wrong-q': ['🔁', _T('أعد حل أخطائك (كمي)'), '#t-wrong-q'], 't-wrong-v': ['🔁', _T('أعد حل أخطائك (لفظي)'), '#t-wrong-v'],
     me: ['👤', _T('ملفي واشتراكي'), '#me'], advisor: ['🎓', _T('صفحة مرشدي'), '#advisor'], invite: ['🎁', _T('ادعُ صديقك'), '#invite'], 'sharh-salman': ['👨‍🏫', _T('دروس سلمان الفرج'), '#sharh-salman'], 'sharh-abdullah': ['👨‍🏫', _T('دروس عبدالله الشمراني'), '#sharh-abdullah'], 'sharh-talal': ['👨‍🏫', _T('دروس طلال وايل'), '#sharh-talal'] };
@@ -4248,6 +4343,7 @@
     const card = (t) => _T`<a class="tcard ${TOPICS[t].k}" href="#t-${t}"><span class="ic">${TOPICS[t].i}</span><b>${TOPICS[t].t}</b><small>${tot[t] || '—'} سؤال · ${TOPICS[t].k === 'quant' ? _T('الكمي') : _T('اللفظي')}</small>${agg[t].w + agg[t].r ? `<span class="mini ${lvl(Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r)), agg[t].w + agg[t].r).c}">${Math.round(agg[t].r * 100 / (agg[t].w + agg[t].r))}%</span>` : ''}</a>`;
     app.innerHTML = topbar(_T`<span class="ttl">🎯 نقاط القوة والضعف</span>`, _T`<a class="ib" href="#" title="الرئيسية">→</a>`) + _T`<main class="wrap skills">
       <div class="hero sk"><div><h1>تحليل مهاراتك</h1><p>${total ? _T`حلّلنا <b>${total}</b> إجابة من كل اختباراتك (الأقسام، النماذج، التدريب الموجّه). كل ما حليت أكثر صار التحليل أدق.` : _T('ابدأ بحل أي قسم من الكمي أو اللفظي، وبعدها تظهر لك هنا المواضيع اللي تقوى فيها واللي تحتاج تركيز.')}</p></div></div>
+      ${covOn() ? COV_SPIN : ''}
       ${weak.length ? _T`<h2 class="h2">🎯 ركّز على هذي المواضيع</h2><div class="focus">${weak.map(x => _T`<a class="fc bad" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة · ${agg[x.t].wrongNow} سؤال خطأ حالياً</small></span><span class="btn sm gold">تدرّب الآن</span></a>`).join('')}</div>` : ''}
       ${strong.length ? _T`<h2 class="h2">💪 نقاط قوتك</h2><div class="focus">${strong.map(x => _T`<a class="fc ok" href="#t-${x.t}"><span class="ic">${TOPICS[x.t].i}</span><span><b>${TOPICS[x.t].t}</b><small>${x.p}% صحيحة من ${x.n} إجابة</small></span><span class="btn sm ghost">حافظ عليها</span></a>`).join('')}</div>` : ''}
       <h2 class="h2">🔁 مراجعة أخطائي</h2>
@@ -4262,7 +4358,7 @@
       <div class="tgrid">${TOPIC_ORDER.filter(t => TOPICS[t].k === 'quant').map(card).join('')}</div>
       <p class="mut" style="font-size:13px;margin-top:14px">ℹ️ تدريب المواضيع ومراجعة الأخطاء يدخل في تحليل مهاراتك فقط ولا يُحتسب في لوحة الصدارة. سجلّك محفوظ على جهازك ومتزامن مع حسابك.</p>
     </main>`;
-    bindCtl();
+    bindCtl(); if (covOn()) covPaint();
   }
   // ---------- 📖 قاموس الكلمات ----------
   async function renderVocab(model) {

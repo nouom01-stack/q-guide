@@ -3818,3 +3818,49 @@ button.vsb:focus-visible{outline:2px solid var(--royal);outline-offset:1px}
 @media (max-width:640px){.wdtst .wdw{font-size:calc(28px * var(--fs))}}
 [data-theme="dark"] .wdtst .wdw{color:#DCE4FF}
 .acts > .wdk{margin:0}
+/* 📖 v124 (المرحلة الخامسة): «تغطيتك» في صفحة المهارات + اختبار الأسبوع */
+.cov{margin:0 0 18px;background:var(--card);border:1px solid color-mix(in srgb,var(--royal) 22%,var(--line));border-radius:18px;padding:16px 18px;box-shadow:var(--sh);display:grid;gap:12px}
+.cov > .center{padding:18px 0}
+.cov-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.cov-x{min-width:0}
+.cov-x h2{margin:0;font-family:var(--disp);font-size:calc(20px * var(--fs));color:var(--ink2)}
+.cov-x p{margin:4px 0 2px;color:var(--ink)}.cov-x p b{color:var(--royal)}
+.cov-x small{display:block;color:var(--mut);font-size:calc(12.5px * var(--fs));line-height:1.5}
+.cov-n{flex:none;display:grid;justify-items:center;min-width:110px;text-align:center}
+.cov-n b{font-family:var(--disp);font-size:calc(42px * var(--fs));line-height:1.1;color:var(--royal)}
+.cov-n small{color:var(--mut);font-size:calc(12px * var(--fs))}
+.cov-bar{height:10px;border-radius:99px;background:var(--dotbg);overflow:hidden}
+.cov-bar i{display:block;height:100%;border-radius:99px;background:var(--royal);transition:width .4s}
+.cov-wk{display:flex;align-items:flex-end;gap:10px;padding:4px 2px 0}
+.cov-w{flex:1;max-width:70px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cov-w span{font-size:calc(12px * var(--fs));font-weight:800;color:var(--ink2)}
+.cov-wb{width:100%;max-width:34px;height:70px;display:flex;align-items:flex-end;background:var(--dotbg);border-radius:8px;overflow:hidden}
+.cov-wb i{display:block;width:100%;border-radius:8px 8px 0 0;background:color-mix(in srgb,var(--royal) 45%,var(--card))}
+.cov-w.now .cov-wb i{background:var(--royal)}
+.cov-w small{font-size:calc(11px * var(--fs));color:var(--mut)}
+.cov-note{margin:-6px 0 0;font-size:calc(12.5px * var(--fs))}
+.cov-t{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;background:color-mix(in srgb,var(--gold) 10%,var(--card));border:1px solid color-mix(in srgb,var(--gold) 40%,var(--line))}
+.cov-t .wdti{font-size:26px}.cov-t .wvqx{flex:1;min-width:190px;color:var(--ink2)}
+.cov-t.done{background:color-mix(in srgb,var(--ok) 6%,var(--card));border-color:color-mix(in srgb,var(--ok) 30%,var(--line))}
+.cov-h3{margin:4px 0 0;font-family:var(--disp);font-size:calc(17px * var(--fs));color:var(--ink2)}
+.cov-sub{margin:-10px 0 0;font-size:calc(13px * var(--fs))}
+.cov-sets{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cov-sets > div > b{display:block;margin-bottom:6px;color:var(--ink2);font-size:calc(14px * var(--fs))}
+.cov-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:6px}
+.cov-s{--c:var(--coral);display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 6px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);text-decoration:none;transition:border-color .15s}
+.cov-s:hover{border-color:var(--royal)}.cov-s:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
+.cov-s.mid{--c:var(--gold)}.cov-s.ok{--c:var(--mint)}
+.cov-s span{font-size:calc(12.5px * var(--fs));color:var(--mut);white-space:nowrap}
+.cov-s b{font-size:calc(14px * var(--fs));color:var(--ink2)}
+.cov-s i{grid-column:1 / -1;display:block;height:5px;border-radius:9px;background:var(--dotbg);overflow:hidden}
+.cov-s i u{display:block;height:100%;border-radius:9px;background:var(--c)}
+.wkcv{margin:4px 0 8px;font-weight:700;color:var(--ink2)}
+@media (max-width:640px){
+  .cov{padding:14px}
+  .cov-top{flex-direction:column;align-items:stretch;gap:4px}
+  .cov-n{display:flex;align-items:baseline;gap:10px;min-width:0;text-align:start}
+  .cov-n b{font-size:calc(34px * var(--fs))}
+  .cov-sets{grid-template-columns:1fr}
+  .cov-g{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+[data-theme="dark"] .cov-x h2,[data-theme="dark"] .cov-h3,[data-theme="dark"] .cov-t .wvqx,[data-theme="dark"] .wkcv{color:#DCE4FF}
