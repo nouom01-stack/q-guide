@@ -166,6 +166,9 @@
   }
   function hex2buf(h) { const a = new Uint8Array(h.length / 2); for (let i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; }
   async function getKey() { if (cryptoKey) return cryptoKey; cryptoKey = await crypto.subtle.importKey('raw', hex2buf(auth.key), 'AES-GCM', false, ['decrypt']); return cryptoKey; }
+  // 🔑 v116: المذكرات الجديدة (مذكرة اللفظي المترجمة) مشفّرة بمفتاح ثاني يجي مع جلسة المشترك (auth.wbk من login / me)
+  let cryptoKey2 = null;
+  async function getKey2() { if (cryptoKey2) return cryptoKey2; cryptoKey2 = await crypto.subtle.importKey('raw', hex2buf(auth.wbk || ''), 'AES-GCM', false, ['decrypt']); return cryptoKey2; }
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
   const SET_V = { studio: 7 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
   async function loadSet(id) {
@@ -391,7 +394,7 @@
   }
   function logout(msg, tellServer, good) {
     if (tellServer && auth && auth.session) { try { api({ op: 'logout', session: auth.session }); } catch (e) {} }
-    lsDel(LS.auth); auth = null; cryptoKey = null; P = null; document.onkeydown = null; progReset(); homePulled = false;
+    lsDel(LS.auth); auth = null; cryptoKey = null; cryptoKey2 = null; P = null; document.onkeydown = null; progReset(); homePulled = false;
     try { window.google && google.accounts.id.disableAutoSelect(); } catch (e) {}
     if (msg) { location.hash = ''; renderLogin(msg, good); } else route();
   }
@@ -405,7 +408,8 @@
     if (!auth || hbBusy || payPending()) return; hbBusy = true;   // 💳 أثناء التحقق من الدفع ما نلمس الجلسة
     try {
       const r = await api({ op: 'me', session: auth.session });
-      if (r && r.ok && r.session && auth) { auth.session = r.session; auth.exp = r.exp || auth.exp; lsSet(LS.auth, auth); }   // 🔑 الدخول الدائم (v116): الخادم يجدّد الجلسة مرة باليوم، فما يطلع أبداً ما دام يفتح الموقع
+      if (r && r.ok && r.session && auth) { auth.session = r.session; auth.exp = r.exp || auth.exp; lsSet(LS.auth, auth); }
+      if (r && r.ok && auth && r.wbk && r.wbk !== auth.wbk) { auth.wbk = r.wbk; cryptoKey2 = null; lsSet(LS.auth, auth); }   // 🔑 مفتاح المذكرات الجديدة   // 🔑 الدخول الدائم (v116): الخادم يجدّد الجلسة مرة باليوم، فما يطلع أبداً ما دام يفتح الموقع
       if (r && !r.ok && r.error === 'upgraded') { if (!((await sallaPoll()) || {}).paid) logout(esc(r.msg || _T('تم تفعيل اشتراكك، سجّل دخولك من جديد.')), false, 1); }   // 🎉 الزائر اشترك (لو من سلة: نبدّل جلسته على طول)
       else if (r && !r.ok && (r.error === 'kicked' || r.error === 'session')) logout(esc(r.msg || _T('انتهت الجلسة، سجّل دخولك من جديد.')));
       else if (r && r.ok && auth.role === 'admin' && ((r.staff && r.staff !== auth.staff) || (r.teach || '') !== (auth.teach || ''))) { auth.staff = r.staff || auth.staff; auth.teach = r.teach || ''; lsSet(LS.auth, auth); }   // 👨‍🏫 صار يرفع مقاطعه؟
@@ -432,7 +436,7 @@
     if (/^sub-t\d{1,2}$/.test(h)) return _T('الاختبار المحاكي ') + h.slice(5);
     if (/^board/.test(h)) return _T('لوحة الصدارة'); if (/^t-/.test(h)) return _T('التدريب على نقاط ضعفك'); if (/^watch-(af|tb)/.test(h)) return _T('تأسيس اللفظي'); if (/^watch-(s[fs]|t[sf])/.test(h)) return _T('تأسيس الكمي'); if (/^fq-/.test(h)) return _T('اختبارات التأسيس'); if (h === 'advisor') return _T('مرشدك الأكاديمي'); if (/^watch-(at|tm)/.test(h)) return _T('تدريب اللفظي'); if (/^watch-tq/.test(h)) return _T('تدريب الكمي');
     h = h.replace(/^(rules(-v)?)\/.*$/, '$1');   // #rules/circles
-    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
+    return { notes: _T('دفتري'), rules: _T('قوانين الكمي'), 'rules-v': _T('قواعد اللفظي'), plan: _T('خطة المذاكرة'), skills: _T('نقاط القوة والضعف'), badges: _T('الإنجازات'), vocab: _T('قاموس الكلمات'), 'wb-q': _T('مذكرة الكمي'), 'wb-v': _T('مذكرة اللفظي'), 'wb-va': _T('مذكرة اللفظي المترجمة'), 'wb-vas': _T('مذكرة اللفظي المترجمة'), 'wb-tq': _T('تأسيس الكمي'), 'wb-tv': _T('تأسيس اللفظي') }[h.replace(/-v\d+$/, '').replace(/@\d+$/, '')] || '';
   }
   // ⏰ كم يوم باقي على نهاية اشتراك الطالب (بتقويم الرياض) — auth.renew = {until, nag: قرب يخلص أو خلص, auto: ينتهي تلقائياً, grace} من الخادم
   const renewLeft = () => { const R = auth && auth.renew; return R && R.until ? rDay(R.until) - rDay(Date.now()) : null; };
@@ -977,6 +981,7 @@
     if (h === 'find') return renderFind();
     if (h === 'cards') { if (auth.role === 'admin') return renderCards(); location.hash = ''; return; }
     if (/^wb-[qv]s?$/.test(h)) return renderWorkbook(h[3], h.length === 5);
+    if (/^wb-vas?$/.test(h)) return renderWorkbook('va', h === 'wb-vas');   // 🌐 v116: مذكرة اللفظي المترجمة (عربي + إنجليزي) والمحلولة منها
     if (/^wb-t[qv](@\d{1,3})?$/.test(h)) return renderWorkbook(h.slice(3, 5), false, +(h.split('@')[1] || 0));   // 🧱 مذكرات التأسيس (قواعد الكمي/اللفظي)
     if (/^watch-([qv]|af|at|sf|ss|ts|tf|tb|tq|tm)(\d{1,2}|-rules)$/.test(h)) return renderWatch(h.slice(6));   // -rules = رابط مقطع القواعد القديم (انشال) → صفحة المدرسين · af/at = تأسيس وتدريب عبدالله الشمراني · ss/sf = تأسيس سلمان الفرج (مهارات الوحدة 0 + الدروس)
     if (/^fq-[1-4]$/.test(h)) return renderFq(+h.slice(3));   // 📝 اختبار درس التأسيس
@@ -1328,6 +1333,8 @@
       _T('<h3 class="wbg">🏋️ التدريب</h3>') +
       card(_T('مذكرة الكمي'), '📐', _T('194 صفحة · 14 قسماً'), 'q') +
       card(_T('مذكرة اللفظي'), '📖', _T('193 صفحة · 14 نموذجاً'), 'v') +
+      _T`<div class="wbc"><div class="ic">🌐</div><div class="tx"><b>مذكرة اللفظي المترجمة</b><span class="mut">عربي وإنجليزي: كل سؤال وتحته ترجمته، وكل خيار وتحته معناه · 180 صفحة · 14 نموذجاً</span></div>
+        <div class="ac"><a class="btn sm" href="#wb-va">📖 افتح المترجمة (مع القلم)</a><a class="btn sm ghost wbsol" href="#wb-vas">📗 المترجمة المحلولة (مع الشرح)</a></div></div>` +
       `<p class="mut" style="font-size:13px;margin:6px 0 0;grid-column:1/-1">${_T('تفتح المذكرات من حسابك في الموقع، وكتابتك بالقلم تُحفظ على جهازك.')}<br>${_T('📗 النسخة المحلولة نفس صفحات المذكرة وجنب كل سؤال إجابته. لا تعتمد عليها 100%، ممكن يكون فيها أخطاء، فإذا شكّيت في إجابة راجع شرح المقطع.')}</p>`;
     bindUp(el);
   }
@@ -1339,12 +1346,13 @@
   const WB_T = { tq: [_T('تأسيس الكمي'), '📐'], tv: [_T('تأسيس اللفظي'), '📖'] }, TV_PAGE = { 1: 2, 2: 3, 3: 3, 4: 4 };
   const WB_V = 4;   // ⬆️ ارفعه لو تغيّرت meta.json لأي مذكرة (4 = قواعد الكمي v2: 271 صفحة، فيها الوحدة 0 «مهارات قبل التأسيس»)
   async function renderWorkbook(kind, solved, startPage) {
-    const found = !!WB_T[kind];
-    const title = found ? WB_T[kind][0] : EN ? (kind === 'q' ? 'Quant workbook' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
+    const found = !!WB_T[kind], VA = kind === 'va', dirK = VA && solved ? 'vas' : kind;   // 🌐 va = المترجمة: المحلولة منها مذكرة كاملة لحالها (vas، صفحاتها غير)
+    const title = found ? WB_T[kind][0] : EN ? (kind === 'q' ? 'Quant workbook' : VA ? 'Verbal workbook (with Arabic)' : 'Verbal workbook') + (solved ? ' (solved)' : '') : (kind === 'q' ? 'مذكرة الكمي' : VA ? 'مذكرة اللفظي المترجمة' : 'مذكرة اللفظي') + (solved ? ' المحلولة' : '');   // i18n:skip
     document.title = title + ' | Q-Guide';
-    let meta; try { meta = await (await fetch('/p/wb/' + kind + '/meta.json?v=' + WB_V)).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
-    const lastKey = 'qg_wbpage_' + kind; let page = Math.min(meta.pages, Math.max(1, startPage || lsGet(lastKey, 1)));
-    WB = { kind, meta, page, cache: {}, pen: null, solved: !!solved, sp: new Set(meta.sp || []) };
+    let meta; try { meta = await (await fetch('/p/wb/' + dirK + '/meta.json?v=' + WB_V)).json(); } catch (e) { toast(_T('تعذّر تحميل المذكرة')); location.hash = ''; return; }
+    if (meta.key === 2 && !auth.wbk) { try { const r = await api({ op: 'me', session: auth.session }); if (r && r.wbk) { auth.wbk = r.wbk; lsSet(LS.auth, auth); } } catch (e) {} }   // 🔑 مفتاح المذكرات الجديدة (يجي مع الجلسة)
+    const lastKey = 'qg_wbpage_' + dirK; let page = Math.min(meta.pages, Math.max(1, startPage || lsGet(lastKey, 1)));
+    WB = { kind: dirK, meta, page, cache: {}, pen: null, solved: !!solved && !VA, sp: new Set(meta.sp || []) };
     app.innerHTML = topbar(_T`<span class="ttl wbttl">${found ? WB_T[kind][1] + ' ' : ''}${title}</span>${found ? '' : _T`<a class="chip wbsw${solved ? ' on' : ''}" href="#wb-${kind}${solved ? '' : 's'}" title="${solved ? _T('ارجع للمذكرة بدون حل') : _T('النسخة المحلولة: نفس الصفحات وجنب كل سؤال إجابته')}" aria-label="${solved ? _T('المذكرة بدون حل') : _T('النسخة المحلولة')}">${solved ? '📘' : '📗'}<span class="tx"> ${solved ? _T('بدون حل') : _T('المحلولة')}</span></a>`}<span class="sp"></span>
       <button class="ib" id="pgprev" title="الصفحة السابقة">‹</button><span class="chip cnt" dir="ltr"><input id="pgin" type="number" min="1" max="${meta.pages}" value="${page}" style="width:54px;border:0;background:transparent;color:#fff;font-weight:700;text-align:center;font-size:15px"> / ${meta.pages}</span><button class="ib" id="pgnext" title="الصفحة التالية">›</button>`,
       _T`<a class="ib" href="#" title="الرئيسية">→</a>`) +
@@ -1365,7 +1373,7 @@
     const dir = WB.solved && WB.sp.has(n) ? kind + 's' : kind, key = dir + n; if (WB.cache[key]) return WB.cache[key];
     const ver = dir !== kind ? WB.meta.sv || 1 : WB.meta.v || 0;   // v = نسخة المذكرة (لما تنبدّل صفحاتها، ما نقرأ القديمة من كاش المتصفح)
     const r = await fetch(`/p/wb/${dir}/${String(n).padStart(3, '0')}.bin${ver ? '?v=' + ver : ''}`, { cache: 'force-cache' }); if (!r.ok) throw new Error('page ' + r.status);
-    const buf = new Uint8Array(await r.arrayBuffer()); const k = await getKey();
+    const buf = new Uint8Array(await r.arrayBuffer()); const k = WB.meta.key === 2 ? await getKey2() : await getKey();
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
     const bmp = await createImageBitmap(new Blob([plain], { type: 'image/jpeg' }));
     const keys = Object.keys(WB.cache); if (keys.length > 12) delete WB.cache[keys[0]];
