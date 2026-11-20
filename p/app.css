@@ -2212,8 +2212,8 @@ button.fd-it:focus-visible{outline:2px solid var(--royal);outline-offset:2px}
 .vslot small{grid-area:s;font-size:calc(12px * var(--fs));color:var(--mut)}
 .vslot .pg{grid-area:g;display:block;height:4px;border-radius:4px;background:#E8ECF5;overflow:hidden;margin-top:5px}
 .vslot .pg span{display:block;height:100%;background:var(--navy3);transition:width .3s}
-.vslot .vpick{grid-area:p;font-size:calc(12.5px * var(--fs));font-weight:800;color:var(--navy3);cursor:pointer;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
-.vslot .vpick:hover{border-color:var(--navy3)}
+.vslot .vfile{grid-area:p;font-size:calc(12.5px * var(--fs));font-weight:800;color:var(--navy3);cursor:pointer;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+.vslot .vfile:hover{border-color:var(--navy3)}
 .vslot.ok{border-style:solid;border-color:#BFE6D1;background:#F3FBF7}.vslot.ok small{color:var(--ok);font-weight:700}.vslot.ok .pg span{background:var(--ok)}
 .vslot.run{border-style:solid;border-color:var(--navy3)}
 .vslot.bad{border-style:solid;border-color:#F2C4C4;background:#FEF6F6}.vslot.bad small{color:var(--bad)}
