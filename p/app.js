@@ -6678,7 +6678,7 @@
   const xaBar = (a, b, c) => `<div class="xa-bar" style="--c:${c}"><i class="${a ? '' : 'z'}" style="width:${(b ? 100 * a / b : 0).toFixed(2)}%"></i></div>`;
   const xaChip = st => `<span class="xa-chip xa-st-${st}">${XA_ST[st] || st}</span>`;
   const xaPlan = id => XA.d.plan.find(p => p.id === id);
-  const xaTitle = p => { const r = XA.d.rel[p.id]; return p.u === 'vf' ? 'الدرس ' + p.n + ' · ' + p.ar : p.ar + (r && r.ar ? ' · ' + r.ar : ''); };
+  const xaTitle = p => { const r = XA.d.rel[p.id]; return p.u === 'vf' ? 'الدرس ' + p.n + ' · ' + p.ar : p.ar + (p.nm ? ' · ' + p.nm : r && r.ar ? ' · ' + r.ar : ''); };
   const xaNoteN = id => Object.keys(XA.notes[id] || {}).length;
   const xaLesson = async id => XA.L[id] || (XA.L[id] = await xaGet('xa-' + id, XA.d.built));
   function xaCopy(t, msg) { const fb = () => { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); toast(msg); };
@@ -6713,7 +6713,7 @@
   }
   function xaCard(p) {
     const r = XA.d.rel[p.id], u = XA_U[p.u];
-    const body = `<span class="xa-no" style="--c:${u[1]}">${p.n}</span><span class="xa-bd"><b>${esc(p.ar)}</b><span class="xa-en">${esc(p.u === 'vf' ? p.en : (r ? r.en : p.en))}</span><span class="xa-mt">${xaChip(p.state)}${p.total != null ? `<span class="xa-pg">${xaN(p.done)} من ${xaN(p.total)} سؤال</span>` : ''}${r && r.min ? `<span class="xa-pg">${r.min} د</span>` : ''}</span>${p.total != null ? xaBar(p.done, p.total, u[1]) : ''}</span>`;
+    const body = `<span class="xa-no" style="--c:${u[1]}">${p.n}</span><span class="xa-bd"><b>${esc(p.ar)}</b>${p.nm ? `<span class="xa-pn">${esc(p.nm)}</span>` : `<span class="xa-en">${esc(p.u === 'vf' ? p.en : (r ? r.en : p.en))}</span>`}<span class="xa-mt">${xaChip(p.state)}${p.total != null ? `<span class="xa-pg">${xaN(p.done)} من ${xaN(p.total)} سؤال</span>` : ''}${r && r.min ? `<span class="xa-pg">${r.min} د</span>` : ''}</span>${p.total != null ? xaBar(p.done, p.total, u[1]) : ''}</span>`;
     return r ? `<a class="xa-lc" href="#admin-explain/l/${p.id}">${body}</a>` : `<div class="xa-lc off">${body}</div>`;
   }
   function xaHome() {

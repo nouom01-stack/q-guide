@@ -3994,6 +3994,7 @@ a.xa-lc:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(21,51,122,.1
 .xa-bd{min-width:0;flex:1;display:block}
 .xa-bd b{display:block;line-height:1.35}
 .xa-bd .xa-en{color:var(--mut);font-size:.83em;display:block;direction:ltr;text-align:right}
+.xa-bd .xa-pn{color:var(--mut);font-size:.83em;display:block}
 .xa-mt{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center}
 .xa-pg{color:var(--mut);font-size:.83em}
 .xa-crumb{color:var(--mut);font-size:.9em;margin-bottom:6px;display:inline-block;text-decoration:none}
