@@ -6640,19 +6640,39 @@
     const n = Math.max(1, dayDiff(adv.es || Date.now(), Date.now()) + 1);
     return adv.ed > 0 && n <= adv.ed ? `«إنجليزي الاختبار» · اليوم ${n} من ${adv.ed}` : 'خطة القدرات';
   }
-  // ---------- 📚 الشروحات (المالك، v129): شرح مذكرتي التدريب وتأسيس اللفظي — كل الدروس والأسئلة والسكربت سطر بسطر ----------
+  // ---------- 📚 الشروحات (المالك، v129 · تشغيل العرض v130): شرح مذكرتي التدريب وتأسيس اللفظي — كل الدروس والأسئلة والسكربت سطر بسطر ----------
   // البيانات تنبني في مجلد Q-Guide/explain (خاص، خارج هذا المستودع) وتنحط هنا مشفّرة بمفتاح البيانات: p/data/xa.bin (الفهرس) + xa-<الدرس>.bin
-  const XA = { d: null, L: {}, view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), notes: lsGet('qg_xa_notes', {}), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
+  const XA = { d: null, L: {}, P: {}, pu: null, view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), notes: lsGet('qg_xa_notes', {}), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
   const XA_U = { vf: ['تأسيس اللفظي', '#7c3aed'], vm: ['مذكرة التدريب اللفظي', '#2563eb'], qs: ['مذكرة التدريب الكمي', '#ea580c'] };
   const XA_ST = { none: 'لم يبدأ', wip: 'قيد الكتابة', written: 'مكتوب · ينتظر مراجعتك', sample: 'عيّنة معتمدة', approved: 'معتمد' };
   const XA_TY = { ana: 'تناظر', sen: 'إكمال جمل', err: 'خطأ سياقي', read: 'قطعة', arith: 'حساب', alg: 'جبر', geo: 'هندسة', stat: 'إحصاء' };
   const XA_KN = { title: 'الافتتاح', words: 'الكلمات', rule: 'بطاقة', passage: 'القطعة', ex: 'سؤال', test: 'اختبر نفسك', sum: 'الملخص', end: 'الختام' };
   const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص']];
-  async function xaGet(name, v) {   // نفس صيغة loadSet: 12 بايت iv ثم AES-GCM بمفتاح البيانات · الفهرس ينجلب طازج دايم، والدروس برقم بناء الفهرس
+  async function xaRaw(name, v) {   // نفس صيغة loadSet: 12 بايت iv ثم AES-GCM بمفتاح البيانات · الفهرس ينجلب طازج دايم، والباقي برقم بناء الفهرس
     const r = await fetch('/p/data/' + name + '.bin' + (v ? '?v=' + encodeURIComponent(v) : ''), { cache: v ? 'force-cache' : 'no-store' });
     if (!r.ok) throw new Error(r.status === 404 ? 'ملف البيانات مو موجود' : 'data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
-    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, await getKey(), buf.slice(12))));
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, await getKey(), buf.slice(12)));
+  }
+  const xaGet = async (name, v) => JSON.parse(await xaRaw(name, v));
+  // ▶ تشغيل الدرس كعرض (v130): صفحة العرض نفسها (xp.bin = محرك عرض الكمي + قائمة الدروس) وبيانات كل درس (xp-<الدرس>.bin) مشفّرة مثل الباقي.
+  // تنفتح فوق الصفحة في إطار من رابط Blob (نفس أصل الموقع)، والمحرك يطلب بيانات الدرس من window.__xaDeck بدل ملفات d/ و n/
+  function xaStop() { const p = $('.xa-play'); if (p) p.remove(); document.documentElement.classList.remove('xa-noscroll'); }
+  window.addEventListener('hashchange', xaStop);
+  async function xaPlay(id, go) {
+    xaStop();
+    const p = xaPlan(id), ov = document.createElement('div'); ov.className = 'xa-play'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'عرض الدرس');
+    ov.innerHTML = `<div class="xa-pbar"><button type="button" class="xa-px">✕ إغلاق العرض</button><b>${esc(p ? xaTitle(p) : '')}</b><span>اضغط مسافة للسطر الجاي</span></div><div class="xa-pwait"><div class="spin"></div><p>نجهّز العرض…</p></div>`;
+    document.body.appendChild(ov); document.documentElement.classList.add('xa-noscroll'); $('.xa-px', ov).onclick = xaStop;
+    try {
+      if (!XA.pu) XA.pu = URL.createObjectURL(new Blob([await xaRaw('xp', XA.d.built)], { type: 'text/html;charset=utf-8' }));
+      window.__xaDeck = lid => XA.P[lid] || (XA.P[lid] = xaGet('xp-' + lid, XA.d.built));
+      await window.__xaDeck(id);
+    } catch (e) { xaStop(); toast('تعذّر فتح العرض: ' + e.message); return; }
+    if (!ov.isConnected) return;
+    const fr = document.createElement('iframe'); fr.title = 'عرض الدرس'; fr.setAttribute('allow', 'fullscreen'); fr.src = XA.pu + (go || '#' + id + '-1');
+    fr.onload = () => { try { fr.contentWindow.focus(); } catch (e) {} };
+    $('.xa-pwait', ov).replaceWith(fr);
   }
   const xaN = x => Number(x || 0).toLocaleString('en-US');
   const xaBar = (a, b, c) => `<div class="xa-bar" style="--c:${c}"><i class="${a ? '' : 'z'}" style="width:${(b ? 100 * a / b : 0).toFixed(2)}%"></i></div>`;
@@ -6666,7 +6686,7 @@
   async function renderExplain(sub) {
     document.title = 'الشروحات | Q-Guide';
     const here = () => location.hash.slice(1) === 'admin-explain' + (sub ? '/' + sub : '');
-    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.L = {}; xaAll = null; renderExplain(location.hash.slice(15)); }; };
+    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.L = {}; XA.P = {}; if (XA.pu) URL.revokeObjectURL(XA.pu); XA.pu = null; xaAll = null; renderExplain(location.hash.slice(15)); }; };
     if (!$('#xaw')) top();
     try {
       await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
@@ -6725,14 +6745,14 @@
     const u = XA_U[p.u], ck = XA.d.checks[id] || {}, nt = xaNoteN(id), N = XA.notes[id] || {}, o = [];
     o.push(`<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="xa-lh" style="--c:${u[1]}"><h2>${esc(xaTitle(p))}</h2><div class="t2">${esc(p.u === 'vf' ? 'Verbal Lesson ' + p.n + ' · ' + L.en : p.en + ' · ' + L.en)}</div>
       <div class="xa-mt">${xaChip(p.state)}<span class="xa-chip">${r.slides} شريحة</span><span class="xa-chip">${r.lines} سطر</span>${r.min ? `<span class="xa-chip">${r.min} دقيقة</span>` : ''}<span class="xa-chip">${r.pen} حركة قلم</span>${p.total != null ? `<span class="xa-chip">${p.done} من ${p.total} سؤال</span>` : ''}${ck.ok === true ? '<span class="xa-chip ok">✓ كل الفحوص ناجحة</span>' : ck.ok === false ? '<span class="xa-chip no">فيه فحص ما نجح</span>' : ''}</div>${r.note ? `<p class="nt">${esc(r.note)}</p>` : ''}</div>`);
-    o.push(`<div class="xa-acts"><button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button><button type="button" class="xa-btn" id="xacpn">انسخ ملاحظاتي <span id="xantc">${nt ? '(' + nt + ')' : ''}</span></button></div>`);
+    o.push(`<div class="xa-acts">${XA.d.px ? '<button type="button" class="xa-btn pri" id="xaplay">▶ افتح العرض</button>' : ''}<button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button><button type="button" class="xa-btn" id="xacpn">انسخ ملاحظاتي <span id="xantc">${nt ? '(' + nt + ')' : ''}</span></button></div>`);
     o.push(`<div class="xa-jump" style="--c:${u[1]}">${L.slides.map((s, i) => `<a class="${s.k === 'ex' || s.k === 'test' ? '' : 'r'}" href="#admin-explain/l/${id}/${i}">${esc(s.k === 'ex' ? s.num : s.k === 'test' ? 'س' + s.num : XA_KN[s.k])}</a>`).join('')}</div>`);
     o.push(`<div id="xasls" class="${XA.view.sh ? 'showsh ' : ''}${XA.view.pn ? 'showpn' : ''}">`);
     L.slides.forEach((s, i) => {
       const q = s.q ? `<div class="xa-q"><div class="en">${esc(s.q.en)}</div>${s.q.ar ? `<div class="ar">${esc(s.q.ar)}</div>` : ''}<div class="os">${s.q.opts.map((t, j) => `<div class="o${'ABCD'[j] === s.ans ? ' a' : ''}">${'ABCD'[j]}) ${esc(t)}${s.q.ao[j] ? `<small>${esc(s.q.ao[j])}</small>` : ''}</div>`).join('')}</div>${s.deck ? `<div class="dk">${esc(s.deck)}</div>` : ''}</div>` : '';
       const lines = s.lines.map((l, j) => { const key = i + ':' + j, note = N[key] || '';
         return `<div class="xa-ln${note ? ' has' : ''}" data-k="${key}"><span class="i">${j + 1}</span><div><div class="tx">${esc(l[0])}</div>${l[1] || l[2] ? `<div class="sh">${l[1] ? `<span class="en">${esc(l[1])}</span>` : ''}${l[2] ? `<span>${esc(l[2])}</span>` : ''}</div>` : ''}${l[3] ? `<div class="pn">${esc(l[3].split(' ; ').join(String.fromCharCode(10)))}</div>` : ''}</div><button type="button" class="nb">＋ ملاحظة</button><textarea placeholder="اكتب ملاحظتك على هذا السطر" aria-label="ملاحظة على السطر ${j + 1}">${esc(note)}</textarea></div>`; }).join('');
-      o.push(`<section class="xa-sl" id="xas${i}"><div class="hd"><b>${esc(s.nm)}</b>${s.ref ? `<span class="xa-chip" dir="ltr">${esc(s.ref)}</span>` : ''}${s.q && s.q.y ? `<span class="xa-chip">${XA_TY[s.q.y]}</span>` : ''}${s.ans ? `<span class="xa-chip ok">الجواب ${esc(s.ans)}</span>` : ''}</div>${q}${lines}</section>`);
+      o.push(`<section class="xa-sl" id="xas${i}"><div class="hd"><b>${esc(s.nm)}</b>${s.ref ? `<span class="xa-chip" dir="ltr">${esc(s.ref)}</span>` : ''}${s.q && s.q.y ? `<span class="xa-chip">${XA_TY[s.q.y]}</span>` : ''}${s.ans ? `<span class="xa-chip ok">الجواب ${esc(s.ans)}</span>` : ''}${XA.d.px && s.go ? `<button type="button" class="xa-go" data-play="${esc(s.go)}">▶ افتحها في العرض</button>` : ''}</div>${q}${lines}</section>`);
     });
     o.push('</div>');
     W.innerHTML = o.join('');
@@ -6742,7 +6762,8 @@
       L.slides.forEach((s, i) => s.lines.forEach((l, j) => { const v = M[i + ':' + j]; if (v) t.push('• ' + s.nm + ' — السطر ' + (j + 1) + ': ' + v); }));
       if (t.length < 2) return toast('ما فيه ملاحظات على هذا الدرس'); xaCopy(t.join('\n'), 'انتسخت ملاحظاتك ✓ الصقها في المحادثة'); };
     W.onchange = null;
-    W.onclick = e => { const b = e.target.closest('.nb'); if (b) { const ln = b.closest('.xa-ln'); ln.classList.add('ed'); $('textarea', ln).focus(); } };
+    W.onclick = e => { const b = e.target.closest('.nb'); if (b) { const ln = b.closest('.xa-ln'); ln.classList.add('ed'); $('textarea', ln).focus(); return; }
+      const pl = e.target.closest('[data-play]'); if (pl) return xaPlay(id, pl.dataset.play); if (e.target.closest('#xaplay')) xaPlay(id); };
     W.oninput = e => { if (e.target.tagName !== 'TEXTAREA') return; const ln = e.target.closest('.xa-ln'), v = e.target.value.trim(); const M = XA.notes[id] = XA.notes[id] || {};
       if (v) M[ln.dataset.k] = v; else delete M[ln.dataset.k]; lsSet('qg_xa_notes', XA.notes); ln.classList.toggle('has', !!v); const c = xaNoteN(id); $('#xantc').textContent = c ? '(' + c + ')' : ''; };
     box.addEventListener('focusout', e => { if (e.target.tagName === 'TEXTAREA' && !e.target.value.trim()) e.target.closest('.xa-ln').classList.remove('ed'); });
