@@ -1010,6 +1010,7 @@
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
     if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
+    if (h === 'admin-explain' || /^admin-explain\//.test(h)) { if (auth.role === 'admin') return renderExplain(h.slice(14)); location.hash = ''; return; }   // 📚 الشروحات (المالك): شرح المذكرات وتأسيس اللفظي
     if (/^admin(-(home|staff|members|subs|pay|unpaid|vids|settings|regs|free|ai|find|eng))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
       const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-eng': renderEngAdmin, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-unpaid': renderUnpaid, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
       return R[h](); }
@@ -6464,11 +6465,12 @@
     regs: ['📝', 'التسجيلات', 'طلبات فورم التسجيل القديم (الشيت): أكّد أو ارفض.'],
     vids: ['🎬', 'المقاطع', 'تعليقات الطلاب تحت المقاطع، ورفع مقاطع الشرح والتأسيس للموقع، وربط حسابات المدرسين عشان يرفعون مقاطعهم ويردون.'],
     studio: ['📱', 'استوديو تيك توك', 'بطاقات الأسئلة جاهزة للتصوير، مع القلم والترجمة.'],
+    explain: ['📚', 'الشروحات', 'شرح مذكرتي التدريب وتأسيس اللفظي: كل الدروس والأسئلة، والسكربت سطر بسطر، وتكتب ملاحظتك على أي سطر.'],
     staff: ['🛡', 'الفريق', 'المشرفين وصلاحياتهم.'],
     settings: ['⚙️', 'الإعدادات والسجل', 'انتهاء الاشتراكات، تنبيهاتك، النسخ الاحتياطي، وسجل كل اللي صار في اللوحة.'],
   };
-  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'eng', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'unpaid', 'members', 'regs']], ['المحتوى', ['vids', 'studio']], ['النظام', ['staff', 'settings']]];
-  const ADM_HREF = { home: '#admin-home', students: '#admin', eng: '#admin-eng', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', unpaid: '#admin-unpaid', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', staff: '#admin-staff', settings: '#admin-settings' };
+  const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'eng', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'unpaid', 'members', 'regs']], ['المحتوى', ['vids', 'studio', 'explain']], ['النظام', ['staff', 'settings']]];
+  const ADM_HREF = { home: '#admin-home', students: '#admin', eng: '#admin-eng', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', unpaid: '#admin-unpaid', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', explain: '#admin-explain', staff: '#admin-staff', settings: '#admin-settings' };
   const ADM_ALL = { students: 1, staff: 1, studio: 1 };   // يشوفها كل مشرف · الباقي للمالك بس
   function admTop(tab) {
     const OW = isOwner(), pg = ADM_PG[tab] || ADM_PG.students, H = ADM.home;
@@ -6637,6 +6639,160 @@
     if (!adv || !adv.elv) return 'ما جهّز مساره';
     const n = Math.max(1, dayDiff(adv.es || Date.now(), Date.now()) + 1);
     return adv.ed > 0 && n <= adv.ed ? `«إنجليزي الاختبار» · اليوم ${n} من ${adv.ed}` : 'خطة القدرات';
+  }
+  // ---------- 📚 الشروحات (المالك، v129): شرح مذكرتي التدريب وتأسيس اللفظي — كل الدروس والأسئلة والسكربت سطر بسطر ----------
+  // البيانات تنبني في مجلد Q-Guide/explain (خاص، خارج هذا المستودع) وتنحط هنا مشفّرة بمفتاح البيانات: p/data/xa.bin (الفهرس) + xa-<الدرس>.bin
+  const XA = { d: null, L: {}, view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), notes: lsGet('qg_xa_notes', {}), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
+  const XA_U = { vf: ['تأسيس اللفظي', '#7c3aed'], vm: ['مذكرة التدريب اللفظي', '#2563eb'], qs: ['مذكرة التدريب الكمي', '#ea580c'] };
+  const XA_ST = { none: 'لم يبدأ', wip: 'قيد الكتابة', written: 'مكتوب · ينتظر مراجعتك', sample: 'عيّنة معتمدة', approved: 'معتمد' };
+  const XA_TY = { ana: 'تناظر', sen: 'إكمال جمل', err: 'خطأ سياقي', read: 'قطعة', arith: 'حساب', alg: 'جبر', geo: 'هندسة', stat: 'إحصاء' };
+  const XA_KN = { title: 'الافتتاح', words: 'الكلمات', rule: 'بطاقة', passage: 'القطعة', ex: 'سؤال', test: 'اختبر نفسك', sum: 'الملخص', end: 'الختام' };
+  const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص']];
+  async function xaGet(name, v) {   // نفس صيغة loadSet: 12 بايت iv ثم AES-GCM بمفتاح البيانات · الفهرس ينجلب طازج دايم، والدروس برقم بناء الفهرس
+    const r = await fetch('/p/data/' + name + '.bin' + (v ? '?v=' + encodeURIComponent(v) : ''), { cache: v ? 'force-cache' : 'no-store' });
+    if (!r.ok) throw new Error(r.status === 404 ? 'ملف البيانات مو موجود' : 'data ' + r.status);
+    const buf = new Uint8Array(await r.arrayBuffer());
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, await getKey(), buf.slice(12))));
+  }
+  const xaN = x => Number(x || 0).toLocaleString('en-US');
+  const xaBar = (a, b, c) => `<div class="xa-bar" style="--c:${c}"><i class="${a ? '' : 'z'}" style="width:${(b ? 100 * a / b : 0).toFixed(2)}%"></i></div>`;
+  const xaChip = st => `<span class="xa-chip xa-st-${st}">${XA_ST[st] || st}</span>`;
+  const xaPlan = id => XA.d.plan.find(p => p.id === id);
+  const xaTitle = p => { const r = XA.d.rel[p.id]; return p.u === 'vf' ? 'الدرس ' + p.n + ' · ' + p.ar : p.ar + (r && r.ar ? ' · ' + r.ar : ''); };
+  const xaNoteN = id => Object.keys(XA.notes[id] || {}).length;
+  const xaLesson = async id => XA.L[id] || (XA.L[id] = await xaGet('xa-' + id, XA.d.built));
+  function xaCopy(t, msg) { const fb = () => { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); toast(msg); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(() => toast(msg), fb); else fb(); }
+  async function renderExplain(sub) {
+    document.title = 'الشروحات | Q-Guide';
+    const here = () => location.hash.slice(1) === 'admin-explain' + (sub ? '/' + sub : '');
+    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.L = {}; xaAll = null; renderExplain(location.hash.slice(15)); }; };
+    if (!$('#xaw')) top();
+    try {
+      await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
+      if (!XA.d) XA.d = await xaGet('xa');
+    } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر تحميل بيانات الشروحات: ${esc(e.message)}</div>`; return; }
+    if (!here()) return;
+    if (!$('#xaw')) {
+      if (!$('#adm')) top();
+      $('#adm').innerHTML = `<div class="xa"><div class="xa-top"><nav class="xa-tabs" aria-label="أقسام الشروحات">${XA_TABS.map(t => `<a href="#admin-explain${t[0] ? '/' + t[0] : ''}" data-t="${t[0]}">${t[1]}</a>`).join('')}</nav>
+        <div class="xa-srch"><input id="xags" type="search" placeholder="ابحث في السكربت أو في الأسئلة" autocomplete="off" aria-label="بحث في السكربت والأسئلة"><div class="xa-sr" id="xasr"></div></div></div>
+        <div id="xaw"></div><p class="xa-ft">محتوى هذي الصفحة لك أنت بس، ومشفّر بمفتاح البيانات. آخر تحديث للبيانات: <bdi dir="ltr">${esc(XA.d.built)}</bdi></p></div>`;
+      const gs = $('#xags'); gs.oninput = gs.onfocus = () => xaSearch(gs.value);
+      $('.xa').addEventListener('click', e => { if (!e.target.closest('.xa-srch')) $('#xasr').classList.remove('on'); });
+    }
+    const m = (sub || '').split('/'), pg = m[0] || '';
+    document.querySelectorAll('.xa-tabs a').forEach(a => a.classList.toggle('on', a.dataset.t === (pg === 'l' ? 'lessons' : pg)));
+    $('#xasr').classList.remove('on');
+    const W = $('#xaw');
+    if (pg === 'l') { W.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; return xaLessonPage(m[1], m[2] != null ? +m[2] : null, here); }
+    W.onclick = W.oninput = W.onchange = null;
+    W.innerHTML = pg === 'lessons' ? xaLessons() : pg === 'q' ? xaQuestions() : pg === 'checks' ? xaChecks() : xaHome();
+    if (pg === 'q') xaQBind(); else W.onclick = e => { const tr = e.target.closest('[data-go]'); if (tr) location.hash = tr.dataset.go; };
+    window.scrollTo(0, 0);
+  }
+  function xaCard(p) {
+    const r = XA.d.rel[p.id], u = XA_U[p.u];
+    const body = `<span class="xa-no" style="--c:${u[1]}">${p.n}</span><span class="xa-bd"><b>${esc(p.ar)}</b><span class="xa-en">${esc(p.u === 'vf' ? p.en : (r ? r.en : p.en))}</span><span class="xa-mt">${xaChip(p.state)}${p.total != null ? `<span class="xa-pg">${xaN(p.done)} من ${xaN(p.total)} سؤال</span>` : ''}${r && r.min ? `<span class="xa-pg">${r.min} د</span>` : ''}</span>${p.total != null ? xaBar(p.done, p.total, u[1]) : ''}</span>`;
+    return r ? `<a class="xa-lc" href="#admin-explain/l/${p.id}">${body}</a>` : `<div class="xa-lc off">${body}</div>`;
+  }
+  function xaHome() {
+    const D = XA.d, T = D.tot, a = T.all, o = [];
+    o.push(`<div class="xa-tiles">
+      <div class="xa-tile" style="--c:${XA_U.vf[1]}"><div class="lb">تأسيس اللفظي</div><div class="big">${T.vf.done} <small>من ${T.vf.total} دروس</small></div>${xaBar(T.vf.done, T.vf.total, XA_U.vf[1])}<div class="ds">${T.vf.wip ? `تحت الكتابة الحين: <b>${T.vf.wip}</b>` : 'القواعد الأربع، درس لكل قاعدة'}</div></div>
+      <div class="xa-tile" style="--c:${XA_U.vm[1]}"><div class="lb">مذكرة التدريب اللفظي</div><div class="big">${xaN(T.vm.done)} <small>من ${xaN(T.vm.total)} سؤال</small></div>${xaBar(T.vm.done, T.vm.total, XA_U.vm[1])}<div class="ds">14 نموذج · ${T.vm.total ? Math.round(1000 * T.vm.done / T.vm.total) / 10 : 0}% مشروح</div></div>
+      <div class="xa-tile" style="--c:${XA_U.qs[1]}"><div class="lb">مذكرة التدريب الكمي</div><div class="big">${xaN(T.qs.done)} <small>من ${xaN(T.qs.total)} سؤال</small></div>${xaBar(T.qs.done, T.qs.total, XA_U.qs[1])}<div class="ds">جاهز من عرض التأسيس <b>${xaN(T.qs.deck)}</b> · جديد <b>${xaN(T.qs.new)}</b></div></div>
+      <div class="xa-tile" style="--c:var(--gold)"><div class="lb">السكربت المكتوب</div><div class="big">${xaN(a.lines)} <small>سطر</small></div><div class="ds">${xaN(Math.round(a.min))} دقيقة شرح · ${xaN(a.slides)} شريحة · ${xaN(a.pen)} حركة قلم</div><div class="ds">${D.method ? '<span class="xa-chip xa-st-approved">الطريقة معتمدة</span>' : '<span class="xa-chip xa-st-written">الطريقة تنتظر اعتمادك</span>'}</div></div></div>`);
+    if (D.needs.length) o.push(`<h2 class="xa-h">يحتاج قرارك <small>${D.needs.length}</small></h2><div class="xa-need">${D.needs.map((x, i) => `<div class="xa-it"><span class="n">${i + 1}</span><div><b>${esc(x.t)}</b><span>${esc(x.d)}</span></div></div>`).join('')}</div>`);
+    if (D.work.length) o.push(`<h2 class="xa-h">تحت الكتابة الحين</h2><div class="xa-grid">${D.work.map(w => xaPlan(w.id)).filter(Boolean).map(xaCard).join('')}</div>`);
+    const rel = D.plan.filter(p => D.rel[p.id]);
+    o.push(`<h2 class="xa-h">المكتوب والجاهز للفتح <small>${rel.length}</small></h2><div class="xa-grid">${rel.map(xaCard).join('')}</div>`);
+    o.push(`<h2 class="xa-h"><i style="background:${XA_U.vm[1]}"></i>مذكرة اللفظي بالأنواع</h2><div class="xa-rows">${['ana', 'sen', 'err', 'read'].map(y => { const v = T.vm.by[y] || [0, 0]; return `<div class="xa-pr"><div class="hd">${XA_TY[y]}<span>${xaN(v[1])} من ${xaN(v[0])}</span></div>${xaBar(v[1], v[0], XA_U.vm[1])}</div>`; }).join('')}</div>`);
+    o.push(`<h2 class="xa-h"><i style="background:${XA_U.qs[1]}"></i>مذكرة الكمي</h2><div class="xa-rows"><div class="xa-pr"><div class="hd">أسئلة لها شرح جاهز في عرض التأسيس<span>${xaN(T.qs.deck_done)} من ${xaN(T.qs.deck)}</span></div>${xaBar(T.qs.deck_done, T.qs.deck, XA_U.qs[1])}</div>
+      <div class="xa-pr"><div class="hd">أسئلة جديدة تنكتب من الصفر<span>${xaN(T.qs.new_done)} من ${xaN(T.qs.new)}</span></div>${xaBar(T.qs.new_done, T.qs.new, XA_U.qs[1])}</div></div>`);
+    if (D.log.length) o.push(`<h2 class="xa-h">آخر اللي صار</h2><div class="xa-log">${D.log.slice().reverse().map(x => `<div><time dir="ltr">${esc(x.d)}</time><span>${esc(x.t)}</span></div>`).join('')}</div>`);
+    return o.join('');
+  }
+  function xaLessons() {
+    return ['vf', 'vm', 'qs'].map(k => { const ps = XA.d.plan.filter(p => p.u === k), done = ps.filter(p => XA.d.rel[p.id]).length;
+      return `<h2 class="xa-h"><i style="background:${XA_U[k][1]}"></i>${XA_U[k][0]} <small>${done} من ${ps.length}</small></h2><div class="xa-grid">${ps.map(xaCard).join('')}</div>`; }).join('');
+  }
+  async function xaLessonPage(id, anchor, here) {
+    const W = $('#xaw'), p = xaPlan(id), r = XA.d.rel[id];
+    if (!p || !r) { W.innerHTML = '<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="sum">هذا الدرس ما انكتب للحين.</div>'; return; }
+    let L; try { L = await xaLesson(id); } catch (e) { if (here()) W.innerHTML = `<div class="sum">تعذّر تحميل الدرس: ${esc(e.message)}</div>`; return; }
+    if (!here() || !$('#xaw')) return;
+    const u = XA_U[p.u], ck = XA.d.checks[id] || {}, nt = xaNoteN(id), N = XA.notes[id] || {}, o = [];
+    o.push(`<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="xa-lh" style="--c:${u[1]}"><h2>${esc(xaTitle(p))}</h2><div class="t2">${esc(p.u === 'vf' ? 'Verbal Lesson ' + p.n + ' · ' + L.en : p.en + ' · ' + L.en)}</div>
+      <div class="xa-mt">${xaChip(p.state)}<span class="xa-chip">${r.slides} شريحة</span><span class="xa-chip">${r.lines} سطر</span>${r.min ? `<span class="xa-chip">${r.min} دقيقة</span>` : ''}<span class="xa-chip">${r.pen} حركة قلم</span>${p.total != null ? `<span class="xa-chip">${p.done} من ${p.total} سؤال</span>` : ''}${ck.ok === true ? '<span class="xa-chip ok">✓ كل الفحوص ناجحة</span>' : ck.ok === false ? '<span class="xa-chip no">فيه فحص ما نجح</span>' : ''}</div>${r.note ? `<p class="nt">${esc(r.note)}</p>` : ''}</div>`);
+    o.push(`<div class="xa-acts"><button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button><button type="button" class="xa-btn" id="xacpn">انسخ ملاحظاتي <span id="xantc">${nt ? '(' + nt + ')' : ''}</span></button></div>`);
+    o.push(`<div class="xa-jump" style="--c:${u[1]}">${L.slides.map((s, i) => `<a class="${s.k === 'ex' || s.k === 'test' ? '' : 'r'}" href="#admin-explain/l/${id}/${i}">${esc(s.k === 'ex' ? s.num : s.k === 'test' ? 'س' + s.num : XA_KN[s.k])}</a>`).join('')}</div>`);
+    o.push(`<div id="xasls" class="${XA.view.sh ? 'showsh ' : ''}${XA.view.pn ? 'showpn' : ''}">`);
+    L.slides.forEach((s, i) => {
+      const q = s.q ? `<div class="xa-q"><div class="en">${esc(s.q.en)}</div>${s.q.ar ? `<div class="ar">${esc(s.q.ar)}</div>` : ''}<div class="os">${s.q.opts.map((t, j) => `<div class="o${'ABCD'[j] === s.ans ? ' a' : ''}">${'ABCD'[j]}) ${esc(t)}${s.q.ao[j] ? `<small>${esc(s.q.ao[j])}</small>` : ''}</div>`).join('')}</div>${s.deck ? `<div class="dk">${esc(s.deck)}</div>` : ''}</div>` : '';
+      const lines = s.lines.map((l, j) => { const key = i + ':' + j, note = N[key] || '';
+        return `<div class="xa-ln${note ? ' has' : ''}" data-k="${key}"><span class="i">${j + 1}</span><div><div class="tx">${esc(l[0])}</div>${l[1] || l[2] ? `<div class="sh">${l[1] ? `<span class="en">${esc(l[1])}</span>` : ''}${l[2] ? `<span>${esc(l[2])}</span>` : ''}</div>` : ''}${l[3] ? `<div class="pn">${esc(l[3].split(' ; ').join(String.fromCharCode(10)))}</div>` : ''}</div><button type="button" class="nb">＋ ملاحظة</button><textarea placeholder="اكتب ملاحظتك على هذا السطر" aria-label="ملاحظة على السطر ${j + 1}">${esc(note)}</textarea></div>`; }).join('');
+      o.push(`<section class="xa-sl" id="xas${i}"><div class="hd"><b>${esc(s.nm)}</b>${s.ref ? `<span class="xa-chip" dir="ltr">${esc(s.ref)}</span>` : ''}${s.q && s.q.y ? `<span class="xa-chip">${XA_TY[s.q.y]}</span>` : ''}${s.ans ? `<span class="xa-chip ok">الجواب ${esc(s.ans)}</span>` : ''}</div>${q}${lines}</section>`);
+    });
+    o.push('</div>');
+    W.innerHTML = o.join('');
+    const box = $('#xasls'), tg = (b, k, cls) => { b.onclick = () => { XA.view[k] = XA.view[k] ? 0 : 1; lsSet('qg_xa_view', XA.view); b.setAttribute('aria-pressed', !!XA.view[k]); box.classList.toggle(cls, !!XA.view[k]); }; };
+    tg($('#xatsh'), 'sh', 'showsh'); tg($('#xatpn'), 'pn', 'showpn');
+    $('#xacpn').onclick = () => { const M = XA.notes[id] || {}, t = ['ملاحظاتي على ' + xaTitle(p) + ':'];
+      L.slides.forEach((s, i) => s.lines.forEach((l, j) => { const v = M[i + ':' + j]; if (v) t.push('• ' + s.nm + ' — السطر ' + (j + 1) + ': ' + v); }));
+      if (t.length < 2) return toast('ما فيه ملاحظات على هذا الدرس'); xaCopy(t.join('\n'), 'انتسخت ملاحظاتك ✓ الصقها في المحادثة'); };
+    W.onchange = null;
+    W.onclick = e => { const b = e.target.closest('.nb'); if (b) { const ln = b.closest('.xa-ln'); ln.classList.add('ed'); $('textarea', ln).focus(); } };
+    W.oninput = e => { if (e.target.tagName !== 'TEXTAREA') return; const ln = e.target.closest('.xa-ln'), v = e.target.value.trim(); const M = XA.notes[id] = XA.notes[id] || {};
+      if (v) M[ln.dataset.k] = v; else delete M[ln.dataset.k]; lsSet('qg_xa_notes', XA.notes); ln.classList.toggle('has', !!v); const c = xaNoteN(id); $('#xantc').textContent = c ? '(' + c + ')' : ''; };
+    box.addEventListener('focusout', e => { if (e.target.tagName === 'TEXTAREA' && !e.target.value.trim()) e.target.closest('.xa-ln').classList.remove('ed'); });
+    const el = anchor != null && $('#xas' + anchor); if (el) el.scrollIntoView(); else window.scrollTo(0, 0);
+  }
+  function xaQRows() { const F = XA.qf, t = F.t.trim().toLowerCase();
+    return XA.d.rows.filter(r => (!F.u || r[1] === F.u) && (!F.n || String(r[2]) === F.n) && (!F.y || r[4] === F.y) && (F.st === '' || String(r[6]) === F.st) && (!t || (r[0] + ' ' + r[5] + ' ' + (r[8] || '')).toLowerCase().indexOf(t) >= 0)); }
+  function xaQuestions() {
+    const sel = (id, first, opts) => `<select id="${id}" aria-label="${first}"><option value="">${first}</option>${opts.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`;
+    return `<div class="xa-card"><div class="xa-fl">${sel('xafu', 'المذكرتين', [['vm', 'اللفظي'], ['qs', 'الكمي']])}${sel('xafn', 'كل النماذج والأقسام', Array.from({ length: 14 }, (_, i) => [i + 1, i + 1]))}${sel('xafy', 'كل الأنواع', Object.keys(XA_TY).map(k => [k, XA_TY[k]]))}${sel('xafs', 'كل الحالات', [[2, 'مشروح'], [3, 'مشروح في تأسيس اللفظي'], [1, 'جاهز في عرض التأسيس'], [0, 'ما انكتب']])}
+      <input id="xaft" type="search" placeholder="كلمة من السؤال أو رقمه" aria-label="بحث في الأسئلة"><span class="c" id="xaqc"></span></div>
+      <div class="xa-tw"><table><thead><tr><th>المرجع</th><th>المكان</th><th>النوع</th><th>السؤال</th><th>الحالة</th></tr></thead><tbody id="xaqb"></tbody></table></div></div><button type="button" class="xa-btn more" id="xaqm">اعرض أكثر</button>`;
+  }
+  function xaQTable() {
+    const F = XA.qf, rs = xaQRows();
+    $('#xaqb').innerHTML = rs.slice(0, F.lim).map(r => { const st = r[6] === 2 ? '<span class="xa-chip xa-st-approved">مشروح</span>' : r[6] === 3 ? '<span class="xa-chip xa-st-sample">مشروح في تأسيس اللفظي</span>' : r[6] === 1 ? '<span class="xa-chip xa-st-written">جاهز في عرض التأسيس</span>' : '<span class="xa-chip xa-st-none">ما انكتب</span>';
+      return `<tr${r[6] === 2 || r[6] === 3 ? ` class="go" data-go="#admin-explain/l/${r[7][0]}/${r[7][1]}"` : ''}><td class="ref">${esc(r[0])}</td><td>${r[1] === 'vm' ? 'النموذج' : 'القسم'} ${r[2]}</td><td>${XA_TY[r[4]]}</td><td><span class="en">${esc(r[5])}</span></td><td class="st">${st}${r[8] && r[6] !== 3 ? `<span class="x">${esc(r[8])}</span>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="5" class="xa-empty">ما فيه أسئلة بهذي الشروط.</td></tr>';
+    $('#xaqc').innerHTML = `يعرض <b>${xaN(Math.min(F.lim, rs.length))}</b> من <b>${xaN(rs.length)}</b>`;
+    $('#xaqm').style.display = rs.length > F.lim ? '' : 'none';
+  }
+  function xaQBind() {
+    const F = XA.qf, W = $('#xaw');
+    [['xafu', 'u'], ['xafn', 'n'], ['xafy', 'y'], ['xafs', 'st']].forEach(([id, k]) => { const e = $('#' + id); e.value = F[k]; e.onchange = () => { F[k] = e.value; F.lim = 150; xaQTable(); }; });
+    const ft = $('#xaft'); ft.value = F.t; W.oninput = e => { if (e.target === ft) { F.t = ft.value; F.lim = 150; xaQTable(); } };
+    W.onclick = e => { if (e.target.closest('#xaqm')) { F.lim += 300; return xaQTable(); } const tr = e.target.closest('tr.go'); if (tr) location.hash = tr.dataset.go; };
+    xaQTable();
+  }
+  function xaChecks() {
+    const ok = (b, t) => `<span class="xa-chip ${b ? 'ok' : 'no'}">${b ? '✓ ' : '✗ '}${t}</span>`;
+    const rows = XA.d.plan.filter(p => XA.d.rel[p.id]).map(p => { const c = XA.d.checks[p.id]; if (!c) return `<tr><td><b>${esc(xaTitle(p))}</b></td><td colspan="7" class="x">ما انفحص للحين</td></tr>`;
+      const hd = c.hand || [1, 1, 9];
+      return `<tr class="go" data-go="#admin-explain/l/${p.id}"><td><b>${esc(xaTitle(p))}</b></td><td>${ok(c.bank && c.bank[1] === 0, (c.bank ? c.bank[0] : 0) + ' سؤال')}</td><td>${ok(c.lint === 0, (c.lines || 0) + ' سطر')}</td><td>${ok(String(c.nar || '').indexOf('ok') === 0, (c.min || 0) + ' دقيقة')}</td><td>${ok(hd[0] === 0 && hd[1] === 0 && hd[2] <= 0.5, 'أقصى تأخير ' + hd[2] + ' ث')}</td><td>${ok(c.voice === 0, 'داخل الصوت')}</td><td>${ok(c.lab === 0, 'ما تتلامس')}</td><td class="dt" dir="ltr">${esc(c.at || '')}</td></tr>`; }).join('');
+    return `<div class="xa-card"><div class="xa-tw"><table><thead><tr><th>الدرس</th><th>مطابقة البنك</th><th>قواعد السكربت</th><th>شريط السكربت</th><th>القلم</th><th>القلم مع الصوت</th><th>التسميات</th><th>آخر فحص</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+      <h2 class="xa-h">وش يفحص كل واحد</h2><div class="xa-card xa-lg"><b>مطابقة البنك:</b> نص السؤال وخياراته وترجمته ومفتاحه مثل بنك الدورة بالحرف.<br><b>قواعد السكربت:</b> عدد الأسطر على عدد الضغطات، وما فيه رموز ممنوعة، والجواب ينقال بمكانه.<br><b>شريط السكربت:</b> كل سطر يطلع كامل في الشريط على مقاسين، والعرض التلقائي يمر على كل ضغطة.<br><b>القلم:</b> كل حركة تلقى هدفها، وما فيه رسمة تتأخر عن كلمتها أكثر من نص ثانية.<br><b>القلم مع الصوت:</b> ما فيه رسمة تكمّل بعد ما يخلص السطر.<br><b>التسميات:</b> المعاني المكتوبة تحت الكلمات ما تلمس بعض ولا تلمس نص الشريحة.</div>`;
+  }
+  let xaAll = null;
+  function xaSearch(t) {
+    const box = $('#xasr'); t = (t || '').trim().toLowerCase(); if (!box) return;
+    if (t.length < 2) { box.classList.remove('on'); return; }
+    if (!xaAll) xaAll = Promise.all(Object.keys(XA.d.rel).map(id => xaLesson(id).catch(() => null)));
+    xaAll.then(() => {
+      if (!$('#xasr') || ($('#xags').value || '').trim().toLowerCase() !== t) return;
+      const o = []; let c = 0, q = 0;
+      Object.keys(XA.d.rel).forEach(id => { const L = XA.L[id], p = xaPlan(id); if (!L) return;
+        L.slides.forEach((s, i) => s.lines.forEach((l, j) => { if (c < 14 && l[0].toLowerCase().indexOf(t) >= 0) { c++; o.push(`<a href="#admin-explain/l/${id}/${i}"><span class="k">${esc(xaTitle(p))} · ${esc(s.nm)} · السطر ${j + 1}</span>${esc(l[0].length > 150 ? l[0].slice(0, 150) + '…' : l[0])}</a>`); } })); });
+      XA.d.rows.forEach(r => { if (q < 12 && (r[0] + ' ' + r[5]).toLowerCase().indexOf(t) >= 0) { q++; const go = r[6] === 2 || r[6] === 3;
+        o.push(`<a href="${go ? '#admin-explain/l/' + r[7][0] + '/' + r[7][1] : '#admin-explain/q'}"${go ? '' : ` data-q="${esc(r[0])}"`}><span class="k">سؤال · <bdi dir="ltr">${esc(r[0])}</bdi> · ${XA_TY[r[4]]}</span><span class="en">${esc(r[5])}</span></a>`); } });
+      box.innerHTML = o.join('') || '<div class="e">ما لقيت شي بهذي الكلمة.</div>'; box.classList.add('on');
+      box.onclick = e => { const a = e.target.closest('a[data-q]'); if (a) { XA.qf = { u: '', n: '', y: '', st: '', t: a.dataset.q, lim: 150 }; if (location.hash === '#admin-explain/q') renderExplain('q'); } };
+    });
   }
   async function renderEngAdmin() {
     document.title = 'مستويات الإنجليزي | Q-Guide';
