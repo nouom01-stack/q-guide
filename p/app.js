@@ -6649,7 +6649,7 @@
   const XA_KN = { title: 'الافتتاح', words: 'الكلمات', rule: 'بطاقة', passage: 'القطعة', ex: 'سؤال', test: 'اختبر نفسك', sum: 'الملخص', end: 'الختام' };
   const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص']];
   async function xaRaw(name, v) {   // نفس صيغة loadSet: 12 بايت iv ثم AES-GCM بمفتاح البيانات · الفهرس ينجلب طازج دايم، والباقي برقم بناء الفهرس
-    const r = await fetch('/p/data/' + name + '.bin' + (v ? '?v=' + encodeURIComponent(v) : ''), { cache: v ? 'force-cache' : 'no-store' });
+    const r = await fetch('/p/data/' + name + '.bin' + (v ? '?v=' + encodeURIComponent(v) : '?t=' + Date.now()), { cache: v ? 'force-cache' : 'no-store' });   // الفهرس: رابط جديد كل مرة (عامل الخدمة كان يرجّع نسخته القديمة)
     if (!r.ok) throw new Error(r.status === 404 ? 'ملف البيانات مو موجود' : 'data ' + r.status);
     const buf = new Uint8Array(await r.arrayBuffer());
     return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, await getKey(), buf.slice(12)));

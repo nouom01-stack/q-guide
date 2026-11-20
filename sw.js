@@ -6,7 +6,7 @@ self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url); if (url.origin !== location.origin) return;
-  if (STATIC.test(url.pathname + url.search) && !/manifest\.json|meta\.json/.test(url.pathname)) {
+  if (STATIC.test(url.pathname + url.search) && !/manifest\.json|meta\.json|\/p\/data\/xa\.bin$/.test(url.pathname)) {   // فهرس الشروحات يتغيّر بنفس الاسم: دايم من الشبكة
     // محتوى ثابت (مشفّر ومُرقّم): من الكاش أولاً
     e.respondWith(caches.open(V).then(async c => { const hit = await c.match(req); if (hit) return hit; const res = await fetch(req); if (res.ok) c.put(req, res.clone()); return res; }));
     return;
