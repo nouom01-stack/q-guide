@@ -170,7 +170,7 @@
   let cryptoKey2 = null;
   async function getKey2() { if (cryptoKey2) return cryptoKey2; cryptoKey2 = await crypto.subtle.importKey('raw', hex2buf(auth.wbk || ''), 'AES-GCM', false, ['decrypt']); return cryptoKey2; }
   const DATA_V = 3;   // ⬆️ ارفعه كل ما تغيّرت ملفات الأسئلة (حتى ما يبقى الطالب على نسخة قديمة من الكاش)
-  const SET_V = { studio: 7 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
+  const SET_V = { studio: 8 };   // ملف واحد تغيّر لحاله (استوديو تيك توك: السكربتات المكتوبة) → نرفع رقمه هو بس
   async function loadSet(id) {
     if (cache[id]) return cache[id];
     if (isFree() && FREE_SETS.indexOf(id) < 0) throw new Error('locked');   // 🔒 للمشتركين
