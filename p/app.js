@@ -4460,14 +4460,33 @@
 
   // i18n:off — صفحات المشرفين تبقى عربي (ما تنلف بـ _T)
   // ---------- 🎬 استوديو تيك توك (للمشرفين) ----------
-  const ST = { tab: lsGet('qg_stab', 'q'), f: 'all', sts: null, pen: null, reveal: false, panel: true, ui: true, land: false };
+  const ST = { tab: lsGet('qg_stab', 'q'), f: 'all', rf: 'all', rv: null, sts: null, pen: null, reveal: false, panel: true, ui: true, land: false };
   const STL = ['a', 'b', 'c', 'd'];
   function stFont() { if (document.getElementById('stfont')) return; const l = document.createElement('link'); l.id = 'stfont'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&display=swap'; document.head.appendChild(l); }
-  async function stData() { return loadSet('studio'); }
+  async function stData() {   // 📚 v133: سكربتات «✍️ شرح» المكتوبة تجي من الـ API لو موجودة (تغلب اللي داخل studio.bin): تعديل السكربت يطلع بدون مفتاح البيانات
+    const d = await loadSet('studio');
+    if (!d.__so) { d.__so = 1; try { const M = JSON.parse((await admCall({ op: 'adm_xa', f: 'st-say' })).t || '{}'); [['q', d.quant], ['v', d.verbal]].forEach(([k, a]) => (a || []).forEach(it => { if (M[k + it.n]) it.say = M[k + it.n]; })); } catch (e) {} }
+    return d;
+  }
   // 🎬 حالة كل سؤال (طلب المالك 15 نوفمبر 2026): تم التصوير ← جاهز للنشر ← تم النشر — في قاعدة البيانات (جدول studio في الـ API، مع وقت كل مرحلة) ومشتركة بين المشرفين
   const ST_ST = [['film', '🎬', 'تم التصوير', 'تصوّر'], ['ready', '📦', 'جاهز للنشر', 'جاهز'], ['post', '📢', 'تم النشر', 'نُشر']];
   const stOf = k => (ST.sts && ST.sts[k] && ST.sts[k].st) || '', stIx = s => ST_ST.findIndex(x => x[0] === s);
   async function stPosted(force) { if (ST.sts && !force) return ST.sts; try { const r = await admCall({ op: 'adm_studio_list' }); ST.sts = {}; (r.st || (r.posted || []).map(x => Object.assign({ st: 'post' }, x))).forEach(x => ST.sts[x.k] = x); } catch (e) { ST.sts = ST.sts || {}; } return ST.sts; }
+  // 📝 مراجعة سكربتات «✍️ شرح» (المالك، v133): تعتمد السكربت أو تكتب ملاحظتك — في الـ API (جدول xa_rev، المفتاح st:q12) وتوصل Claude، وردّه يطلع تحتها
+  async function stRev(force) { if (!isOwner()) return null; if (ST.rv && !force) return ST.rv; try { const r = await admCall({ op: 'adm_xa_rev', p: 'st:' }); ST.rv = {}; (r.rows || []).forEach(x => { ST.rv[x.k.slice(3)] = x; }); } catch (e) { ST.rv = ST.rv || {}; } return ST.rv; }
+  const stRvOf = k => { const R = ST.rv && ST.rv[k]; return R ? R.st || '' : ''; };
+  function stRevPaint(k, it) {
+    const el = $('#rprv'); if (!el) return; const R = (ST.rv || {})[k], st = R ? R.st || '' : '', has = !!stSayOf(it);
+    el.innerHTML = `<div class="rp-lbl">📝 مراجعة سكربت الشرح</div>
+      <div class="rp-hint">${has ? 'سكربت هذا السؤال يطلع في قالب ✍️ شرح (شريط السكربت). اعتمده، أو اكتب ملاحظتك وتوصلني مباشرة، وتعديلي يطلع هنا.' : 'هذا السؤال ما له سكربت مكتوب: يتولد تلقائي من الترجمة والشرح.'}</div>
+      <div class="rvst rv-${st || 'none'}">${st === 'ok' ? '✓ معتمد' : st === 'note' ? '✍️ ملاحظتك وصلتني، أشتغل عليها' : st === 'done' ? '✓ عدّلته حسب ملاحظتك' : 'ما راجعته للحين'}</div>
+      ${R && R.reply ? `<div class="rvrp"><b>${st === 'done' ? 'تعديلي:' : 'ردّي قبل:'}</b> ${esc(R.reply)}</div>` : ''}
+      <textarea id="rvnote" rows="3" placeholder="ملاحظتك على السكربت (مثال: السطر 3 طويل، أو غيّر المثال)">${esc(R && st !== 'ok' ? R.note || '' : '')}</textarea>
+      <div class="rp-chb"><button type="button" class="btn" id="rvok">${st === 'ok' ? '✓ معتمد · ألغِ' : '✓ أعتمد السكربت'}</button><button type="button" class="btn ghost" id="rvsave">✍️ أرسل الملاحظة</button></div><div class="rvsv" id="rvsv" aria-live="polite"></div>`;
+    const put = async (body, msg) => { try { const r = await admCall(Object.assign({ op: 'adm_xa_rev_set', k: 'st:' + k }, body)); if (r.row) ST.rv[k] = r.row; else delete ST.rv[k]; stRevPaint(k, it); const s = $('#rvsv'); if (s) s.textContent = msg; } catch (e) { toast(e.message); } };
+    $('#rvok').onclick = () => put({ st: st === 'ok' ? '' : 'ok' }, st === 'ok' ? 'شلت الاعتماد' : '✓ اعتمدت السكربت');
+    $('#rvsave').onclick = () => { const v = $('#rvnote').value.trim(); put({ note: v, txt: ((stSayOf(it) || [])[0] || {}).t || '' }, v ? '✓ انحفظت ووصلتني' : '✓ انشالت الملاحظة'); };
+  }
   async function stSet(k, st) { try { const r = await admCall({ op: 'adm_studio_set', k, st }); if (st) ST.sts[k] = r.row || { k, st, by_email: auth.email, at: Date.now() }; else delete ST.sts[k]; return true; } catch (e) { toast(e.message); return false; } }
   function stRandom(kind, data, except) {   // 🎲 ما تصوّر — ومقطع التحدي بالكمي: من اللي فيه رسمة أول
     const all = stList(kind, data, stTpl() === 'ch'), left = all.filter(x => !stOf(kind + x.n) && x.n !== except), fig = kind === 'q' && stTpl() === 'ch' ? left.filter(x => x.ch && x.ch.f) : [];
@@ -4475,10 +4494,11 @@
   }
   async function renderStudio() {
     document.title = 'استوديو تيك توك | Q-Guide'; stFont();
-    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; renderStudio(); };
+    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; ST.rv = null; renderStudio(); };
     let data; try { [data] = await Promise.all([stData(), stPosted(), ADM.role ? null : admLoadStaff().catch(() => null)]); } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر التحميل: ${esc(e.message)}</div>`; return; }
+    await stRev();
     if (location.hash !== '#studio') return;
-    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; renderStudio(); };
+    app.innerHTML = admTop('studio'); bindCtl(); $('#admref').onclick = () => { ST.sts = null; ST.rv = null; renderStudio(); };
     paintStudio(data);
   }
   function paintStudio(data) {
@@ -4488,7 +4508,11 @@
     const cnt = { film: 0, ready: 0, post: 0 }; list.forEach(x => { const s = stOf(k + x.n); if (s) cnt[s]++; });
     const left = N - cnt.film - cnt.ready - cnt.post, pc = c => (c * 100 / N).toFixed(2);
     const F = [['all', 'الكل'], ['none', 'ما تصوّر'], ...ST_ST.map(([s, ic, t]) => [s, ic + ' ' + t])]; if (!F.some(f => f[0] === ST.f)) ST.f = 'all';
-    const items = list.filter(x => ST.f === 'all' || (ST.f === 'none' ? !stOf(k + x.n) : stOf(k + x.n) === ST.f));
+    const RV = !ez && (k === 'v' || k === 'q') && isOwner() && ST.rv, RVF = [['all', 'الكل'], ['none', 'ما راجعتها'], ['note', '✍️ ملاحظاتك'], ['done', '🔁 عدّلتها'], ['ok', '✓ معتمدة']];
+    if (!RVF.some(f => f[0] === ST.rf)) ST.rf = 'all';
+    const rvN = s => list.filter(x => stRvOf(k + x.n) === (s === 'none' ? '' : s)).length;
+    const items = list.filter(x => (ST.f === 'all' || (ST.f === 'none' ? !stOf(k + x.n) : stOf(k + x.n) === ST.f)) && (!RV || ST.rf === 'all' || stRvOf(k + x.n) === (ST.rf === 'none' ? '' : ST.rf)));
+    const RVM = { ok: '<i class="rvm ok" title="السكربت معتمد">✓</i>', note: '<i class="rvm note" title="ملاحظتك على السكربت">✍️</i>', done: '<i class="rvm done" title="عدّلته حسب ملاحظتك">🔁</i>' };
     const nm = e => esc(String(e || '').split('@')[0]);
     const TABN = { v: '🔗 التناظر اللفظي', q: '📐 الكمي', c: '🔗 تجميعات التناظر', r: '🏆 نتائج طلابنا', f: '📁 اكتب كلمة' };
     const HINT = { q: ez ? ' · مرتبة: اللي فيه رسمة أول (🖼)، وقبلها اللي أغلب الطلاب غلطوا فيه فعلاً (⚠️)' : '', v: '',
@@ -4499,7 +4523,7 @@
       if (k === 'r') return `<span class="qn ar">${x.fem ? 'طالبة' : 'طالب'} · ${x.sc}</span><span class="pi pr"><img src="/assets/results/r${x.sc}.jpg" alt="" loading="lazy"></span>`;
       if (k === 'f') return `<span class="qn ar">اكتب «${esc(chKw())}»</span><span class="pv pf">📁 ملف ${x.count} سؤال تناظر تتكرر في الاختبار، مع معنى كل كلمة</span>`;
       const c = x.ch || {}, mk = ez && k === 'q' ? (c.tr ? ' · ⚠️' : '') + (c.f ? ' · 🖼' : '') : '';
-      return `<span class="qn">Q ${x.n}${mk}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}`;
+      return `<span class="qn">Q ${x.n}${mk}${RV ? RVM[stRvOf(k + x.n)] || '' : ''}</span>${k === 'v' ? `<span class="pv ltr">${esc(x.q)}</span>` : `<span class="pi"><img src="${x.img}" alt="" loading="lazy"></span>`}`;
     };
     W.innerHTML = `<div class="sth">
         <div class="seg">${tabs.map(t => `<button data-k="${t}" class="${k === t ? 'on' : ''}">${TABN[t]} <small>${t === k ? N : stList(t, data, ez).length}</small></button>`).join('')}</div>
@@ -4507,9 +4531,13 @@
         ${RND[k] ? `<button class="btn gold" id="strnd">${RND[k]}</button>` : ''}
       </div>
       <div class="stf2"><div class="chips">${F.map(([f, t]) => `<button data-f="${f}" class="${ST.f === f ? 'on' : ''}">${t}</button>`).join('')}</div><span class="mut">اضغط ${k === 'c' ? 'أي تجميعة' : k === 'r' ? 'أي نتيجة' : k === 'f' ? 'المقطع' : 'أي سؤال'} لفتحه بوضع التصوير${HINT[k]} · الحالة (تم التصوير ← جاهز للنشر ← تم النشر) مشتركة بين كل المشرفين عشان ما يتكرر المقطع.</span></div>
+      ${RV ? `<div class="strv"><b>📝 مراجعة سكربتات الشرح</b><div class="rvchips">${RVF.map(([f, tt]) => `<button data-rf="${f}" class="${ST.rf === f ? 'on' : ''}">${tt} <small>${f === 'all' ? list.length : rvN(f)}</small></button>`).join('')}</div><span class="mut">افتح أي سؤال: لوحته فيها «📝 مراجعة سكربت الشرح». ملاحظتك توصلني مباشرة، وتعديلي يطلع تحتها.</span></div>` : ''}
+      ${ez && isOwner() ? '<div class="strv go"><b>📝 سكربتات الشرح المكتوبة تراجعها من قالب «✍️ شرح»</b><button class="btn ghost" id="strvgo">✍️ افتح قالب الشرح وراجع</button></div>' : ''}
       <div class="stg${k === 'c' || k === 'f' ? ' stg-t' : ''}">${items.map(x => { const P = ST.sts[k + x.n], s = P ? P.st : '', d = ST_ST[stIx(s)]; return `<a class="stc${d ? ' s-' + s : ''}" href="#studio-${k}-${x.n}">${tile(x)}<span class="ft">${d ? `<span class="ok">${d[1]} ${d[2]}</span><small>${nm(P.by_email)} · ${fmtD(P.at)}</small>` : '<span class="rd">جاهز للتصوير</span>'}</span></a>`; }).join('') || '<div class="sempty" style="grid-column:1/-1">لا توجد مقاطع هنا</div>'}</div>`;
     W.querySelectorAll('.seg button').forEach(b => b.onclick = () => { ST.tab = b.dataset.k; lsSet('qg_stab', ST.tab); paintStudio(data); });
     W.querySelectorAll('.chips button').forEach(b => b.onclick = () => { ST.f = b.dataset.f; paintStudio(data); });
+    W.querySelectorAll('.rvchips button').forEach(b => b.onclick = () => { ST.rf = b.dataset.rf; paintStudio(data); });
+    if ($('#strvgo')) $('#strvgo').onclick = () => { lsSet('qg_sttpl', 'ex'); ST.tab = 'q'; lsSet('qg_stab', 'q'); paintStudio(data); };
     if ($('#strnd')) $('#strnd').onclick = () => { location.hash = `studio-${k}-${stRandom(k, data)}`; };
   }
   // 🎬 بطاقة التصوير: اللوحة جنبها، أو «🎥 وضع التصوير» = البطاقة بالنص والأدوات عمودين حولها:
@@ -5159,7 +5187,7 @@
   }
   async function renderRec(kind, n) {
     stFont(); document.title = 'تصوير Q ' + n + ' | Q-Guide';
-    let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {}), stFontReady()]); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
+    let data, QH = null; try { [data] = await Promise.all([stData(), stPosted(), loadVocab(), stHandLoad().then(h => { QH = h; }, () => {}), stFontReady(), ADM.role ? null : admLoadStaff().catch(() => null)]); await stRev(); } catch (e) { app.innerHTML = '<div class="center">تعذّر التحميل. <a href="#studio">رجوع</a></div>'; return; }
     if (location.hash !== `#studio-${kind}-${n}`) return;   // راح لصفحة ثانية وهو ينتظر التحميل
     // 🎯 مقطع التحدي (الافتراضي) أو ✍️ شرح (البطاقة القديمة) · c تجميعة تناظر · r نتيجة طالب · f «اكتب كلمة» = قالب التحدي بس
     const NEW = kind === 'c' || kind === 'r' || kind === 'f', TPL = NEW ? 'ch' : stTpl(), CHM = TPL === 'ch', NOANS = kind === 'r' || kind === 'f';
@@ -5246,6 +5274,7 @@
           ${hasTw ? '<div class="rp-hint">🔤 اضغط على أي كلمة في البطاقة تطلع ترجمتها تحتها، واضغطها مرة ثانية تختفي.</div>' : ''}</div>
         ${tplSec}
         ${saySec}
+        ${(kind === 'q' || kind === 'v') && isOwner() ? '<div class="rp-sec rp-rv" id="rprv"></div>' : ''}
         ${CHM ? '' : `<div class="rp-sec"><div class="rp-lbl">🖼 شكل البطاقة</div>
           <div class="seg rp-or" role="group" aria-label="شكل البطاقة"><button type="button" data-or="0" class="${ST.land ? '' : 'on'}" aria-pressed="${!ST.land}">▯ بالطول</button><button type="button" data-or="1" class="${ST.land ? 'on' : ''}" aria-pressed="${ST.land}">▭ بالعرض</button></div></div>`}
         <div class="rp-sec rp-acts${NOANS ? ' one' : ''}">${NOANS ? '' : '<button class="btn" id="rrev">✅ كشف الإجابة</button>'}<button class="btn ghost" id="rhide" title="البطاقة بالنص والأدوات على اليمين واليسار">🎥 وضع التصوير</button></div>
@@ -5267,6 +5296,7 @@
     ST.pen.toggle(true); ST.pen.setColor(ST_COLS[0]); ST.pen.setWidth(2.6);
     ['pointerup', 'keyup', 'focusout'].forEach(t => tk.addEventListener(t, () => setTimeout(cast, 0)));   // كتابتك توصل لشاشة التسجيل
     const rec = $('.rec');
+    if ($('#rprv')) stRevPaint(kind + n, it);   // 📝 مراجعة سكربت الشرح (المالك)
     // نفس الأداة/اللون/السماكة تتعلّم في اللوحة والعمودين مع بعض
     const mark = (a, v) => rec.querySelectorAll(`[data-${a}]`).forEach(x => { const on = x.dataset[a] === v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
     const penOn = on => { ST.pen.toggle(on); $('#rpen').checked = on; $('#mpen').classList.toggle('on', on); };
@@ -6640,23 +6670,30 @@
     const n = Math.max(1, dayDiff(adv.es || Date.now(), Date.now()) + 1);
     return adv.ed > 0 && n <= adv.ed ? `«إنجليزي الاختبار» · اليوم ${n} من ${adv.ed}` : 'خطة القدرات';
   }
-  // ---------- 📚 الشروحات (المالك، v129 · تشغيل العرض v130): شرح مذكرتي التدريب وتأسيس اللفظي — كل الدروس والأسئلة والسكربت سطر بسطر ----------
-  // البيانات تنبني في مجلد Q-Guide/explain (خاص، خارج هذا المستودع) وتنحط هنا مشفّرة بمفتاح البيانات: p/data/xa.bin (الفهرس) + xa-<الدرس>.bin
-  const XA = { d: null, L: {}, P: {}, pu: null, view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), notes: lsGet('qg_xa_notes', {}), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
+  // ---------- 📚 الشروحات (المالك، v129 · العرض v130 · من الـ API ومراجعتك محفوظة v133): شرح مذكرتي التدريب وتأسيس اللفظي ----------
+  // المحتوى من الـ API الخاص (cf-95: ملفات xa/ في مستودع الـ API، تنقرأ لجلسة المالك بس، بدون مفتاح): adm_xa {f}. كل تعديل يطلع هنا أول ما ينرفع: تحديث الصفحة بس.
+  // اعتمادك وملاحظاتك محفوظة في الـ API (جدول xa_rev): adm_xa_rev / adm_xa_rev_set — xa:<درس> اعتماد الدرس · xa:<درس>:n ملاحظة عامة · xa:<درس>:<شريحة>:<سطر> ملاحظة على سطر
+  //   Claude يقرا ملاحظاتك ويعدّل ويكتب ردّه (reply، st = done) فيطلع تحت الملاحظة
+  const XA = { d: null, L: {}, P: {}, pu: null, rv: null, lf: '', view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
   const XA_U = { vf: ['تأسيس اللفظي', '#7c3aed'], vm: ['مذكرة التدريب اللفظي', '#2563eb'], qs: ['مذكرة التدريب الكمي', '#ea580c'] };
-  const XA_ST = { none: 'لم يبدأ', wip: 'قيد الكتابة', written: 'مكتوب · ينتظر مراجعتك', sample: 'عيّنة معتمدة', approved: 'معتمد' };
+  const XA_ST = { none: 'لم يبدأ', wip: 'قيد الكتابة', written: 'ينتظر مراجعتك', sample: 'عيّنة معتمدة', approved: 'معتمد' };
   const XA_TY = { ana: 'تناظر', sen: 'إكمال جمل', err: 'خطأ سياقي', read: 'قطعة', arith: 'حساب', alg: 'جبر', geo: 'هندسة', stat: 'إحصاء' };
   const XA_KN = { title: 'الافتتاح', words: 'الكلمات', rule: 'بطاقة', passage: 'القطعة', ex: 'سؤال', test: 'اختبر نفسك', sum: 'الملخص', end: 'الختام' };
-  const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص']];
-  async function xaRaw(name, v) {   // نفس صيغة loadSet: 12 بايت iv ثم AES-GCM بمفتاح البيانات · الفهرس ينجلب طازج دايم، والباقي برقم بناء الفهرس
-    const r = await fetch('/p/data/' + name + '.bin' + (v ? '?v=' + encodeURIComponent(v) : '?t=' + Date.now()), { cache: v ? 'force-cache' : 'no-store' });   // الفهرس: رابط جديد كل مرة (عامل الخدمة كان يرجّع نسخته القديمة)
-    if (!r.ok) throw new Error(r.status === 404 ? 'ملف البيانات مو موجود' : 'data ' + r.status);
-    const buf = new Uint8Array(await r.arrayBuffer());
-    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, await getKey(), buf.slice(12)));
+  const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['notes', '📝 ملاحظاتك'], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص']];
+  const xaRaw = async name => (await admCall({ op: 'adm_xa', f: name })).t;
+  const xaGet = async name => JSON.parse(await xaRaw(name));
+  async function xaRevLoad() { const [a, b] = await Promise.all(['xa:', 'st:'].map(p => admCall({ op: 'adm_xa_rev', p }).then(r => r.rows || []))); XA.rv = {}; a.concat(b).forEach(x => { XA.rv[x.k] = x; }); return XA.rv; }
+  const xaRv = k => (XA.rv && XA.rv[k]) || null;
+  async function xaSave(k, body) { const r = await admCall(Object.assign({ op: 'adm_xa_rev_set', k }, body)); if (!XA.rv) XA.rv = {}; if (r.row) XA.rv[k] = r.row; else delete XA.rv[k]; return r.row; }
+  const xaSt = p => (xaRv('xa:' + p.id) || {}).st === 'ok' ? 'approved' : p.state;
+  const xaOpen = id => Object.values(XA.rv || {}).filter(x => x.st === 'note' && x.k.indexOf('xa:' + id + ':') === 0).length;
+  function xaMigrate() {   // ملاحظات v129–v132 كانت في المتصفح بس → للـ API مرة وحدة
+    const N = lsGet('qg_xa_notes', null); if (!N) return; const jobs = [];
+    Object.keys(N).forEach(id => Object.keys(N[id] || {}).forEach(pos => { const k = 'xa:' + id + ':' + pos; if (N[id][pos] && !xaRv(k)) jobs.push(xaSave(k, { note: N[id][pos] })); }));
+    Promise.all(jobs).then(() => lsDel('qg_xa_notes'), () => {});
   }
-  const xaGet = async (name, v) => JSON.parse(await xaRaw(name, v));
-  // ▶ تشغيل الدرس كعرض (v130): صفحة العرض نفسها (xp.bin = محرك عرض الكمي + قائمة الدروس) وبيانات كل درس (xp-<الدرس>.bin) مشفّرة مثل الباقي.
-  // تنفتح فوق الصفحة في إطار من رابط Blob (نفس أصل الموقع)، والمحرك يطلب بيانات الدرس من window.__xaDeck بدل ملفات d/ و n/
+  // ▶ تشغيل الدرس كعرض: صفحة العرض (xp = محرك عرض الكمي + قائمة الدروس) وبيانات كل درس (xp-<الدرس>) من الـ API. تنفتح فوق الصفحة في إطار من رابط Blob
+  //   (نفس أصل الموقع)، والمحرك يطلب بيانات الدرس من window.__xaDeck بدل ملفات d/ و n/
   function xaStop() { const p = $('.xa-play'); if (p) p.remove(); document.documentElement.classList.remove('xa-noscroll'); }
   window.addEventListener('hashchange', xaStop);
   async function xaPlay(id, go) {
@@ -6665,8 +6702,8 @@
     ov.innerHTML = `<div class="xa-pbar"><button type="button" class="xa-px">✕ إغلاق العرض</button><b>${esc(p ? xaTitle(p) : '')}</b><span>اضغط مسافة للسطر الجاي</span></div><div class="xa-pwait"><div class="spin"></div><p>نجهّز العرض…</p></div>`;
     document.body.appendChild(ov); document.documentElement.classList.add('xa-noscroll'); $('.xa-px', ov).onclick = xaStop;
     try {
-      if (!XA.pu) XA.pu = URL.createObjectURL(new Blob([await xaRaw('xp', XA.d.built)], { type: 'text/html;charset=utf-8' }));
-      window.__xaDeck = lid => XA.P[lid] || (XA.P[lid] = xaGet('xp-' + lid, XA.d.built));
+      if (!XA.pu) XA.pu = URL.createObjectURL(new Blob([await xaRaw('xp')], { type: 'text/html;charset=utf-8' }));
+      window.__xaDeck = lid => XA.P[lid] || (XA.P[lid] = xaGet('xp-' + lid));
       await window.__xaDeck(id);
     } catch (e) { xaStop(); toast('تعذّر فتح العرض: ' + e.message); return; }
     if (!ov.isConnected) return;
@@ -6679,53 +6716,61 @@
   const xaChip = st => `<span class="xa-chip xa-st-${st}">${XA_ST[st] || st}</span>`;
   const xaPlan = id => XA.d.plan.find(p => p.id === id);
   const xaTitle = p => { const r = XA.d.rel[p.id]; return p.u === 'vf' ? 'الدرس ' + p.n + ' · ' + p.ar : p.ar + (p.nm ? ' · ' + p.nm : r && r.ar ? ' · ' + r.ar : ''); };
-  const xaNoteN = id => Object.keys(XA.notes[id] || {}).length;
-  const xaLesson = async id => XA.L[id] || (XA.L[id] = await xaGet('xa-' + id, XA.d.built));
-  function xaCopy(t, msg) { const fb = () => { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove(); toast(msg); };
-    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(() => toast(msg), fb); else fb(); }
+  const xaLesson = async id => XA.L[id] || (XA.L[id] = await xaGet('xa-' + id));
   async function renderExplain(sub) {
     document.title = 'الشروحات | Q-Guide';
     const here = () => location.hash.slice(1) === 'admin-explain' + (sub ? '/' + sub : '');
-    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.L = {}; XA.P = {}; if (XA.pu) URL.revokeObjectURL(XA.pu); XA.pu = null; xaAll = null; renderExplain(location.hash.slice(15)); }; };
+    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.rv = null; XA.L = {}; XA.P = {}; if (XA.pu) URL.revokeObjectURL(XA.pu); XA.pu = null; xaAll = null; renderExplain(location.hash.slice(15)); }; };
     if (!$('#xaw')) top();
     try {
       await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
-      if (!XA.d) XA.d = await xaGet('xa');
-    } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر تحميل بيانات الشروحات: ${esc(e.message)}</div>`; return; }
+      if (!XA.d) [XA.d] = await Promise.all([xaGet('xa'), xaRevLoad()]); else await xaRevLoad();   // اعتمادك وملاحظاتك وردودي: طازجة في كل صفحة
+    } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر تحميل الشروحات: ${esc(e.message)}</div>`; return; }
+    xaMigrate();
     if (!here()) return;
     if (!$('#xaw')) {
       if (!$('#adm')) top();
-      $('#adm').innerHTML = `<div class="xa"><div class="xa-top"><nav class="xa-tabs" aria-label="أقسام الشروحات">${XA_TABS.map(t => `<a href="#admin-explain${t[0] ? '/' + t[0] : ''}" data-t="${t[0]}">${t[1]}</a>`).join('')}</nav>
+      $('#adm').innerHTML = `<div class="xa"><div class="xa-top"><nav class="xa-tabs" aria-label="أقسام الشروحات">${XA_TABS.map(t => `<a href="#admin-explain${t[0] ? '/' + t[0] : ''}" data-t="${t[0]}">${t[1]}${t[0] === 'notes' ? '<small id="xant"></small>' : ''}</a>`).join('')}</nav>
         <div class="xa-srch"><input id="xags" type="search" placeholder="ابحث في السكربت أو في الأسئلة" autocomplete="off" aria-label="بحث في السكربت والأسئلة"><div class="xa-sr" id="xasr"></div></div></div>
-        <div id="xaw"></div><p class="xa-ft">محتوى هذي الصفحة لك أنت بس، ومشفّر بمفتاح البيانات. آخر تحديث للبيانات: <bdi dir="ltr">${esc(XA.d.built)}</bdi></p></div>`;
+        <div id="xaw"></div><p class="xa-ft">هذي الصفحة لك أنت بس. كل تعديل يطلع هنا أول ما يخلص: سوّ تحديث للصفحة (⟳). آخر تحديث للمحتوى: <bdi dir="ltr">${esc(XA.d.built)}</bdi></p></div>`;
       const gs = $('#xags'); gs.oninput = gs.onfocus = () => xaSearch(gs.value);
       $('.xa').addEventListener('click', e => { if (!e.target.closest('.xa-srch')) $('#xasr').classList.remove('on'); });
     }
+    xaNoteBadge();
     const m = (sub || '').split('/'), pg = m[0] || '';
     document.querySelectorAll('.xa-tabs a').forEach(a => a.classList.toggle('on', a.dataset.t === (pg === 'l' ? 'lessons' : pg)));
     $('#xasr').classList.remove('on');
     const W = $('#xaw');
     if (pg === 'l') { W.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; return xaLessonPage(m[1], m[2] != null ? +m[2] : null, here); }
     W.onclick = W.oninput = W.onchange = null;
-    W.innerHTML = pg === 'lessons' ? xaLessons() : pg === 'q' ? xaQuestions() : pg === 'checks' ? xaChecks() : xaHome();
-    if (pg === 'q') xaQBind(); else W.onclick = e => { const tr = e.target.closest('[data-go]'); if (tr) location.hash = tr.dataset.go; };
+    if (pg === 'lessons') XA.lf = m[1] === 'wait' ? 'wait' : m[1] === 'ok' ? 'ok' : '';
+    if (pg === 'notes') { await Promise.all([...new Set(Object.keys(XA.rv || {}).map(k => (/^xa:([a-z0-9]+)/.exec(k) || [])[1]).filter(id => id && XA.d.rel[id]))].map(id => xaLesson(id).catch(() => null))); if (!here()) return; }
+    W.innerHTML = pg === 'lessons' ? xaLessons() : pg === 'notes' ? xaNotes() : pg === 'q' ? xaQuestions() : pg === 'checks' ? xaChecks() : xaHome();
+    if (pg === 'q') xaQBind(); else if (pg === 'notes') xaNotesBind(); else W.onclick = e => { const tr = e.target.closest('[data-go]'); if (tr) location.hash = tr.dataset.go; };
     window.scrollTo(0, 0);
   }
+  function xaNoteBadge() { const b = $('#xant'); if (!b) return; const R = Object.values(XA.rv || {}), d = R.filter(x => x.st === 'done').length, o = R.filter(x => x.st === 'note').length;
+    b.textContent = d ? d : o ? o : ''; b.className = d ? 'dn' : o ? 'op' : ''; b.title = d ? 'عدّلت ' + d + ' من ملاحظاتك' : o ? o + ' ملاحظة أشتغل عليها' : ''; }
   function xaCard(p) {
-    const r = XA.d.rel[p.id], u = XA_U[p.u];
-    const body = `<span class="xa-no" style="--c:${u[1]}">${p.n}</span><span class="xa-bd"><b>${esc(p.ar)}</b>${p.nm ? `<span class="xa-pn">${esc(p.nm)}</span>` : `<span class="xa-en">${esc(p.u === 'vf' ? p.en : (r ? r.en : p.en))}</span>`}<span class="xa-mt">${xaChip(p.state)}${p.total != null ? `<span class="xa-pg">${xaN(p.done)} من ${xaN(p.total)} سؤال</span>` : ''}${r && r.min ? `<span class="xa-pg">${r.min} د</span>` : ''}</span>${p.total != null ? xaBar(p.done, p.total, u[1]) : ''}</span>`;
+    const r = XA.d.rel[p.id], u = XA_U[p.u], on = r ? xaOpen(p.id) : 0;
+    const body = `<span class="xa-no" style="--c:${u[1]}">${p.n}</span><span class="xa-bd"><b>${esc(p.ar)}</b>${p.nm ? `<span class="xa-pn">${esc(p.nm)}</span>` : `<span class="xa-en">${esc(p.u === 'vf' ? p.en : (r ? r.en : p.en))}</span>`}<span class="xa-mt">${xaChip(xaSt(p))}${on ? `<span class="xa-chip xa-st-wip">✍️ ${on}</span>` : ''}${p.total != null ? `<span class="xa-pg">${xaN(p.done)} من ${xaN(p.total)} سؤال</span>` : ''}${r && r.min ? `<span class="xa-pg">${r.min} د</span>` : ''}</span>${p.total != null ? xaBar(p.done, p.total, u[1]) : ''}</span>`;
     return r ? `<a class="xa-lc" href="#admin-explain/l/${p.id}">${body}</a>` : `<div class="xa-lc off">${body}</div>`;
   }
   function xaHome() {
-    const D = XA.d, T = D.tot, a = T.all, o = [];
+    const D = XA.d, T = D.tot, a = T.all, o = [], rel = D.plan.filter(p => D.rel[p.id]), R = Object.values(XA.rv || {});
+    const wait = rel.filter(p => xaSt(p) === 'written').length, done = R.filter(x => x.st === 'done').length, open = R.filter(x => x.st === 'note').length;
     o.push(`<div class="xa-tiles">
       <div class="xa-tile" style="--c:${XA_U.vf[1]}"><div class="lb">تأسيس اللفظي</div><div class="big">${T.vf.done} <small>من ${T.vf.total} دروس</small></div>${xaBar(T.vf.done, T.vf.total, XA_U.vf[1])}<div class="ds">${T.vf.wip ? `تحت الكتابة الحين: <b>${T.vf.wip}</b>` : 'القواعد الأربع، درس لكل قاعدة'}</div></div>
       <div class="xa-tile" style="--c:${XA_U.vm[1]}"><div class="lb">مذكرة التدريب اللفظي</div><div class="big">${xaN(T.vm.done)} <small>من ${xaN(T.vm.total)} سؤال</small></div>${xaBar(T.vm.done, T.vm.total, XA_U.vm[1])}<div class="ds">14 نموذج · ${T.vm.total ? Math.round(1000 * T.vm.done / T.vm.total) / 10 : 0}% مشروح</div></div>
       <div class="xa-tile" style="--c:${XA_U.qs[1]}"><div class="lb">مذكرة التدريب الكمي</div><div class="big">${xaN(T.qs.done)} <small>من ${xaN(T.qs.total)} سؤال</small></div>${xaBar(T.qs.done, T.qs.total, XA_U.qs[1])}<div class="ds">جاهز من عرض التأسيس <b>${xaN(T.qs.deck)}</b> · جديد <b>${xaN(T.qs.new)}</b></div></div>
       <div class="xa-tile" style="--c:var(--gold)"><div class="lb">السكربت المكتوب</div><div class="big">${xaN(a.lines)} <small>سطر</small></div><div class="ds">${xaN(Math.round(a.min))} دقيقة شرح · ${xaN(a.slides)} شريحة · ${xaN(a.pen)} حركة قلم</div><div class="ds">${D.method ? '<span class="xa-chip xa-st-approved">الطريقة معتمدة</span>' : '<span class="xa-chip xa-st-written">الطريقة تنتظر اعتمادك</span>'}</div></div></div>`);
-    if (D.needs.length) o.push(`<h2 class="xa-h">يحتاج قرارك <small>${D.needs.length}</small></h2><div class="xa-need">${D.needs.map((x, i) => `<div class="xa-it"><span class="n">${i + 1}</span><div><b>${esc(x.t)}</b><span>${esc(x.d)}</span></div></div>`).join('')}</div>`);
-    if (D.work.length) o.push(`<h2 class="xa-h">تحت الكتابة الحين</h2><div class="xa-grid">${D.work.map(w => xaPlan(w.id)).filter(Boolean).map(xaCard).join('')}</div>`);
-    const rel = D.plan.filter(p => D.rel[p.id]);
+    const need = [];
+    if (wait) need.push({ t: `دروس تنتظر مراجعتك: ${wait}`, d: 'افتح الدرس، واعتمده أو اكتب ملاحظتك على أي سطر. ملاحظتك توصلني مباشرة.', go: '#admin-explain/lessons/wait' });
+    if (done) need.push({ t: `عدّلت ${done} من ملاحظاتك`, d: 'شوف التعديل تحت كل ملاحظة: «✓ تمام» أو اكتب ملاحظة ثانية.', go: '#admin-explain/notes' });
+    if (open) need.push({ t: `ملاحظاتك اللي أشتغل عليها الحين: ${open}`, d: 'التعديل يطلع تحت كل ملاحظة أول ما يخلص.', go: '#admin-explain/notes' });
+    D.needs.forEach(x => need.push(x));
+    if (need.length) o.push(`<h2 class="xa-h">يحتاج قرارك <small>${need.length}</small></h2><div class="xa-need">${need.map((x, i) => `<div class="xa-it${x.go ? ' go' : ''}"${x.go ? ` data-go="${x.go}"` : ''}><span class="n">${i + 1}</span><div><b>${esc(x.t)}</b><span>${esc(x.d)}</span></div></div>`).join('')}</div>`);
+    if (D.work.length) o.push(`<h2 class="xa-h">تحت الكتابة الحين <small>${D.work.length}</small></h2><div class="xa-grid">${D.work.map(w => xaPlan(w.id)).filter(Boolean).map(xaCard).join('')}</div>`);
     o.push(`<h2 class="xa-h">المكتوب والجاهز للفتح <small>${rel.length}</small></h2><div class="xa-grid">${rel.map(xaCard).join('')}</div>`);
     o.push(`<h2 class="xa-h"><i style="background:${XA_U.vm[1]}"></i>مذكرة اللفظي بالأنواع</h2><div class="xa-rows">${['ana', 'sen', 'err', 'read'].map(y => { const v = T.vm.by[y] || [0, 0]; return `<div class="xa-pr"><div class="hd">${XA_TY[y]}<span>${xaN(v[1])} من ${xaN(v[0])}</span></div>${xaBar(v[1], v[0], XA_U.vm[1])}</div>`; }).join('')}</div>`);
     o.push(`<h2 class="xa-h"><i style="background:${XA_U.qs[1]}"></i>مذكرة الكمي</h2><div class="xa-rows"><div class="xa-pr"><div class="hd">أسئلة لها شرح جاهز في عرض التأسيس<span>${xaN(T.qs.deck_done)} من ${xaN(T.qs.deck)}</span></div>${xaBar(T.qs.deck_done, T.qs.deck, XA_U.qs[1])}</div>
@@ -6734,41 +6779,74 @@
     return o.join('');
   }
   function xaLessons() {
-    return ['vf', 'vm', 'qs'].map(k => { const ps = XA.d.plan.filter(p => p.u === k), done = ps.filter(p => XA.d.rel[p.id]).length;
-      return `<h2 class="xa-h"><i style="background:${XA_U[k][1]}"></i>${XA_U[k][0]} <small>${done} من ${ps.length}</small></h2><div class="xa-grid">${ps.map(xaCard).join('')}</div>`; }).join('');
+    const F = XA.lf, ok = p => !F || (F === 'wait' ? XA.d.rel[p.id] && xaSt(p) === 'written' : xaSt(p) === 'approved');
+    const chips = `<div class="xa-chips">${[['', 'كل الدروس'], ['wait', 'تنتظر مراجعتك'], ['ok', 'معتمدة']].map(([f, t]) => `<a href="#admin-explain/lessons${f ? '/' + f : ''}" class="${F === f ? 'on' : ''}">${t}</a>`).join('')}</div>`;
+    const body = ['vf', 'vm', 'qs'].map(k => { const all = XA.d.plan.filter(p => p.u === k), ps = all.filter(ok), done = all.filter(p => XA.d.rel[p.id]).length;
+      return ps.length ? `<h2 class="xa-h"><i style="background:${XA_U[k][1]}"></i>${XA_U[k][0]} <small>${done} من ${all.length}</small></h2><div class="xa-grid">${ps.map(xaCard).join('')}</div>` : ''; }).join('');
+    return chips + (body || `<div class="sum">${F === 'wait' ? 'ما فيه دروس تنتظر مراجعتك الحين.' : 'ما فيه دروس هنا.'}</div>`);
+  }
+  // 📝 سطر فيه ملاحظتك: صفراء = تنتظر تعديلي · خضراء = عدّلتها (ردّي تحتها) · «✓ تمام» يقفلها
+  function xaLine(k, txt, idx, inner) {
+    const R = xaRv(k), note = R && R.st !== 'ok' ? R.note || '' : '', cls = R && R.st === 'note' ? ' has' : R && R.st === 'done' ? ' done' : '';
+    return `<div class="xa-ln${cls}" data-k="${esc(k)}" data-t="${esc(String(txt || '').slice(0, 160))}"><span class="i">${idx}</span><div>${inner}${R && R.reply ? `<div class="xa-rp"><b>${R.st === 'done' ? '✓ عدّلتها:' : 'ردّي قبل:'}</b> ${esc(R.reply)}</div>` : ''}</div>
+      <span class="xa-nbs">${R && R.st === 'done' ? '<button type="button" class="okn">✓ تمام</button>' : ''}<button type="button" class="nb">${note ? '✍️ ملاحظتك' : '＋ ملاحظة'}</button></span><textarea placeholder="اكتب ملاحظتك هنا، وتوصلني مباشرة" aria-label="ملاحظة">${esc(note)}</textarea><span class="sv" aria-live="polite"></span></div>`;
+  }
+  function xaLineBind(W) {   // حفظ الملاحظة في الـ API: بعد ما توقف عن الكتابة، أو أول ما تطلع من الخانة (المستمعات مرة وحدة لكل #xaw)
+    if (W.__xl) return; W.__xl = 1;
+    const T = {}, save = ln => { const k = ln.dataset.k, v = $('textarea', ln).value.trim(), sv = $('.sv', ln); clearTimeout(T[k]); T[k] = null;
+      const R = xaRv(k); if ((R && R.st !== 'ok' ? R.note || '' : '') === v) return;
+      sv.textContent = 'نحفظ…'; xaSave(k, { note: v, txt: ln.dataset.t }).then(row => { sv.textContent = v ? '✓ انحفظت ووصلتني' : '✓ انشالت';
+        ln.classList.toggle('has', !!(row && row.st === 'note')); ln.classList.remove('done'); const o = $('.okn', ln); if (o) o.remove(); $('.nb', ln).textContent = v ? '✍️ ملاحظتك' : '＋ ملاحظة'; xaNoteBadge(); setTimeout(() => { if (sv.isConnected) sv.textContent = ''; }, 2500); },
+        e => { sv.textContent = ''; toast('ما انحفظت: ' + e.message); }); };
+    W.addEventListener('input', e => { if (e.target.tagName !== 'TEXTAREA') return; const ln = e.target.closest('.xa-ln'); if (!ln) return; clearTimeout(T[ln.dataset.k]); T[ln.dataset.k] = setTimeout(() => save(ln), 1200); });
+    W.addEventListener('focusout', e => { if (e.target.tagName !== 'TEXTAREA') return; const ln = e.target.closest('.xa-ln'); if (!ln) return; save(ln); if (!e.target.value.trim() && !ln.classList.contains('done')) ln.classList.remove('ed'); });
+    W.addEventListener('click', e => { const b = e.target.closest('.xa-ln .nb'); if (b) { const ln = b.closest('.xa-ln'); ln.classList.add('ed'); $('textarea', ln).focus(); return; }
+      const ok = e.target.closest('.xa-ln .okn'); if (ok) { const ln = ok.closest('.xa-ln'); xaSave(ln.dataset.k, { note: '' }).then(() => { ln.classList.remove('done', 'has', 'ed'); $('textarea', ln).value = ''; ok.remove(); $('.nb', ln).textContent = '＋ ملاحظة'; const n = ln.closest('.xa-nt'); if (n) n.remove(); xaNoteBadge(); }, er => toast(er.message)); } });
   }
   async function xaLessonPage(id, anchor, here) {
     const W = $('#xaw'), p = xaPlan(id), r = XA.d.rel[id];
     if (!p || !r) { W.innerHTML = '<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="sum">هذا الدرس ما انكتب للحين.</div>'; return; }
     let L; try { L = await xaLesson(id); } catch (e) { if (here()) W.innerHTML = `<div class="sum">تعذّر تحميل الدرس: ${esc(e.message)}</div>`; return; }
     if (!here() || !$('#xaw')) return;
-    const u = XA_U[p.u], ck = XA.d.checks[id] || {}, nt = xaNoteN(id), N = XA.notes[id] || {}, o = [];
+    const u = XA_U[p.u], ck = XA.d.checks[id] || {}, apr = (xaRv('xa:' + id) || {}).st === 'ok', o = [];
     o.push(`<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="xa-lh" style="--c:${u[1]}"><h2>${esc(xaTitle(p))}</h2><div class="t2">${esc(p.u === 'vf' ? 'Verbal Lesson ' + p.n + ' · ' + L.en : p.en + ' · ' + L.en)}</div>
-      <div class="xa-mt">${xaChip(p.state)}<span class="xa-chip">${r.slides} شريحة</span><span class="xa-chip">${r.lines} سطر</span>${r.min ? `<span class="xa-chip">${r.min} دقيقة</span>` : ''}<span class="xa-chip">${r.pen} حركة قلم</span>${p.total != null ? `<span class="xa-chip">${p.done} من ${p.total} سؤال</span>` : ''}${ck.ok === true ? '<span class="xa-chip ok">✓ كل الفحوص ناجحة</span>' : ck.ok === false ? '<span class="xa-chip no">فيه فحص ما نجح</span>' : ''}</div>${r.note ? `<p class="nt">${esc(r.note)}</p>` : ''}</div>`);
-    o.push(`<div class="xa-acts">${XA.d.px ? '<button type="button" class="xa-btn pri" id="xaplay">▶ افتح العرض</button>' : ''}<button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button><button type="button" class="xa-btn" id="xacpn">انسخ ملاحظاتي <span id="xantc">${nt ? '(' + nt + ')' : ''}</span></button></div>`);
+      <div class="xa-mt"><span id="xastc">${xaChip(xaSt(p))}</span><span class="xa-chip">${r.slides} شريحة</span><span class="xa-chip">${r.lines} سطر</span>${r.min ? `<span class="xa-chip">${r.min} دقيقة</span>` : ''}<span class="xa-chip">${r.pen} حركة قلم</span>${p.total != null ? `<span class="xa-chip">${p.done} من ${p.total} سؤال</span>` : ''}${ck.ok === true ? '<span class="xa-chip ok">✓ كل الفحوص ناجحة</span>' : ck.ok === false ? '<span class="xa-chip no">فيه فحص ما نجح</span>' : ''}</div>${r.note ? `<p class="nt">${esc(r.note)}</p>` : ''}
+      <div class="xa-gn">${xaLine('xa:' + id + ':n', 'ملاحظة عامة على الدرس', '✎', '<div class="tx gnl">ملاحظة عامة على الدرس كامل</div>')}</div></div>`);
+    o.push(`<div class="xa-acts">${XA.d.px ? '<button type="button" class="xa-btn pri" id="xaplay">▶ افتح العرض</button>' : ''}<button type="button" class="xa-btn ${apr ? 'apr on' : 'apr'}" id="xaapr" aria-pressed="${apr}">${apr ? '✓ معتمد' : '✓ أعتمد الدرس'}</button><button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button></div>`);
     o.push(`<div class="xa-jump" style="--c:${u[1]}">${L.slides.map((s, i) => `<a class="${s.k === 'ex' || s.k === 'test' ? '' : 'r'}" href="#admin-explain/l/${id}/${i}">${esc(s.k === 'ex' ? s.num : s.k === 'test' ? 'س' + s.num : XA_KN[s.k])}</a>`).join('')}</div>`);
     o.push(`<div id="xasls" class="${XA.view.sh ? 'showsh ' : ''}${XA.view.pn ? 'showpn' : ''}">`);
     L.slides.forEach((s, i) => {
       const q = s.q ? `<div class="xa-q"><div class="en">${esc(s.q.en)}</div>${s.q.ar ? `<div class="ar">${esc(s.q.ar)}</div>` : ''}<div class="os">${s.q.opts.map((t, j) => `<div class="o${'ABCD'[j] === s.ans ? ' a' : ''}">${'ABCD'[j]}) ${esc(t)}${s.q.ao[j] ? `<small>${esc(s.q.ao[j])}</small>` : ''}</div>`).join('')}</div>${s.deck ? `<div class="dk">${esc(s.deck)}</div>` : ''}</div>` : '';
-      const lines = s.lines.map((l, j) => { const key = i + ':' + j, note = N[key] || '';
-        return `<div class="xa-ln${note ? ' has' : ''}" data-k="${key}"><span class="i">${j + 1}</span><div><div class="tx">${esc(l[0])}</div>${l[1] || l[2] ? `<div class="sh">${l[1] ? `<span class="en">${esc(l[1])}</span>` : ''}${l[2] ? `<span>${esc(l[2])}</span>` : ''}</div>` : ''}${l[3] ? `<div class="pn">${esc(l[3].split(' ; ').join(String.fromCharCode(10)))}</div>` : ''}</div><button type="button" class="nb">＋ ملاحظة</button><textarea placeholder="اكتب ملاحظتك على هذا السطر" aria-label="ملاحظة على السطر ${j + 1}">${esc(note)}</textarea></div>`; }).join('');
+      const lines = s.lines.map((l, j) => xaLine('xa:' + id + ':' + i + ':' + j, l[0], j + 1, `<div class="tx">${esc(l[0])}</div>${l[1] || l[2] ? `<div class="sh">${l[1] ? `<span class="en">${esc(l[1])}</span>` : ''}${l[2] ? `<span>${esc(l[2])}</span>` : ''}</div>` : ''}${l[3] ? `<div class="pn">${esc(l[3].split(' ; ').join(String.fromCharCode(10)))}</div>` : ''}`)).join('');
       o.push(`<section class="xa-sl" id="xas${i}"><div class="hd"><b>${esc(s.nm)}</b>${s.ref ? `<span class="xa-chip" dir="ltr">${esc(s.ref)}</span>` : ''}${s.q && s.q.y ? `<span class="xa-chip">${XA_TY[s.q.y]}</span>` : ''}${s.ans ? `<span class="xa-chip ok">الجواب ${esc(s.ans)}</span>` : ''}${XA.d.px && s.go ? `<button type="button" class="xa-go" data-play="${esc(s.go)}">▶ افتحها في العرض</button>` : ''}</div>${q}${lines}</section>`);
     });
     o.push('</div>');
     W.innerHTML = o.join('');
     const box = $('#xasls'), tg = (b, k, cls) => { b.onclick = () => { XA.view[k] = XA.view[k] ? 0 : 1; lsSet('qg_xa_view', XA.view); b.setAttribute('aria-pressed', !!XA.view[k]); box.classList.toggle(cls, !!XA.view[k]); }; };
     tg($('#xatsh'), 'sh', 'showsh'); tg($('#xatpn'), 'pn', 'showpn');
-    $('#xacpn').onclick = () => { const M = XA.notes[id] || {}, t = ['ملاحظاتي على ' + xaTitle(p) + ':'];
-      L.slides.forEach((s, i) => s.lines.forEach((l, j) => { const v = M[i + ':' + j]; if (v) t.push('• ' + s.nm + ' — السطر ' + (j + 1) + ': ' + v); }));
-      if (t.length < 2) return toast('ما فيه ملاحظات على هذا الدرس'); xaCopy(t.join('\n'), 'انتسخت ملاحظاتك ✓ الصقها في المحادثة'); };
-    W.onchange = null;
-    W.onclick = e => { const b = e.target.closest('.nb'); if (b) { const ln = b.closest('.xa-ln'); ln.classList.add('ed'); $('textarea', ln).focus(); return; }
-      const pl = e.target.closest('[data-play]'); if (pl) return xaPlay(id, pl.dataset.play); if (e.target.closest('#xaplay')) xaPlay(id); };
-    W.oninput = e => { if (e.target.tagName !== 'TEXTAREA') return; const ln = e.target.closest('.xa-ln'), v = e.target.value.trim(); const M = XA.notes[id] = XA.notes[id] || {};
-      if (v) M[ln.dataset.k] = v; else delete M[ln.dataset.k]; lsSet('qg_xa_notes', XA.notes); ln.classList.toggle('has', !!v); const c = xaNoteN(id); $('#xantc').textContent = c ? '(' + c + ')' : ''; };
-    box.addEventListener('focusout', e => { if (e.target.tagName === 'TEXTAREA' && !e.target.value.trim()) e.target.closest('.xa-ln').classList.remove('ed'); });
+    $('#xaapr').onclick = async () => { const b = $('#xaapr'), on = b.getAttribute('aria-pressed') !== 'true'; b.disabled = true;
+      try { await xaSave('xa:' + id, { st: on ? 'ok' : '' }); b.setAttribute('aria-pressed', on); b.classList.toggle('on', on); b.textContent = on ? '✓ معتمد' : '✓ أعتمد الدرس'; $('#xastc').innerHTML = xaChip(xaSt(p)); toast(on ? 'اعتمدت الدرس ✓' : 'شلت الاعتماد'); }
+      catch (e) { toast(e.message); } b.disabled = false; };
+    W.onchange = W.oninput = null;
+    W.onclick = e => { const pl = e.target.closest('[data-play]'); if (pl) return xaPlay(id, pl.dataset.play); if (e.target.closest('#xaplay')) xaPlay(id); };
+    xaLineBind(W);
     const el = anchor != null && $('#xas' + anchor); if (el) el.scrollIntoView(); else window.scrollTo(0, 0);
   }
+  // 📝 كل ملاحظاتك في مكان واحد: الشروحات وسكربتات استوديو تيك توك — اللي تنتظر تعديلي أول، ثم اللي عدّلتها
+  function xaNotes() {
+    const R = Object.values(XA.rv || {}).filter(x => x.st === 'note' || x.st === 'done'), wait = R.filter(x => x.st === 'note'), done = R.filter(x => x.st === 'done');
+    const where = x => { const m = /^xa:([a-z0-9]+)(?::n|:(\d+):(\d+))?$/.exec(x.k);
+      if (m) { const p = xaPlan(m[1]), L = XA.L[m[1]], s = L && m[2] != null ? L.slides[+m[2]] : null;
+        return { t: (p ? xaTitle(p) : m[1]) + (m[2] == null ? ' · ملاحظة عامة' : ' · ' + (s ? s.nm : 'الشريحة ' + (+m[2] + 1)) + ' · السطر ' + (+m[3] + 1)), go: '#admin-explain/l/' + m[1] + (m[2] != null ? '/' + m[2] : '') }; }
+      const s = /^st:([qv])(\d+)$/.exec(x.k); return s ? { t: 'استوديو تيك توك · ' + (s[1] === 'q' ? 'الكمي' : 'التناظر') + ' Q ' + s[2] + ' · سكربت الشرح', go: '#studio-' + s[1] + '-' + s[2] } : { t: x.k, go: '' }; };
+    const item = x => { const w = where(x);
+      return `<div class="xa-nt" data-k="${esc(x.k)}"><div class="hd"><a href="${w.go}">${esc(w.t)}</a><time dir="ltr">${esc(new Date(x.at || 0).toLocaleDateString('en-CA'))}</time></div>${x.txt ? `<div class="q">«${esc(x.txt)}»</div>` : ''}
+        ${xaLine(x.k, x.txt, x.st === 'done' ? '✓' : '✍️', '')}</div>`; };
+    if (!R.length) return '<div class="sum">ما عندك ملاحظات الحين. افتح أي درس واكتب ملاحظتك على السطر اللي تبيه، أو من لوحة بطاقة التيك توك.</div>';
+    return (done.length ? `<h2 class="xa-h">عدّلتها: شوف وقل تمام <small>${done.length}</small></h2><div class="xa-nts">${done.map(item).join('')}</div>` : '') +
+      (wait.length ? `<h2 class="xa-h">تنتظر تعديلي <small>${wait.length}</small></h2><div class="xa-nts">${wait.map(item).join('')}</div>` : '');
+  }
+  function xaNotesBind() { const W = $('#xaw'); W.onclick = null; xaLineBind(W); W.querySelectorAll('.xa-nt .xa-ln').forEach(ln => ln.classList.add('ed')); }
   function xaQRows() { const F = XA.qf, t = F.t.trim().toLowerCase();
     return XA.d.rows.filter(r => (!F.u || r[1] === F.u) && (!F.n || String(r[2]) === F.n) && (!F.y || r[4] === F.y) && (F.st === '' || String(r[6]) === F.st) && (!t || (r[0] + ' ' + r[5] + ' ' + (r[8] || '')).toLowerCase().indexOf(t) >= 0)); }
   function xaQuestions() {
