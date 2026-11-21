@@ -6685,6 +6685,7 @@
   const XA_KN = { title: 'الافتتاح', words: 'الكلمات', rule: 'بطاقة', passage: 'القطعة', ex: 'سؤال', test: 'اختبر نفسك', sum: 'الملخص', end: 'الختام' };
   const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['deck', '🎓 تأسيس الكمي'], ['notes', '📝 ملاحظاتك', 1], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص', 1]];   // 1 = للمالك بس
   const XA_LV = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
+  const XA_DKC = '#0d9488';   // لون «تأسيس الكمي» في «الدروس» و«الرئيسية» (غير ألوان المجموعات الثلاث)
   const xaRaw = async name => (await admCall({ op: 'adm_xa', f: name })).t;
   const xaGet = async name => JSON.parse(await xaRaw(name));
   async function xaRevLoad() { const R = await Promise.all((isOwner() ? ['xa:', 'st:'] : ['xa:']).map(p => admCall({ op: 'adm_xa_rev', p }).then(r => r.rows || []))); XA.rv = {}; [].concat(...R).forEach(x => { XA.rv[x.k] = x; }); return XA.rv; }
@@ -6758,6 +6759,7 @@
     document.querySelectorAll('.xa-tabs a').forEach(a => a.classList.toggle('on', a.dataset.t === (pg === 'l' ? 'lessons' : pg)));
     const tbr = $('.xa-tabs'), ton = $('.xa-tabs a.on'); if (tbr && ton && tbr.scrollWidth > tbr.clientWidth + 2) ton.scrollIntoView({ block: 'nearest', inline: 'nearest' });   // الجوال: الشريط يتحرك، فالقسم المفتوح يبان كامل
     $('#xasr').classList.remove('on');
+    if ((pg === '' || pg === 'lessons') && XA.d.dk && !XA.K) { await xaDkIdx().catch(() => null); if (!here() || !$('#xaw')) return; }   // 🎓 دروس تأسيس الكمي في «الرئيسية» و«الدروس»
     const W = $('#xaw');
     if (pg === 'l') { W.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; return xaLessonPage(m[1], m[2] != null ? +m[2] : null, here); }
     W.onclick = W.oninput = W.onchange = null;
@@ -6778,6 +6780,7 @@
   function xaHome() {
     const D = XA.d, T = D.tot, a = T.all, o = [], rel = D.plan.filter(p => D.rel[p.id]), R = Object.values(XA.rv || {}), OW = isOwner();
     const wait = rel.filter(p => xaSt(p) === 'written').length, done = R.filter(x => x.st === 'done').length, open = R.filter(x => x.st === 'note').length;
+    if (D.dk) o.push(xaDkBand());
     o.push(`<div class="xa-tiles">
       <div class="xa-tile" style="--c:${XA_U.vf[1]}"><div class="lb">تأسيس اللفظي</div><div class="big">${T.vf.done} <small>من ${T.vf.total} دروس</small></div>${xaBar(T.vf.done, T.vf.total, XA_U.vf[1])}<div class="ds">${T.vf.wip ? `تحت الكتابة الحين: <b>${T.vf.wip}</b>` : 'القواعد الأربع، درس لكل قاعدة'}</div></div>
       <div class="xa-tile" style="--c:${XA_U.vm[1]}"><div class="lb">مذكرة التدريب اللفظي</div><div class="big">${xaN(T.vm.done)} <small>من ${xaN(T.vm.total)} سؤال</small></div>${xaBar(T.vm.done, T.vm.total, XA_U.vm[1])}<div class="ds">14 نموذج · ${T.vm.total ? Math.round(1000 * T.vm.done / T.vm.total) / 10 : 0}% مشروح</div></div>
@@ -6802,7 +6805,7 @@
   function xaLessons() {
     const F = XA.lf, ok = p => !F || (F === 'wait' ? XA.d.rel[p.id] && xaSt(p) === 'written' : F === 'rel' ? !!XA.d.rel[p.id] : xaSt(p) === 'approved');
     const chips = `<div class="xa-chips">${(isOwner() ? [['', 'كل الدروس'], ['wait', 'تنتظر مراجعتك'], ['ok', 'معتمدة']] : [['', 'كل الدروس'], ['rel', 'المكتوبة'], ['ok', 'معتمدة']]).map(([f, t]) => `<a href="#admin-explain/lessons${f ? '/' + f : ''}" class="${F === f ? 'on' : ''}">${t}</a>`).join('')}</div>`;
-    const body = ['vf', 'vm', 'qs'].map(k => { const all = XA.d.plan.filter(p => p.u === k), ps = all.filter(ok), done = all.filter(p => XA.d.rel[p.id]).length;
+    const body = (!F && XA.d.dk ? xaDkGroup() : '') + ['vf', 'vm', 'qs'].map(k => { const all = XA.d.plan.filter(p => p.u === k), ps = all.filter(ok), done = all.filter(p => XA.d.rel[p.id]).length;   // 🎓 «تأسيس الكمي» أول مجموعة، تحت «كل الدروس» بس
       return ps.length ? `<h2 class="xa-h"><i style="background:${XA_U[k][1]}"></i>${XA_U[k][0]} <small>${done} من ${all.length}</small></h2><div class="xa-grid">${ps.map(xaCard).join('')}</div>` : ''; }).join('');
     return chips + (body || `<div class="sum">${F === 'wait' ? 'ما فيه دروس تنتظر مراجعتك الحين.' : F === 'ok' ? 'ما فيه دروس معتمدة للحين.' : 'ما فيه دروس هنا.'}</div>`);
   }
@@ -6868,6 +6871,19 @@
     W.innerHTML = o.join('');
     W.onclick = e => { if (e.target.closest('#xadkall')) xaPlay('', '', 1); };
     window.scrollTo(0, 0);
+  }
+  // 🎓 v135 (المالك دوّر «تأسيس الكمي» في «📚 الدروس» وما لقاه): مجموعة «تأسيس الكمي» أول «الدروس» (بوحداته الخمس) وسطره أول «الرئيسية» — للمالك والمشرفين.
+  //   بطاقة الدرس تفتح نفس صفحته في تبويب «🎓 تأسيس الكمي». حالته «منشور» (ما له مراجعة هنا)، فالمجموعة تطلع تحت «كل الدروس» بس
+  const xaDkCard = l => `<a class="xa-lc" href="#admin-explain/deck/${l.id}"><span class="xa-no" style="--c:${XA_DKC}">${l.n}</span><span class="xa-bd"><b>${esc(l.ar)}</b><span class="xa-en">${esc(xaDkEn(l))}</span><span class="xa-mt"><span class="xa-chip xa-st-pub">منشور</span><span class="xa-pg">${xaPl(l.slides || 0, 'شرائح', 'شريحة')}</span><span class="xa-pg">${xaN(l.lines)} سطر</span></span></span></a>`;
+  function xaDkGroup() {
+    const K = XA.K, n = K ? K.lessons.length : XA.d.dk;
+    return `<section class="xa-dkg" style="--c:${XA_DKC}"><h2 class="xa-h"><i style="background:${XA_DKC}"></i>تأسيس الكمي <small>${xaPl(n, 'دروس', 'درس')} · منشور</small></h2>${K ? K.units.map(u => { const ls = K.lessons.filter(l => l.unit === u.n);
+      return ls.length ? `<h3 class="xa-h3">${esc(u.ar)} <small>${xaPl(ls.length, 'دروس', 'درس')}</small></h3><div class="xa-grid">${ls.map(xaDkCard).join('')}</div>` : ''; }).join('') : '<div class="sum">تعذّر تحميل دروسه الحين: سوّ تحديث (⟳)، أو افتحها من «🎓 تأسيس الكمي».</div>'}</section>`;
+  }
+  function xaDkBand() {   // «🎓 تأسيس الكمي: 29 درس» أول «الرئيسية» → تبويب «🎓 تأسيس الكمي»
+    const K = XA.K, L = K ? K.lessons : null, s = f => L.reduce((a, l) => a + (l[f] || 0), 0);
+    return `<a class="xa-dkb" href="#admin-explain/deck" style="--c:${XA_DKC}"><span class="ic" aria-hidden="true">🎓</span><span class="tx"><b>تأسيس الكمي: ${xaPl(L ? L.length : XA.d.dk, 'دروس', 'درس')}<span class="xa-chip xa-st-pub">منشور</span></b>
+      <span>${L ? `العرض المنشور بسكربته وقلمه: <i>${xaPl(K.units.length, 'وحدات', 'وحدة')}</i> · <i>${xaPl(s('slides'), 'شرائح', 'شريحة')}</i> · <i>${xaN(s('lines'))} سطر سكربت</i>` : 'العرض المنشور بسكربته وقلمه'}</span></span><span class="go">افتح الدروس ←</span></a>`;
   }
   function xaDkLine(x, j) {   // سطر من سكربت العرض: نص · {t, p} = سطر السؤال ووقت التفكير بعده · {w} = صف كلمات (الكلمة ومعناها)
     const inner = x && x.w ? `<div class="xa-dkw">${x.w.map(w => `<div><span class="en">${esc(w[0])}</span><span>${esc(w[1])}</span></div>`).join('')}</div>`
