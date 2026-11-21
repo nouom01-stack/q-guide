@@ -4141,3 +4141,10 @@ html.xa-noscroll{overflow:hidden}
 .rp-rv textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;background:var(--card);color:var(--ink);resize:vertical;margin:4px 0 8px}
 .rp-rv .rvsv{color:var(--ok);font-weight:700;font-size:calc(13px * var(--fs));margin-top:6px}
 .rp-rv .rvsv:empty{display:none}
+/* ---------- 👥 v134: المشرفين يقرون «الشروحات» (سطر بدون أزرار) + 🎓 «تأسيس الكمي» = عرض تأسيس الكمي المنشور ---------- */
+.xa-ln.ro{grid-template-columns:28px minmax(0,1fr)}
+.xa-dkr{color:var(--mut);font-size:.9em}
+.xa-dkw{display:grid;gap:5px;padding-top:2px}
+.xa-dkw div{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;line-height:1.7}
+.xa-dkw .en{display:inline;text-align:left;font-weight:800;color:var(--ink2);font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.xa-dkp{margin-top:4px}

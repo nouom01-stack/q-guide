@@ -1010,7 +1010,7 @@
     if (/^admin-report\//.test(h)) { if (auth.role === 'admin') return renderReport(decodeURIComponent(h.slice(13))); location.hash = ''; return; }   // 📊 التقرير الشامل (المالك)
     if (h === 'admin-adv') { history.replaceState(null, '', location.pathname + (auth.role === 'admin' ? '#admin-home' : '')); return route(); }   // 🗑 المرشدين الأكاديميين انشالوا (المرشد صار المساعد الذكي): الرابط القديم يرجع للوحة
     if (h === 'my-vids') { if (auth.role === 'admin' && auth.teach) return renderMyVids(); location.hash = ''; return; }   // 🎬 المدرس يرفع مقاطعه
-    if (h === 'admin-explain' || /^admin-explain\//.test(h)) { if (auth.role === 'admin') return renderExplain(h.slice(14)); location.hash = ''; return; }   // 📚 الشروحات (المالك): شرح المذكرات وتأسيس اللفظي
+    if (h === 'admin-explain' || /^admin-explain\//.test(h)) { if (auth.role === 'admin') return renderExplain(h.slice(14)); location.hash = ''; return; }   // 📚 الشروحات (المالك، والمشرفين للقراءة من v134): شرح المذكرات وتأسيس اللفظي وعرض تأسيس الكمي
     if (/^admin(-(home|staff|members|subs|pay|unpaid|vids|settings|regs|free|ai|find|eng))?$/.test(h)) { if (auth.role !== 'admin') { location.hash = ''; return; }
       const R = { admin: renderAdmin, 'admin-home': renderAdmHome, 'admin-eng': renderEngAdmin, 'admin-staff': renderStaff, 'admin-free': renderFreeUsers, 'admin-ai': renderAiAdmin, 'admin-find': renderFindLog, 'admin-subs': renderSubs, 'admin-pay': renderPay, 'admin-unpaid': renderUnpaid, 'admin-vids': renderVids, 'admin-settings': renderSettings, 'admin-regs': renderRegs, 'admin-members': renderMembers };
       return R[h](); }
@@ -6495,13 +6495,13 @@
     regs: ['📝', 'التسجيلات', 'طلبات فورم التسجيل القديم (الشيت): أكّد أو ارفض.'],
     vids: ['🎬', 'المقاطع', 'تعليقات الطلاب تحت المقاطع، ورفع مقاطع الشرح والتأسيس للموقع، وربط حسابات المدرسين عشان يرفعون مقاطعهم ويردون.'],
     studio: ['📱', 'استوديو تيك توك', 'بطاقات الأسئلة جاهزة للتصوير، مع القلم والترجمة.'],
-    explain: ['📚', 'الشروحات', 'شرح مذكرتي التدريب وتأسيس اللفظي: كل الدروس والأسئلة، والسكربت سطر بسطر، وتكتب ملاحظتك على أي سطر.'],
+    explain: ['📚', 'الشروحات', 'شرح مذكرتي التدريب وتأسيس اللفظي، وعرض تأسيس الكمي: كل الدروس والأسئلة، والسكربت سطر بسطر، وتكتب ملاحظتك على أي سطر.', 'شرح مذكرتي التدريب وتأسيس اللفظي، وعرض تأسيس الكمي: تقرأ كل درس سطر بسطر، وتشغّله كعرض.'],   // [3] = وصف الصفحة للمشرف
     staff: ['🛡', 'الفريق', 'المشرفين وصلاحياتهم.'],
     settings: ['⚙️', 'الإعدادات والسجل', 'انتهاء الاشتراكات، تنبيهاتك، النسخ الاحتياطي، وسجل كل اللي صار في اللوحة.'],
   };
   const ADM_NAV = [['نظرة عامة', ['home']], ['الطلاب', ['students', 'eng', 'ai', 'find', 'free']], ['الاشتراكات', ['subs', 'pay', 'unpaid', 'members', 'regs']], ['المحتوى', ['vids', 'studio', 'explain']], ['النظام', ['staff', 'settings']]];
   const ADM_HREF = { home: '#admin-home', students: '#admin', eng: '#admin-eng', ai: '#admin-ai', find: '#admin-find', free: '#admin-free', subs: '#admin-subs', pay: '#admin-pay', unpaid: '#admin-unpaid', members: '#admin-members', regs: '#admin-regs', vids: '#admin-vids', studio: '#studio', explain: '#admin-explain', staff: '#admin-staff', settings: '#admin-settings' };
-  const ADM_ALL = { students: 1, staff: 1, studio: 1 };   // يشوفها كل مشرف · الباقي للمالك بس
+  const ADM_ALL = { students: 1, staff: 1, studio: 1, explain: 1 };   // يشوفها كل مشرف (الشروحات: قراءة بس، v134) · الباقي للمالك بس
   function admTop(tab) {
     const OW = isOwner(), pg = ADM_PG[tab] || ADM_PG.students, H = ADM.home;
     const wait = H ? H.need.filter(x => x.k === 'salla_wait' || x.k === 'bank').reduce((a, x) => a + x.n, 0) : 0, unp = H ? H.need.filter(x => x.k === 'unpaid').reduce((a, x) => a + x.n, 0) : 0;
@@ -6513,7 +6513,7 @@
     const nav = ADM_NAV.map(([g, ks]) => { const L = ks.filter(k => OW || ADM_ALL[k]); return L.length ? `<div class="an-g"><span class="an-h">${g}</span>${L.map(item).join('')}</div>` : ''; }).join('');
     return topbar(`<span class="ttl">👑 لوحة الإدارة</span><span class="sp"></span><button class="ib" id="admref" title="تحديث" aria-label="تحديث">⟳</button>`, `<a class="ib" href="#" title="الرئيسية">→</a>`) +
       `<div class="adm-shell"><nav class="adm-nav atabs" aria-label="أقسام لوحة الإدارة">${nav}${ADM.role ? `<span class="myrole">صلاحيتك: <b>${ROLE_T[ADM.role] || ADM.role}</b></span>` : ''}</nav>
-        <main class="adm-main" id="admw"><header class="adm-hd"><h1><span aria-hidden="true">${pg[0]}</span> ${pg[1]}</h1><p>${pg[2]}</p></header><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main></div>`;
+        <main class="adm-main" id="admw"><header class="adm-hd"><h1><span aria-hidden="true">${pg[0]}</span> ${pg[1]}</h1><p>${!OW && pg[3] ? pg[3] : pg[2]}</p></header><div id="adm"><div class="center"><div class="spin" style="margin:0 auto"></div></div></div></main></div>`;
   }
   // صناديق سلة وتاب ورفع المقاطع ترسم صفحتها الحالية بعد كل إجراء
   const admRepaint = () => { const h = location.hash; if (h === '#admin-pay') paintPay(); else if (h === '#admin-unpaid') paintUnpaid(); else if (h === '#admin-vids') paintVids(); else if (h === '#admin-subs') paintSubs(); else if (h === '#my-vids') paintMyVids(); };
@@ -6670,19 +6670,24 @@
     const n = Math.max(1, dayDiff(adv.es || Date.now(), Date.now()) + 1);
     return adv.ed > 0 && n <= adv.ed ? `«إنجليزي الاختبار» · اليوم ${n} من ${adv.ed}` : 'خطة القدرات';
   }
-  // ---------- 📚 الشروحات (المالك، v129 · العرض v130 · من الـ API ومراجعتك محفوظة v133): شرح مذكرتي التدريب وتأسيس اللفظي ----------
-  // المحتوى من الـ API الخاص (cf-95: ملفات xa/ في مستودع الـ API، تنقرأ لجلسة المالك بس، بدون مفتاح): adm_xa {f}. كل تعديل يطلع هنا أول ما ينرفع: تحديث الصفحة بس.
+  // ---------- 📚 الشروحات (المالك، v129 · العرض v130 · من الـ API ومراجعتك محفوظة v133 · للمشرفين + عرض تأسيس الكمي v134): شرح مذكرتي التدريب وتأسيس اللفظي ----------
+  // المحتوى من الـ API الخاص (cf-95: ملفات xa/ في مستودع الـ API، تنقرأ لجلسات المالك والمشرفين بس، بدون مفتاح): adm_xa {f}. كل تعديل يطلع هنا أول ما ينرفع: تحديث الصفحة بس.
   // اعتمادك وملاحظاتك محفوظة في الـ API (جدول xa_rev): adm_xa_rev / adm_xa_rev_set — xa:<درس> اعتماد الدرس · xa:<درس>:n ملاحظة عامة · xa:<درس>:<شريحة>:<سطر> ملاحظة على سطر
   //   Claude يقرا ملاحظاتك ويعدّل ويكتب ردّه (reply، st = done) فيطلع تحت الملاحظة
-  const XA = { d: null, L: {}, P: {}, pu: null, rv: null, lf: '', view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
+  // 👥 v134 (طلب المالك 21 نوفمبر 2026: «ابيك تعطي المشرفين صلاحية يشوفون الدروس والشروح»): كل مشرف (كامل ومتابعة، ومنهم المدرسين) يقرا كل درس ويشغّله كعرض —
+  //   بدون اعتماد ولا ملاحظات ولا «يحتاج قرارك» ولا السجل ولا الفحوص (الـ API ما يرسل له إلا اعتماد كل درس، ويشيل «يحتاج قرارك» والسجل من الفهرس)
+  // 🎓 v134 «تأسيس الكمي» (للمالك والمشرفين): عرض تأسيس الكمي المنشور — dk = وحداته ودروسه · dk-<درس> = سكربته نص · dp = صفحة العرض · dp-<درس> = شرائحه وسكربته
+  const XA = { d: null, L: {}, P: {}, pu: null, rv: null, lf: '', K: null, KL: {}, KP: {}, ku: null, view: lsGet('qg_xa_view', { pn: 0, sh: 0 }), qf: { u: '', n: '', y: '', st: '', t: '', lim: 150 } };
   const XA_U = { vf: ['تأسيس اللفظي', '#7c3aed'], vm: ['مذكرة التدريب اللفظي', '#2563eb'], qs: ['مذكرة التدريب الكمي', '#ea580c'] };
   const XA_ST = { none: 'لم يبدأ', wip: 'قيد الكتابة', written: 'ينتظر مراجعتك', sample: 'عيّنة معتمدة', approved: 'معتمد' };
+  const XA_STS = { none: 'لم يبدأ', wip: 'قيد الكتابة', written: 'مكتوب', sample: 'عيّنة معتمدة', approved: 'معتمد' };   // نفس الحالات بكلام المشرف
   const XA_TY = { ana: 'تناظر', sen: 'إكمال جمل', err: 'خطأ سياقي', read: 'قطعة', arith: 'حساب', alg: 'جبر', geo: 'هندسة', stat: 'إحصاء' };
   const XA_KN = { title: 'الافتتاح', words: 'الكلمات', rule: 'بطاقة', passage: 'القطعة', ex: 'سؤال', test: 'اختبر نفسك', sum: 'الملخص', end: 'الختام' };
-  const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['notes', '📝 ملاحظاتك'], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص']];
+  const XA_TABS = [['', '🏠 الرئيسية'], ['lessons', '📚 الدروس'], ['deck', '🎓 تأسيس الكمي'], ['notes', '📝 ملاحظاتك', 1], ['q', '🔎 الأسئلة'], ['checks', '✅ الفحوص', 1]];   // 1 = للمالك بس
+  const XA_LV = { easy: 'سهل', medium: 'متوسط', hard: 'صعب' };
   const xaRaw = async name => (await admCall({ op: 'adm_xa', f: name })).t;
   const xaGet = async name => JSON.parse(await xaRaw(name));
-  async function xaRevLoad() { const [a, b] = await Promise.all(['xa:', 'st:'].map(p => admCall({ op: 'adm_xa_rev', p }).then(r => r.rows || []))); XA.rv = {}; a.concat(b).forEach(x => { XA.rv[x.k] = x; }); return XA.rv; }
+  async function xaRevLoad() { const R = await Promise.all((isOwner() ? ['xa:', 'st:'] : ['xa:']).map(p => admCall({ op: 'adm_xa_rev', p }).then(r => r.rows || []))); XA.rv = {}; [].concat(...R).forEach(x => { XA.rv[x.k] = x; }); return XA.rv; }
   const xaRv = k => (XA.rv && XA.rv[k]) || null;
   async function xaSave(k, body) { const r = await admCall(Object.assign({ op: 'adm_xa_rev_set', k }, body)); if (!XA.rv) XA.rv = {}; if (r.row) XA.rv[k] = r.row; else delete XA.rv[k]; return r.row; }
   const xaSt = p => (xaRv('xa:' + p.id) || {}).st === 'ok' ? 'approved' : p.state;
@@ -6694,56 +6699,70 @@
   }
   // ▶ تشغيل الدرس كعرض: صفحة العرض (xp = محرك عرض الكمي + قائمة الدروس) وبيانات كل درس (xp-<الدرس>) من الـ API. تنفتح فوق الصفحة في إطار من رابط Blob
   //   (نفس أصل الموقع)، والمحرك يطلب بيانات الدرس من window.__xaDeck بدل ملفات d/ و n/
+  //   dk = درس من عرض تأسيس الكمي: صفحته dp وبيانات دروسه dp-<الدرس> (id فاضي = صفحة البداية فيها كل الدروس)
   function xaStop() { const p = $('.xa-play'); if (p) p.remove(); document.documentElement.classList.remove('xa-noscroll'); }
   window.addEventListener('hashchange', xaStop);
-  async function xaPlay(id, go) {
+  async function xaPlay(id, go, dk) {
     xaStop();
-    const p = xaPlan(id), ov = document.createElement('div'); ov.className = 'xa-play'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'عرض الدرس');
-    ov.innerHTML = `<div class="xa-pbar"><button type="button" class="xa-px">✕ إغلاق العرض</button><b>${esc(p ? xaTitle(p) : '')}</b><span>اضغط مسافة للسطر الجاي</span></div><div class="xa-pwait"><div class="spin"></div><p>نجهّز العرض…</p></div>`;
+    const p = dk ? null : xaPlan(id), K = dk && id && XA.K ? XA.K.lessons.find(l => l.id === id) : null, ov = document.createElement('div'); ov.className = 'xa-play'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'عرض الدرس');
+    ov.innerHTML = `<div class="xa-pbar"><button type="button" class="xa-px">✕ إغلاق العرض</button><b>${esc(dk ? (K ? xaDkTitle(K) : 'عرض تأسيس الكمي') : p ? xaTitle(p) : '')}</b><span>اضغط مسافة للسطر الجاي</span></div><div class="xa-pwait"><div class="spin"></div><p>نجهّز العرض…</p></div>`;
     document.body.appendChild(ov); document.documentElement.classList.add('xa-noscroll'); $('.xa-px', ov).onclick = xaStop;
+    const C = dk ? XA.KP : XA.P, pre = dk ? 'dp-' : 'xp-';
     try {
-      if (!XA.pu) XA.pu = URL.createObjectURL(new Blob([await xaRaw('xp')], { type: 'text/html;charset=utf-8' }));
-      window.__xaDeck = lid => XA.P[lid] || (XA.P[lid] = xaGet('xp-' + lid));
-      await window.__xaDeck(id);
+      if (dk) { if (!XA.ku) XA.ku = URL.createObjectURL(new Blob([await xaRaw('dp')], { type: 'text/html;charset=utf-8' })); }
+      else if (!XA.pu) XA.pu = URL.createObjectURL(new Blob([await xaRaw('xp')], { type: 'text/html;charset=utf-8' }));
+      window.__xaDeck = lid => C[lid] || (C[lid] = xaGet(pre + lid).catch(e => { delete C[lid]; throw e; }));
+      if (id) await window.__xaDeck(id);
     } catch (e) { xaStop(); toast('تعذّر فتح العرض: ' + e.message); return; }
     if (!ov.isConnected) return;
-    const fr = document.createElement('iframe'); fr.title = 'عرض الدرس'; fr.setAttribute('allow', 'fullscreen'); fr.src = XA.pu + (go || '#' + id + '-1');
+    const fr = document.createElement('iframe'); fr.title = 'عرض الدرس'; fr.setAttribute('allow', 'fullscreen'); fr.src = (dk ? XA.ku : XA.pu) + (go || (id ? '#' + id + '-1' : ''));
     fr.onload = () => { try { fr.contentWindow.focus(); } catch (e) {} };
     $('.xa-pwait', ov).replaceWith(fr);
   }
   const xaN = x => Number(x || 0).toLocaleString('en-US');
   const xaBar = (a, b, c) => `<div class="xa-bar" style="--c:${c}"><i class="${a ? '' : 'z'}" style="width:${(b ? 100 * a / b : 0).toFixed(2)}%"></i></div>`;
-  const xaChip = st => `<span class="xa-chip xa-st-${st}">${XA_ST[st] || st}</span>`;
+  const xaChip = st => `<span class="xa-chip xa-st-${st}">${(isOwner() ? XA_ST : XA_STS)[st] || st}</span>`;
   const xaPlan = id => XA.d.plan.find(p => p.id === id);
   const xaTitle = p => { const r = XA.d.rel[p.id]; return p.u === 'vf' ? 'الدرس ' + p.n + ' · ' + p.ar : p.ar + (p.nm ? ' · ' + p.nm : r && r.ar ? ' · ' + r.ar : ''); };
   const xaLesson = async id => XA.L[id] || (XA.L[id] = await xaGet('xa-' + id));
+  // 🎓 عرض تأسيس الكمي: الفهرس (وحداته ودروسه) وسكربت كل درس، من الـ API
+  const xaDkIdx = async () => XA.K || (XA.K = await xaGet('dk'));
+  const xaDkLesson = async id => XA.KL[id] || (XA.KL[id] = await xaGet('dk-' + id));
+  const xaDkTitle = K => (K.kind === 'Skill' ? 'المهارة ' : 'الدرس ') + K.n + ' · ' + K.ar;
+  const xaDkEn = K => K.kind + ' ' + K.n + ' · ' + K.en;
+  const xaPl = (n, few, many) => xaN(n) + ' ' + (n >= 3 && n <= 10 ? few : many);   // 3–10 جمع، والباقي مفرد (5 دروس · 15 درس)
+  const xaDkTx = x => typeof x === 'string' ? x : x && x.t ? x.t : x && x.w ? x.w.map(w => w[0] + ': ' + w[1]).join(' · ') : '';
   async function renderExplain(sub) {
     document.title = 'الشروحات | Q-Guide';
     const here = () => location.hash.slice(1) === 'admin-explain' + (sub ? '/' + sub : '');
-    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.rv = null; XA.L = {}; XA.P = {}; if (XA.pu) URL.revokeObjectURL(XA.pu); XA.pu = null; xaAll = null; renderExplain(location.hash.slice(15)); }; };
+    const top = () => { app.innerHTML = admTop('explain'); bindCtl(); $('#admref').onclick = () => { XA.d = null; XA.rv = null; XA.L = {}; XA.P = {}; XA.K = null; XA.KL = {}; XA.KP = {}; [XA.pu, XA.ku].forEach(u => { if (u) URL.revokeObjectURL(u); }); XA.pu = XA.ku = null; xaAll = null; renderExplain(location.hash.slice(15)); }; };
     if (!$('#xaw')) top();
     try {
-      await admLoadStaff(); if (!isOwner()) { location.hash = '#admin'; return; }
+      await admLoadStaff();
       if (!XA.d) [XA.d] = await Promise.all([xaGet('xa'), xaRevLoad()]); else await xaRevLoad();   // اعتمادك وملاحظاتك وردودي: طازجة في كل صفحة
     } catch (e) { const a = $('#adm'); if (a) a.innerHTML = `<div class="sum">تعذّر تحميل الشروحات: ${esc(e.message)}</div>`; return; }
-    xaMigrate();
+    const OW = isOwner(), m = (sub || '').split('/'), pg = m[0] || '';
+    if (OW) xaMigrate();
     if (!here()) return;
+    if (!OW && (pg === 'notes' || pg === 'checks')) { location.hash = '#admin-explain'; return; }   // الملاحظات والفحوص للمالك بس
     if (!$('#xaw')) {
       if (!$('#adm')) top();
-      $('#adm').innerHTML = `<div class="xa"><div class="xa-top"><nav class="xa-tabs" aria-label="أقسام الشروحات">${XA_TABS.map(t => `<a href="#admin-explain${t[0] ? '/' + t[0] : ''}" data-t="${t[0]}">${t[1]}${t[0] === 'notes' ? '<small id="xant"></small>' : ''}</a>`).join('')}</nav>
+      const tabs = XA_TABS.filter(t => (OW || !t[2]) && (t[0] !== 'deck' || XA.d.dk));
+      $('#adm').innerHTML = `<div class="xa"><div class="xa-top"><nav class="xa-tabs" aria-label="أقسام الشروحات">${tabs.map(t => `<a href="#admin-explain${t[0] ? '/' + t[0] : ''}" data-t="${t[0]}">${t[1]}${t[0] === 'notes' ? '<small id="xant"></small>' : ''}</a>`).join('')}</nav>
         <div class="xa-srch"><input id="xags" type="search" placeholder="ابحث في السكربت أو في الأسئلة" autocomplete="off" aria-label="بحث في السكربت والأسئلة"><div class="xa-sr" id="xasr"></div></div></div>
-        <div id="xaw"></div><p class="xa-ft">هذي الصفحة لك أنت بس. كل تعديل يطلع هنا أول ما يخلص: سوّ تحديث للصفحة (⟳). آخر تحديث للمحتوى: <bdi dir="ltr">${esc(XA.d.built)}</bdi></p></div>`;
+        <div id="xaw"></div><p class="xa-ft">${OW ? 'المشرفين يشوفون الدروس هنا للقراءة بس، بدون اعتمادك وملاحظاتك و«يحتاج قرارك». كل تعديل يطلع هنا أول ما يخلص: سوّ تحديث للصفحة (⟳).' :'هذي الصفحة للقراءة: تفتح أي درس وتشغّله كعرض. اعتماد الدروس والملاحظات عليها للمالك بس.'} آخر تحديث للمحتوى: <bdi dir="ltr">${esc(XA.d.built)}</bdi></p></div>`;
       const gs = $('#xags'); gs.oninput = gs.onfocus = () => xaSearch(gs.value);
       $('.xa').addEventListener('click', e => { if (!e.target.closest('.xa-srch')) $('#xasr').classList.remove('on'); });
     }
     xaNoteBadge();
-    const m = (sub || '').split('/'), pg = m[0] || '';
     document.querySelectorAll('.xa-tabs a').forEach(a => a.classList.toggle('on', a.dataset.t === (pg === 'l' ? 'lessons' : pg)));
+    const tbr = $('.xa-tabs'), ton = $('.xa-tabs a.on'); if (tbr && ton && tbr.scrollWidth > tbr.clientWidth + 2) ton.scrollIntoView({ block: 'nearest', inline: 'nearest' });   // الجوال: الشريط يتحرك، فالقسم المفتوح يبان كامل
     $('#xasr').classList.remove('on');
     const W = $('#xaw');
     if (pg === 'l') { W.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; return xaLessonPage(m[1], m[2] != null ? +m[2] : null, here); }
     W.onclick = W.oninput = W.onchange = null;
-    if (pg === 'lessons') XA.lf = m[1] === 'wait' ? 'wait' : m[1] === 'ok' ? 'ok' : '';
+    if (pg === 'deck') { W.innerHTML = '<div class="center"><div class="spin" style="margin:0 auto"></div></div>'; return m[1] ? xaDkPage(m[1], m[2] != null ? +m[2] : null, here) : xaDkHome(here); }
+    if (pg === 'lessons') XA.lf = m[1] === 'wait' ? 'wait' : m[1] === 'ok' ? 'ok' : m[1] === 'rel' ? 'rel' : '';
     if (pg === 'notes') { await Promise.all([...new Set(Object.keys(XA.rv || {}).map(k => (/^xa:([a-z0-9]+)/.exec(k) || [])[1]).filter(id => id && XA.d.rel[id]))].map(id => xaLesson(id).catch(() => null))); if (!here()) return; }
     W.innerHTML = pg === 'lessons' ? xaLessons() : pg === 'notes' ? xaNotes() : pg === 'q' ? xaQuestions() : pg === 'checks' ? xaChecks() : xaHome();
     if (pg === 'q') xaQBind(); else if (pg === 'notes') xaNotesBind(); else W.onclick = e => { const tr = e.target.closest('[data-go]'); if (tr) location.hash = tr.dataset.go; };
@@ -6757,37 +6776,40 @@
     return r ? `<a class="xa-lc" href="#admin-explain/l/${p.id}">${body}</a>` : `<div class="xa-lc off">${body}</div>`;
   }
   function xaHome() {
-    const D = XA.d, T = D.tot, a = T.all, o = [], rel = D.plan.filter(p => D.rel[p.id]), R = Object.values(XA.rv || {});
+    const D = XA.d, T = D.tot, a = T.all, o = [], rel = D.plan.filter(p => D.rel[p.id]), R = Object.values(XA.rv || {}), OW = isOwner();
     const wait = rel.filter(p => xaSt(p) === 'written').length, done = R.filter(x => x.st === 'done').length, open = R.filter(x => x.st === 'note').length;
     o.push(`<div class="xa-tiles">
       <div class="xa-tile" style="--c:${XA_U.vf[1]}"><div class="lb">تأسيس اللفظي</div><div class="big">${T.vf.done} <small>من ${T.vf.total} دروس</small></div>${xaBar(T.vf.done, T.vf.total, XA_U.vf[1])}<div class="ds">${T.vf.wip ? `تحت الكتابة الحين: <b>${T.vf.wip}</b>` : 'القواعد الأربع، درس لكل قاعدة'}</div></div>
       <div class="xa-tile" style="--c:${XA_U.vm[1]}"><div class="lb">مذكرة التدريب اللفظي</div><div class="big">${xaN(T.vm.done)} <small>من ${xaN(T.vm.total)} سؤال</small></div>${xaBar(T.vm.done, T.vm.total, XA_U.vm[1])}<div class="ds">14 نموذج · ${T.vm.total ? Math.round(1000 * T.vm.done / T.vm.total) / 10 : 0}% مشروح</div></div>
       <div class="xa-tile" style="--c:${XA_U.qs[1]}"><div class="lb">مذكرة التدريب الكمي</div><div class="big">${xaN(T.qs.done)} <small>من ${xaN(T.qs.total)} سؤال</small></div>${xaBar(T.qs.done, T.qs.total, XA_U.qs[1])}<div class="ds">جاهز من عرض التأسيس <b>${xaN(T.qs.deck)}</b> · جديد <b>${xaN(T.qs.new)}</b></div></div>
-      <div class="xa-tile" style="--c:var(--gold)"><div class="lb">السكربت المكتوب</div><div class="big">${xaN(a.lines)} <small>سطر</small></div><div class="ds">${xaN(Math.round(a.min))} دقيقة شرح · ${xaN(a.slides)} شريحة · ${xaN(a.pen)} حركة قلم</div><div class="ds">${D.method ? '<span class="xa-chip xa-st-approved">الطريقة معتمدة</span>' : '<span class="xa-chip xa-st-written">الطريقة تنتظر اعتمادك</span>'}</div></div></div>`);
+      <div class="xa-tile" style="--c:var(--gold)"><div class="lb">السكربت المكتوب</div><div class="big">${xaN(a.lines)} <small>سطر</small></div><div class="ds">${xaN(Math.round(a.min))} دقيقة شرح · ${xaN(a.slides)} شريحة · ${xaN(a.pen)} حركة قلم</div>${OW ? `<div class="ds">${D.method ? '<span class="xa-chip xa-st-approved">الطريقة معتمدة</span>' : '<span class="xa-chip xa-st-written">الطريقة تنتظر اعتمادك</span>'}</div>` : ''}</div></div>`);
     const need = [];
-    if (wait) need.push({ t: `دروس تنتظر مراجعتك: ${wait}`, d: 'افتح الدرس، واعتمده أو اكتب ملاحظتك على أي سطر. ملاحظتك توصلني مباشرة.', go: '#admin-explain/lessons/wait' });
-    if (done) need.push({ t: `عدّلت ${done} من ملاحظاتك`, d: 'شوف التعديل تحت كل ملاحظة: «✓ تمام» أو اكتب ملاحظة ثانية.', go: '#admin-explain/notes' });
-    if (open) need.push({ t: `ملاحظاتك اللي أشتغل عليها الحين: ${open}`, d: 'التعديل يطلع تحت كل ملاحظة أول ما يخلص.', go: '#admin-explain/notes' });
-    D.needs.forEach(x => need.push(x));
+    if (OW) {   // «يحتاج قرارك» للمالك بس
+      if (wait) need.push({ t: `دروس تنتظر مراجعتك: ${wait}`, d: 'افتح الدرس، واعتمده أو اكتب ملاحظتك على أي سطر. ملاحظتك توصلني مباشرة.', go: '#admin-explain/lessons/wait' });
+      if (done) need.push({ t: `عدّلت ${done} من ملاحظاتك`, d: 'شوف التعديل تحت كل ملاحظة: «✓ تمام» أو اكتب ملاحظة ثانية.', go: '#admin-explain/notes' });
+      if (open) need.push({ t: `ملاحظاتك اللي أشتغل عليها الحين: ${open}`, d: 'التعديل يطلع تحت كل ملاحظة أول ما يخلص.', go: '#admin-explain/notes' });
+      D.needs.forEach(x => need.push(x));
+    }
     if (need.length) o.push(`<h2 class="xa-h">يحتاج قرارك <small>${need.length}</small></h2><div class="xa-need">${need.map((x, i) => `<div class="xa-it${x.go ? ' go' : ''}"${x.go ? ` data-go="${x.go}"` : ''}><span class="n">${i + 1}</span><div><b>${esc(x.t)}</b><span>${esc(x.d)}</span></div></div>`).join('')}</div>`);
     if (D.work.length) o.push(`<h2 class="xa-h">تحت الكتابة الحين <small>${D.work.length}</small></h2><div class="xa-grid">${D.work.map(w => xaPlan(w.id)).filter(Boolean).map(xaCard).join('')}</div>`);
     o.push(`<h2 class="xa-h">المكتوب والجاهز للفتح <small>${rel.length}</small></h2><div class="xa-grid">${rel.map(xaCard).join('')}</div>`);
     o.push(`<h2 class="xa-h"><i style="background:${XA_U.vm[1]}"></i>مذكرة اللفظي بالأنواع</h2><div class="xa-rows">${['ana', 'sen', 'err', 'read'].map(y => { const v = T.vm.by[y] || [0, 0]; return `<div class="xa-pr"><div class="hd">${XA_TY[y]}<span>${xaN(v[1])} من ${xaN(v[0])}</span></div>${xaBar(v[1], v[0], XA_U.vm[1])}</div>`; }).join('')}</div>`);
     o.push(`<h2 class="xa-h"><i style="background:${XA_U.qs[1]}"></i>مذكرة الكمي</h2><div class="xa-rows"><div class="xa-pr"><div class="hd">أسئلة لها شرح جاهز في عرض التأسيس<span>${xaN(T.qs.deck_done)} من ${xaN(T.qs.deck)}</span></div>${xaBar(T.qs.deck_done, T.qs.deck, XA_U.qs[1])}</div>
       <div class="xa-pr"><div class="hd">أسئلة جديدة تنكتب من الصفر<span>${xaN(T.qs.new_done)} من ${xaN(T.qs.new)}</span></div>${xaBar(T.qs.new_done, T.qs.new, XA_U.qs[1])}</div></div>`);
-    if (D.log.length) o.push(`<h2 class="xa-h">آخر اللي صار</h2><div class="xa-log">${D.log.slice().reverse().map(x => `<div><time dir="ltr">${esc(x.d)}</time><span>${esc(x.t)}</span></div>`).join('')}</div>`);
+    if (OW && D.log.length) o.push(`<h2 class="xa-h">آخر اللي صار</h2><div class="xa-log">${D.log.slice().reverse().map(x => `<div><time dir="ltr">${esc(x.d)}</time><span>${esc(x.t)}</span></div>`).join('')}</div>`);
     return o.join('');
   }
   function xaLessons() {
-    const F = XA.lf, ok = p => !F || (F === 'wait' ? XA.d.rel[p.id] && xaSt(p) === 'written' : xaSt(p) === 'approved');
-    const chips = `<div class="xa-chips">${[['', 'كل الدروس'], ['wait', 'تنتظر مراجعتك'], ['ok', 'معتمدة']].map(([f, t]) => `<a href="#admin-explain/lessons${f ? '/' + f : ''}" class="${F === f ? 'on' : ''}">${t}</a>`).join('')}</div>`;
+    const F = XA.lf, ok = p => !F || (F === 'wait' ? XA.d.rel[p.id] && xaSt(p) === 'written' : F === 'rel' ? !!XA.d.rel[p.id] : xaSt(p) === 'approved');
+    const chips = `<div class="xa-chips">${(isOwner() ? [['', 'كل الدروس'], ['wait', 'تنتظر مراجعتك'], ['ok', 'معتمدة']] : [['', 'كل الدروس'], ['rel', 'المكتوبة'], ['ok', 'معتمدة']]).map(([f, t]) => `<a href="#admin-explain/lessons${f ? '/' + f : ''}" class="${F === f ? 'on' : ''}">${t}</a>`).join('')}</div>`;
     const body = ['vf', 'vm', 'qs'].map(k => { const all = XA.d.plan.filter(p => p.u === k), ps = all.filter(ok), done = all.filter(p => XA.d.rel[p.id]).length;
       return ps.length ? `<h2 class="xa-h"><i style="background:${XA_U[k][1]}"></i>${XA_U[k][0]} <small>${done} من ${all.length}</small></h2><div class="xa-grid">${ps.map(xaCard).join('')}</div>` : ''; }).join('');
-    return chips + (body || `<div class="sum">${F === 'wait' ? 'ما فيه دروس تنتظر مراجعتك الحين.' : 'ما فيه دروس هنا.'}</div>`);
+    return chips + (body || `<div class="sum">${F === 'wait' ? 'ما فيه دروس تنتظر مراجعتك الحين.' : F === 'ok' ? 'ما فيه دروس معتمدة للحين.' : 'ما فيه دروس هنا.'}</div>`);
   }
   // 📝 سطر فيه ملاحظتك: صفراء = تنتظر تعديلي · خضراء = عدّلتها (ردّي تحتها) · «✓ تمام» يقفلها
   function xaLine(k, txt, idx, inner) {
-    const R = xaRv(k), note = R && R.st !== 'ok' ? R.note || '' : '', cls = R && R.st === 'note' ? ' has' : R && R.st === 'done' ? ' done' : '';
+    if (!isOwner()) return `<div class="xa-ln ro"><span class="i">${idx}</span><div>${inner}</div></div>`;   // المشرف: السطر للقراءة بس
+    const R = xaRv(k), note =R && R.st !== 'ok' ? R.note || '' : '', cls = R && R.st === 'note' ? ' has' : R && R.st === 'done' ? ' done' : '';
     return `<div class="xa-ln${cls}" data-k="${esc(k)}" data-t="${esc(String(txt || '').slice(0, 160))}"><span class="i">${idx}</span><div>${inner}${R && R.reply ? `<div class="xa-rp"><b>${R.st === 'done' ? '✓ عدّلتها:' : 'ردّي قبل:'}</b> ${esc(R.reply)}</div>` : ''}</div>
       <span class="xa-nbs">${R && R.st === 'done' ? '<button type="button" class="okn">✓ تمام</button>' : ''}<button type="button" class="nb">${note ? '✍️ ملاحظتك' : '＋ ملاحظة'}</button></span><textarea placeholder="اكتب ملاحظتك هنا، وتوصلني مباشرة" aria-label="ملاحظة">${esc(note)}</textarea><span class="sv" aria-live="polite"></span></div>`;
   }
@@ -6808,11 +6830,11 @@
     if (!p || !r) { W.innerHTML = '<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="sum">هذا الدرس ما انكتب للحين.</div>'; return; }
     let L; try { L = await xaLesson(id); } catch (e) { if (here()) W.innerHTML = `<div class="sum">تعذّر تحميل الدرس: ${esc(e.message)}</div>`; return; }
     if (!here() || !$('#xaw')) return;
-    const u = XA_U[p.u], ck = XA.d.checks[id] || {}, apr = (xaRv('xa:' + id) || {}).st === 'ok', o = [];
+    const u = XA_U[p.u], ck = XA.d.checks[id] || {}, apr = (xaRv('xa:' + id) || {}).st === 'ok', o = [], OW = isOwner();
     o.push(`<a class="xa-crumb" href="#admin-explain/lessons">→ كل الدروس</a><div class="xa-lh" style="--c:${u[1]}"><h2>${esc(xaTitle(p))}</h2><div class="t2">${esc(p.u === 'vf' ? 'Verbal Lesson ' + p.n + ' · ' + L.en : p.en + ' · ' + L.en)}</div>
       <div class="xa-mt"><span id="xastc">${xaChip(xaSt(p))}</span><span class="xa-chip">${r.slides} شريحة</span><span class="xa-chip">${r.lines} سطر</span>${r.min ? `<span class="xa-chip">${r.min} دقيقة</span>` : ''}<span class="xa-chip">${r.pen} حركة قلم</span>${p.total != null ? `<span class="xa-chip">${p.done} من ${p.total} سؤال</span>` : ''}${ck.ok === true ? '<span class="xa-chip ok">✓ كل الفحوص ناجحة</span>' : ck.ok === false ? '<span class="xa-chip no">فيه فحص ما نجح</span>' : ''}</div>${r.note ? `<p class="nt">${esc(r.note)}</p>` : ''}
-      <div class="xa-gn">${xaLine('xa:' + id + ':n', 'ملاحظة عامة على الدرس', '✎', '<div class="tx gnl">ملاحظة عامة على الدرس كامل</div>')}</div></div>`);
-    o.push(`<div class="xa-acts">${XA.d.px ? '<button type="button" class="xa-btn pri" id="xaplay">▶ افتح العرض</button>' : ''}<button type="button" class="xa-btn ${apr ? 'apr on' : 'apr'}" id="xaapr" aria-pressed="${apr}">${apr ? '✓ معتمد' : '✓ أعتمد الدرس'}</button><button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button></div>`);
+      ${OW ? `<div class="xa-gn">${xaLine('xa:' + id + ':n', 'ملاحظة عامة على الدرس', '✎', '<div class="tx gnl">ملاحظة عامة على الدرس كامل</div>')}</div>` : ''}</div>`);
+    o.push(`<div class="xa-acts">${XA.d.px ? '<button type="button" class="xa-btn pri" id="xaplay">▶ افتح العرض</button>' : ''}${OW ? `<button type="button" class="xa-btn ${apr ? 'apr on' : 'apr'}" id="xaapr" aria-pressed="${apr}">${apr ? '✓ معتمد' : '✓ أعتمد الدرس'}</button>` : ''}<button type="button" class="xa-btn tg" id="xatsh" aria-pressed="${!!XA.view.sh}">اللي يظهر على الشريحة</button><button type="button" class="xa-btn tg" id="xatpn" aria-pressed="${!!XA.view.pn}">حركة القلم</button></div>`);
     o.push(`<div class="xa-jump" style="--c:${u[1]}">${L.slides.map((s, i) => `<a class="${s.k === 'ex' || s.k === 'test' ? '' : 'r'}" href="#admin-explain/l/${id}/${i}">${esc(s.k === 'ex' ? s.num : s.k === 'test' ? 'س' + s.num : XA_KN[s.k])}</a>`).join('')}</div>`);
     o.push(`<div id="xasls" class="${XA.view.sh ? 'showsh ' : ''}${XA.view.pn ? 'showpn' : ''}">`);
     L.slides.forEach((s, i) => {
@@ -6824,12 +6846,50 @@
     W.innerHTML = o.join('');
     const box = $('#xasls'), tg = (b, k, cls) => { b.onclick = () => { XA.view[k] = XA.view[k] ? 0 : 1; lsSet('qg_xa_view', XA.view); b.setAttribute('aria-pressed', !!XA.view[k]); box.classList.toggle(cls, !!XA.view[k]); }; };
     tg($('#xatsh'), 'sh', 'showsh'); tg($('#xatpn'), 'pn', 'showpn');
-    $('#xaapr').onclick = async () => { const b = $('#xaapr'), on = b.getAttribute('aria-pressed') !== 'true'; b.disabled = true;
+    if (OW) $('#xaapr').onclick = async () => { const b = $('#xaapr'), on = b.getAttribute('aria-pressed') !== 'true'; b.disabled = true;
       try { await xaSave('xa:' + id, { st: on ? 'ok' : '' }); b.setAttribute('aria-pressed', on); b.classList.toggle('on', on); b.textContent = on ? '✓ معتمد' : '✓ أعتمد الدرس'; $('#xastc').innerHTML = xaChip(xaSt(p)); toast(on ? 'اعتمدت الدرس ✓' : 'شلت الاعتماد'); }
       catch (e) { toast(e.message); } b.disabled = false; };
     W.onchange = W.oninput = null;
     W.onclick = e => { const pl = e.target.closest('[data-play]'); if (pl) return xaPlay(id, pl.dataset.play); if (e.target.closest('#xaplay')) xaPlay(id); };
-    xaLineBind(W);
+    if (OW) xaLineBind(W);
+    const el = anchor != null && $('#xas' + anchor); if (el) el.scrollIntoView(); else window.scrollTo(0, 0);
+  }
+  // 🎓 «تأسيس الكمي» (v134): عرض تأسيس الكمي المنشور — دروسه بالوحدات، وسكربت كل درس سطر بسطر، وتشغيله داخل الصفحة (للمالك والمشرفين، قراءة بس)
+  async function xaDkHome(here) {
+    const W = $('#xaw'); let K; try { K = await xaDkIdx(); } catch (e) { if (here()) W.innerHTML = `<div class="sum">تعذّر تحميل عرض تأسيس الكمي: ${esc(e.message)}</div>`; return; }
+    if (!here() || !$('#xaw')) return;
+    const L = K.lessons, n = f => L.reduce((a, l) => a + (l[f] || 0), 0), o = [];
+    o.push(`<div class="xa-lh" style="--c:${XA_U.qs[1]}"><h2>عرض تأسيس الكمي</h2><div class="t2">Quant Foundation · ${L.length} lessons</div>
+      <div class="xa-mt"><span class="xa-chip">${xaPl(L.length, 'دروس', 'درس')}</span><span class="xa-chip">${xaPl(n('slides'), 'شرائح', 'شريحة')}</span><span class="xa-chip">${xaN(n('lines'))} سطر سكربت</span><span class="xa-chip">${xaPl(n('ex'), 'أمثلة', 'مثال')}</span><span class="xa-chip">اختبر نفسك: ${xaN(n('test'))} سؤال</span></div>
+      <p class="nt">نفس العرض المنشور بسكربته وقلمه، بدون الأصوات الآلية. افتح أي درس تقرأ سكربته سطر بسطر، أو شغّله كعرض.</p></div>
+      <div class="xa-acts"><button type="button" class="xa-btn pri" id="xadkall">▶ افتح العرض من البداية</button></div>`);
+    K.units.forEach(u => { const ls = L.filter(l => l.unit === u.n); if (!ls.length) return;
+      o.push(`<h2 class="xa-h"><i style="background:${u.color}"></i>${esc(u.ar)} <small>${xaPl(ls.length, 'دروس', 'درس')}</small></h2><div class="xa-grid">${ls.map(l => `<a class="xa-lc" href="#admin-explain/deck/${l.id}"><span class="xa-no" style="--c:${u.color}">${l.n}</span><span class="xa-bd"><b>${esc(l.ar)}</b><span class="xa-en">${esc(xaDkEn(l))}</span><span class="xa-mt"><span class="xa-pg">${xaPl(l.slides, 'شرائح', 'شريحة')}</span><span class="xa-pg">${xaPl(l.ex, 'أمثلة', 'مثال')}</span><span class="xa-pg">اختبر نفسك ${l.test}</span></span></span></a>`).join('')}</div>`); });
+    W.innerHTML = o.join('');
+    W.onclick = e => { if (e.target.closest('#xadkall')) xaPlay('', '', 1); };
+    window.scrollTo(0, 0);
+  }
+  function xaDkLine(x, j) {   // سطر من سكربت العرض: نص · {t, p} = سطر السؤال ووقت التفكير بعده · {w} = صف كلمات (الكلمة ومعناها)
+    const inner = x && x.w ? `<div class="xa-dkw">${x.w.map(w => `<div><span class="en">${esc(w[0])}</span><span>${esc(w[1])}</span></div>`).join('')}</div>`
+      : `<div class="tx">${esc(xaDkTx(x))}</div>${x && x.p ? `<span class="xa-chip xa-dkp">⏸ وقت تفكير ${x.p} ث</span>` : ''}`;
+    return `<div class="xa-ln ro"><span class="i">${j}</span><div>${inner}</div></div>`;
+  }
+  async function xaDkPage(id, anchor, here) {
+    const W = $('#xaw'), back = '<a class="xa-crumb" href="#admin-explain/deck">→ كل دروس تأسيس الكمي</a>';
+    let K, T; try { [K, T] = await Promise.all([xaDkIdx(), xaDkLesson(id)]); } catch (e) { if (here()) W.innerHTML = back + `<div class="sum">تعذّر تحميل الدرس: ${esc(e.message)}</div>`; return; }
+    if (!here() || !$('#xaw')) return;
+    const l = K.lessons.find(x => x.id === id) || {}, u = K.units.find(x => x.n === T.unit) || { color: XA_U.qs[1], ar: '' }, c = u.color, o = [];
+    const ns = T.slides.filter(s => s.k === 'sum').length; let si = 0;
+    const nm = T.slides.map(s => s.k === 'title' ? 'الافتتاح' : s.k === 'words' ? 'الكلمات' : s.k === 'rule' ? 'القاعدة ' + s.n : s.k === 'ex' ? 'مثال ' + s.n : s.k === 'test' ? 'اختبر نفسك ' + s.n : s.k === 'sum' ? 'الملخص' + (ns > 1 ? ' ' + (++si) : '') : s.k);
+    o.push(back + `<div class="xa-lh" style="--c:${c}"><h2>${esc(xaDkTitle(T))}</h2><div class="t2">${esc(xaDkEn(T) + (T.meta ? ' · ' + T.meta : ''))}</div>
+      <div class="xa-mt">${u.ar ? `<span class="xa-chip">${esc(u.ar)}</span>` : ''}<span class="xa-chip">${xaPl(T.slides.length, 'شرائح', 'شريحة')}</span><span class="xa-chip">${xaN(l.lines || 0)} سطر</span><span class="xa-chip">${xaPl(l.ex || 0, 'أمثلة', 'مثال')}</span><span class="xa-chip">اختبر نفسك: ${l.test || 0}</span></div></div>`);
+    o.push(`<div class="xa-acts"><button type="button" class="xa-btn pri" id="xaplay">▶ افتح العرض</button></div>`);
+    o.push(`<div class="xa-jump" style="--c:${c}">${T.slides.map((s, i) => `<a class="${s.k === 'ex' || s.k === 'test' ? '' : 'r'}" href="#admin-explain/deck/${id}/${i}">${esc(s.k === 'ex' ? s.n : s.k === 'test' ? 'س' + s.n : s.k === 'rule' ? 'ق' + s.n : nm[i])}</a>`).join('')}</div><div id="xasls">`);
+    T.slides.forEach((s, i) => o.push(`<section class="xa-sl" id="xas${i}"><div class="hd"><b>${esc(nm[i])}</b>${s.k === 'rule' && s.ar ? `<span class="xa-dkr">${esc(s.ar)}</span>` : ''}${s.ref ? `<span class="xa-chip" dir="ltr">${esc(s.ref)}</span>` : ''}${s.lv ? `<span class="xa-chip">${XA_LV[s.lv] || esc(s.lv)}</span>` : ''}${s.a ? `<span class="xa-chip ok">الجواب ${esc(s.a)}</span>` : ''}<button type="button" class="xa-go" data-play="#${id}-${i + 1}">▶ افتحها في العرض</button></div>${(s.lines || []).map((x, j) => xaDkLine(x, j + 1)).join('')}</section>`));
+    o.push('</div>');
+    W.innerHTML = o.join('');
+    W.onchange = W.oninput = null;
+    W.onclick = e => { const pl = e.target.closest('[data-play]'); if (pl) return xaPlay(id, pl.dataset.play, 1); if (e.target.closest('#xaplay')) xaPlay(id, '', 1); };
     const el = anchor != null && $('#xas' + anchor); if (el) el.scrollIntoView(); else window.scrollTo(0, 0);
   }
   // 📝 كل ملاحظاتك في مكان واحد: الشروحات وسكربتات استوديو تيك توك — اللي تنتظر تعديلي أول، ثم اللي عدّلتها
@@ -6855,10 +6915,12 @@
       <input id="xaft" type="search" placeholder="كلمة من السؤال أو رقمه" aria-label="بحث في الأسئلة"><span class="c" id="xaqc"></span></div>
       <div class="xa-tw"><table><thead><tr><th>المرجع</th><th>المكان</th><th>النوع</th><th>السؤال</th><th>الحالة</th></tr></thead><tbody id="xaqb"></tbody></table></div></div><button type="button" class="xa-btn more" id="xaqm">اعرض أكثر</button>`;
   }
+  // وين يفتح سؤال الجدول: شريحته في الدرس اللي شرحه، أو (جاهز في عرض التأسيس) شريحته في «تأسيس الكمي» — r[7] = [درس العرض، رقم الشريحة في عنوانه]
+  const xaQGo = r => r[6] === 2 || r[6] === 3 ? '#admin-explain/l/' + r[7][0] + '/' + r[7][1] : r[6] === 1 && XA.d.dk && r[7] ? '#admin-explain/deck/' + r[7][0] + '/' + (r[7][1] - 1) : '';
   function xaQTable() {
     const F = XA.qf, rs = xaQRows();
-    $('#xaqb').innerHTML = rs.slice(0, F.lim).map(r => { const st = r[6] === 2 ? '<span class="xa-chip xa-st-approved">مشروح</span>' : r[6] === 3 ? '<span class="xa-chip xa-st-sample">مشروح في تأسيس اللفظي</span>' : r[6] === 1 ? '<span class="xa-chip xa-st-written">جاهز في عرض التأسيس</span>' : '<span class="xa-chip xa-st-none">ما انكتب</span>';
-      return `<tr${r[6] === 2 || r[6] === 3 ? ` class="go" data-go="#admin-explain/l/${r[7][0]}/${r[7][1]}"` : ''}><td class="ref">${esc(r[0])}</td><td>${r[1] === 'vm' ? 'النموذج' : 'القسم'} ${r[2]}</td><td>${XA_TY[r[4]]}</td><td><span class="en">${esc(r[5])}</span></td><td class="st">${st}${r[8] && r[6] !== 3 ? `<span class="x">${esc(r[8])}</span>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="5" class="xa-empty">ما فيه أسئلة بهذي الشروط.</td></tr>';
+    $('#xaqb').innerHTML = rs.slice(0, F.lim).map(r => { const st = r[6] === 2 ? '<span class="xa-chip xa-st-approved">مشروح</span>' : r[6] === 3 ? '<span class="xa-chip xa-st-sample">مشروح في تأسيس اللفظي</span>' : r[6] === 1 ? '<span class="xa-chip xa-st-written">جاهز في عرض التأسيس</span>' : '<span class="xa-chip xa-st-none">ما انكتب</span>', go = xaQGo(r);
+      return `<tr${go ? ` class="go" data-go="${go}"` : ''}><td class="ref">${esc(r[0])}</td><td>${r[1] === 'vm' ? 'النموذج' : 'القسم'} ${r[2]}</td><td>${XA_TY[r[4]]}</td><td><span class="en">${esc(r[5])}</span></td><td class="st">${st}${r[8] && r[6] !== 3 ? `<span class="x">${esc(r[8])}</span>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="5" class="xa-empty">ما فيه أسئلة بهذي الشروط.</td></tr>';
     $('#xaqc').innerHTML = `يعرض <b>${xaN(Math.min(F.lim, rs.length))}</b> من <b>${xaN(rs.length)}</b>`;
     $('#xaqm').style.display = rs.length > F.lim ? '' : 'none';
   }
@@ -6881,14 +6943,17 @@
   function xaSearch(t) {
     const box = $('#xasr'); t = (t || '').trim().toLowerCase(); if (!box) return;
     if (t.length < 2) { box.classList.remove('on'); return; }
-    if (!xaAll) xaAll = Promise.all(Object.keys(XA.d.rel).map(id => xaLesson(id).catch(() => null)));
+    if (!xaAll) xaAll = Promise.all(Object.keys(XA.d.rel).map(id => xaLesson(id).catch(() => null))
+      .concat(XA.d.dk ? [xaDkIdx().then(K => Promise.all(K.lessons.map(l => xaDkLesson(l.id).catch(() => null)))).catch(() => null)] : []));   // + سكربت عرض تأسيس الكمي
     xaAll.then(() => {
       if (!$('#xasr') || ($('#xags').value || '').trim().toLowerCase() !== t) return;
-      const o = []; let c = 0, q = 0;
+      const o = []; let c = 0, d = 0, q = 0;
       Object.keys(XA.d.rel).forEach(id => { const L = XA.L[id], p = xaPlan(id); if (!L) return;
         L.slides.forEach((s, i) => s.lines.forEach((l, j) => { if (c < 14 && l[0].toLowerCase().indexOf(t) >= 0) { c++; o.push(`<a href="#admin-explain/l/${id}/${i}"><span class="k">${esc(xaTitle(p))} · ${esc(s.nm)} · السطر ${j + 1}</span>${esc(l[0].length > 150 ? l[0].slice(0, 150) + '…' : l[0])}</a>`); } })); });
-      XA.d.rows.forEach(r => { if (q < 12 && (r[0] + ' ' + r[5]).toLowerCase().indexOf(t) >= 0) { q++; const go = r[6] === 2 || r[6] === 3;
-        o.push(`<a href="${go ? '#admin-explain/l/' + r[7][0] + '/' + r[7][1] : '#admin-explain/q'}"${go ? '' : ` data-q="${esc(r[0])}"`}><span class="k">سؤال · <bdi dir="ltr">${esc(r[0])}</bdi> · ${XA_TY[r[4]]}</span><span class="en">${esc(r[5])}</span></a>`); } });
+      if (XA.K) XA.K.lessons.forEach(l => { const T = XA.KL[l.id]; if (!T) return;
+        T.slides.forEach((s, i) => (s.lines || []).forEach((x, j) => { const tx = xaDkTx(x); if (d < 10 && tx.toLowerCase().indexOf(t) >= 0) { d++; o.push(`<a href="#admin-explain/deck/${l.id}/${i}"><span class="k">تأسيس الكمي · ${esc(xaDkTitle(l))} · السطر ${j + 1}</span>${esc(tx.length > 150 ? tx.slice(0, 150) + '…' : tx)}</a>`); } })); });
+      XA.d.rows.forEach(r => { if (q < 12 && (r[0] + ' ' + r[5]).toLowerCase().indexOf(t) >= 0) { q++; const go = xaQGo(r);
+        o.push(`<a href="${go || '#admin-explain/q'}"${go ? '' : ` data-q="${esc(r[0])}"`}><span class="k">سؤال · <bdi dir="ltr">${esc(r[0])}</bdi> · ${XA_TY[r[4]]}</span><span class="en">${esc(r[5])}</span></a>`); } });
       box.innerHTML = o.join('') || '<div class="e">ما لقيت شي بهذي الكلمة.</div>'; box.classList.add('on');
       box.onclick = e => { const a = e.target.closest('a[data-q]'); if (a) { XA.qf = { u: '', n: '', y: '', st: '', t: a.dataset.q, lim: 150 }; if (location.hash === '#admin-explain/q') renderExplain('q'); } };
     });
